@@ -7,7 +7,18 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { createClient } from '@/lib/supabase/client'
 import { AREAS, NATIONALITIES, LANGUAGES, PURPOSES, GENDERS, ARRIVAL_STAGES } from '@/lib/constants'
-import type { Profile, Purpose, Gender, ArrivalStage } from '@/types'
+import type { Profile, Purpose, Gender, ArrivalStage, HelperCategory } from '@/types'
+
+const HELPER_CATEGORIES: { value: HelperCategory; emoji: string; label: string }[] = [
+  { value: 'Banking',   emoji: '🏦', label: 'Banking' },
+  { value: 'Housing',   emoji: '🏠', label: 'Housing' },
+  { value: 'Medical',   emoji: '🏥', label: 'Medical' },
+  { value: 'Visa',      emoji: '🛂', label: 'Visa' },
+  { value: 'Japanese',  emoji: '🗣️', label: 'Japanese' },
+  { value: 'Tax',       emoji: '📊', label: 'Tax' },
+  { value: 'Transport', emoji: '🚃', label: 'Transport' },
+  { value: 'Jobs',      emoji: '💼', label: 'Jobs' },
+]
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -30,6 +41,8 @@ export default function SettingsPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [isMentor, setIsMentor] = useState(false)
+  const [helperCategories, setHelperCategories] = useState<HelperCategory[]>([])
 
   useEffect(() => {
     async function load() {
@@ -50,6 +63,8 @@ export default function SettingsPage() {
       setBio(p.bio || '')
       setArrivalStage(p.arrival_stage || '')
       setAvatarPreview(p.avatar_url)
+      setIsMentor(p.is_mentor || false)
+      setHelperCategories(p.helper_categories || [])
       setLoading(false)
     }
     load()
@@ -88,6 +103,8 @@ export default function SettingsPage() {
       purposes,
       bio: bio.trim() || null,
       avatar_url,
+      is_mentor: isMentor,
+      helper_categories: isMentor ? helperCategories : [],
       updated_at: new Date().toISOString(),
     }).eq('id', profile.id)
 
@@ -232,6 +249,44 @@ export default function SettingsPage() {
           />
           <p className="text-xs text-gray-400 text-right">{bio.length}/300</p>
         </div>
+
+        {/* Mentor Section — Japan Local only */}
+        {arrivalStage === 'local' && (
+          <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-bold text-sm text-gray-800">🤝 Become a Mentor</div>
+                <div className="text-xs text-gray-500 mt-0.5">Help newcomers settle into Japan life</div>
+              </div>
+              <button
+                onClick={() => setIsMentor(m => !m)}
+                className={`w-12 h-6 rounded-full transition-colors relative ${isMentor ? 'bg-brand-500' : 'bg-gray-300'}`}
+              >
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${isMentor ? 'left-6' : 'left-0.5'}`} />
+              </button>
+            </div>
+            {isMentor && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">What can you help with?</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {HELPER_CATEGORIES.map(c => (
+                    <button
+                      key={c.value}
+                      onClick={() => toggleArr(helperCategories, c.value, setHelperCategories)}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs border transition ${
+                        helperCategories.includes(c.value)
+                          ? 'bg-brand-500 text-white border-brand-500'
+                          : 'border-gray-200 text-gray-600'
+                      }`}
+                    >
+                      {c.emoji} {c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <Button fullWidth size="lg" loading={saving} onClick={handleSave}>
           {saved ? '✓ Saved!' : 'Save Changes'}

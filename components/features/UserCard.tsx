@@ -33,11 +33,16 @@ export default function UserCard({ profile, onLike, liked }: UserCardProps) {
               <span className="text-sm">{getNationalityFlag(profile.nationality)}</span>
               <span className="text-sm text-gray-400 ml-auto flex-shrink-0">{profile.age}</span>
             </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
               <p className="text-sm text-gray-500">{profile.area}</p>
               {stage && (
                 <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${stage.color}`}>
                   {stage.emoji} {stage.label}
+                </span>
+              )}
+              {profile.is_mentor && (
+                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                  🤝 Mentor
                 </span>
               )}
             </div>

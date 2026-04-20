@@ -168,6 +168,26 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* Mentor Section */}
+        {profile.is_mentor && profile.helper_categories?.length > 0 && (
+          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">🤝</span>
+              <div>
+                <div className="font-bold text-sm text-emerald-800">Japan Mentor</div>
+                <div className="text-xs text-emerald-600">Can help with:</div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {profile.helper_categories.map(c => (
+                <span key={c} className="px-2.5 py-1 bg-white border border-emerald-200 rounded-full text-xs font-semibold text-emerald-700">
+                  {c}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex gap-3 pt-2">
           {matched ? (

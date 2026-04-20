@@ -8,6 +8,8 @@ export type Purpose =
   | 'Local Help'
   | 'Dating'
 
+export type HelperCategory = 'Banking' | 'Housing' | 'Medical' | 'Visa' | 'Japanese' | 'Tax' | 'Transport' | 'Jobs'
+
 export interface Profile {
   id: string
   display_name: string
@@ -24,6 +26,8 @@ export interface Profile {
   is_active: boolean
   arrival_stage: ArrivalStage | null
   updated_at: string
+  is_mentor: boolean
+  helper_categories: HelperCategory[]
 }
 
 export interface Like {
