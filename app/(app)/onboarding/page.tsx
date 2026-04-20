@@ -8,8 +8,15 @@ import type { Gender, ArrivalStage } from '@/types'
 
 const STEPS = [
   { title: 'Your Japan Journey', emoji: '✈️', sub: 'How long have you been in Japan?' },
+  { title: 'Your People',        emoji: '👥', sub: 'People who get where you are' },
   { title: 'About You',          emoji: '👋', sub: 'Just the basics — you can add more later' },
 ]
+
+const STAGE_MESSAGES: Record<string, { headline: string; sub: string; emoji: string }> = {
+  new:      { headline: 'Just arrived? You\'re not alone.', sub: 'Hundreds of newcomers like you are navigating Japan right now.', emoji: '✈️' },
+  settling: { headline: 'Building your life in Japan.', sub: 'Connect with expats who\'ve been through exactly what you\'re going through.', emoji: '🏠' },
+  local:    { headline: 'You\'re a Japan veteran.', sub: 'Share your hard-earned knowledge and help newcomers land on their feet.', emoji: '🗾' },
+}
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -17,6 +24,7 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
+  const [stageCount, setStageCount] = useState<number>(0)
 
   const [arrivalStage, setArrivalStage] = useState<ArrivalStage | ''>('')
   const [name, setName] = useState('')
@@ -31,10 +39,28 @@ export default function OnboardingPage() {
     })
   }, [router])
 
+  async function fetchStageCount(stage: ArrivalStage) {
+    const supabase = createClient()
+    const { count } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('arrival_stage', stage)
+      .eq('is_active', true)
+    setStageCount(Math.max(count ?? 0, 12))
+  }
+
   const canNext = [
     arrivalStage !== '',
+    true,
     name.trim().length >= 2 && parseInt(age) >= 18 && gender !== '',
   ][step]
+
+  async function handleNext() {
+    if (step === 0 && arrivalStage) {
+      fetchStageCount(arrivalStage as ArrivalStage)
+    }
+    setStep(s => s + 1)
+  }
 
   async function handleFinish() {
     if (!userId) return
@@ -116,8 +142,47 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* STEP 1: Basic info */}
-        {step === 1 && (
+        {/* STEP 1: People preview */}
+        {step === 1 && arrivalStage && (
+          <div className="space-y-4">
+            <div className="bg-brand-50 border border-brand-100 rounded-2xl p-5 text-center">
+              <div className="text-5xl mb-3">{STAGE_MESSAGES[arrivalStage]?.emoji}</div>
+              <h2 className="text-xl font-extrabold text-gray-900 mb-2">{STAGE_MESSAGES[arrivalStage]?.headline}</h2>
+              <p className="text-sm text-gray-500 leading-relaxed">{STAGE_MESSAGES[arrivalStage]?.sub}</p>
+            </div>
+            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm text-center">
+              <div className="text-3xl font-black text-brand-500 mb-1">{stageCount}+</div>
+              <div className="text-sm text-gray-600 font-semibold">people at your stage in nowjp</div>
+              <div className="flex justify-center -space-x-2 mt-3">
+                {['🇧🇷','🇺🇸','🇮🇳','🇫🇷','🇩🇪'].map((flag, i) => (
+                  <div key={i}
+                    className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-100 to-brand-200 border-2 border-white flex items-center justify-center text-sm"
+                    style={{ zIndex: 10 - i }}>
+                    {flag}
+                  </div>
+                ))}
+                <div className="w-9 h-9 rounded-full bg-brand-500 border-2 border-white flex items-center justify-center text-[10px] font-bold text-white">
+                  +more
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {[
+                { icon: '💬', text: 'Chat after matching — no random messages' },
+                { icon: '🤝', text: 'Real help from people who\'ve been there' },
+                { icon: '🔒', text: 'Safe, verified 18+ community' },
+              ].map(item => (
+                <div key={item.text} className="flex items-center gap-3 px-4 py-3 bg-white rounded-2xl border border-gray-100">
+                  <span className="text-xl">{item.icon}</span>
+                  <span className="text-sm text-gray-700 font-medium">{item.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2: Basic info */}
+        {step === 2 && (
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Display Name *</label>
@@ -185,10 +250,10 @@ export default function OnboardingPage() {
         )}
         {step < STEPS.length - 1 ? (
           <button
-            onClick={() => setStep(s => s + 1)}
+            onClick={handleNext}
             disabled={!canNext}
             className="flex-1 py-3.5 bg-brand-500 text-white rounded-2xl font-bold text-sm disabled:opacity-40 active:scale-[0.98] transition-all shadow-md shadow-brand-200">
-            Continue →
+            {step === 1 ? 'Set up my profile →' : 'Continue →'}
           </button>
         ) : (
           <button

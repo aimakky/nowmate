@@ -87,6 +87,9 @@ export default function SurvivePage() {
   const [postArea, setPostArea] = useState('')
   const [posting, setPosting] = useState(false)
   const [offeringId, setOfferingId] = useState<string | null>(null)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [showPremiumCTA, setShowPremiumCTA] = useState(false)
+  const [pendingHelpReq, setPendingHelpReq] = useState<HelpRequest | null>(null)
 
   // Pre-fill category from checklist
   const [prefillCategory, setPrefillCategory] = useState('')
@@ -161,13 +164,20 @@ export default function SurvivePage() {
     await fetchRequests()
   }
 
-  async function handleOfferHelp(request: HelpRequest) {
+  function handleOfferHelp(request: HelpRequest) {
     if (!currentUserId || currentUserId === request.user_id) return
-    setOfferingId(request.id)
+    setPendingHelpReq(request)
+    setShowPremiumCTA(true)
+  }
+
+  async function confirmOfferHelp() {
+    if (!pendingHelpReq || !currentUserId) return
+    setOfferingId(pendingHelpReq.id)
     const supabase = createClient()
-    // Send a like to the requester
-    await supabase.from('likes').upsert({ from_user_id: currentUserId, to_user_id: request.user_id })
+    await supabase.from('likes').upsert({ from_user_id: currentUserId, to_user_id: pendingHelpReq.user_id })
     setOfferingId(null)
+    setShowPremiumCTA(false)
+    setPendingHelpReq(null)
   }
 
   async function handleResolve(id: string) {
@@ -255,6 +265,14 @@ export default function SurvivePage() {
               <div className="font-bold text-brand-700">You're all set up!</div>
               <p className="text-xs text-brand-500 mt-1">Now go explore Japan 🗾</p>
             </div>
+          )}
+          {done > 0 && (
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="w-full py-3 border-2 border-brand-200 text-brand-600 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 hover:bg-brand-50 transition"
+            >
+              📊 Share my Japan setup score
+            </button>
           )}
         </div>
       )}
@@ -418,6 +436,92 @@ export default function SurvivePage() {
               )
             })
           )}
+        </div>
+      )}
+
+      {/* Premium CTA Modal */}
+      {showPremiumCTA && pendingHelpReq && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-6" onClick={() => setShowPremiumCTA(false)}>
+          <div className="w-full max-w-md bg-white rounded-3xl p-5 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-2">🤝</div>
+              <h3 className="font-extrabold text-gray-900 text-lg">Help {pendingHelpReq.profiles?.display_name}</h3>
+              <p className="text-sm text-gray-500 mt-1">with their {pendingHelpReq.category} question</p>
+            </div>
+            <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4 mb-4 space-y-2">
+              <div className="flex items-start gap-2 text-sm text-gray-700">
+                <span className="text-brand-500 font-bold mt-0.5">★</span>
+                <span><span className="font-semibold">Premium Helper Badge</span> — get recognized as a Japan Local mentor</span>
+              </div>
+              <div className="flex items-start gap-2 text-sm text-gray-700">
+                <span className="text-brand-500 font-bold mt-0.5">★</span>
+                <span><span className="font-semibold">Priority in search results</span> — newcomers find you first</span>
+              </div>
+              <div className="flex items-start gap-2 text-sm text-gray-700">
+                <span className="text-brand-500 font-bold mt-0.5">★</span>
+                <span><span className="font-semibold">Unlimited matches</span> — no daily like limit</span>
+              </div>
+            </div>
+            <Link
+              href="/premium"
+              className="block w-full py-3.5 bg-brand-500 text-white rounded-2xl font-bold text-sm text-center mb-2 hover:bg-brand-600 transition"
+            >
+              Go Premium — ¥980/month
+            </Link>
+            <button
+              onClick={confirmOfferHelp}
+              disabled={offeringId === pendingHelpReq.id}
+              className="w-full py-3 border-2 border-gray-200 text-gray-600 rounded-2xl font-semibold text-sm hover:bg-gray-50 transition disabled:opacity-50"
+            >
+              {offeringId === pendingHelpReq.id ? 'Sending...' : 'Help for free →'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Share Score Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-6" onClick={() => setShowShareModal(false)}>
+          <div className="w-full max-w-md bg-white rounded-3xl p-5 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="font-extrabold text-gray-900">📊 My Japan Setup Score</div>
+              <button onClick={() => setShowShareModal(false)} className="text-gray-400 text-xl leading-none">×</button>
+            </div>
+            {/* Share card preview */}
+            <div className="bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl p-5 mb-4 text-white">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
+                  <span className="font-black text-xs">N</span>
+                </div>
+                <span className="font-bold text-sm">nowjp</span>
+              </div>
+              <div className="text-4xl font-black mb-1">{pct}%</div>
+              <div className="text-sm font-semibold text-brand-100 mb-3">Japan survival setup complete</div>
+              <div className="flex gap-1 mb-3">
+                {CHECKLIST.map(item => (
+                  <div
+                    key={item.id}
+                    className={`flex-1 h-1.5 rounded-full ${checked.has(item.id) ? 'bg-white' : 'bg-white/30'}`}
+                  />
+                ))}
+              </div>
+              <div className="text-xs text-brand-200">{done}/{total} tasks done · getnowjp.com</div>
+            </div>
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I'm ${pct}% set up in Japan! 🗾 ${done}/${total} survival tasks done with nowjp\n\ngetnowjp.com #JapanLife #ExpatInJapan`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full py-3.5 bg-black text-white rounded-2xl font-bold text-sm text-center mb-2 hover:bg-gray-900 transition"
+            >
+              Share on X (Twitter)
+            </a>
+            <button
+              onClick={() => setShowShareModal(false)}
+              className="w-full py-3 border-2 border-gray-200 text-gray-500 rounded-2xl font-semibold text-sm"
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
 
