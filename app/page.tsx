@@ -117,9 +117,24 @@ export default async function TopPage() {
           Just landed?<br />
           <span className="text-brand-500">We've got you.</span>
         </h1>
-        <p className="text-gray-500 text-base leading-relaxed mb-8 max-w-[300px]">
+        <p className="text-gray-500 text-base leading-relaxed mb-5 max-w-[300px]">
           Making friends in Japan is hard. nowmate connects expats and locals — friends, language exchange, and real Japan life support.
         </p>
+
+        <div className="w-full bg-brand-50 border border-brand-100 rounded-2xl px-4 py-4 mb-6 text-left space-y-2.5">
+          <div className="flex items-start gap-2.5 text-sm text-gray-700">
+            <span className="text-brand-500 font-bold mt-0.5">✓</span>
+            <span>Find locals who <span className="font-semibold">already know</span> how to open a bank account, get a SIM, and register 住民票</span>
+          </div>
+          <div className="flex items-start gap-2.5 text-sm text-gray-700">
+            <span className="text-brand-500 font-bold mt-0.5">✓</span>
+            <span>Meet expats at <span className="font-semibold">your exact stage</span> — from just landed to 3-year veterans</span>
+          </div>
+          <div className="flex items-start gap-2.5 text-sm text-gray-700">
+            <span className="text-brand-500 font-bold mt-0.5">✓</span>
+            <span>Get <span className="font-semibold">real answers</span> about Japan life — from people living it right now</span>
+          </div>
+        </div>
 
         <div className="flex flex-col gap-3 w-full">
           <Link href="/signup"
