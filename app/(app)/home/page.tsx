@@ -7,6 +7,7 @@ import Header from '@/components/layout/Header'
 import UserCard from '@/components/features/UserCard'
 import MatchModal from '@/components/features/MatchModal'
 import ProfileCompletionBanner from '@/components/features/ProfileCompletionBanner'
+import SurvivalChecklist from '@/components/features/SurvivalChecklist'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/useToast'
 import { createClient } from '@/lib/supabase/client'
@@ -165,6 +166,11 @@ export default function HomePage() {
         <div className="pt-3">
           <ProfileCompletionBanner profile={currentUser} />
         </div>
+      )}
+
+      {/* Survival Checklist — new & settling users only */}
+      {currentUser && !loading && (currentUser.arrival_stage === 'new' || currentUser.arrival_stage === 'settling') && (
+        <SurvivalChecklist />
       )}
 
       {/* User List */}
