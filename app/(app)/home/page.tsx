@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { SlidersHorizontal } from 'lucide-react'
+import { SlidersHorizontal, Search } from 'lucide-react'
+import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import UserCard from '@/components/features/UserCard'
 import MatchModal from '@/components/features/MatchModal'
@@ -107,14 +108,19 @@ export default function HomePage() {
       <Header
         title="Discover"
         right={
-          <button
-            onClick={() => setShowFilter(f => !f)}
-            className={`p-1.5 rounded-xl transition ${
-              hasFilter ? 'text-brand-500 bg-brand-50' : 'text-gray-400 hover:bg-gray-100'
-            }`}
-          >
-            <SlidersHorizontal size={20} strokeWidth={hasFilter ? 2.5 : 1.8} />
-          </button>
+          <div className="flex items-center gap-1">
+            <Link href="/search" className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 transition">
+              <Search size={20} strokeWidth={1.8} />
+            </Link>
+            <button
+              onClick={() => setShowFilter(f => !f)}
+              className={`p-1.5 rounded-xl transition ${
+                hasFilter ? 'text-brand-500 bg-brand-50' : 'text-gray-400 hover:bg-gray-100'
+              }`}
+            >
+              <SlidersHorizontal size={20} strokeWidth={hasFilter ? 2.5 : 1.8} />
+            </button>
+          </div>
         }
       />
 

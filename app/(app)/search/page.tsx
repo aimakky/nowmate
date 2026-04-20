@@ -1,15 +1,17 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Search, X } from 'lucide-react'
+import { Search, X, Crown } from 'lucide-react'
+import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import UserCard from '@/components/features/UserCard'
 import MatchModal from '@/components/features/MatchModal'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/useToast'
 import { createClient } from '@/lib/supabase/client'
-import { AREAS, NATIONALITIES, LANGUAGES, PURPOSES } from '@/lib/constants'
-import type { Profile, Purpose } from '@/types'
+import { AREAS, NATIONALITIES, LANGUAGES, PURPOSES, ARRIVAL_STAGES } from '@/lib/constants'
+import { getIsPremium, getTodayLikeCount, FREE_LIKE_LIMIT } from '@/lib/premium'
+import type { Profile, Purpose, ArrivalStage } from '@/types'
 
 const AGE_RANGES = [
   { label: 'All Ages', min: 18, max: 99 },
@@ -26,6 +28,8 @@ export default function SearchPage() {
   const [searched, setSearched] = useState(false)
   const [currentUser, setCurrentUser] = useState<Profile | null>(null)
   const [matchInfo, setMatchInfo] = useState<{ matchedProfile: Profile; matchId: string } | null>(null)
+  const [isPremium, setIsPremium] = useState(false)
+  const [todayLikes, setTodayLikes] = useState(0)
   const { toasts, addToast, removeToast } = useToast()
 
   const [area, setArea] = useState('')
@@ -34,6 +38,7 @@ export default function SearchPage() {
   const [language, setLanguage] = useState('')
   const [ageRange, setAgeRange] = useState(0)
   const [keyword, setKeyword] = useState('')
+  const [arrivalStage, setArrivalStage] = useState<ArrivalStage | ''>('')
 
   const handleSearch = useCallback(async () => {
     setLoading(true)
@@ -42,11 +47,15 @@ export default function SearchPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const [{ data: myProfile }, { data: blocksData }] = await Promise.all([
+    const [{ data: myProfile }, { data: blocksData }, premium, likeCount] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase.from('blocks').select('blocked_id,blocker_id')
         .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`),
+      getIsPremium(user.id),
+      getTodayLikeCount(user.id),
     ])
+    setIsPremium(premium)
+    setTodayLikes(likeCount)
     setCurrentUser(myProfile)
 
     const blockedIds = new Set(
@@ -59,10 +68,11 @@ export default function SearchPage() {
       .gte('age', selectedAge.min).lte('age', selectedAge.max)
       .order('updated_at', { ascending: false }).limit(60)
 
-    if (area)        query = query.eq('area', area)
-    if (nationality) query = query.eq('nationality', nationality)
-    if (purpose)     query = query.contains('purposes', [purpose])
-    if (language)    query = query.contains('spoken_languages', [language])
+    if (area)         query = query.eq('area', area)
+    if (nationality)  query = query.eq('nationality', nationality)
+    if (purpose)      query = query.contains('purposes', [purpose])
+    if (language)     query = query.contains('spoken_languages', [language])
+    if (arrivalStage) query = query.eq('arrival_stage', arrivalStage)
 
     const { data } = await query
     let results = (data || []).filter(p => !blockedIds.has(p.id))
@@ -81,7 +91,7 @@ export default function SearchPage() {
       .select('to_user_id').eq('from_user_id', user.id)
     setLikedIds(new Set((likesData || []).map(l => l.to_user_id)))
     setLoading(false)
-  }, [area, nationality, purpose, language, ageRange, keyword])
+  }, [area, nationality, purpose, language, ageRange, keyword, arrivalStage])
 
   async function handleLike(toUserId: string) {
     if (!currentUser) return
@@ -91,10 +101,17 @@ export default function SearchPage() {
       await supabase.from('likes').delete()
         .eq('from_user_id', currentUser.id).eq('to_user_id', toUserId)
       setLikedIds(prev => { const s = new Set(prev); s.delete(toUserId); return s })
+      setTodayLikes(prev => Math.max(0, prev - 1))
+      return
+    }
+
+    if (!isPremium && todayLikes >= FREE_LIKE_LIMIT) {
+      addToast({ type: 'error', title: `Daily limit reached (${FREE_LIKE_LIMIT} likes/day)`, message: 'Upgrade to Premium for unlimited likes' })
       return
     }
 
     await supabase.from('likes').insert({ from_user_id: currentUser.id, to_user_id: toUserId })
+    setTodayLikes(prev => prev + 1)
     setLikedIds(prev => new Set([...prev, toUserId]))
     addToast({ type: 'info', title: 'Like sent! ❤️' })
 
@@ -112,10 +129,10 @@ export default function SearchPage() {
     }
   }
 
-  const hasFilter = area || nationality || purpose || language || ageRange > 0 || keyword.trim()
+  const hasFilter = area || nationality || purpose || language || ageRange > 0 || keyword.trim() || arrivalStage
 
   function clearAll() {
-    setArea(''); setNationality(''); setPurpose(''); setLanguage(''); setAgeRange(0); setKeyword('')
+    setArea(''); setNationality(''); setPurpose(''); setLanguage(''); setAgeRange(0); setKeyword(''); setArrivalStage('')
   }
 
   return (
@@ -175,6 +192,27 @@ export default function SearchPage() {
           </div>
         </div>
 
+        {/* Arrival Stage */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Arrival Stage</label>
+          <div className="flex gap-1.5 flex-wrap">
+            <button onClick={() => setArrivalStage('')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
+                arrivalStage === '' ? 'bg-brand-500 text-white border-brand-500' : 'border-gray-200 text-gray-600 hover:border-brand-300'
+              }`}>
+              All
+            </button>
+            {ARRIVAL_STAGES.map(s => (
+              <button key={s.value} onClick={() => setArrivalStage(s.value)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
+                  arrivalStage === s.value ? 'bg-brand-500 text-white border-brand-500' : 'border-gray-200 text-gray-600 hover:border-brand-300'
+                }`}>
+                {s.emoji} {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Age range */}
         <div>
           <label className="block text-xs font-semibold text-gray-500 mb-1.5">Age Range</label>
@@ -207,6 +245,25 @@ export default function SearchPage() {
           </button>
         </div>
       </div>
+
+      {/* Like limit banner */}
+      {!isPremium && todayLikes >= FREE_LIKE_LIMIT && (
+        <div className="mx-4 mb-2 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center gap-3">
+          <Crown size={18} className="text-amber-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-amber-800">Daily like limit reached</p>
+            <p className="text-xs text-amber-600">Go Premium for unlimited likes</p>
+          </div>
+          <Link href="/upgrade" className="text-xs font-bold text-amber-600 bg-amber-100 px-3 py-1.5 rounded-xl whitespace-nowrap">
+            Upgrade
+          </Link>
+        </div>
+      )}
+      {!isPremium && todayLikes > 0 && todayLikes < FREE_LIKE_LIMIT && (
+        <p className="text-xs text-gray-400 text-center mb-1">
+          {FREE_LIKE_LIMIT - todayLikes} likes left today
+        </p>
+      )}
 
       {/* Results */}
       <div className="px-4 pb-6 space-y-3">

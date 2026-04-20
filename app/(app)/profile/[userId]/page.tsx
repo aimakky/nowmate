@@ -8,7 +8,7 @@ import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import ReportModal from '@/components/features/ReportModal'
 import { createClient } from '@/lib/supabase/client'
-import { PURPOSES, NATIONALITIES } from '@/lib/constants'
+import { PURPOSES, NATIONALITIES, ARRIVAL_STAGES } from '@/lib/constants'
 import { getNationalityFlag } from '@/lib/utils'
 import type { Profile } from '@/types'
 
@@ -90,6 +90,7 @@ export default function ProfilePage() {
 
   const purposes = PURPOSES.filter(p => profile.purposes.includes(p.value))
   const nationality = NATIONALITIES.find(n => n.code === profile.nationality)
+  const stage = profile.arrival_stage ? ARRIVAL_STAGES.find(s => s.value === profile.arrival_stage) : null
 
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen">
@@ -121,6 +122,11 @@ export default function ProfilePage() {
             <Badge>{nationality?.name || profile.nationality}</Badge>
             <Badge variant="brand">{profile.area}</Badge>
             {profile.is_online && <Badge variant="success">● Online</Badge>}
+            {stage && (
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${stage.color}`}>
+                {stage.emoji} {stage.label}
+              </span>
+            )}
           </div>
         </div>
 

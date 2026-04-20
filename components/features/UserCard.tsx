@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
-import { PURPOSES } from '@/lib/constants'
+import { PURPOSES, ARRIVAL_STAGES } from '@/lib/constants'
 import { getNationalityFlag } from '@/lib/utils'
 import type { Profile } from '@/types'
 
@@ -15,6 +15,7 @@ interface UserCardProps {
 
 export default function UserCard({ profile, onLike, liked }: UserCardProps) {
   const purposes = PURPOSES.filter(p => profile.purposes.includes(p.value))
+  const stage = profile.arrival_stage ? ARRIVAL_STAGES.find(s => s.value === profile.arrival_stage) : null
 
   return (
     <Link href={`/profile/${profile.id}`} className="block">
@@ -32,7 +33,14 @@ export default function UserCard({ profile, onLike, liked }: UserCardProps) {
               <span className="text-sm">{getNationalityFlag(profile.nationality)}</span>
               <span className="text-sm text-gray-400 ml-auto flex-shrink-0">{profile.age}</span>
             </div>
-            <p className="text-sm text-gray-500 mt-0.5">{profile.area}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <p className="text-sm text-gray-500">{profile.area}</p>
+              {stage && (
+                <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${stage.color}`}>
+                  {stage.emoji} {stage.label}
+                </span>
+              )}
+            </div>
             <div className="flex flex-wrap gap-1 mt-2">
               {purposes.slice(0, 3).map(p => (
                 <span key={p.value} className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium ${p.color}`}>

@@ -1,4 +1,4 @@
-import type { Purpose } from '@/types'
+import type { Purpose, ArrivalStage } from '@/types'
 
 export const AREAS = [
   'Tokyo', 'Osaka', 'Nagoya', 'Sapporo', 'Fukuoka',
@@ -47,6 +47,12 @@ export const PURPOSES: { value: Purpose; label: string; icon: string; color: str
   { value: 'Language Exchange', label: 'Lang Exchange',    icon: '🗣️', color: 'bg-purple-100 text-purple-700' },
   { value: 'Local Help',        label: 'Local Help',       icon: '🗺️', color: 'bg-orange-100 text-orange-700' },
   { value: 'Dating',            label: 'Dating',           icon: '❤️', color: 'bg-rose-100 text-rose-700' },
+]
+
+export const ARRIVAL_STAGES: { value: ArrivalStage; label: string; emoji: string; desc: string; color: string }[] = [
+  { value: 'new',      label: 'Just Arrived',   emoji: '✈️', desc: '0 – 6 months in Japan',    color: 'bg-blue-100 text-blue-700' },
+  { value: 'settling', label: 'Getting Settled', emoji: '🏠', desc: '6 months – 2 years',        color: 'bg-green-100 text-green-700' },
+  { value: 'local',    label: 'Japan Local',     emoji: '🗾', desc: '2+ years — know the ropes', color: 'bg-orange-100 text-orange-700' },
 ]
 
 export const REPORT_REASONS = [

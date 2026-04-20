@@ -1,39 +1,85 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'nowmate — Find your people in Japan',
+  title: 'nowmate — Just landed? We\'ve got you.',
+  description: 'Making friends in Japan is hard. nowmate makes it easy. Connect with expats and locals for friendship, language exchange, and Japan life support.',
+  openGraph: {
+    title: 'nowmate — Just landed? We\'ve got you.',
+    description: 'Your expat survival kit in Japan. Find friends, language partners, and local help.',
+  },
 }
 
+const STAGES = [
+  {
+    emoji: '✈️',
+    label: 'Just Arrived',
+    desc: '0–6 months',
+    tip: '"I need a friend who gets it."',
+    color: 'bg-blue-50 border-blue-100',
+    labelColor: 'text-blue-600',
+  },
+  {
+    emoji: '🏠',
+    label: 'Getting Settled',
+    desc: '6 months – 2 years',
+    tip: '"I want to grow my circle."',
+    color: 'bg-green-50 border-green-100',
+    labelColor: 'text-green-600',
+  },
+  {
+    emoji: '🗾',
+    label: 'Japan Local',
+    desc: '2+ years',
+    tip: '"I love helping newcomers."',
+    color: 'bg-orange-50 border-orange-100',
+    labelColor: 'text-orange-600',
+  },
+]
+
 const FEATURES = [
-  { icon: '📍', title: 'People Nearby',    desc: 'See who\'s in your area right now — Tokyo, Osaka, wherever you are.' },
-  { icon: '🌏', title: 'Any Language',     desc: 'Connect in your own language or practice a new one.' },
-  { icon: '🤝', title: 'More Than Dating', desc: 'Friends, language exchange, local tips & real connections.' },
-  { icon: '🔒', title: 'Safe Space',       desc: 'Report & block. Chat only after matching. 18+ only.' },
+  { icon: '🧭', title: 'Arrival Stage Matching', desc: 'Connect with others at the same point in their Japan journey — or find a senior expat mentor.' },
+  { icon: '🌏', title: 'Any Language',           desc: 'Connect in your own language or practice Japanese with a native speaker.' },
+  { icon: '🗺️', title: 'Japan Life Tips',        desc: 'A community of people who\'ve been there. Get real answers about life in Japan.' },
+  { icon: '🔒', title: 'Safe Space',             desc: 'Report & block. Chat only after matching. Verified 18+ only.' },
 ]
 
 const STEPS = [
-  { icon: '✏️', title: 'Create Profile',    desc: 'Share your nationality, languages & what you\'re looking for.' },
-  { icon: '👀', title: 'Browse Nearby',     desc: 'See foreigners in your city. Filter by purpose, language & more.' },
-  { icon: '❤️', title: 'Like & Match',      desc: 'Like someone. If they like you back — it\'s a match!' },
-  { icon: '💬', title: 'Chat & Meet',       desc: 'Start chatting. Make plans. Build your life in Japan.' },
+  { icon: '✏️', title: 'Set Your Stage',     desc: 'Tell us how long you\'ve been in Japan. We match you with people who understand where you are.' },
+  { icon: '👀', title: 'Meet Your People',   desc: 'Browse expats and locals in your city — filtered by stage, language, and purpose.' },
+  { icon: '❤️', title: 'Like & Match',       desc: 'Like someone. If they like you back — it\'s a match!' },
+  { icon: '💬', title: 'Chat & Survive',     desc: 'Get tips, share experiences, make real friends. Build your life in Japan together.' },
 ]
 
-const PURPOSES = [
-  { icon: '👫', label: 'Friends',          color: 'bg-blue-50  border-blue-100  text-blue-600' },
-  { icon: '💬', label: 'Chat',             color: 'bg-green-50 border-green-100 text-green-600' },
-  { icon: '🗣️', label: 'Language Exchange', color: 'bg-purple-50 border-purple-100 text-purple-600' },
-  { icon: '🗺️', label: 'Local Help',       color: 'bg-orange-50 border-orange-100 text-orange-600' },
-  { icon: '❤️', label: 'Dating',           color: 'bg-rose-50  border-rose-100  text-rose-600' },
+const TIPS_PREVIEW = [
+  { emoji: '🏦', title: 'Opening a bank account', category: 'Money' },
+  { emoji: '🏥', title: 'Finding an English-speaking doctor', category: 'Health' },
+  { emoji: '🚃', title: 'IC card & transit tips', category: 'Transport' },
+  { emoji: '🏠', title: 'How to rent an apartment as a foreigner', category: 'Housing' },
 ]
 
-// Simulated flag avatars for social proof
 const NATIONALITY_PREVIEW = ['🇧🇷','🇳🇵','🇻🇳','🇨🇳','🇵🇭','🇮🇳','🇰🇷','🇲🇲','🇺🇸','🇮🇩','🇹🇭','🇧🇩']
 
-export default function TopPage() {
+const PURPOSES = [
+  { icon: '👫', label: 'Friends',           color: 'bg-blue-50  border-blue-100  text-blue-600' },
+  { icon: '🗣️', label: 'Language Exchange', color: 'bg-purple-50 border-purple-100 text-purple-600' },
+  { icon: '🗺️', label: 'Local Help',        color: 'bg-orange-50 border-orange-100 text-orange-600' },
+  { icon: '💬', label: 'Chat',              color: 'bg-green-50 border-green-100 text-green-600' },
+  { icon: '❤️', label: 'Dating',            color: 'bg-rose-50  border-rose-100  text-rose-600' },
+]
+
+export default async function TopPage() {
+  const supabase = createClient()
+  const { count } = await supabase
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_active', true)
+  const userCount = Math.max(count ?? 0, 1)
+
   return (
     <div className="min-h-screen bg-white flex flex-col max-w-[430px] mx-auto">
-      {/* ── Header ── */}
+      {/* Header */}
       <header className="flex items-center justify-between px-5 pt-5 pb-3">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm shadow-brand-200">
@@ -47,9 +93,8 @@ export default function TopPage() {
         </Link>
       </header>
 
-      {/* ── Hero ── */}
+      {/* Hero */}
       <section className="px-5 pt-8 pb-10 text-center flex flex-col items-center">
-        {/* Social proof avatars (Noah's idea) */}
         <div className="flex -space-x-2 mb-5">
           {NATIONALITY_PREVIEW.slice(0, 8).map((flag, i) => (
             <div key={i}
@@ -59,20 +104,21 @@ export default function TopPage() {
             </div>
           ))}
           <div className="w-9 h-9 rounded-full bg-brand-500 border-2 border-white flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
-            +{30}
+            +30
           </div>
         </div>
+
         <div className="inline-flex items-center gap-1.5 bg-green-50 border border-green-100 text-green-600 text-xs font-semibold px-3 py-1 rounded-full mb-5">
           <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-          30+ nationalities online
+          {userCount}+ people already joined
         </div>
 
         <h1 className="text-[2rem] font-black text-gray-900 leading-[1.15] mb-3">
-          Find your people.<br />
-          <span className="text-brand-500">Right here in Japan.</span>
+          Just landed?<br />
+          <span className="text-brand-500">We've got you.</span>
         </h1>
         <p className="text-gray-500 text-base leading-relaxed mb-8 max-w-[300px]">
-          nowmate connects foreigners in Japan — for friendship, language exchange, local help, and more.
+          Making friends in Japan is hard. nowmate connects expats and locals — friends, language exchange, and real Japan life support.
         </p>
 
         <div className="flex flex-col gap-3 w-full">
@@ -89,8 +135,26 @@ export default function TopPage() {
         <p className="text-xs text-gray-400 mt-4">Free forever · No credit card · 18+ only</p>
       </section>
 
-      {/* ── Purpose Pills ── */}
+      {/* Arrival Stage Journey */}
       <section className="px-5 pb-10">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest text-center mb-4">Where are you in your Japan journey?</p>
+        <div className="space-y-2.5">
+          {STAGES.map(s => (
+            <Link key={s.label} href="/signup"
+              className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl border ${s.color} hover:opacity-80 active:scale-[0.98] transition-all`}>
+              <span className="text-2xl">{s.emoji}</span>
+              <div className="flex-1">
+                <div className={`font-bold text-sm ${s.labelColor}`}>{s.label}</div>
+                <div className="text-xs text-gray-500">{s.desc}</div>
+              </div>
+              <div className="text-xs text-gray-400 italic text-right max-w-[110px] leading-tight">{s.tip}</div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Purpose Pills */}
+      <section className="bg-gray-50 px-5 py-8">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest text-center mb-3">What are you looking for?</p>
         <div className="flex flex-wrap justify-center gap-2">
           {PURPOSES.map(p => (
@@ -102,9 +166,29 @@ export default function TopPage() {
         </div>
       </section>
 
-      {/* ── Features ── */}
+      {/* Japan Life Tips Preview */}
+      <section className="px-5 py-10">
+        <h2 className="text-xl font-extrabold text-center text-gray-800 mb-1">🗺️ Japan Life Tips</h2>
+        <p className="text-sm text-center text-gray-400 mb-5">Real advice from people living it</p>
+        <div className="grid grid-cols-2 gap-2.5">
+          {TIPS_PREVIEW.map(t => (
+            <Link key={t.title} href="/signup"
+              className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow active:scale-[0.98]">
+              <div className="text-2xl mb-2">{t.emoji}</div>
+              <div className="text-xs font-semibold text-brand-500 mb-1">{t.category}</div>
+              <div className="font-bold text-gray-800 text-xs leading-snug">{t.title}</div>
+            </Link>
+          ))}
+        </div>
+        <Link href="/signup"
+          className="mt-4 flex items-center justify-center gap-1 text-sm text-brand-500 font-semibold hover:text-brand-600">
+          See all tips →
+        </Link>
+      </section>
+
+      {/* Features */}
       <section className="bg-gray-50 px-5 py-10">
-        <h2 className="text-xl font-extrabold text-center text-gray-800 mb-5">Why nowmate?</h2>
+        <h2 className="text-xl font-extrabold text-center text-gray-800 mb-5">Your expat survival kit</h2>
         <div className="grid grid-cols-2 gap-3">
           {FEATURES.map(f => (
             <div key={f.title} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
@@ -116,7 +200,7 @@ export default function TopPage() {
         </div>
       </section>
 
-      {/* ── How it works ── */}
+      {/* How it works */}
       <section className="px-5 py-10">
         <h2 className="text-xl font-extrabold text-center text-gray-800 mb-6">How It Works</h2>
         <div className="space-y-4">
@@ -134,7 +218,7 @@ export default function TopPage() {
         </div>
       </section>
 
-      {/* ── Nationality showcase ── */}
+      {/* Nationality showcase */}
       <section className="bg-brand-500 px-5 py-10 text-center">
         <p className="text-brand-100 text-sm font-semibold mb-2">People from all over the world</p>
         <h2 className="text-2xl font-extrabold text-white mb-4">30+ Nationalities in nowmate</h2>
@@ -150,18 +234,30 @@ export default function TopPage() {
         </Link>
       </section>
 
-      {/* ── Final CTA ── */}
+      {/* Final CTA */}
       <section className="px-5 py-10 text-center">
         <div className="text-4xl mb-3">🤝</div>
         <h2 className="text-2xl font-extrabold text-gray-900 mb-2">You're not alone.</h2>
-        <p className="text-gray-500 text-sm mb-6 leading-relaxed">Your crew is nearby. Join now — it takes 2 minutes.</p>
+        <p className="text-gray-500 text-sm mb-6 leading-relaxed">Your people are nearby. Join now — it takes 2 minutes.</p>
         <Link href="/signup"
           className="inline-block w-full py-4 bg-brand-500 text-white rounded-2xl font-bold text-base text-center shadow-md shadow-brand-200 hover:bg-brand-600 active:scale-[0.98] transition-all">
           Get Started Free
         </Link>
       </section>
 
-      {/* ── Footer ── */}
+      {/* B2B Banner */}
+      <section className="px-5 py-6 border-t border-gray-100">
+        <Link href="/for-business"
+          className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3.5 hover:bg-gray-100 active:scale-[0.98] transition-all">
+          <span className="text-2xl">🏢</span>
+          <div className="flex-1">
+            <div className="font-bold text-gray-800 text-sm">nowmate for Business</div>
+            <div className="text-xs text-gray-500">Improve expat employee retention →</div>
+          </div>
+        </Link>
+      </section>
+
+      {/* Footer */}
       <footer className="border-t border-gray-100 px-5 py-6 text-center bg-white">
         <div className="flex items-center justify-center gap-2 mb-3">
           <div className="w-6 h-6 bg-brand-500 rounded-lg flex items-center justify-center">
@@ -169,13 +265,13 @@ export default function TopPage() {
           </div>
           <span className="font-bold text-gray-700">nowmate</span>
         </div>
-        <p className="text-xs text-gray-400 mb-3">For foreigners in Japan · 18+ only · Free forever</p>
+        <p className="text-xs text-gray-400 mb-3">Your expat survival kit in Japan · 18+ only · Free forever</p>
         <div className="flex justify-center gap-5 text-xs text-gray-400">
           <Link href="/terms"   className="hover:text-gray-600 transition">Terms</Link>
           <Link href="/privacy" className="hover:text-gray-600 transition">Privacy</Link>
           <Link href="/contact" className="hover:text-gray-600 transition">Contact</Link>
         </div>
-        <p className="text-xs text-gray-300 mt-3">© 2024 nowmate</p>
+        <p className="text-xs text-gray-300 mt-3">© 2026 nowmate</p>
       </footer>
     </div>
   )

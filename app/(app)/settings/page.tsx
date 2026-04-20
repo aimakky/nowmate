@@ -6,8 +6,8 @@ import Header from '@/components/layout/Header'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { createClient } from '@/lib/supabase/client'
-import { AREAS, NATIONALITIES, LANGUAGES, PURPOSES, GENDERS } from '@/lib/constants'
-import type { Profile, Purpose, Gender } from '@/types'
+import { AREAS, NATIONALITIES, LANGUAGES, PURPOSES, GENDERS, ARRIVAL_STAGES } from '@/lib/constants'
+import type { Profile, Purpose, Gender, ArrivalStage } from '@/types'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [learningLangs, setLearningLangs] = useState<string[]>([])
   const [purposes, setPurposes] = useState<Purpose[]>([])
   const [bio, setBio] = useState('')
+  const [arrivalStage, setArrivalStage] = useState<ArrivalStage | ''>('')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
@@ -47,6 +48,7 @@ export default function SettingsPage() {
       setLearningLangs(p.learning_languages)
       setPurposes(p.purposes)
       setBio(p.bio || '')
+      setArrivalStage(p.arrival_stage || '')
       setAvatarPreview(p.avatar_url)
       setLoading(false)
     }
@@ -80,6 +82,7 @@ export default function SettingsPage() {
       gender,
       nationality,
       area,
+      arrival_stage: arrivalStage || null,
       spoken_languages: spokenLangs,
       learning_languages: learningLangs,
       purposes,
@@ -155,6 +158,25 @@ export default function SettingsPage() {
             className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
             {NATIONALITIES.map(n => <option key={n.code} value={n.code}>{n.flag} {n.name}</option>)}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">How long in Japan?</label>
+          <div className="space-y-2">
+            {ARRIVAL_STAGES.map(s => (
+              <button key={s.value} onClick={() => setArrivalStage(s.value)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition text-left ${
+                  arrivalStage === s.value ? 'bg-brand-50 border-brand-400' : 'border-gray-200'
+                }`}>
+                <span className="text-xl">{s.emoji}</span>
+                <div>
+                  <div className={`font-bold text-sm ${arrivalStage === s.value ? 'text-brand-700' : 'text-gray-800'}`}>{s.label}</div>
+                  <div className="text-xs text-gray-500">{s.desc}</div>
+                </div>
+                {arrivalStage === s.value && <span className="ml-auto text-brand-500 font-bold">✓</span>}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div>

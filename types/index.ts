@@ -1,4 +1,5 @@
 export type Gender = 'male' | 'female' | 'other'
+export type ArrivalStage = 'new' | 'settling' | 'local'
 
 export type Purpose =
   | 'Friend'
@@ -21,6 +22,7 @@ export interface Profile {
   avatar_url: string | null
   is_online: boolean
   is_active: boolean
+  arrival_stage: ArrivalStage | null
   updated_at: string
 }
 
@@ -47,6 +49,17 @@ export interface Message {
   content: string
   created_at: string
   is_deleted: boolean
+}
+
+export interface NowSession {
+  id: string
+  user_id: string
+  activity: string
+  area: string
+  message: string | null
+  expires_at: string
+  created_at: string
+  profiles: Profile
 }
 
 export interface Report {

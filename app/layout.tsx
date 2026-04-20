@@ -1,13 +1,14 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import GoogleAnalytics from '@/components/analytics/GoogleAnalytics'
 
 export const metadata: Metadata = {
-  title: { default: 'nowmate — Connect with foreigners in Japan', template: '%s | nowmate' },
-  description: 'Find friends, language partners, and local help. Connect with foreigners living in Japan — free forever.',
-  keywords: ['foreigners in japan', 'expat japan', 'friends japan', 'language exchange japan', 'international community japan'],
+  title: { default: 'nowmate — Just landed in Japan? We\'ve got you.', template: '%s | nowmate' },
+  description: 'Making friends in Japan is hard. nowmate connects expats and locals for friendship, language exchange, and real Japan life support. Free forever.',
+  keywords: ['foreigners in japan', 'expat japan', 'expat friends japan', 'expat community japan', 'friends japan', 'language exchange japan', 'international community japan', 'just landed japan', 'new to japan', 'living in japan foreigner', 'expat survival japan'],
   authors: [{ name: 'nowmate' }],
   creator: 'nowmate',
-  metadataBase: new URL('https://nowmate.app'),
+  metadataBase: new URL('https://nowmatejapan.com'),
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -52,7 +53,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
-      <body className="h-full">{children}</body>
+      <body className="h-full">
+        <GoogleAnalytics />
+        {children}
+      </body>
     </html>
   )
 }

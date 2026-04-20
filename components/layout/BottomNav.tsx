@@ -2,14 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, Heart, MessageCircle, User } from 'lucide-react'
+import { Home, Zap, Heart, MessageCircle, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
   { href: '/home',    label: 'Discover', icon: Home },
-  { href: '/search',  label: 'Search',   icon: Search },
+  { href: '/now',     label: 'NOW',      icon: Zap },
   { href: '/matches', label: 'Matches',  icon: Heart },
   { href: '/chat',    label: 'Chat',     icon: MessageCircle },
   { href: '/mypage',  label: 'Me',       icon: User },

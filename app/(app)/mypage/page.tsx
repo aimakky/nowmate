@@ -190,7 +190,10 @@ export default function MyPage() {
         {/* Menu */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
           {[
-            { href: '/settings', icon: '⚙️', label: 'Edit Profile & Settings' },
+            { href: '/upgrade',   icon: '👑', label: 'Go Premium' },
+            { href: '/likes-me',  icon: '❤️', label: 'Who Liked Me' },
+            { href: '/settings',  icon: '⚙️', label: 'Edit Profile & Settings' },
+            { href: '/invite',    icon: '🤝', label: 'Invite a Friend' },
             { href: '/terms',    icon: '📄', label: 'Terms of Use' },
             { href: '/privacy',  icon: '🔒', label: 'Privacy Policy' },
             { href: '/contact',  icon: '✉️', label: 'Contact Support' },
