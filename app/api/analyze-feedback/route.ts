@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
-    system: 'You are a product manager analyzing user feedback for "nowmate" — a Japan survival kit app for foreign residents in Japan. Return only valid JSON, no markdown.',
+    system: 'You are a product manager analyzing user feedback for "nowjp" — a Japan survival kit app for foreign residents in Japan. Return only valid JSON, no markdown.',
     messages: [{
       role: 'user',
       content: `Analyze these ${messages.length} user feedback messages and return a JSON object with this exact structure:

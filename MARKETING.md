@@ -1,4 +1,4 @@
-# nowmate マーケティング投稿集
+# nowjp マーケティング投稿集
 
 > すぐにコピペして投稿できる文章集。各プラットフォーム向けに最適化済み。
 
@@ -12,13 +12,13 @@
 **本文:**
 I've been living in Japan for a while now and kept hitting the same problem: meeting people here is genuinely hard. Meetup.com events feel forced, language exchange apps are too transactional, and Bumble BFF is not Japan-specific at all.
 
-So I built something called **nowmate** — it's specifically for foreigners in Japan to find friends, language exchange partners, and local help. You set your "arrival stage" (just arrived / settling in / local expert) so you get matched with people who actually understand where you are in your Japan journey.
+So I built something called **nowjp** — it's specifically for foreigners in Japan to find friends, language exchange partners, and local help. You set your "arrival stage" (just arrived / settling in / local expert) so you get matched with people who actually understand where you are in your Japan journey.
 
 It's free, no sketchy stuff, and built for exactly the situation we're all in.
 
 Would love honest feedback from this community 🙏
 
-👉 nowmatejapan.com
+👉 nowjpjapan.com
 
 ---
 
@@ -28,14 +28,14 @@ Would love honest feedback from this community 🙏
 **本文:**
 Moving to Japan is exciting but the first few months can be incredibly lonely — everything is new and making real friends takes time.
 
-I built **nowmate** for exactly this. It's a free app where you can:
+I built **nowjp** for exactly this. It's a free app where you can:
 - Find other foreigners at the same stage of their Japan journey
 - Find Japanese locals who want to be friends or do language exchange
 - Get real advice from people who've been here longer
 
 No dating vibes, no fake profiles. Just people trying to build a life in Japan.
 
-nowmatejapan.com — completely free to use.
+nowjpjapan.com — completely free to use.
 
 ---
 
@@ -45,11 +45,11 @@ nowmatejapan.com — completely free to use.
 **本文:**
 Been here long enough to know that making friends in Tokyo is weirdly hard, even when you want to meet people.
 
-Built **nowmate** to fix this. It matches foreigners in Tokyo with other expats and Japanese locals based on what you're actually looking for — friends, language exchange, local tips.
+Built **nowjp** to fix this. It matches foreigners in Tokyo with other expats and Japanese locals based on what you're actually looking for — friends, language exchange, local tips.
 
 The "arrival stage" feature is my favorite part — you pick how long you've been in Japan and get matched with people who get it. New arrivals with new arrivals, or with veterans who can help.
 
-Free, no weird vibes. nowmatejapan.com
+Free, no weird vibes. nowjpjapan.com
 
 ---
 
@@ -61,21 +61,21 @@ Hi everyone! 👋
 
 I've been living in Japan and always found it hard to make genuine friends here — so I built an app specifically for us.
 
-**nowmate** is a free matching app for foreigners in Japan to find:
+**nowjp** is a free matching app for foreigners in Japan to find:
 ✅ Friends at the same stage of their Japan journey
 ✅ Language exchange partners
 ✅ Local help and real Japan life advice
 
 What makes it different: you pick your "arrival stage" (just arrived, settling in, or Japan local) and get matched accordingly. No dating pressure, no fake profiles.
 
-100% free → nowmatejapan.com
+100% free → nowjpjapan.com
 
 Would love to hear what you all think! 🙏
 
 ---
 
 ### Facebook LINE風短文（シェア用）
-Just found this app for foreigners making friends in Japan 🇯🇵 — it's called nowmate and it's actually good. Free, no weird vibes, Japan-specific. Check it out: nowmatejapan.com
+Just found this app for foreigners making friends in Japan 🇯🇵 — it's called nowjp and it's actually good. Free, no weird vibes, Japan-specific. Check it out: nowjpjapan.com
 
 ---
 
@@ -84,14 +84,14 @@ Just found this app for foreigners making friends in Japan 🇯🇵 — it's cal
 ### 在日外国人グループ向け
 日本に住む外国人の方へ👋
 
-日本で友達を作るのって難しいですよね。そんな悩みを解決するアプリ「**nowmate**」を作りました！
+日本で友達を作るのって難しいですよね。そんな悩みを解決するアプリ「**nowjp**」を作りました！
 
 ✅ 同じ来日ステージの外国人とマッチング
 ✅ 日本語練習・言語交換パートナー探し
 ✅ 日本生活のリアルな情報交換
 
 完全無料です。ぜひ使ってみてください 🙏
-👉 nowmatejapan.com
+👉 nowjpjapan.com
 
 ---
 
@@ -102,14 +102,14 @@ Making friends in Japan as a foreigner is genuinely hard.
 
 The language barrier is real. But even expats who speak Japanese struggle.
 
-So I built nowmate — a free app specifically for foreigners in Japan to find friends, language partners, and community.
+So I built nowjp — a free app specifically for foreigners in Japan to find friends, language partners, and community.
 
-nowmatejapan.com 🇯🇵
+nowjpjapan.com 🇯🇵
 
 ---
 
 ### ツイート #2（機能紹介）
-nowmate's "arrival stage" feature:
+nowjp's "arrival stage" feature:
 
 ✈️ Just Arrived (0-6 months) — "I need someone who gets it"
 🏠 Getting Settled (6mo-2yr) — "I want to grow my circle"  
@@ -117,16 +117,16 @@ nowmate's "arrival stage" feature:
 
 Match with people at your stage. Or find a mentor.
 
-Free → nowmatejapan.com
+Free → nowjpjapan.com
 
 ---
 
 ### ツイート #3（日本語・日本人ユーザー向け）
-外国人の友達を作りたい日本人と、日本人の友達を作りたい外国人をつなぐアプリ「nowmate」をリリースしました。
+外国人の友達を作りたい日本人と、日本人の友達を作りたい外国人をつなぐアプリ「nowjp」をリリースしました。
 
 言語交換・友達作り・日本生活サポートまで。完全無料です🙌
 
-👉 nowmatejapan.com #在日外国人 #言語交換 #友達募集
+👉 nowjpjapan.com #在日外国人 #言語交換 #友達募集
 
 ---
 
@@ -139,13 +139,13 @@ Free → nowmatejapan.com
 **本文:**
 [担当者名] 様
 
-突然のご連絡失礼いたします。nowmate の [氏名] と申します。
+突然のご連絡失礼いたします。nowjp の [氏名] と申します。
 
 御社のような外国人社員を多数採用されている企業様に向けて、外国人社員の定着・エンゲージメント向上を支援するサービスを提供しております。
 
 **課題：** 外国人社員の初年度離職率は、社内業績ではなく「社会的孤立」が主因であることが多く、採用コストの損失に直結しています。
 
-**nowmate の提供価値：**
+**nowjp の提供価値：**
 ・来日直後から日本人・外国人コミュニティへの接続を支援
 ・言語交換・地域生活サポートで日本適応を加速
 ・HR向け月次レポート（ウェルビーイング指標）
@@ -155,8 +155,8 @@ Free → nowmatejapan.com
 30分のオンラインデモをご都合のよい日時でご調整いただけますでしょうか。
 
 よろしくお願いいたします。
-nowmate
-business@nowmatejapan.com
+nowjp
+business@nowjpjapan.com
 
 ---
 
@@ -167,16 +167,16 @@ business@nowmatejapan.com
 **本文:**
 [担当者名] 様
 
-nowmate の [氏名] と申します。
+nowjp の [氏名] と申します。
 
 日本の語学学校様に向けて、留学生の社会的コミュニティ構築を支援するサービスをご提供しております。
 
 語学学校を選ぶ留学生の多くが「日本人の友達を作りたい」という動機を持っています。しかし実際には、学校内の学習環境以外でのコミュニティ構築が難しく、孤独感から中退・退学に至るケースもあります。
 
-nowmate は御校の留学生が来日初日から日本人とつながれるプラットフォームです。無料で導入でき、学生の満足度向上と口コミ拡大に直結します。
+nowjp は御校の留学生が来日初日から日本人とつながれるプラットフォームです。無料で導入でき、学生の満足度向上と口コミ拡大に直結します。
 
 ご関心があればデモをご覧いただけますでしょうか。
-business@nowmatejapan.com
+business@nowjpjapan.com
 
 ---
 

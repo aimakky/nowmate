@@ -59,7 +59,7 @@ export default function SignupPage() {
           <div className="w-14 h-14 bg-brand-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md shadow-brand-200">
             <span className="text-white font-extrabold text-2xl">N</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-gray-900">Join nowmate</h1>
+          <h1 className="text-2xl font-extrabold text-gray-900">Join nowjp</h1>
           <p className="text-gray-500 text-sm mt-1">Free forever. For foreigners in Japan.</p>
         </div>
 

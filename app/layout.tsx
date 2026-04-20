@@ -3,24 +3,24 @@ import './globals.css'
 import GoogleAnalytics from '@/components/analytics/GoogleAnalytics'
 
 export const metadata: Metadata = {
-  title: { default: 'nowmate — Just landed in Japan? We\'ve got you.', template: '%s | nowmate' },
-  description: 'Making friends in Japan is hard. nowmate connects expats and locals for friendship, language exchange, and real Japan life support. Free forever.',
+  title: { default: 'nowjp — Just landed in Japan? We\'ve got you.', template: '%s | nowjp' },
+  description: 'Making friends in Japan is hard. nowjp connects expats and locals for friendship, language exchange, and real Japan life support. Free forever.',
   keywords: ['foreigners in japan', 'expat japan', 'expat friends japan', 'expat community japan', 'friends japan', 'language exchange japan', 'international community japan', 'just landed japan', 'new to japan', 'living in japan foreigner', 'expat survival japan'],
-  authors: [{ name: 'nowmate' }],
-  creator: 'nowmate',
-  metadataBase: new URL('https://nowmatejapan.com'),
+  authors: [{ name: 'nowjp' }],
+  creator: 'nowjp',
+  metadataBase: new URL('https://nowjpjapan.com'),
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://nowmate.app',
-    siteName: 'nowmate',
-    title: 'nowmate — Connect with foreigners in Japan',
+    url: 'https://nowjp.app',
+    siteName: 'nowjp',
+    title: 'nowjp — Connect with foreigners in Japan',
     description: 'Find your people. Right here in Japan.',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'nowmate' }],
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'nowjp' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'nowmate — Connect with foreigners in Japan',
+    title: 'nowjp — Connect with foreigners in Japan',
     description: 'Find your people. Right here in Japan.',
     images: ['/og-image.png'],
   },
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'nowmate',
+    title: 'nowjp',
   },
   formatDetection: { telephone: false },
   other: { 'mobile-web-app-capable': 'yes' },

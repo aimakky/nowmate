@@ -69,7 +69,7 @@ export default function OnboardingPage() {
             <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center">
               <span className="text-white font-black text-xs">N</span>
             </div>
-            <span className="font-bold text-gray-700 text-sm">nowmate</span>
+            <span className="font-bold text-gray-700 text-sm">nowjp</span>
           </div>
           <span className="text-xs text-gray-400 font-medium">{step + 1} / {STEPS.length}</span>
         </div>

@@ -176,7 +176,7 @@ export default function MyPage() {
             <div>
               <div className="flex items-center gap-1.5 mb-0.5">
                 <span className="text-lg">⚡</span>
-                <span className="font-extrabold text-white text-sm">nowmate Premium</span>
+                <span className="font-extrabold text-white text-sm">nowjp Premium</span>
               </div>
               <p className="text-orange-100 text-xs">Unlimited likes · See who liked you · Top of list</p>
             </div>
@@ -221,7 +221,7 @@ export default function MyPage() {
           <div className="bg-white w-full max-w-md rounded-t-3xl p-6 animate-slide-up">
             <div className="text-center mb-5">
               <div className="text-4xl mb-2">⚡</div>
-              <h3 className="text-xl font-extrabold text-gray-900">nowmate Premium</h3>
+              <h3 className="text-xl font-extrabold text-gray-900">nowjp Premium</h3>
               <p className="text-gray-500 text-sm mt-1">Unlock the full experience</p>
             </div>
             <div className="space-y-3 mb-5">

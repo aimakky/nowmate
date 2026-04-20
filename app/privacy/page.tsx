@@ -27,7 +27,7 @@ export default function PrivacyPage() {
         </ul>
 
         <h2 className="text-lg font-bold text-gray-800 mt-6 mb-2">Data Sharing</h2>
-        <p className="text-sm">We do not sell your personal data to third parties. Your profile is visible to other registered users of nowmate.</p>
+        <p className="text-sm">We do not sell your personal data to third parties. Your profile is visible to other registered users of nowjp.</p>
 
         <h2 className="text-lg font-bold text-gray-800 mt-6 mb-2">Data Retention</h2>
         <p className="text-sm">Your data is retained while your account is active. You may delete your account at any time from the Settings page.</p>

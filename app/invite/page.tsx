@@ -4,15 +4,15 @@ import { useState } from 'react'
 import Link from 'next/link'
 
 const SHARE_MESSAGES = [
-  "Just found this app for foreigners in Japan 🇯🇵 — it's called nowmate and it actually works for making real friends here. Check it out!",
-  "If you're living in Japan and want to meet people, nowmate is the best I've found. Free and no weird vibes 👍",
-  "Moved to Japan and felt alone? nowmate changed that for me. Give it a try 🙌",
+  "Just found this app for foreigners in Japan 🇯🇵 — it's called nowjp and it actually works for making real friends here. Check it out!",
+  "If you're living in Japan and want to meet people, nowjp is the best I've found. Free and no weird vibes 👍",
+  "Moved to Japan and felt alone? nowjp changed that for me. Give it a try 🙌",
 ]
 
 export default function InvitePage() {
   const [copied, setCopied] = useState(false)
   const [msgIndex, setMsgIndex] = useState(0)
-  const shareUrl = 'https://nowmatejapan.com'
+  const shareUrl = 'https://nowjpjapan.com'
   const message = SHARE_MESSAGES[msgIndex]
 
   function copyLink() {
@@ -39,7 +39,7 @@ export default function InvitePage() {
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm">
             <span className="text-white font-black text-sm">N</span>
           </div>
-          <span className="font-extrabold text-gray-900 text-lg tracking-tight">nowmate</span>
+          <span className="font-extrabold text-gray-900 text-lg tracking-tight">nowjp</span>
         </Link>
       </header>
 
@@ -50,7 +50,7 @@ export default function InvitePage() {
           Know someone who needs this?
         </h1>
         <p className="text-gray-500 text-sm leading-relaxed max-w-[280px] mx-auto">
-          Share nowmate with a friend who's living in Japan. Help them find their people.
+          Share nowjp with a friend who's living in Japan. Help them find their people.
         </p>
       </section>
 
@@ -59,7 +59,7 @@ export default function InvitePage() {
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Share the link</p>
         <div className="flex gap-2">
           <div className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-600 font-mono truncate">
-            nowmatejapan.com
+            nowjpjapan.com
           </div>
           <button
             onClick={copyLink}
@@ -121,7 +121,7 @@ export default function InvitePage() {
 
       {/* Why share */}
       <section className="bg-brand-50 mx-5 rounded-3xl p-5 mb-8">
-        <p className="font-bold text-brand-800 text-sm mb-3">Why share nowmate?</p>
+        <p className="font-bold text-brand-800 text-sm mb-3">Why share nowjp?</p>
         <div className="space-y-2">
           {[
             '100% free — no hidden costs for your friends',
@@ -140,7 +140,7 @@ export default function InvitePage() {
       <div className="px-5 pb-10">
         <Link href="/home"
           className="block w-full py-3.5 border-2 border-brand-200 text-brand-600 rounded-2xl font-semibold text-sm text-center hover:bg-brand-50 active:scale-[0.98] transition-all">
-          ← Back to nowmate
+          ← Back to nowjp
         </Link>
       </div>
     </div>

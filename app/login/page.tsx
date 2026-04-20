@@ -42,7 +42,7 @@ export default function LoginPage() {
             <span className="text-white font-extrabold text-2xl">N</span>
           </div>
           <h1 className="text-2xl font-extrabold text-gray-900">Welcome back</h1>
-          <p className="text-gray-500 text-sm mt-1">Sign in to your nowmate account</p>
+          <p className="text-gray-500 text-sm mt-1">Sign in to your nowjp account</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">

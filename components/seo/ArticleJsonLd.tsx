@@ -14,12 +14,12 @@ export default function ArticleJsonLd({ title, description, url, datePublished =
     url,
     datePublished,
     dateModified: new Date().toISOString().split('T')[0],
-    author: { '@type': 'Organization', name: 'nowmate', url: 'https://nowmatejapan.com' },
+    author: { '@type': 'Organization', name: 'nowjp', url: 'https://nowjpjapan.com' },
     publisher: {
       '@type': 'Organization',
-      name: 'nowmate',
-      url: 'https://nowmatejapan.com',
-      logo: { '@type': 'ImageObject', url: 'https://nowmatejapan.com/opengraph-image' },
+      name: 'nowjp',
+      url: 'https://nowjpjapan.com',
+      logo: { '@type': 'ImageObject', url: 'https://nowjpjapan.com/opengraph-image' },
     },
   }
 

@@ -37,7 +37,7 @@ export default function UpgradePage() {
       if (data.url) {
         window.location.href = data.url
       } else if (data.error === 'Stripe not configured') {
-        alert('Payment coming soon. Contact us: business@nowmatejapan.com')
+        alert('Payment coming soon. Contact us: business@nowjpjapan.com')
       }
     } finally {
       setLoading(false)
@@ -51,7 +51,7 @@ export default function UpgradePage() {
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm">
             <span className="text-white font-black text-sm">N</span>
           </div>
-          <span className="font-extrabold text-gray-900 text-lg tracking-tight">nowmate</span>
+          <span className="font-extrabold text-gray-900 text-lg tracking-tight">nowjp</span>
         </Link>
       </header>
 

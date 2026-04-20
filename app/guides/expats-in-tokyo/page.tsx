@@ -3,12 +3,12 @@ import type { Metadata } from 'next'
 import ArticleJsonLd from '@/components/seo/ArticleJsonLd'
 
 export const metadata: Metadata = {
-  title: 'Expats in Tokyo — Making Friends & Building Your Life | nowmate',
+  title: 'Expats in Tokyo — Making Friends & Building Your Life | nowjp',
   description: 'Moving to Tokyo as a foreigner? This guide covers everything — making friends, finding community, language exchange, and surviving the first months in Tokyo.',
   keywords: ['expats tokyo', 'foreigners tokyo', 'making friends tokyo', 'expat community tokyo', 'new to tokyo foreigner', 'tokyo expat guide'],
   openGraph: {
     title: 'Expats in Tokyo — The Real Survival Guide',
-    description: 'Making friends in Tokyo as a foreigner. What nobody tells you, and how nowmate helps.',
+    description: 'Making friends in Tokyo as a foreigner. What nobody tells you, and how nowjp helps.',
   },
 }
 
@@ -26,7 +26,7 @@ const SECTIONS = [
   {
     emoji: '🗣️',
     title: 'Language exchange in Tokyo',
-    content: `Tokyo is the best city in Japan for language exchange. Japanese people learning English — or other languages — are everywhere, and many are actively looking for conversation partners.\n\nApp-based options like nowmate match you with Japanese speakers who want to practice your language in exchange for Japanese. This creates a natural, low-pressure way to build real friendships rather than transactional language swaps.`,
+    content: `Tokyo is the best city in Japan for language exchange. Japanese people learning English — or other languages — are everywhere, and many are actively looking for conversation partners.\n\nApp-based options like nowjp match you with Japanese speakers who want to practice your language in exchange for Japanese. This creates a natural, low-pressure way to build real friendships rather than transactional language swaps.`,
   },
   {
     emoji: '🏠',
@@ -36,7 +36,7 @@ const SECTIONS = [
   {
     emoji: '🌟',
     title: 'From tourist to local — the Tokyo journey',
-    content: `Most Tokyo expats describe three phases:\n\n1–3 months: Exciting but exhausting. Everything is new. Social energy goes to logistics.\n3–12 months: The "hump." Novelty wears off. Real loneliness can set in. This is when community matters most.\n12+ months: You start to feel like a local. You have your spots, your routines, your people.\n\nnowmate is built specifically for phase 1 and 2 — connecting you with others at the same stage, and with veterans who remember exactly how you feel right now.`,
+    content: `Most Tokyo expats describe three phases:\n\n1–3 months: Exciting but exhausting. Everything is new. Social energy goes to logistics.\n3–12 months: The "hump." Novelty wears off. Real loneliness can set in. This is when community matters most.\n12+ months: You start to feel like a local. You have your spots, your routines, your people.\n\nnowjp is built specifically for phase 1 and 2 — connecting you with others at the same stage, and with veterans who remember exactly how you feel right now.`,
   },
 ]
 
@@ -45,15 +45,15 @@ export default function ExpatsTokyo() {
     <div className="min-h-screen bg-white flex flex-col max-w-[430px] mx-auto">
       <ArticleJsonLd
         title="Expats in Tokyo — The Real Survival Guide"
-        description="Making friends in Tokyo as a foreigner. What nobody tells you, and how nowmate helps."
-        url="https://nowmatejapan.com/guides/expats-in-tokyo"
+        description="Making friends in Tokyo as a foreigner. What nobody tells you, and how nowjp helps."
+        url="https://nowjpjapan.com/guides/expats-in-tokyo"
       />
       <header className="flex items-center justify-between px-5 pt-5 pb-3">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm">
             <span className="text-white font-black text-sm">N</span>
           </div>
-          <span className="font-extrabold text-gray-900 text-lg tracking-tight">nowmate</span>
+          <span className="font-extrabold text-gray-900 text-lg tracking-tight">nowjp</span>
         </Link>
       </header>
 
@@ -72,7 +72,7 @@ export default function ExpatsTokyo() {
       {/* CTA banner */}
       <div className="mx-5 mb-8 bg-brand-500 rounded-2xl p-4 text-center">
         <p className="text-white font-bold text-sm mb-1">Just arrived in Tokyo?</p>
-        <p className="text-brand-100 text-xs mb-3">Meet expats and locals near you on nowmate</p>
+        <p className="text-brand-100 text-xs mb-3">Meet expats and locals near you on nowjp</p>
         <Link href="/signup"
           className="inline-block px-6 py-2.5 bg-white text-brand-600 rounded-xl font-bold text-sm active:scale-95 transition-all">
           Find your people →
@@ -97,7 +97,7 @@ export default function ExpatsTokyo() {
         <div className="text-4xl mb-3">🗼</div>
         <h2 className="font-extrabold text-gray-900 text-lg mb-2">Ready to meet people in Tokyo?</h2>
         <p className="text-gray-500 text-sm mb-5 leading-relaxed">
-          Join nowmate free. Find expats and locals who get what it's like to be new in Japan.
+          Join nowjp free. Find expats and locals who get what it's like to be new in Japan.
         </p>
         <Link href="/signup"
           className="block w-full py-4 bg-brand-500 text-white rounded-2xl font-bold text-sm text-center shadow-md shadow-brand-200 active:scale-[0.98] transition-all">

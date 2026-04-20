@@ -3,10 +3,10 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'nowmate — Just landed? We\'ve got you.',
-  description: 'Making friends in Japan is hard. nowmate makes it easy. Connect with expats and locals for friendship, language exchange, and Japan life support.',
+  title: 'nowjp — Just landed? We\'ve got you.',
+  description: 'Making friends in Japan is hard. nowjp makes it easy. Connect with expats and locals for friendship, language exchange, and Japan life support.',
   openGraph: {
-    title: 'nowmate — Just landed? We\'ve got you.',
+    title: 'nowjp — Just landed? We\'ve got you.',
     description: 'Your expat survival kit in Japan. Find friends, language partners, and local help.',
   },
 }
@@ -85,7 +85,7 @@ export default async function TopPage() {
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm shadow-brand-200">
             <span className="text-white font-black text-sm">N</span>
           </div>
-          <span className="font-extrabold text-gray-900 text-lg tracking-tight">nowmate</span>
+          <span className="font-extrabold text-gray-900 text-lg tracking-tight">nowjp</span>
         </div>
         <Link href="/login"
           className="text-sm font-semibold text-brand-500 hover:text-brand-600 px-3 py-1.5 rounded-xl hover:bg-brand-50 transition">
@@ -118,7 +118,7 @@ export default async function TopPage() {
           <span className="text-brand-500">Surviving it alone is hard.</span>
         </h1>
         <p className="text-gray-500 text-base leading-relaxed mb-5 max-w-[300px]">
-          nowmate is your Japan survival kit — know what to do, find people who've been there, get real answers.
+          nowjp is your Japan survival kit — know what to do, find people who've been there, get real answers.
         </p>
 
         <div className="w-full bg-brand-50 border border-brand-100 rounded-2xl px-4 py-4 mb-6 text-left space-y-2.5">
@@ -236,7 +236,7 @@ export default async function TopPage() {
       {/* Nationality showcase */}
       <section className="bg-brand-500 px-5 py-10 text-center">
         <p className="text-brand-100 text-sm font-semibold mb-2">People from all over the world</p>
-        <h2 className="text-2xl font-extrabold text-white mb-4">30+ Nationalities in nowmate</h2>
+        <h2 className="text-2xl font-extrabold text-white mb-4">30+ Nationalities in nowjp</h2>
         <div className="flex flex-wrap justify-center gap-2 mb-6">
           {NATIONALITY_PREVIEW.map((flag, i) => (
             <span key={i} className="text-3xl">{flag}</span>
@@ -245,7 +245,7 @@ export default async function TopPage() {
         </div>
         <Link href="/signup"
           className="inline-block px-8 py-3.5 bg-white text-brand-600 rounded-2xl font-bold text-sm shadow-md active:scale-95 transition-all">
-          Join nowmate Free →
+          Join nowjp Free →
         </Link>
       </section>
 
@@ -266,7 +266,7 @@ export default async function TopPage() {
           className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3.5 hover:bg-gray-100 active:scale-[0.98] transition-all">
           <span className="text-2xl">🏢</span>
           <div className="flex-1">
-            <div className="font-bold text-gray-800 text-sm">nowmate for Business</div>
+            <div className="font-bold text-gray-800 text-sm">nowjp for Business</div>
             <div className="text-xs text-gray-500">Improve expat employee retention →</div>
           </div>
         </Link>
@@ -278,7 +278,7 @@ export default async function TopPage() {
           <div className="w-6 h-6 bg-brand-500 rounded-lg flex items-center justify-center">
             <span className="text-white font-black text-xs">N</span>
           </div>
-          <span className="font-bold text-gray-700">nowmate</span>
+          <span className="font-bold text-gray-700">nowjp</span>
         </div>
         <p className="text-xs text-gray-400 mb-3">Your expat survival kit in Japan · 18+ only · Free forever</p>
         <div className="flex justify-center gap-5 text-xs text-gray-400">
@@ -286,7 +286,7 @@ export default async function TopPage() {
           <Link href="/privacy" className="hover:text-gray-600 transition">Privacy</Link>
           <Link href="/contact" className="hover:text-gray-600 transition">Contact</Link>
         </div>
-        <p className="text-xs text-gray-300 mt-3">© 2026 nowmate</p>
+        <p className="text-xs text-gray-300 mt-3">© 2026 nowjp</p>
       </footer>
     </div>
   )
