@@ -81,3 +81,14 @@ export interface Block {
   blocked_id: string
   created_at: string
 }
+
+export interface HelpRequest {
+  id: string
+  user_id: string
+  category: string
+  message: string
+  area: string
+  status: 'open' | 'resolved'
+  created_at: string
+  profiles?: Pick<Profile, 'display_name' | 'nationality' | 'avatar_url' | 'arrival_stage' | 'is_mentor'>
+}
