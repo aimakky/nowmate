@@ -5,18 +5,9 @@ import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag, getDistanceKm, formatDistance, timeAgo } from '@/lib/utils'
-import { Heart } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
+import TweetCard, { TweetData } from '@/components/ui/TweetCard'
 import type { Post } from '@/types'
-
-interface Tweet {
-  id: string
-  content: string
-  likes_count: number
-  created_at: string
-  user_id: string
-  profiles: { display_name: string; nationality: string; avatar_url: string | null }
-}
 
 const TAGS = [
   { value: '',            emoji: '✨', label: 'All' },
@@ -53,10 +44,9 @@ export default function HomePage() {
   const [settingFree, setSettingFree] = useState(false)
   const [myCoords, setMyCoords] = useState<{ lat: number; lng: number } | null>(null)
   // Following feed
-  const [followingTweets, setFollowingTweets] = useState<Tweet[]>([])
+  const [followingTweets, setFollowingTweets] = useState<TweetData[]>([])
   const [tweetInput, setTweetInput] = useState('')
   const [posting, setPosting] = useState(false)
-  const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -82,13 +72,11 @@ export default function HomePage() {
     const ids = [...(followData || []).map((f: any) => f.following_id), currentUserId]
     const { data } = await supabase
       .from('tweets')
-      .select('*, profiles(display_name, nationality, avatar_url)')
+      .select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)')
       .in('user_id', ids)
       .order('created_at', { ascending: false })
       .limit(50)
-    setFollowingTweets((data || []) as Tweet[])
-    const { data: liked } = await supabase.from('tweet_likes').select('tweet_id').eq('user_id', currentUserId)
-    setLikedIds(new Set((liked || []).map((l: any) => l.tweet_id)))
+    setFollowingTweets((data || []) as TweetData[])
   }, [currentUserId])
 
   useEffect(() => { if (feedTab === 'following') fetchFollowingFeed() }, [feedTab, fetchFollowingFeed])
@@ -99,24 +87,11 @@ export default function HomePage() {
     const supabase = createClient()
     const { data } = await supabase.from('tweets')
       .insert({ user_id: currentUserId, content: tweetInput.trim() })
-      .select('*, profiles(display_name, nationality, avatar_url)').single()
-    if (data) setFollowingTweets(prev => [data as Tweet, ...prev])
+      .select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)')
+      .single()
+    if (data) setFollowingTweets(prev => [data as TweetData, ...prev])
     setTweetInput('')
     setPosting(false)
-  }
-
-  async function toggleLike(tweetId: string) {
-    if (!currentUserId) return
-    const supabase = createClient()
-    if (likedIds.has(tweetId)) {
-      await supabase.from('tweet_likes').delete().eq('tweet_id', tweetId).eq('user_id', currentUserId)
-      setLikedIds(prev => { const s = new Set(prev); s.delete(tweetId); return s })
-      setFollowingTweets(prev => prev.map(t => t.id === tweetId ? { ...t, likes_count: Math.max(0, t.likes_count - 1) } : t))
-    } else {
-      await supabase.from('tweet_likes').insert({ tweet_id: tweetId, user_id: currentUserId })
-      setLikedIds(prev => new Set([...prev, tweetId]))
-      setFollowingTweets(prev => prev.map(t => t.id === tweetId ? { ...t, likes_count: t.likes_count + 1 } : t))
-    }
   }
 
   // Fetch free-now users
@@ -244,37 +219,10 @@ export default function HomePage() {
               <p className="text-sm text-stone-400 mt-1.5">Follow people to see their posts here</p>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm divide-y divide-stone-50 overflow-hidden">
-              {followingTweets.map(tweet => {
-                const flag = getNationalityFlag(tweet.profiles?.nationality || '')
-                return (
-                  <div key={tweet.id} className="px-4 py-3.5">
-                    <div className="flex items-start gap-3">
-                      <button onClick={() => router.push(`/profile/${tweet.user_id}`)}>
-                        <Avatar src={tweet.profiles?.avatar_url} name={tweet.profiles?.display_name} size="sm" />
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                          <button onClick={() => router.push(`/profile/${tweet.user_id}`)}
-                            className="font-bold text-stone-900 text-sm hover:underline">
-                            {tweet.profiles?.display_name}
-                          </button>
-                          <span className="text-sm">{flag}</span>
-                          <span className="text-xs text-stone-400">{timeAgo(tweet.created_at)}</span>
-                        </div>
-                        <p className="text-sm text-stone-800 leading-relaxed">{tweet.content}</p>
-                        <button onClick={() => toggleLike(tweet.id)}
-                          className={`flex items-center gap-1.5 mt-2 text-xs font-semibold transition-all active:scale-90 ${
-                            likedIds.has(tweet.id) ? 'text-rose-500' : 'text-stone-400 hover:text-rose-400'
-                          }`}>
-                          <Heart size={13} fill={likedIds.has(tweet.id) ? 'currentColor' : 'none'} />
-                          {tweet.likes_count > 0 && <span>{tweet.likes_count}</span>}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
+              {followingTweets.map(tweet => (
+                <TweetCard key={tweet.id} tweet={tweet} myId={currentUserId} onUpdate={fetchFollowingFeed} />
+              ))}
             </div>
           )}
         </div>

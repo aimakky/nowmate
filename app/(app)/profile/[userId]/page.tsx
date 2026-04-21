@@ -3,27 +3,20 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, timeAgo } from '@/lib/utils'
-import { ArrowLeft, Heart } from 'lucide-react'
+import { getNationalityFlag } from '@/lib/utils'
+import { ArrowLeft } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
-
-interface Tweet {
-  id: string
-  content: string
-  likes_count: number
-  created_at: string
-}
+import TweetCard, { TweetData } from '@/components/ui/TweetCard'
 
 export default function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>()
   const router = useRouter()
   const [profile, setProfile] = useState<any>(null)
-  const [tweets, setTweets] = useState<Tweet[]>([])
+  const [tweets, setTweets] = useState<TweetData[]>([])
   const [myId, setMyId] = useState<string | null>(null)
   const [isFollowing, setIsFollowing] = useState(false)
   const [followerCount, setFollowerCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
-  const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
   const [toggling, setToggling] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -39,12 +32,12 @@ export default function UserProfilePage() {
       const supabase = createClient()
       const [{ data: p }, { data: tw }, { count: followers }, { count: following }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
-        supabase.from('tweets').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(30),
+        supabase.from('tweets').select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)').eq('user_id', userId).order('created_at', { ascending: false }).limit(30),
         supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', userId),
         supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId),
       ])
       setProfile(p)
-      setTweets(tw || [])
+      setTweets((tw || []) as TweetData[])
       setFollowerCount(followers ?? 0)
       setFollowingCount(following ?? 0)
       setLoading(false)
@@ -57,8 +50,6 @@ export default function UserProfilePage() {
     const supabase = createClient()
     supabase.from('follows').select('follower_id').eq('follower_id', myId).eq('following_id', userId).maybeSingle()
       .then(({ data }) => setIsFollowing(!!data))
-    supabase.from('tweet_likes').select('tweet_id').eq('user_id', myId)
-      .then(({ data }) => setLikedIds(new Set((data || []).map((l: any) => l.tweet_id))))
   }, [myId, userId])
 
   async function toggleFollow() {
@@ -77,21 +68,18 @@ export default function UserProfilePage() {
     setToggling(false)
   }
 
-  async function toggleLike(tweetId: string) {
-    if (!myId) return
+  async function reloadTweets() {
     const supabase = createClient()
-    if (likedIds.has(tweetId)) {
-      await supabase.from('tweet_likes').delete().eq('tweet_id', tweetId).eq('user_id', myId)
-      setLikedIds(prev => { const s = new Set(prev); s.delete(tweetId); return s })
-      setTweets(prev => prev.map(t => t.id === tweetId ? { ...t, likes_count: Math.max(0, t.likes_count - 1) } : t))
-    } else {
-      await supabase.from('tweet_likes').insert({ tweet_id: tweetId, user_id: myId })
-      setLikedIds(prev => new Set([...prev, tweetId]))
-      setTweets(prev => prev.map(t => t.id === tweetId ? { ...t, likes_count: t.likes_count + 1 } : t))
-    }
+    const { data } = await supabase
+      .from('tweets')
+      .select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(30)
+    if (data) setTweets(data as TweetData[])
   }
 
-  if (loading) return (
+if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-[#FAFAF9]">
       <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
     </div>
@@ -160,7 +148,7 @@ export default function UserProfilePage() {
       </div>
 
       {/* Tweet feed */}
-      <div className="divide-y divide-stone-100">
+      <div className="bg-white divide-y divide-stone-50">
         {tweets.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-3xl mb-2">🐦</p>
@@ -168,26 +156,7 @@ export default function UserProfilePage() {
           </div>
         ) : (
           tweets.map(tweet => (
-            <div key={tweet.id} className="bg-white px-5 py-4">
-              <div className="flex items-start gap-3">
-                <Avatar src={profile.avatar_url} name={profile.display_name} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                    <span className="font-bold text-stone-900 text-sm">{profile.display_name}</span>
-                    <span className="text-sm">{flag}</span>
-                    <span className="text-xs text-stone-400">{timeAgo(tweet.created_at)}</span>
-                  </div>
-                  <p className="text-sm text-stone-800 leading-relaxed">{tweet.content}</p>
-                  <button onClick={() => toggleLike(tweet.id)}
-                    className={`flex items-center gap-1.5 mt-2.5 text-xs font-semibold transition-all active:scale-90 ${
-                      likedIds.has(tweet.id) ? 'text-rose-500' : 'text-stone-400 hover:text-rose-400'
-                    }`}>
-                    <Heart size={14} fill={likedIds.has(tweet.id) ? 'currentColor' : 'none'} />
-                    {tweet.likes_count > 0 && <span>{tweet.likes_count}</span>}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <TweetCard key={tweet.id} tweet={tweet} myId={myId} onUpdate={reloadTweets} />
           ))
         )}
       </div>
