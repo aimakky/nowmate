@@ -13,6 +13,27 @@ export type Purpose =
 
 export type HelperCategory = 'Banking' | 'Housing' | 'Medical' | 'Visa' | 'Japanese' | 'Tax' | 'Transport' | 'Jobs'
 
+export type PostTag = 'Drinks' | 'Food' | 'Coffee' | 'Sightseeing' | 'Culture' | 'Talk' | 'Help' | 'Other'
+
+export interface Post {
+  id: string
+  user_id: string
+  content: string
+  tag: PostTag
+  area: string
+  status: 'active' | 'closed'
+  expires_at: string
+  created_at: string
+  profiles?: {
+    display_name: string
+    nationality: string
+    avatar_url: string | null
+    arrival_stage: string | null
+  }
+  post_joins?: { user_id: string }[]
+  post_messages?: { id: string }[]
+}
+
 export interface Profile {
   id: string
   display_name: string

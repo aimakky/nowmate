@@ -5,23 +5,24 @@ import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag } from '@/lib/utils'
+import { AREAS } from '@/lib/constants'
 import type { Post } from '@/types'
-
-const TAGS = [
-  { value: '',            emoji: '✨', label: 'All' },
-  { value: 'Drinks',      emoji: '🍻', label: 'Drinks' },
-  { value: 'Food',        emoji: '🍜', label: 'Food' },
-  { value: 'Coffee',      emoji: '☕', label: 'Coffee' },
-  { value: 'Sightseeing', emoji: '🗺️', label: 'Sight' },
-  { value: 'Culture',     emoji: '🎌', label: 'Culture' },
-  { value: 'Talk',        emoji: '💬', label: 'Talk' },
-  { value: 'Help',        emoji: '🆘', label: 'Help' },
-]
 
 const TAG_EMOJIS: Record<string, string> = {
   Drinks: '🍻', Food: '🍜', Coffee: '☕', Sightseeing: '🗺️',
   Culture: '🎌', Talk: '💬', Help: '🆘', Other: '✨',
 }
+
+const TAGS = [
+  { value: '', emoji: '✨', label: 'All' },
+  { value: 'Drinks', emoji: '🍻', label: 'Drinks' },
+  { value: 'Food', emoji: '🍜', label: 'Food' },
+  { value: 'Coffee', emoji: '☕', label: 'Coffee' },
+  { value: 'Sightseeing', emoji: '🗺️', label: 'Sight' },
+  { value: 'Culture', emoji: '🎌', label: 'Culture' },
+  { value: 'Talk', emoji: '💬', label: 'Talk' },
+  { value: 'Help', emoji: '🆘', label: 'Help' },
+]
 
 function timeAgo(date: string) {
   const diff = Date.now() - new Date(date).getTime()
@@ -33,11 +34,12 @@ function timeAgo(date: string) {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
-export default function HomePage() {
+export default function ExplorePage() {
   const router = useRouter()
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [filterTag, setFilterTag] = useState('')
+  const [filterArea, setFilterArea] = useState('')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set())
   const [joiningId, setJoiningId] = useState<string | null>(null)
@@ -53,12 +55,13 @@ export default function HomePage() {
     const supabase = createClient()
     let query = supabase
       .from('posts')
-      .select('*, profiles(display_name, nationality, avatar_url, arrival_stage), post_joins(user_id), post_messages(id)')
+      .select('*, profiles(display_name, nationality), post_joins(user_id), post_messages(id)')
       .eq('status', 'active')
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
-      .limit(50)
+      .limit(100)
     if (filterTag) query = query.eq('tag', filterTag)
+    if (filterArea) query = query.eq('area', filterArea)
     const { data } = await query
     setPosts((data || []) as Post[])
     if (currentUserId && data) {
@@ -67,7 +70,7 @@ export default function HomePage() {
       ))
     }
     setLoading(false)
-  }, [filterTag, currentUserId])
+  }, [filterTag, filterArea, currentUserId])
 
   useEffect(() => { fetchPosts() }, [fetchPosts])
 
@@ -85,42 +88,61 @@ export default function HomePage() {
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
-      <Header title="nowjp" />
+      <Header title="Explore" />
 
-      {/* Tag filter pills */}
-      <div className="px-4 pt-3 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+      {/* Area filter */}
+      <div className="px-4 pt-3 pb-1 flex gap-2 overflow-x-auto no-scrollbar">
+        <button onClick={() => setFilterArea('')}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+            !filterArea ? 'bg-stone-800 text-white border-stone-800' : 'bg-white border-stone-200 text-stone-600'
+          }`}>
+          🗾 All Japan
+        </button>
+        {AREAS.slice(0, 7).map(a => (
+          <button key={a} onClick={() => setFilterArea(fa => fa === a ? '' : a)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+              filterArea === a ? 'bg-stone-800 text-white border-stone-800' : 'bg-white border-stone-200 text-stone-600'
+            }`}>
+            {a}
+          </button>
+        ))}
+      </div>
+
+      {/* Tag filter */}
+      <div className="px-4 pt-1.5 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
         {TAGS.map(t => (
           <button key={t.value} onClick={() => setFilterTag(t.value)}
             className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-              filterTag === t.value
-                ? 'bg-brand-500 text-white border-brand-500'
-                : 'bg-white border-stone-200 text-stone-600 hover:border-brand-300'
+              filterTag === t.value ? 'bg-brand-500 text-white border-brand-500' : 'bg-white border-stone-200 text-stone-600'
             }`}>
             {t.emoji} {t.label}
           </button>
         ))}
       </div>
 
+      {/* Count */}
+      {!loading && (
+        <p className="px-5 text-xs text-stone-400 font-medium pb-1">
+          {posts.length} post{posts.length !== 1 ? 's' : ''}{filterArea ? ` in ${filterArea}` : ' across Japan'}
+        </p>
+      )}
+
       <div className="px-4 pb-28 space-y-3 pt-1">
         {loading ? (
           [...Array(5)].map((_, i) => (
             <div key={i} className="bg-white rounded-2xl border border-stone-100 p-4 animate-pulse">
-              <div className="flex gap-2 mb-3">
-                <div className="h-7 w-7 bg-stone-200 rounded-xl" />
-                <div className="h-6 w-20 bg-stone-200 rounded-full" />
-              </div>
-              <div className="h-4 bg-stone-200 rounded w-full mb-1.5" />
-              <div className="h-4 bg-stone-100 rounded w-3/4" />
+              <div className="h-4 bg-stone-200 rounded w-full mb-2" />
+              <div className="h-3 bg-stone-100 rounded w-2/3" />
             </div>
           ))
         ) : posts.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-5xl mb-3">🌏</div>
-            <p className="font-bold text-stone-700 text-lg">No posts nearby yet</p>
-            <p className="text-sm text-stone-400 mt-1.5 mb-6">Be the first to post something!</p>
+          <div className="text-center py-16">
+            <div className="text-4xl mb-2">🔍</div>
+            <p className="font-bold text-stone-700">Nothing found</p>
+            <p className="text-sm text-stone-400 mt-1">Try a different area or tag</p>
             <button onClick={() => router.push('/create')}
-              className="px-6 py-3 bg-brand-500 text-white rounded-2xl font-bold text-sm shadow-md shadow-brand-200 active:scale-95 transition-all">
-              🚀 Post something now
+              className="mt-4 px-5 py-2.5 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-sm">
+              Post first →
             </button>
           </div>
         ) : (
@@ -129,53 +151,36 @@ export default function HomePage() {
             const isOwn = post.user_id === currentUserId
             const flag = post.profiles ? getNationalityFlag(post.profiles.nationality || '') : ''
             const joinCount = post.post_joins?.length ?? 0
-            const msgCount = post.post_messages?.length ?? 0
 
             return (
               <div key={post.id}
-                className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm active:scale-[0.99] transition-all cursor-pointer"
+                className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm cursor-pointer active:scale-[0.99] transition-all"
                 onClick={() => router.push(`/post/${post.id}`)}>
-                {/* Tag row */}
-                <div className="flex items-center gap-2 mb-2.5">
+                <div className="flex items-center gap-2 mb-2">
                   <span className="text-xl">{TAG_EMOJIS[post.tag] ?? '✨'}</span>
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
-                    post.tag === 'Help'
-                      ? 'bg-red-50 text-red-700 border-red-100'
-                      : 'bg-brand-50 text-brand-700 border-brand-100'
+                    post.tag === 'Help' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-brand-50 text-brand-700 border-brand-100'
                   }`}>
                     {post.tag}
                   </span>
                   {post.area && <span className="text-xs text-stone-400">📍 {post.area}</span>}
                 </div>
-
-                {/* Content */}
-                <p className="text-sm text-stone-800 leading-relaxed mb-3 font-medium">
-                  {post.content}
-                </p>
-
-                {/* Footer */}
+                <p className="text-sm text-stone-800 leading-relaxed mb-3 font-medium">{post.content}</p>
                 <div className="flex items-center justify-between" onClick={e => e.stopPropagation()}>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-base">{flag}</span>
-                    <span className="text-xs text-stone-500 font-medium">{post.profiles?.display_name}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span>{flag}</span>
+                    <span className="text-xs text-stone-500">{post.profiles?.display_name}</span>
                     <span className="text-xs text-stone-300">·</span>
                     <span className="text-xs text-stone-400">{timeAgo(post.created_at)}</span>
                     {joinCount > 0 && <><span className="text-xs text-stone-300">·</span><span className="text-xs text-stone-400">👥 {joinCount}</span></>}
-                    {msgCount > 0 && <><span className="text-xs text-stone-300">·</span><span className="text-xs text-stone-400">💬 {msgCount}</span></>}
                   </div>
-                  {!isOwn ? (
-                    <button
-                      onClick={() => handleJoin(post)}
-                      disabled={joiningId === post.id}
-                      className={`text-xs font-bold px-4 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 ${
-                        joined ? 'bg-emerald-500 text-white'
-                        : post.tag === 'Help' ? 'bg-red-500 text-white'
-                        : 'bg-brand-500 text-white'
+                  {!isOwn && (
+                    <button onClick={() => handleJoin(post)} disabled={joiningId === post.id}
+                      className={`text-xs font-bold px-4 py-2 rounded-xl transition active:scale-95 disabled:opacity-50 ${
+                        joined ? 'bg-emerald-500 text-white' : 'bg-brand-500 text-white'
                       }`}>
-                      {joiningId === post.id ? '...' : joined ? 'Chat →' : post.tag === 'Help' ? 'Help →' : "I'm in!"}
+                      {joiningId === post.id ? '...' : joined ? 'Chat →' : "I'm in!"}
                     </button>
-                  ) : (
-                    <span className="text-[10px] text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">Your post</span>
                   )}
                 </div>
               </div>
