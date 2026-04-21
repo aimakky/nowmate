@@ -1,7 +1,7 @@
-import { ImageResponse } from 'next/og'
+﻿import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const alt = 'nowjp — Just landed? We\'ve got you.'
+export const alt = 'Samee — Just landed? We\'ve got you.'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -39,7 +39,7 @@ export default function OGImage() {
           }}>
             <span style={{ color: '#0ea5e9', fontWeight: 900, fontSize: 32 }}>N</span>
           </div>
-          <span style={{ color: 'white', fontWeight: 900, fontSize: 48, letterSpacing: -2 }}>nowjp</span>
+          <span style={{ color: 'white', fontWeight: 900, fontSize: 48, letterSpacing: -2 }}>Samee</span>
         </div>
 
         {/* Headline */}
@@ -57,7 +57,7 @@ export default function OGImage() {
           textAlign: 'center', maxWidth: 700, lineHeight: 1.4,
           marginBottom: 48,
         }}>
-          Making friends in Japan is hard. nowjp makes it easy.
+          Making friends in Japan is hard. Samee makes it easy.
         </div>
 
         {/* Flags */}
@@ -79,7 +79,7 @@ export default function OGImage() {
           background: 'rgba(0,0,0,0.15)', paddingLeft: 24, paddingRight: 24,
           paddingTop: 10, paddingBottom: 10, borderRadius: 50,
         }}>
-          nowjpjapan.com
+          sameejapan.com
         </div>
       </div>
     ),

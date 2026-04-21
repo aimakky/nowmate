@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -33,14 +33,14 @@ export default function FeedbackModal({ onClose }: Props) {
           <div className="text-center py-6">
             <div className="text-4xl mb-3">🙏</div>
             <div className="font-bold text-gray-800">Thanks! We read every message.</div>
-            <p className="text-xs text-gray-400 mt-1">Your feedback helps us improve nowjp for everyone.</p>
+            <p className="text-xs text-gray-400 mt-1">Your feedback helps us improve Samee for everyone.</p>
           </div>
         ) : (
           <>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <div className="font-extrabold text-gray-900">💡 Share your idea</div>
-                <div className="text-xs text-gray-400 mt-0.5">What would make nowjp better?</div>
+                <div className="text-xs text-gray-400 mt-0.5">What would make Samee better?</div>
               </div>
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
             </div>

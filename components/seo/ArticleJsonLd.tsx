@@ -1,4 +1,4 @@
-interface Props {
+﻿interface Props {
   title: string
   description: string
   url: string
@@ -14,12 +14,12 @@ export default function ArticleJsonLd({ title, description, url, datePublished =
     url,
     datePublished,
     dateModified: new Date().toISOString().split('T')[0],
-    author: { '@type': 'Organization', name: 'nowjp', url: 'https://nowjpjapan.com' },
+    author: { '@type': 'Organization', name: 'Samee', url: 'https://sameejapan.com' },
     publisher: {
       '@type': 'Organization',
-      name: 'nowjp',
-      url: 'https://nowjpjapan.com',
-      logo: { '@type': 'ImageObject', url: 'https://nowjpjapan.com/opengraph-image' },
+      name: 'Samee',
+      url: 'https://sameejapan.com',
+      logo: { '@type': 'ImageObject', url: 'https://sameejapan.com/opengraph-image' },
     },
   }
 

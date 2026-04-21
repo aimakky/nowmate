@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -170,17 +170,17 @@ export default function MyPage() {
           )}
         </div>
 
-        {/* My nowjp ID Card */}
-        {profile.nowjp_id && (
+        {/* My Samee ID Card */}
+        {profile.samee_id && (
           <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">My nowjp ID</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">My Samee ID</p>
             <div className="flex items-center gap-3">
               <div className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
-                <span className="font-mono font-bold text-gray-800 text-lg tracking-widest">#{profile.nowjp_id}</span>
+                <span className="font-mono font-bold text-gray-800 text-lg tracking-widest">#{profile.samee_id}</span>
               </div>
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(profile.nowjp_id!)
+                  navigator.clipboard.writeText(profile.samee_id!)
                   setIdCopied(true)
                   setTimeout(() => setIdCopied(false), 2000)
                 }}
@@ -197,7 +197,7 @@ export default function MyPage() {
                 🔍 Find friend by ID
               </button>
               <a
-                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Find me on nowjp! My ID: #${profile.nowjp_id}\n\nJapan survival app for expats 🗾\ngetnowjp.com`)}`}
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Find me on Samee! My ID: #${profile.samee_id}\n\nJapan survival app for expats 🗾\ngetsamee.com`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 py-2.5 bg-black text-white rounded-xl text-xs font-bold text-center hover:bg-gray-900 transition"
@@ -217,7 +217,7 @@ export default function MyPage() {
             <div>
               <div className="flex items-center gap-1.5 mb-0.5">
                 <span className="text-lg">⚡</span>
-                <span className="font-extrabold text-white text-sm">nowjp Premium</span>
+                <span className="font-extrabold text-white text-sm">Samee Premium</span>
               </div>
               <p className="text-orange-100 text-xs">Unlimited likes · See who liked you · Top of list</p>
             </div>
@@ -270,7 +270,7 @@ export default function MyPage() {
           <div className="bg-white w-full max-w-md rounded-t-3xl p-6 animate-slide-up">
             <div className="text-center mb-5">
               <div className="text-4xl mb-2">⚡</div>
-              <h3 className="text-xl font-extrabold text-gray-900">nowjp Premium</h3>
+              <h3 className="text-xl font-extrabold text-gray-900">Samee Premium</h3>
               <p className="text-gray-500 text-sm mt-1">Unlock the full experience</p>
             </div>
             <div className="space-y-3 mb-5">

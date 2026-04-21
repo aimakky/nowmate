@@ -1,26 +1,26 @@
-import type { Metadata, Viewport } from 'next'
+﻿import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import GoogleAnalytics from '@/components/analytics/GoogleAnalytics'
 
 export const metadata: Metadata = {
-  title: { default: 'nowjp — Just landed in Japan? We\'ve got you.', template: '%s | nowjp' },
+  title: { default: 'Samee — Just landed in Japan? We\'ve got you.', template: '%s | Samee' },
   description: 'The foreigner-only community in Japan. Connect with expats who get it — survival tips, real friendships, and help when you need it. Free forever.',
   keywords: ['foreigners in japan', 'expat japan', 'expat friends japan', 'expat community japan', 'friends japan', 'language exchange japan', 'international community japan', 'just landed japan', 'new to japan', 'living in japan foreigner', 'expat survival japan'],
-  authors: [{ name: 'nowjp' }],
-  creator: 'nowjp',
-  metadataBase: new URL('https://nowjpjapan.com'),
+  authors: [{ name: 'Samee' }],
+  creator: 'Samee',
+  metadataBase: new URL('https://sameejapan.com'),
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://nowjp.app',
-    siteName: 'nowjp',
-    title: 'nowjp — Connect with foreigners in Japan',
+    url: 'https://sameejapan.com',
+    siteName: 'Samee',
+    title: 'Samee — Connect with foreigners in Japan',
     description: 'Find your people. Right here in Japan.',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'nowjp' }],
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Samee' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'nowjp — Connect with foreigners in Japan',
+    title: 'Samee — Connect with foreigners in Japan',
     description: 'Find your people. Right here in Japan.',
     images: ['/og-image.png'],
   },
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'nowjp',
+    title: 'Samee',
   },
   formatDetection: { telephone: false },
   other: { 'mobile-web-app-capable': 'yes' },

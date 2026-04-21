@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -85,7 +85,7 @@ export default function HomePage() {
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
-      <Header title="nowjp" />
+      <Header title="Samee" />
 
       {/* Tag filter pills */}
       <div className="px-4 pt-3 pb-2 flex gap-2 overflow-x-auto no-scrollbar">

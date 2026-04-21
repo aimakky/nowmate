@@ -1,12 +1,12 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'nowjp — 住民票. Bank account. Health insurance. We\'ve got you.',
-  description: 'Every foreigner in Japan figures this out alone. nowjp changes that. Step-by-step Japan survival guide + connect with expats who\'ve been there.',
+  title: 'Samee — 住民票. Bank account. Health insurance. We\'ve got you.',
+  description: 'Every foreigner in Japan figures this out alone. Samee changes that. Step-by-step Japan survival guide + connect with expats who\'ve been there.',
   openGraph: {
-    title: 'nowjp — Survive Japan. Together.',
+    title: 'Samee — Survive Japan. Together.',
     description: 'The #1 survival kit for foreigners in Japan. Setup guides, real people, real answers.',
   },
 }
@@ -42,7 +42,7 @@ const FEATURES = [
   { icon: '🧭', title: 'Arrival Stage Matching', desc: 'Connect with foreigners at the same point in their Japan journey — or find an expat mentor who\'s been here years.' },
   { icon: '🌏', title: '30+ Nationalities',      desc: 'Meet people from Brazil, India, the US, Vietnam, and everywhere in between — all living in Japan.' },
   { icon: '🗺️', title: 'Real Japan Answers',     desc: 'A community of expats who\'ve done it all. Get honest answers from people still living it.' },
-  { icon: '🔒', title: 'Foreigners Only',        desc: 'nowjp is built for foreigners in Japan. Report & block. Chat only after matching. 18+ only.' },
+  { icon: '🔒', title: 'Foreigners Only',        desc: 'Samee is built for foreigners in Japan. Report & block. Chat only after matching. 18+ only.' },
 ]
 
 const STEPS = [
@@ -85,7 +85,7 @@ export default async function TopPage() {
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm shadow-brand-200">
             <span className="text-white font-black text-sm">N</span>
           </div>
-          <span className="font-extrabold text-gray-900 text-lg tracking-tight">nowjp</span>
+          <span className="font-extrabold text-gray-900 text-lg tracking-tight">Samee</span>
         </div>
         <Link href="/login"
           className="text-sm font-semibold text-brand-500 hover:text-brand-600 px-3 py-1.5 rounded-xl hover:bg-brand-50 transition">
@@ -118,7 +118,7 @@ export default async function TopPage() {
           <span className="text-brand-500">全部一人でやった？</span>
         </h1>
         <p className="text-gray-500 text-base leading-relaxed mb-5 max-w-[300px]">
-          nowjp walks you through every step — and connects you with people who've already done it.
+          Samee walks you through every step — and connects you with people who've already done it.
         </p>
 
         <div className="w-full bg-brand-50 border border-brand-100 rounded-2xl px-4 py-4 mb-5 text-left space-y-2.5">
@@ -250,7 +250,7 @@ export default async function TopPage() {
       {/* Nationality showcase */}
       <section className="bg-brand-500 px-5 py-10 text-center">
         <p className="text-brand-100 text-sm font-semibold mb-2">People from all over the world</p>
-        <h2 className="text-2xl font-extrabold text-white mb-4">30+ Nationalities in nowjp</h2>
+        <h2 className="text-2xl font-extrabold text-white mb-4">30+ Nationalities in Samee</h2>
         <div className="flex flex-wrap justify-center gap-2 mb-6">
           {NATIONALITY_PREVIEW.map((flag, i) => (
             <span key={i} className="text-3xl">{flag}</span>
@@ -259,7 +259,7 @@ export default async function TopPage() {
         </div>
         <Link href="/signup"
           className="inline-block px-8 py-3.5 bg-white text-brand-600 rounded-2xl font-bold text-sm shadow-md active:scale-95 transition-all">
-          Join nowjp Free →
+          Join Samee Free →
         </Link>
       </section>
 
@@ -280,7 +280,7 @@ export default async function TopPage() {
           className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3.5 hover:bg-gray-100 active:scale-[0.98] transition-all">
           <span className="text-2xl">🏢</span>
           <div className="flex-1">
-            <div className="font-bold text-gray-800 text-sm">nowjp for Business</div>
+            <div className="font-bold text-gray-800 text-sm">Samee for Business</div>
             <div className="text-xs text-gray-500">Improve expat employee retention →</div>
           </div>
         </Link>
@@ -292,7 +292,7 @@ export default async function TopPage() {
           <div className="w-6 h-6 bg-brand-500 rounded-lg flex items-center justify-center">
             <span className="text-white font-black text-xs">N</span>
           </div>
-          <span className="font-bold text-gray-700">nowjp</span>
+          <span className="font-bold text-gray-700">Samee</span>
         </div>
         <p className="text-xs text-gray-400 mb-3">Your expat survival kit in Japan · 18+ only · Free forever</p>
         <div className="flex justify-center gap-5 text-xs text-gray-400">
@@ -300,7 +300,7 @@ export default async function TopPage() {
           <Link href="/privacy" className="hover:text-gray-600 transition">Privacy</Link>
           <Link href="/contact" className="hover:text-gray-600 transition">Contact</Link>
         </div>
-        <p className="text-xs text-gray-300 mt-3">© 2026 nowjp</p>
+        <p className="text-xs text-gray-300 mt-3">© 2026 Samee</p>
       </footer>
     </div>
   )

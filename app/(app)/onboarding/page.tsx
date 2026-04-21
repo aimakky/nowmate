@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -91,7 +91,7 @@ export default function OnboardingPage() {
     // Claim invite reward if ref exists
     const inviteRef = localStorage.getItem('nm_invite_ref')
     if (inviteRef) {
-      fetch('/api/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inviteeId: userId, inviterNowjpId: inviteRef }) })
+      fetch('/api/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inviteeId: userId, inviterSameeId: inviteRef }) })
       localStorage.removeItem('nm_invite_ref')
     }
 
@@ -103,7 +103,7 @@ export default function OnboardingPage() {
     return (
       <div className="min-h-screen bg-[#FAFAF9] flex flex-col items-center justify-center max-w-md mx-auto px-5 text-center">
         <div className="text-5xl mb-4">🌏</div>
-        <h1 className="text-2xl font-extrabold text-stone-900 mb-2">nowjp is for foreigners in Japan</h1>
+        <h1 className="text-2xl font-extrabold text-stone-900 mb-2">Samee is for foreigners in Japan</h1>
         <p className="text-sm text-stone-500 leading-relaxed mb-8">
           This app is built exclusively for non-Japanese people living in or visiting Japan.
           It's a space to connect with others who understand what it's like to navigate Japan as an outsider.
@@ -134,7 +134,7 @@ export default function OnboardingPage() {
             <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center">
               <span className="text-white font-black text-xs">N</span>
             </div>
-            <span className="font-bold text-gray-700 text-sm">nowjp</span>
+            <span className="font-bold text-gray-700 text-sm">Samee</span>
           </div>
           <span className="text-xs text-gray-400 font-medium">{step + 1} / {STEPS.length}</span>
         </div>
@@ -191,7 +191,7 @@ export default function OnboardingPage() {
             </div>
             <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm text-center">
               <div className="text-3xl font-black text-brand-500 mb-1">{stageCount}+</div>
-              <div className="text-sm text-gray-600 font-semibold">people at your stage in nowjp</div>
+              <div className="text-sm text-gray-600 font-semibold">people at your stage in Samee</div>
               <div className="flex justify-center -space-x-2 mt-3">
                 {['🇧🇷','🇺🇸','🇮🇳','🇫🇷','🇩🇪'].map((flag, i) => (
                   <div key={i}

@@ -1,8 +1,8 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Japan Expat Survival Guide 2026 — Everything You Need to Know | nowjp',
+  title: 'Japan Expat Survival Guide 2026 — Everything You Need to Know | Samee',
   description: 'The complete Japan expat survival guide for 2026. Banking, housing, healthcare, taxes, language, making friends — everything foreigners need to live well in Japan.',
   keywords: ['japan expat survival guide', 'living in japan as a foreigner', 'japan expat guide 2026', 'foreigner living japan tips', 'expat japan life', 'japan foreigner guide'],
   openGraph: {
@@ -59,7 +59,7 @@ const SECTIONS = [
     content: [
       { q: 'Can I survive in Japan without Japanese?', a: 'Yes, especially in Tokyo, Osaka, and other major cities. English signage has improved dramatically. However, daily life (bills, ward office, landlords) is significantly easier with basic Japanese.' },
       { q: 'What Japanese should I learn first?', a: 'Hiragana and Katakana (2 weeks of study) unlock menus, signs, and app interfaces. Basic phrases: すみません (excuse me), ありがとうございます (thank you), わかりません (I don\'t understand), ～はどこですか (where is ～?).' },
-      { q: 'Best ways to learn Japanese in Japan?', a: 'Language exchange partners (HelloTalk, nowjp\'s language exchange feature), community centers offer cheap Japanese classes, JLPT study groups on Meetup. Immersion works — set your phone to Japanese.' },
+      { q: 'Best ways to learn Japanese in Japan?', a: 'Language exchange partners (HelloTalk, Samee\'s language exchange feature), community centers offer cheap Japanese classes, JLPT study groups on Meetup. Immersion works — set your phone to Japanese.' },
     ],
   },
   {
@@ -68,7 +68,7 @@ const SECTIONS = [
     id: 'community',
     content: [
       { q: 'Why is making friends in Japan hard?', a: 'Japanese social culture is group-based — friend groups form in school and workplaces and rarely expand. As a foreigner, you\'re outside these existing circles. It takes intentional effort.' },
-      { q: 'Where do expats actually make friends?', a: 'Language exchanges, international community events, sports clubs (futsal, running, volleyball leagues welcome foreigners), shared housing, and expat apps like nowjp. The expat community in Japan is larger and more welcoming than it appears from the outside.' },
+      { q: 'Where do expats actually make friends?', a: 'Language exchanges, international community events, sports clubs (futsal, running, volleyball leagues welcome foreigners), shared housing, and expat apps like Samee. The expat community in Japan is larger and more welcoming than it appears from the outside.' },
       { q: 'How do I meet locals (not just other expats)?', a: 'Japanese conversation partners via Hello Talk or language schools, volunteering, joining a Japanese sports team or hobby circle (サークル). Being in Japan 1+ years and speaking basic Japanese opens up a completely different social world.' },
     ],
   },
@@ -120,10 +120,10 @@ export default function JapanExpatSurvivalGuide() {
       <div className="bg-brand-50 border border-brand-100 rounded-3xl p-6 text-center mt-10">
         <div className="text-3xl mb-3">🗾</div>
         <h3 className="text-lg font-extrabold text-gray-900 mb-2">Get real answers from real expats.</h3>
-        <p className="text-sm text-gray-500 mb-4">Join nowjp and connect with foreigners who've navigated everything in this guide — and are ready to help you do the same.</p>
+        <p className="text-sm text-gray-500 mb-4">Join Samee and connect with foreigners who've navigated everything in this guide — and are ready to help you do the same.</p>
         <Link href="/signup"
           className="inline-block px-8 py-3.5 bg-brand-500 text-white rounded-2xl font-bold text-sm shadow-md shadow-brand-200 hover:bg-brand-600 transition">
-          Join nowjp Free →
+          Join Samee Free →
         </Link>
       </div>
     </div>

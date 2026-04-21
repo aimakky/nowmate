@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -28,7 +28,7 @@ export default function FindByIdModal({ currentUserId, onClose }: Props) {
     const { data } = await supabase
       .from('profiles')
       .select('*')
-      .eq('nowjp_id', id)
+      .eq('samee_id', id)
       .eq('is_active', true)
       .single()
     setResult(data ?? 'not_found')
@@ -46,7 +46,7 @@ export default function FindByIdModal({ currentUserId, onClose }: Props) {
       <div className="w-full max-w-md bg-white rounded-3xl p-5 shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="font-extrabold text-gray-900">🔍 Find by nowjp ID</div>
+            <div className="font-extrabold text-gray-900">🔍 Find by Samee ID</div>
             <div className="text-xs text-gray-400 mt-0.5">Enter their 8-character ID</div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
@@ -91,7 +91,7 @@ export default function FindByIdModal({ currentUserId, onClose }: Props) {
                   {result.display_name} {getNationalityFlag(result.nationality)}
                 </div>
                 <div className="text-xs text-gray-500">{result.area} · {result.age}歳</div>
-                <div className="text-xs text-gray-400 font-mono mt-0.5">#{result.nowjp_id}</div>
+                <div className="text-xs text-gray-400 font-mono mt-0.5">#{result.samee_id}</div>
               </div>
             </div>
             {result.id === currentUserId ? (

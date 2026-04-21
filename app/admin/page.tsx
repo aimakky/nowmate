@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -93,7 +93,7 @@ export default function AdminPage() {
         <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
           <div className="text-center mb-6">
             <div className="text-3xl mb-2">🔐</div>
-            <div className="font-extrabold text-gray-900 text-lg">nowjp Admin</div>
+            <div className="font-extrabold text-gray-900 text-lg">Samee Admin</div>
             <div className="text-xs text-gray-400 mt-1">Feedback & AI Analysis Dashboard</div>
           </div>
           <input
@@ -123,7 +123,7 @@ export default function AdminPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold text-gray-900">nowjp Admin</h1>
+            <h1 className="text-2xl font-extrabold text-gray-900">Samee Admin</h1>
             <p className="text-sm text-gray-400">{rows.length} total feedbacks</p>
           </div>
           <button

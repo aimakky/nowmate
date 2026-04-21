@@ -1,4 +1,4 @@
-export type Gender = 'male' | 'female' | 'other'
+﻿export type Gender = 'male' | 'female' | 'other'
 export type ArrivalStage = 'new' | 'settling' | 'local'
 
 export type Purpose =
@@ -52,7 +52,7 @@ export interface Profile {
   updated_at: string
   is_mentor: boolean
   helper_categories: HelperCategory[]
-  nowjp_id: string | null
+  samee_id: string | null
 }
 
 export interface Like {
