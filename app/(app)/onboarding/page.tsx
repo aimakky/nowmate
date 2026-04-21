@@ -83,6 +83,17 @@ export default function OnboardingPage() {
       updated_at: new Date().toISOString(),
     })
     if (uErr) { setError('Something went wrong. Please try again.'); setLoading(false); return }
+
+    // Welcome bot messages
+    fetch('/api/welcome-bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) })
+
+    // Claim invite reward if ref exists
+    const inviteRef = localStorage.getItem('nm_invite_ref')
+    if (inviteRef) {
+      fetch('/api/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inviteeId: userId, inviterNowjpId: inviteRef }) })
+      localStorage.removeItem('nm_invite_ref')
+    }
+
     router.push('/home')
   }
 

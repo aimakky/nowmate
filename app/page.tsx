@@ -3,11 +3,11 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'nowjp — Just landed? We\'ve got you.',
-  description: 'Making friends in Japan is hard. nowjp makes it easy. Connect with expats and locals for friendship, language exchange, and Japan life support.',
+  title: 'nowjp — 住民票. Bank account. Health insurance. We\'ve got you.',
+  description: 'Every foreigner in Japan figures this out alone. nowjp changes that. Step-by-step Japan survival guide + connect with expats and locals who\'ve been there.',
   openGraph: {
-    title: 'nowjp — Just landed? We\'ve got you.',
-    description: 'Your expat survival kit in Japan. Find friends, language partners, and local help.',
+    title: 'nowjp — Survive Japan. Together.',
+    description: 'The #1 survival kit for foreigners in Japan. Setup guides, real people, real answers.',
   },
 }
 
@@ -114,17 +114,17 @@ export default async function TopPage() {
         </div>
 
         <h1 className="text-[2rem] font-black text-gray-900 leading-[1.15] mb-3">
-          Japan is amazing.<br />
-          <span className="text-brand-500">Surviving it alone is hard.</span>
+          住民票. 保険. 銀行口座.<br />
+          <span className="text-brand-500">全部一人でやった？</span>
         </h1>
         <p className="text-gray-500 text-base leading-relaxed mb-5 max-w-[300px]">
-          nowjp is your Japan survival kit — know what to do, find people who've been there, get real answers.
+          nowjp walks you through every step — and connects you with people who've already done it.
         </p>
 
-        <div className="w-full bg-brand-50 border border-brand-100 rounded-2xl px-4 py-4 mb-6 text-left space-y-2.5">
+        <div className="w-full bg-brand-50 border border-brand-100 rounded-2xl px-4 py-4 mb-5 text-left space-y-2.5">
           <div className="flex items-start gap-2.5 text-sm text-gray-700">
             <span className="text-brand-500 font-bold mt-0.5">✓</span>
-            <span><span className="font-semibold">Step-by-step guide</span> — bank, SIM, 住民票, insurance, all in one place</span>
+            <span><span className="font-semibold">Step-by-step setup guide</span> — 住民票, bank, SIM, insurance, all in one place</span>
           </div>
           <div className="flex items-start gap-2.5 text-sm text-gray-700">
             <span className="text-brand-500 font-bold mt-0.5">✓</span>
@@ -132,18 +132,32 @@ export default async function TopPage() {
           </div>
           <div className="flex items-start gap-2.5 text-sm text-gray-700">
             <span className="text-brand-500 font-bold mt-0.5">✓</span>
-            <span><span className="font-semibold">Real answers</span> — not Google translate, from people living it now</span>
+            <span><span className="font-semibold">🚨 SOS Help</span> — stuck at the hospital or city hall? Get help in seconds</span>
           </div>
+        </div>
+
+        {/* Testimonials */}
+        <div className="w-full space-y-2 mb-6">
+          {[
+            { text: 'Got my bank account sorted in 3 days. The checklist is a lifesaver.', name: 'Priya', country: '🇮🇳', stage: 'Just Arrived' },
+            { text: 'Found my best friend in Tokyo through this app. Worth every minute.', name: 'Carlos', country: '🇧🇷', stage: 'Getting Settled' },
+            { text: 'The only Japan guide written by people who actually live here.', name: 'Tom', country: '🇬🇧', stage: 'Japan Local' },
+          ].map(t => (
+            <div key={t.name} className="bg-white border border-gray-100 rounded-2xl px-4 py-3 text-left shadow-sm">
+              <p className="text-xs text-gray-600 leading-relaxed mb-1.5">"{t.text}"</p>
+              <p className="text-[11px] text-gray-400 font-semibold">{t.country} {t.name} · {t.stage}</p>
+            </div>
+          ))}
         </div>
 
         <div className="flex flex-col gap-3 w-full">
           <Link href="/signup"
             className="w-full py-4 bg-brand-500 text-white rounded-2xl font-bold text-base text-center shadow-md shadow-brand-200 hover:bg-brand-600 active:scale-[0.98] transition-all">
-            Get Started — It's Free
+            Start my Japan setup — Free →
           </Link>
           <Link href="/login"
             className="w-full py-3.5 border-2 border-brand-200 text-brand-600 rounded-2xl font-semibold text-base text-center hover:bg-brand-50 active:scale-[0.98] transition-all">
-            I have an account
+            I already have an account
           </Link>
         </div>
 
