@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag } from '@/lib/utils'
 import { ArrowLeft, Send } from 'lucide-react'
+import PremiumModal from '@/components/ui/PremiumModal'
 
 const TAG_EMOJIS: Record<string, string> = {
   Drinks: '🍻', Food: '🍜', Coffee: '☕', Sightseeing: '🗺️',
@@ -32,6 +33,7 @@ export default function PostChatPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [hasJoined, setHasJoined] = useState(false)
   const [joining, setJoining] = useState(false)
+  const [showPremium, setShowPremium] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -88,6 +90,25 @@ export default function PostChatPage() {
     if (!currentUserId || !id) return
     setJoining(true)
     const supabase = createClient()
+
+    // Premium limit check: after 7 days, max 3 active group joins
+    const { data: profile } = await supabase
+      .from('profiles').select('is_premium, created_at').eq('id', currentUserId).single()
+    if (!profile?.is_premium) {
+      const accountAge = Date.now() - new Date(profile?.created_at || Date.now()).getTime()
+      if (accountAge > 7 * 24 * 60 * 60 * 1000) {
+        const { count } = await supabase
+          .from('post_joins')
+          .select('post_id', { count: 'exact', head: true })
+          .eq('user_id', currentUserId)
+        if ((count ?? 0) >= 3) {
+          setJoining(false)
+          setShowPremium(true)
+          return
+        }
+      }
+    }
+
     await supabase.from('post_joins').upsert({ post_id: id, user_id: currentUserId })
     setHasJoined(true)
     setJoining(false)
@@ -126,6 +147,7 @@ export default function PostChatPage() {
 
   return (
     <div className="max-w-md mx-auto min-h-screen flex flex-col bg-[#FAFAF9]">
+      {showPremium && <PremiumModal onClose={() => setShowPremium(false)} reason="join_limit" />}
       {/* Header */}
       <div className="bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex-shrink-0">
         <div className="flex items-center gap-3 mb-2.5">

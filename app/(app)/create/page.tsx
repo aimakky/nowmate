@@ -27,6 +27,11 @@ const QUICK_PHRASES: Record<string, string[]> = {
   Other:       ['Anyone free right now?', 'Looking for people to hang out with', 'What is everyone up to?'],
 }
 
+const TAG_EMOJIS: Record<string, string> = {
+  Drinks: '🍻', Food: '🍜', Coffee: '☕', Sightseeing: '🗺️',
+  Culture: '🎌', Talk: '💬', Help: '🆘', Other: '✨',
+}
+
 export default function CreatePage() {
   const router = useRouter()
   const [tag, setTag] = useState('')
@@ -34,6 +39,9 @@ export default function CreatePage() {
   const [area, setArea] = useState('Tokyo')
   const [posting, setPosting] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [showShare, setShowShare] = useState(false)
+  const [postedId, setPostedId] = useState<string | null>(null)
+  const [limitError, setLimitError] = useState(false)
 
   useEffect(() => {
     async function init() {
@@ -50,22 +58,106 @@ export default function CreatePage() {
   async function handlePost() {
     if (!userId || !tag || !content.trim()) return
     setPosting(true)
+    setLimitError(false)
+
     const supabase = createClient()
+
+    // Check daily post limit for non-premium users (after 7 days)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_premium, created_at')
+      .eq('id', userId).single()
+
+    if (!profile?.is_premium) {
+      const accountAge = Date.now() - new Date(profile?.created_at || Date.now()).getTime()
+      const sevenDays = 7 * 24 * 60 * 60 * 1000
+      if (accountAge > sevenDays) {
+        const todayStart = new Date()
+        todayStart.setHours(0, 0, 0, 0)
+        const { count } = await supabase
+          .from('posts')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .gte('created_at', todayStart.toISOString())
+        if ((count ?? 0) >= 3) {
+          setLimitError(true)
+          setPosting(false)
+          return
+        }
+      }
+    }
+
     const { data } = await supabase.from('posts').insert({
       user_id: userId,
       content: content.trim(),
       tag,
       area,
     }).select().single()
+
     if (data) {
       await supabase.from('post_joins').insert({ post_id: data.id, user_id: userId })
-      router.push(`/post/${data.id}`)
-    } else {
-      setPosting(false)
+      setPostedId(data.id)
+      setShowShare(true)
     }
+    setPosting(false)
   }
 
   const phrases = tag ? QUICK_PHRASES[tag] || [] : []
+  const shareText = encodeURIComponent(`${TAG_EMOJIS[tag] || '✨'} "${content}" — Join me on Samee! 🌏 #Samee #Japan #Expats`)
+  const shareUrl = encodeURIComponent('https://sameejapan.com')
+
+  // Share card screen
+  if (showShare && postedId) {
+    return (
+      <div className="min-h-screen bg-[#FAFAF9] flex flex-col max-w-md mx-auto px-5 py-8">
+        {/* Success animation */}
+        <div className="flex-1 flex flex-col items-center justify-center text-center">
+          <div className="w-20 h-20 bg-emerald-500 rounded-3xl flex items-center justify-center mb-5 shadow-lg shadow-emerald-200">
+            <span className="text-4xl">🚀</span>
+          </div>
+          <h2 className="text-2xl font-extrabold text-stone-900 mb-2">Post is live!</h2>
+          <p className="text-stone-500 text-sm mb-8">Others can now join your group chat</p>
+
+          {/* Post preview */}
+          <div className="w-full bg-white border border-stone-100 rounded-2xl p-4 shadow-sm mb-8 text-left">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl">{TAG_EMOJIS[tag]}</span>
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 border border-brand-100">{tag}</span>
+              <span className="text-xs text-stone-400">📍 {area}</span>
+            </div>
+            <p className="text-sm font-semibold text-stone-800">{content}</p>
+          </div>
+
+          {/* Share section */}
+          <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">Share to get more people in</p>
+          <div className="w-full space-y-2.5">
+            <a
+              href={`https://twitter.com/intent/tweet?text=${shareText}&url=${shareUrl}`}
+              target="_blank" rel="noopener noreferrer"
+              className="w-full py-3.5 bg-black text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-stone-800 active:scale-[0.98] transition-all">
+              <svg className="w-4 h-4" fill="white" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+              Share on X (Twitter)
+            </a>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(`https://sameejapan.com/post/${postedId}`)
+                  .catch(() => {})
+              }}
+              className="w-full py-3.5 bg-stone-100 text-stone-700 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-stone-200 active:scale-[0.98] transition-all">
+              🔗 Copy link
+            </button>
+          </div>
+        </div>
+
+        {/* Go to chat */}
+        <button
+          onClick={() => router.push(`/post/${postedId}`)}
+          className="w-full py-4 bg-brand-500 text-white rounded-2xl font-extrabold text-base shadow-lg shadow-brand-200 active:scale-[0.98] transition-all mt-6">
+          💬 Open group chat →
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#FAFAF9] flex flex-col max-w-md mx-auto">
@@ -79,6 +171,15 @@ export default function CreatePage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6 pb-32">
+        {/* Limit error */}
+        {limitError && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <p className="font-bold text-amber-800 text-sm mb-1">⚡ Daily post limit reached</p>
+            <p className="text-xs text-amber-700 mb-3">Free accounts can post 3 times per day after the first week.</p>
+            <a href="/upgrade" className="text-xs font-bold text-amber-600 underline">Upgrade to Premium →</a>
+          </div>
+        )}
+
         {/* Tag selection */}
         <div>
           <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">What do you want to do?</p>
