@@ -2,14 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Compass, MessageCircle, User, Plus } from 'lucide-react'
+import { Home, Mic, MessageCircle, User, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const LEFT_ITEMS = [
-  { href: '/home',    label: 'Home',    icon: Home },
-  { href: '/explore', label: 'Explore', icon: Compass },
+  { href: '/home',  label: 'Home',  icon: Home },
+  { href: '/voice', label: 'Voice', icon: Mic },
 ]
 
 const RIGHT_ITEMS = [
@@ -42,6 +42,7 @@ export default function BottomNav() {
   function NavItem({ href, label, icon: Icon }: { href: string; label: string; icon: any }) {
     const active = pathname === href || pathname.startsWith(href + '/')
     const badge = href === '/chat' ? msgCount : 0
+    // voice: no badge for now (could add live room count later)
     return (
       <Link href={href}
         className={cn(
