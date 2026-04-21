@@ -20,6 +20,7 @@ const STAGE_MESSAGES: Record<string, { headline: string; sub: string; emoji: str
 
 export default function OnboardingPage() {
   const router = useRouter()
+  const [confirmed, setConfirmed] = useState(false)
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -95,6 +96,33 @@ export default function OnboardingPage() {
     }
 
     router.push('/home')
+  }
+
+  // Pre-screen: confirm foreigner status
+  if (!confirmed) {
+    return (
+      <div className="min-h-screen bg-[#FAFAF9] flex flex-col items-center justify-center max-w-md mx-auto px-5 text-center">
+        <div className="text-5xl mb-4">🌏</div>
+        <h1 className="text-2xl font-extrabold text-stone-900 mb-2">nowjp is for foreigners in Japan</h1>
+        <p className="text-sm text-stone-500 leading-relaxed mb-8">
+          This app is built exclusively for non-Japanese people living in or visiting Japan.
+          It's a space to connect with others who understand what it's like to navigate Japan as an outsider.
+        </p>
+        <button
+          onClick={() => setConfirmed(true)}
+          className="w-full h-12 bg-brand-500 text-white rounded-2xl font-bold text-sm mb-3 shadow-md shadow-brand-200 active:scale-[0.98] transition-all"
+        >
+          Yes, I'm a foreigner in Japan →
+        </button>
+        <button
+          onClick={() => router.push('/')}
+          className="w-full h-12 border-2 border-stone-200 text-stone-500 rounded-2xl font-semibold text-sm"
+        >
+          No, I'm Japanese
+        </button>
+        <p className="text-xs text-stone-400 mt-4">18+ only · Free forever</p>
+      </div>
+    )
   }
 
   return (

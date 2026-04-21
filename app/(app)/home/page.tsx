@@ -105,7 +105,7 @@ export default function HomePage() {
   const hasFilter = filterArea || filterNationality || filterPurpose
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
       <Header
         title="Discover"
         right={
@@ -127,7 +127,7 @@ export default function HomePage() {
 
       {/* Filter Panel */}
       {showFilter && (
-        <div className="bg-white border-b border-gray-100 px-4 py-4 space-y-3 animate-slide-down">
+        <div className="bg-[#FAFAF9] border-b border-stone-100 px-4 py-4 space-y-3 animate-slide-down">
           <div className="grid grid-cols-1 gap-3">
             {[
               { label: 'Area', value: filterArea, set: setFilterArea,
@@ -142,7 +142,7 @@ export default function HomePage() {
                 <select
                   value={f.value}
                   onChange={e => f.set(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white"
                 >
                   <option value="">{f.placeholder}</option>
                   {f.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -177,7 +177,7 @@ export default function HomePage() {
       <div className="px-4 py-3 space-y-3">
         {loading ? (
           [...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-3xl p-4 animate-pulse border border-gray-50">
+            <div key={i} className="bg-white rounded-2xl p-4 animate-pulse border border-stone-100 shadow-sm">
               <div className="flex gap-3">
                 <div className="w-16 h-16 bg-gray-200 rounded-full flex-shrink-0" />
                 <div className="flex-1 space-y-2.5 py-1">
@@ -193,11 +193,11 @@ export default function HomePage() {
           ))
         ) : profiles.length === 0 ? (
           <div className="text-center py-16 px-4">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-20 h-20 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <span className="text-4xl">🔍</span>
             </div>
-            <p className="font-bold text-gray-700 text-lg">No one found</p>
-            <p className="text-sm text-gray-400 mt-1.5 leading-relaxed">
+            <p className="font-bold text-stone-700 text-lg">No one found</p>
+            <p className="text-sm text-stone-400 mt-1.5 leading-relaxed">
               {hasFilter
                 ? 'Try changing your filters.'
                 : 'Be the first in your area! More people join every day.'}

@@ -2,17 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Shield, Users, Heart, MessageCircle, User } from 'lucide-react'
+import { Compass, Users, Heart, MessageCircle, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
-  { href: '/survive', label: 'Survive',  icon: Shield },
-  { href: '/home',    label: 'People',   icon: Users },
-  { href: '/matches', label: 'Matches',  icon: Heart },
-  { href: '/chat',    label: 'Chat',     icon: MessageCircle },
-  { href: '/mypage',  label: 'Me',       icon: User },
+  { href: '/home',     label: 'People',   icon: Users },
+  { href: '/activity', label: 'Activity', icon: Compass },
+  { href: '/matches',  label: 'Matches',  icon: Heart },
+  { href: '/chat',     label: 'Chat',     icon: MessageCircle },
+  { href: '/mypage',   label: 'Me',       icon: User },
 ]
 
 export default function BottomNav() {

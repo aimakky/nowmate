@@ -4,7 +4,7 @@ import GoogleAnalytics from '@/components/analytics/GoogleAnalytics'
 
 export const metadata: Metadata = {
   title: { default: 'nowjp — Just landed in Japan? We\'ve got you.', template: '%s | nowjp' },
-  description: 'Making friends in Japan is hard. nowjp connects expats and locals for friendship, language exchange, and real Japan life support. Free forever.',
+  description: 'The foreigner-only community in Japan. Connect with expats who get it — survival tips, real friendships, and help when you need it. Free forever.',
   keywords: ['foreigners in japan', 'expat japan', 'expat friends japan', 'expat community japan', 'friends japan', 'language exchange japan', 'international community japan', 'just landed japan', 'new to japan', 'living in japan foreigner', 'expat survival japan'],
   authors: [{ name: 'nowjp' }],
   creator: 'nowjp',

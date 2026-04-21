@@ -43,9 +43,11 @@ export const LANGUAGES = [
 
 export const PURPOSES: { value: Purpose; label: string; icon: string; color: string }[] = [
   { value: 'Friend',            label: 'Friend',           icon: '👫', color: 'bg-blue-100 text-blue-700' },
+  { value: 'Drinks',            label: 'Drinks',           icon: '🍻', color: 'bg-amber-100 text-amber-700' },
+  { value: 'Sightseeing',       label: 'Sightseeing',      icon: '🗺️', color: 'bg-teal-100 text-teal-700' },
+  { value: 'Culture',           label: 'Culture',          icon: '🎌', color: 'bg-red-100 text-red-700' },
   { value: 'Chat',              label: 'Chat',             icon: '💬', color: 'bg-green-100 text-green-700' },
   { value: 'Language Exchange', label: 'Lang Exchange',    icon: '🗣️', color: 'bg-purple-100 text-purple-700' },
-  { value: 'Local Help',        label: 'Local Help',       icon: '🗺️', color: 'bg-orange-100 text-orange-700' },
   { value: 'Dating',            label: 'Dating',           icon: '❤️', color: 'bg-rose-100 text-rose-700' },
 ]
 

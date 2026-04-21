@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
   title: 'nowjp — 住民票. Bank account. Health insurance. We\'ve got you.',
-  description: 'Every foreigner in Japan figures this out alone. nowjp changes that. Step-by-step Japan survival guide + connect with expats and locals who\'ve been there.',
+  description: 'Every foreigner in Japan figures this out alone. nowjp changes that. Step-by-step Japan survival guide + connect with expats who\'ve been there.',
   openGraph: {
     title: 'nowjp — Survive Japan. Together.',
     description: 'The #1 survival kit for foreigners in Japan. Setup guides, real people, real answers.',
@@ -39,15 +39,15 @@ const STAGES = [
 ]
 
 const FEATURES = [
-  { icon: '🧭', title: 'Arrival Stage Matching', desc: 'Connect with others at the same point in their Japan journey — or find a senior expat mentor.' },
-  { icon: '🌏', title: 'Any Language',           desc: 'Connect in your own language or practice Japanese with a native speaker.' },
-  { icon: '🗺️', title: 'Japan Life Tips',        desc: 'A community of people who\'ve been there. Get real answers about life in Japan.' },
-  { icon: '🔒', title: 'Safe Space',             desc: 'Report & block. Chat only after matching. Verified 18+ only.' },
+  { icon: '🧭', title: 'Arrival Stage Matching', desc: 'Connect with foreigners at the same point in their Japan journey — or find an expat mentor who\'s been here years.' },
+  { icon: '🌏', title: '30+ Nationalities',      desc: 'Meet people from Brazil, India, the US, Vietnam, and everywhere in between — all living in Japan.' },
+  { icon: '🗺️', title: 'Real Japan Answers',     desc: 'A community of expats who\'ve done it all. Get honest answers from people still living it.' },
+  { icon: '🔒', title: 'Foreigners Only',        desc: 'nowjp is built for foreigners in Japan. Report & block. Chat only after matching. 18+ only.' },
 ]
 
 const STEPS = [
   { icon: '✏️', title: 'Set Your Stage',     desc: 'Tell us how long you\'ve been in Japan. We match you with people who understand where you are.' },
-  { icon: '👀', title: 'Meet Your People',   desc: 'Browse expats and locals in your city — filtered by stage, language, and purpose.' },
+  { icon: '👀', title: 'Meet Your People',   desc: 'Browse foreigners in your city — filtered by arrival stage, nationality, and what you\'re looking for.' },
   { icon: '❤️', title: 'Like & Match',       desc: 'Like someone. If they like you back — it\'s a match!' },
   { icon: '💬', title: 'Chat & Survive',     desc: 'Get tips, share experiences, make real friends. Build your life in Japan together.' },
 ]
@@ -63,8 +63,8 @@ const NATIONALITY_PREVIEW = ['🇧🇷','🇳🇵','🇻🇳','🇨🇳','🇵�
 
 const PURPOSES = [
   { icon: '👫', label: 'Friends',           color: 'bg-blue-50  border-blue-100  text-blue-600' },
+  { icon: '🤝', label: 'Expat Support',     color: 'bg-orange-50 border-orange-100 text-orange-600' },
   { icon: '🗣️', label: 'Language Exchange', color: 'bg-purple-50 border-purple-100 text-purple-600' },
-  { icon: '🗺️', label: 'Local Help',        color: 'bg-orange-50 border-orange-100 text-orange-600' },
   { icon: '💬', label: 'Chat',              color: 'bg-green-50 border-green-100 text-green-600' },
   { icon: '❤️', label: 'Dating',            color: 'bg-rose-50  border-rose-100  text-rose-600' },
 ]
@@ -78,7 +78,7 @@ export default async function TopPage() {
   const userCount = Math.max(count ?? 0, 1)
 
   return (
-    <div className="min-h-screen bg-white flex flex-col max-w-[430px] mx-auto">
+    <div className="min-h-screen bg-[#FAFAF9] flex flex-col max-w-[430px] mx-auto">
       {/* Header */}
       <header className="flex items-center justify-between px-5 pt-5 pb-3">
         <div className="flex items-center gap-2">
@@ -128,7 +128,7 @@ export default async function TopPage() {
           </div>
           <div className="flex items-start gap-2.5 text-sm text-gray-700">
             <span className="text-brand-500 font-bold mt-0.5">✓</span>
-            <span><span className="font-semibold">Find people who've done it</span> — connect with locals & long-term expats</span>
+            <span><span className="font-semibold">Find foreigners who've done it</span> — connect with expats who've navigated every step</span>
           </div>
           <div className="flex items-start gap-2.5 text-sm text-gray-700">
             <span className="text-brand-500 font-bold mt-0.5">✓</span>
@@ -183,7 +183,7 @@ export default async function TopPage() {
       </section>
 
       {/* Purpose Pills */}
-      <section className="bg-gray-50 px-5 py-8">
+      <section className="bg-stone-50 px-5 py-8">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest text-center mb-3">What are you looking for?</p>
         <div className="flex flex-wrap justify-center gap-2">
           {PURPOSES.map(p => (
@@ -202,7 +202,7 @@ export default async function TopPage() {
         <div className="grid grid-cols-2 gap-2.5">
           {TIPS_PREVIEW.map(t => (
             <Link key={t.title} href="/signup"
-              className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow active:scale-[0.98]">
+              className="bg-white rounded-2xl p-4 border border-stone-100 shadow-sm hover:shadow-md transition-shadow active:scale-[0.98]">
               <div className="text-2xl mb-2">{t.emoji}</div>
               <div className="text-xs font-semibold text-brand-500 mb-1">{t.category}</div>
               <div className="font-bold text-gray-800 text-xs leading-snug">{t.title}</div>
@@ -216,11 +216,11 @@ export default async function TopPage() {
       </section>
 
       {/* Features */}
-      <section className="bg-gray-50 px-5 py-10">
-        <h2 className="text-xl font-extrabold text-center text-gray-800 mb-5">Your expat survival kit</h2>
+      <section className="bg-stone-50 px-5 py-10">
+        <h2 className="text-xl font-extrabold text-center text-stone-900 mb-5">Your expat survival kit</h2>
         <div className="grid grid-cols-2 gap-3">
           {FEATURES.map(f => (
-            <div key={f.title} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+            <div key={f.title} className="bg-white rounded-2xl p-4 border border-stone-100 shadow-sm hover:shadow-md transition-shadow">
               <div className="text-3xl mb-2.5">{f.icon}</div>
               <div className="font-bold text-gray-800 text-sm mb-1">{f.title}</div>
               <div className="text-xs text-gray-500 leading-relaxed">{f.desc}</div>
@@ -287,7 +287,7 @@ export default async function TopPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100 px-5 py-6 text-center bg-white">
+      <footer className="border-t border-stone-100 px-5 py-6 text-center bg-[#FAFAF9]">
         <div className="flex items-center justify-center gap-2 mb-3">
           <div className="w-6 h-6 bg-brand-500 rounded-lg flex items-center justify-center">
             <span className="text-white font-black text-xs">N</span>

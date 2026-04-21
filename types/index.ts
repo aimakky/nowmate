@@ -7,6 +7,9 @@ export type Purpose =
   | 'Language Exchange'
   | 'Local Help'
   | 'Dating'
+  | 'Drinks'
+  | 'Sightseeing'
+  | 'Culture'
 
 export type HelperCategory = 'Banking' | 'Housing' | 'Medical' | 'Visa' | 'Japanese' | 'Tax' | 'Transport' | 'Jobs'
 
