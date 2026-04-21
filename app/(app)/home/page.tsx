@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, getDistanceKm, formatDistance, timeAgo } from '@/lib/utils'
+import { getNationalityFlag, getDistanceKm, formatDistance, timeAgo, checkJapanLocation } from '@/lib/utils'
 import Avatar from '@/components/ui/Avatar'
 import TweetCard, { TweetData } from '@/components/ui/TweetCard'
 import type { Post } from '@/types'
@@ -47,6 +47,7 @@ export default function HomePage() {
   const [followingTweets, setFollowingTweets] = useState<TweetData[]>([])
   const [tweetInput, setTweetInput] = useState('')
   const [posting, setPosting] = useState(false)
+  const [tweetLocationStatus, setTweetLocationStatus] = useState<'checking' | 'japan' | 'outside' | 'denied'>('checking')
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -61,6 +62,7 @@ export default function HomePage() {
         () => {}
       )
     }
+    checkJapanLocation().then(s => setTweetLocationStatus(s))
   }, [])
 
   // Following feed: tweets from people I follow + my own
@@ -193,23 +195,36 @@ export default function HomePage() {
       {/* Following feed */}
       {feedTab === 'following' && (
         <div className="px-4 pb-28 pt-3 space-y-0">
-          {/* Tweet compose */}
-          <div className="bg-white border border-stone-100 rounded-2xl p-4 mb-3 shadow-sm">
-            <textarea
-              value={tweetInput}
-              onChange={e => setTweetInput(e.target.value.slice(0, 280))}
-              placeholder="What's on your mind? 🌏"
-              rows={2}
-              className="w-full text-sm resize-none focus:outline-none text-stone-800 placeholder-stone-400"
-            />
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-xs text-stone-400">{tweetInput.length}/280</span>
-              <button onClick={postTweet} disabled={!tweetInput.trim() || posting}
-                className="px-4 py-1.5 bg-brand-500 text-white rounded-xl text-xs font-bold disabled:opacity-40 active:scale-95 transition-all">
-                {posting ? '...' : 'Post'}
-              </button>
+          {/* Tweet compose — Japan only */}
+          {tweetLocationStatus === 'japan' ? (
+            <div className="bg-white border border-stone-100 rounded-2xl p-4 mb-3 shadow-sm">
+              <textarea
+                value={tweetInput}
+                onChange={e => setTweetInput(e.target.value.slice(0, 280))}
+                placeholder="What's on your mind? 🌏"
+                rows={2}
+                className="w-full text-sm resize-none focus:outline-none text-stone-800 placeholder-stone-400"
+              />
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs text-stone-400">{tweetInput.length}/280</span>
+                <button onClick={postTweet} disabled={!tweetInput.trim() || posting}
+                  className="px-4 py-1.5 bg-brand-500 text-white rounded-xl text-xs font-bold disabled:opacity-40 active:scale-95 transition-all">
+                  {posting ? '...' : 'Post'}
+                </button>
+              </div>
             </div>
-          </div>
+          ) : tweetLocationStatus === 'checking' ? (
+            <div className="bg-white border border-stone-100 rounded-2xl p-4 mb-3 shadow-sm flex items-center gap-2.5">
+              <span className="w-3.5 h-3.5 border-2 border-brand-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+              <span className="text-xs text-stone-400">Checking location…</span>
+            </div>
+          ) : (
+            <div className="bg-stone-50 border border-stone-100 rounded-2xl p-4 mb-3 text-center">
+              <p className="text-2xl mb-1.5">🇯🇵</p>
+              <p className="text-xs font-bold text-stone-600 mb-0.5">Posting is Japan only</p>
+              <p className="text-xs text-stone-400">You can still read and react to posts from anywhere.</p>
+            </div>
+          )}
 
           {/* Tweet list */}
           {followingTweets.length === 0 ? (

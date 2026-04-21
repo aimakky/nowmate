@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { AREAS } from '@/lib/constants'
+import { checkJapanLocation } from '@/lib/utils'
 
 const TAGS = [
   { value: 'Drinks',      emoji: '🍻', label: 'Drinks' },
@@ -43,6 +44,7 @@ export default function CreatePage() {
   const [postedId, setPostedId] = useState<string | null>(null)
   const [limitError, setLimitError] = useState(false)
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [locationStatus, setLocationStatus] = useState<'checking' | 'japan' | 'outside' | 'denied'>('checking')
 
   useEffect(() => {
     async function init() {
@@ -54,16 +56,16 @@ export default function CreatePage() {
       if (data?.area) setArea(data.area)
     }
     init()
-    // Get location silently (no blocking prompt)
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => setUserCoords({
-          lat: Math.round(pos.coords.latitude * 100) / 100,
-          lng: Math.round(pos.coords.longitude * 100) / 100,
-        }),
-        () => {} // ignore denial
-      )
-    }
+    // Location check — used for Japan gate + coords on post
+    navigator.geolocation?.getCurrentPosition(
+      pos => {
+        const lat = Math.round(pos.coords.latitude * 100) / 100
+        const lng = Math.round(pos.coords.longitude * 100) / 100
+        setUserCoords({ lat, lng })
+      },
+      () => {}
+    )
+    checkJapanLocation().then(s => setLocationStatus(s))
   }, [router])
 
   async function handlePost() {
@@ -117,6 +119,52 @@ export default function CreatePage() {
   const phrases = tag ? QUICK_PHRASES[tag] || [] : []
   const shareText = encodeURIComponent(`${TAG_EMOJIS[tag] || '✨'} "${content}" — Join me on Samee! 🌏 #Samee #Japan #Expats`)
   const shareUrl = encodeURIComponent('https://sameejapan.com')
+
+  // Location gate
+  if (locationStatus === 'checking') return (
+    <div className="min-h-screen flex items-center justify-center bg-[#FAFAF9]">
+      <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+
+  if (locationStatus === 'outside') return (
+    <div className="min-h-screen bg-[#FAFAF9] flex flex-col max-w-md mx-auto">
+      <div className="flex items-center px-5 pt-6 pb-4 border-b border-stone-100 bg-white">
+        <button onClick={() => router.back()} className="text-stone-500 font-semibold text-sm">Cancel</button>
+      </div>
+      <div className="flex flex-col items-center justify-center flex-1 px-8 text-center">
+        <div className="text-6xl mb-5">🇯🇵</div>
+        <h2 className="font-extrabold text-stone-900 text-xl mb-3">Japan only feature</h2>
+        <p className="text-sm text-stone-500 leading-relaxed mb-6">
+          Posting is only available for people physically in Japan.{'\n'}
+          Come back when you're here! 🗾
+        </p>
+        <div className="bg-stone-50 border border-stone-100 rounded-2xl px-5 py-4 text-xs text-stone-400">
+          📍 Your location appears to be outside Japan
+        </div>
+      </div>
+    </div>
+  )
+
+  if (locationStatus === 'denied') return (
+    <div className="min-h-screen bg-[#FAFAF9] flex flex-col max-w-md mx-auto">
+      <div className="flex items-center px-5 pt-6 pb-4 border-b border-stone-100 bg-white">
+        <button onClick={() => router.back()} className="text-stone-500 font-semibold text-sm">Cancel</button>
+      </div>
+      <div className="flex flex-col items-center justify-center flex-1 px-8 text-center">
+        <div className="text-6xl mb-5">📍</div>
+        <h2 className="font-extrabold text-stone-900 text-xl mb-3">Location required</h2>
+        <p className="text-sm text-stone-500 leading-relaxed mb-6">
+          Posting is only available in Japan. Please enable location access to continue.
+        </p>
+        <button
+          onClick={() => checkJapanLocation().then(s => setLocationStatus(s))}
+          className="px-6 py-3 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-md shadow-brand-200 active:scale-95 transition-all">
+          Try again
+        </button>
+      </div>
+    </div>
+  )
 
   // Share card screen
   if (showShare && postedId) {
