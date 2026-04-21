@@ -8,6 +8,7 @@ import Header from '@/components/layout/Header'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import ProfileCompletionBanner from '@/components/features/ProfileCompletionBanner'
+import FindByIdModal from '@/components/features/FindByIdModal'
 import { createClient } from '@/lib/supabase/client'
 import { PURPOSES, NATIONALITIES } from '@/lib/constants'
 import { getNationalityFlag } from '@/lib/utils'
@@ -26,6 +27,8 @@ export default function MyPage() {
   const [stats, setStats] = useState<Stats>({ likes_sent: 0, likes_received: 0, matches: 0, messages_sent: 0 })
   const [loading, setLoading] = useState(true)
   const [showPremiumModal, setShowPremiumModal] = useState(false)
+  const [showFindById, setShowFindById] = useState(false)
+  const [idCopied, setIdCopied] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -167,6 +170,44 @@ export default function MyPage() {
           )}
         </div>
 
+        {/* My nowjp ID Card */}
+        {profile.nowjp_id && (
+          <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">My nowjp ID</p>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
+                <span className="font-mono font-bold text-gray-800 text-lg tracking-widest">#{profile.nowjp_id}</span>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(profile.nowjp_id!)
+                  setIdCopied(true)
+                  setTimeout(() => setIdCopied(false), 2000)
+                }}
+                className={`px-4 py-2.5 rounded-xl text-sm font-bold transition ${idCopied ? 'bg-green-500 text-white' : 'bg-brand-500 text-white hover:bg-brand-600'}`}
+              >
+                {idCopied ? '✓ Copied' : 'Copy'}
+              </button>
+            </div>
+            <div className="flex gap-2 mt-2.5">
+              <button
+                onClick={() => setShowFindById(true)}
+                className="flex-1 py-2.5 border-2 border-brand-200 text-brand-600 rounded-xl text-xs font-bold hover:bg-brand-50 transition"
+              >
+                🔍 Find friend by ID
+              </button>
+              <a
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Find me on nowjp! My ID: #${profile.nowjp_id}\n\nJapan survival app for expats 🗾\ngetnowjp.com`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2.5 bg-black text-white rounded-xl text-xs font-bold text-center hover:bg-gray-900 transition"
+              >
+                Share on X
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* Premium teaser (Daniel's revenue model) */}
         <button
           onClick={() => setShowPremiumModal(true)}
@@ -214,6 +255,14 @@ export default function MyPage() {
           Sign Out
         </Button>
       </div>
+
+      {/* Find by ID Modal */}
+      {showFindById && profile && (
+        <FindByIdModal
+          currentUserId={profile.id}
+          onClose={() => setShowFindById(false)}
+        />
+      )}
 
       {/* Premium Modal */}
       {showPremiumModal && (

@@ -28,6 +28,7 @@ export interface Profile {
   updated_at: string
   is_mentor: boolean
   helper_categories: HelperCategory[]
+  nowjp_id: string | null
 }
 
 export interface Like {
