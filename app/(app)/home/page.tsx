@@ -4,8 +4,19 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, getDistanceKm, formatDistance } from '@/lib/utils'
+import { getNationalityFlag, getDistanceKm, formatDistance, timeAgo } from '@/lib/utils'
+import { Heart } from 'lucide-react'
+import Avatar from '@/components/ui/Avatar'
 import type { Post } from '@/types'
+
+interface Tweet {
+  id: string
+  content: string
+  likes_count: number
+  created_at: string
+  user_id: string
+  profiles: { display_name: string; nationality: string; avatar_url: string | null }
+}
 
 const TAGS = [
   { value: '',            emoji: '✨', label: 'All' },
@@ -23,16 +34,6 @@ const TAG_EMOJIS: Record<string, string> = {
   Culture: '🎌', Talk: '💬', Help: '🆘', Other: '✨',
 }
 
-function timeAgo(date: string) {
-  const diff = Date.now() - new Date(date).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}min ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  return `${Math.floor(hrs / 24)}d ago`
-}
-
 function minsLeft(until: string) {
   const diff = new Date(until).getTime() - Date.now()
   return Math.max(0, Math.floor(diff / 60000))
@@ -46,10 +47,16 @@ export default function HomePage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set())
   const [joiningId, setJoiningId] = useState<string | null>(null)
+  const [feedTab, setFeedTab] = useState<'discover' | 'following'>('discover')
   const [freeNowUsers, setFreeNowUsers] = useState<{ id: string; display_name: string; nationality: string; free_now_until: string }[]>([])
   const [myFreeUntil, setMyFreeUntil] = useState<string | null>(null)
   const [settingFree, setSettingFree] = useState(false)
   const [myCoords, setMyCoords] = useState<{ lat: number; lng: number } | null>(null)
+  // Following feed
+  const [followingTweets, setFollowingTweets] = useState<Tweet[]>([])
+  const [tweetInput, setTweetInput] = useState('')
+  const [posting, setPosting] = useState(false)
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -65,6 +72,52 @@ export default function HomePage() {
       )
     }
   }, [])
+
+  // Following feed: tweets from people I follow + my own
+  const fetchFollowingFeed = useCallback(async () => {
+    if (!currentUserId) return
+    const supabase = createClient()
+    const { data: followData } = await supabase
+      .from('follows').select('following_id').eq('follower_id', currentUserId)
+    const ids = [...(followData || []).map((f: any) => f.following_id), currentUserId]
+    const { data } = await supabase
+      .from('tweets')
+      .select('*, profiles(display_name, nationality, avatar_url)')
+      .in('user_id', ids)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    setFollowingTweets((data || []) as Tweet[])
+    const { data: liked } = await supabase.from('tweet_likes').select('tweet_id').eq('user_id', currentUserId)
+    setLikedIds(new Set((liked || []).map((l: any) => l.tweet_id)))
+  }, [currentUserId])
+
+  useEffect(() => { if (feedTab === 'following') fetchFollowingFeed() }, [feedTab, fetchFollowingFeed])
+
+  async function postTweet() {
+    if (!tweetInput.trim() || !currentUserId || posting) return
+    setPosting(true)
+    const supabase = createClient()
+    const { data } = await supabase.from('tweets')
+      .insert({ user_id: currentUserId, content: tweetInput.trim() })
+      .select('*, profiles(display_name, nationality, avatar_url)').single()
+    if (data) setFollowingTweets(prev => [data as Tweet, ...prev])
+    setTweetInput('')
+    setPosting(false)
+  }
+
+  async function toggleLike(tweetId: string) {
+    if (!currentUserId) return
+    const supabase = createClient()
+    if (likedIds.has(tweetId)) {
+      await supabase.from('tweet_likes').delete().eq('tweet_id', tweetId).eq('user_id', currentUserId)
+      setLikedIds(prev => { const s = new Set(prev); s.delete(tweetId); return s })
+      setFollowingTweets(prev => prev.map(t => t.id === tweetId ? { ...t, likes_count: Math.max(0, t.likes_count - 1) } : t))
+    } else {
+      await supabase.from('tweet_likes').insert({ tweet_id: tweetId, user_id: currentUserId })
+      setLikedIds(prev => new Set([...prev, tweetId]))
+      setFollowingTweets(prev => prev.map(t => t.id === tweetId ? { ...t, likes_count: t.likes_count + 1 } : t))
+    }
+  }
 
   // Fetch free-now users
   const fetchFreeNow = useCallback(async () => {
@@ -144,6 +197,90 @@ export default function HomePage() {
     <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
       <Header title="Samee" />
 
+      {/* Discover / Following tabs */}
+      <div className="px-4 pt-3 pb-0">
+        <div className="flex gap-1 bg-stone-100 rounded-xl p-1">
+          <button onClick={() => setFeedTab('discover')}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+              feedTab === 'discover' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500'
+            }`}>
+            🌏 Discover
+          </button>
+          <button onClick={() => setFeedTab('following')}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+              feedTab === 'following' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500'
+            }`}>
+            👥 Following
+          </button>
+        </div>
+      </div>
+
+      {/* Following feed */}
+      {feedTab === 'following' && (
+        <div className="px-4 pb-28 pt-3 space-y-0">
+          {/* Tweet compose */}
+          <div className="bg-white border border-stone-100 rounded-2xl p-4 mb-3 shadow-sm">
+            <textarea
+              value={tweetInput}
+              onChange={e => setTweetInput(e.target.value.slice(0, 280))}
+              placeholder="What's on your mind? 🌏"
+              rows={2}
+              className="w-full text-sm resize-none focus:outline-none text-stone-800 placeholder-stone-400"
+            />
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-xs text-stone-400">{tweetInput.length}/280</span>
+              <button onClick={postTweet} disabled={!tweetInput.trim() || posting}
+                className="px-4 py-1.5 bg-brand-500 text-white rounded-xl text-xs font-bold disabled:opacity-40 active:scale-95 transition-all">
+                {posting ? '...' : 'Post'}
+              </button>
+            </div>
+          </div>
+
+          {/* Tweet list */}
+          {followingTweets.length === 0 ? (
+            <div className="text-center py-14">
+              <p className="text-4xl mb-3">👥</p>
+              <p className="font-bold text-stone-700">No posts from people you follow</p>
+              <p className="text-sm text-stone-400 mt-1.5">Follow people to see their posts here</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm divide-y divide-stone-50 overflow-hidden">
+              {followingTweets.map(tweet => {
+                const flag = getNationalityFlag(tweet.profiles?.nationality || '')
+                return (
+                  <div key={tweet.id} className="px-4 py-3.5">
+                    <div className="flex items-start gap-3">
+                      <button onClick={() => router.push(`/profile/${tweet.user_id}`)}>
+                        <Avatar src={tweet.profiles?.avatar_url} name={tweet.profiles?.display_name} size="sm" />
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                          <button onClick={() => router.push(`/profile/${tweet.user_id}`)}
+                            className="font-bold text-stone-900 text-sm hover:underline">
+                            {tweet.profiles?.display_name}
+                          </button>
+                          <span className="text-sm">{flag}</span>
+                          <span className="text-xs text-stone-400">{timeAgo(tweet.created_at)}</span>
+                        </div>
+                        <p className="text-sm text-stone-800 leading-relaxed">{tweet.content}</p>
+                        <button onClick={() => toggleLike(tweet.id)}
+                          className={`flex items-center gap-1.5 mt-2 text-xs font-semibold transition-all active:scale-90 ${
+                            likedIds.has(tweet.id) ? 'text-rose-500' : 'text-stone-400 hover:text-rose-400'
+                          }`}>
+                          <Heart size={13} fill={likedIds.has(tweet.id) ? 'currentColor' : 'none'} />
+                          {tweet.likes_count > 0 && <span>{tweet.likes_count}</span>}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {feedTab === 'discover' && <>
       {/* I'm Free Now Banner */}
       <div className="px-4 pt-3 pb-2">
         <div className={`rounded-2xl p-3.5 flex items-center gap-3 border transition-all ${
@@ -253,7 +390,10 @@ export default function HomePage() {
                 <div className="flex items-center justify-between" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-base">{flag}</span>
-                    <span className="text-xs text-stone-500 font-medium">{post.profiles?.display_name}</span>
+                    <button onClick={e => { e.stopPropagation(); router.push(`/profile/${post.user_id}`) }}
+                      className="text-xs text-stone-500 font-medium hover:underline">
+                      {post.profiles?.display_name}
+                    </button>
                     <span className="text-xs text-stone-300">·</span>
                     <span className="text-xs text-stone-400">{timeAgo(post.created_at)}</span>
                     {joinCount > 0 && <><span className="text-xs text-stone-300">·</span><span className="text-xs text-stone-400">👥 {joinCount}</span></>}
@@ -279,6 +419,7 @@ export default function HomePage() {
           })
         )}
       </div>
+      </> }
     </div>
   )
 }

@@ -2,241 +2,196 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Image from 'next/image'
-import Header from '@/components/layout/Header'
-import Badge from '@/components/ui/Badge'
-import Button from '@/components/ui/Button'
-import ReportModal from '@/components/features/ReportModal'
 import { createClient } from '@/lib/supabase/client'
-import { PURPOSES, NATIONALITIES, ARRIVAL_STAGES } from '@/lib/constants'
-import { getNationalityFlag } from '@/lib/utils'
-import type { Profile } from '@/types'
+import { getNationalityFlag, timeAgo } from '@/lib/utils'
+import { ArrowLeft, Heart } from 'lucide-react'
+import Avatar from '@/components/ui/Avatar'
 
-export default function ProfilePage() {
+interface Tweet {
+  id: string
+  content: string
+  likes_count: number
+  created_at: string
+}
+
+export default function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>()
   const router = useRouter()
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profile, setProfile] = useState<any>(null)
+  const [tweets, setTweets] = useState<Tweet[]>([])
+  const [myId, setMyId] = useState<string | null>(null)
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [followerCount, setFollowerCount] = useState(0)
+  const [followingCount, setFollowingCount] = useState(0)
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
+  const [toggling, setToggling] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [liked, setLiked] = useState(false)
-  const [matched, setMatched] = useState(false)
-  const [matchId, setMatchId] = useState<string | null>(null)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [showReport, setShowReport] = useState(false)
-  const [showBlockConfirm, setShowBlockConfirm] = useState(false)
 
   useEffect(() => {
+    createClient().auth.getUser().then(({ data: { user } }) => {
+      if (user) setMyId(user.id)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!userId) return
     async function load() {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      setCurrentUserId(user.id)
-
-      if (user.id === userId) { router.push('/mypage'); return }
-
-      const [{ data: p }, { data: likeData }, { data: matchData }] = await Promise.all([
+      const [{ data: p }, { data: tw }, { count: followers }, { count: following }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
-        supabase.from('likes').select('id').eq('from_user_id', user.id).eq('to_user_id', userId).single(),
-        supabase.from('matches').select('id')
-          .or(`and(user1_id.eq.${user.id},user2_id.eq.${userId}),and(user1_id.eq.${userId},user2_id.eq.${user.id})`)
-          .single(),
+        supabase.from('tweets').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(30),
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', userId),
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId),
       ])
-
       setProfile(p)
-      setLiked(!!likeData)
-      setMatched(!!matchData)
-      setMatchId(matchData?.id || null)
+      setTweets(tw || [])
+      setFollowerCount(followers ?? 0)
+      setFollowingCount(following ?? 0)
       setLoading(false)
     }
     load()
-  }, [userId, router])
+  }, [userId])
 
-  async function handleLike() {
-    if (!currentUserId) return
+  useEffect(() => {
+    if (!myId || !userId) return
     const supabase = createClient()
-    if (liked) {
-      await supabase.from('likes').delete().eq('from_user_id', currentUserId).eq('to_user_id', userId)
-      setLiked(false)
-      return
-    }
-    await supabase.from('likes').insert({ from_user_id: currentUserId, to_user_id: userId })
-    setLiked(true)
-    // Check mutual
-    const { data: mutual } = await supabase
-      .from('likes').select('id').eq('from_user_id', userId).eq('to_user_id', currentUserId).single()
-    if (mutual) {
-      const u1 = currentUserId < userId ? currentUserId : userId
-      const u2 = currentUserId < userId ? userId : currentUserId
-      const { data: newMatch } = await supabase
-        .from('matches').insert({ user1_id: u1, user2_id: u2 }).select().single()
-      if (newMatch) { setMatched(true); setMatchId(newMatch.id) }
-    }
-  }
+    supabase.from('follows').select('follower_id').eq('follower_id', myId).eq('following_id', userId).maybeSingle()
+      .then(({ data }) => setIsFollowing(!!data))
+    supabase.from('tweet_likes').select('tweet_id').eq('user_id', myId)
+      .then(({ data }) => setLikedIds(new Set((data || []).map((l: any) => l.tweet_id))))
+  }, [myId, userId])
 
-  async function handleBlock() {
-    if (!currentUserId) return
+  async function toggleFollow() {
+    if (!myId || toggling || myId === userId) return
+    setToggling(true)
     const supabase = createClient()
-    await supabase.from('blocks').insert({ blocker_id: currentUserId, blocked_id: userId })
-    router.push('/home')
+    if (isFollowing) {
+      await supabase.from('follows').delete().eq('follower_id', myId).eq('following_id', userId)
+      setIsFollowing(false)
+      setFollowerCount(c => Math.max(0, c - 1))
+    } else {
+      await supabase.from('follows').insert({ follower_id: myId, following_id: userId })
+      setIsFollowing(true)
+      setFollowerCount(c => c + 1)
+    }
+    setToggling(false)
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
+  async function toggleLike(tweetId: string) {
+    if (!myId) return
+    const supabase = createClient()
+    if (likedIds.has(tweetId)) {
+      await supabase.from('tweet_likes').delete().eq('tweet_id', tweetId).eq('user_id', myId)
+      setLikedIds(prev => { const s = new Set(prev); s.delete(tweetId); return s })
+      setTweets(prev => prev.map(t => t.id === tweetId ? { ...t, likes_count: Math.max(0, t.likes_count - 1) } : t))
+    } else {
+      await supabase.from('tweet_likes').insert({ tweet_id: tweetId, user_id: myId })
+      setLikedIds(prev => new Set([...prev, tweetId]))
+      setTweets(prev => prev.map(t => t.id === tweetId ? { ...t, likes_count: t.likes_count + 1 } : t))
+    }
   }
-  if (!profile) return <div className="text-center py-20 text-gray-500">User not found</div>
 
-  const purposes = PURPOSES.filter(p => profile.purposes.includes(p.value))
-  const nationality = NATIONALITIES.find(n => n.code === profile.nationality)
-  const stage = profile.arrival_stage ? ARRIVAL_STAGES.find(s => s.value === profile.arrival_stage) : null
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#FAFAF9]">
+      <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+  if (!profile) return null
+
+  const flag = getNationalityFlag(profile.nationality || '')
+  const isMe = myId === userId
 
   return (
-    <div className="max-w-md mx-auto bg-white min-h-screen">
-      <Header showBack right={
-        <button onClick={() => setShowReport(true)} className="text-xs text-red-400 px-2 py-1">Report</button>
-      } />
-
-      {/* Avatar */}
-      <div className="relative">
-        <div className="w-full h-64 bg-gradient-to-br from-brand-100 to-brand-200 flex items-center justify-center">
-          {profile.avatar_url ? (
-            <Image src={profile.avatar_url} alt={profile.display_name} fill className="object-cover" />
-          ) : (
-            <div className="text-8xl opacity-30">👤</div>
-          )}
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent" />
+    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
+      {/* Header */}
+      <div className="bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex items-center gap-3 sticky top-0 z-10">
+        <button onClick={() => router.back()} className="p-1 -ml-1 text-stone-500">
+          <ArrowLeft size={20} />
+        </button>
+        <p className="font-extrabold text-stone-900 flex-1 truncate">{profile.display_name}</p>
       </div>
 
-      <div className="px-5 py-4 space-y-4">
-        {/* Name & basic */}
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-extrabold text-gray-900">{profile.display_name}</h1>
-            <span className="text-2xl">{getNationalityFlag(profile.nationality)}</span>
-            <span className="text-lg text-gray-400">{profile.age}</span>
-          </div>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <Badge>{nationality?.name || profile.nationality}</Badge>
-            <Badge variant="brand">{profile.area}</Badge>
-            {profile.is_online && <Badge variant="success">● Online</Badge>}
-            {stage && (
-              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${stage.color}`}>
-                {stage.emoji} {stage.label}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Purposes */}
-        <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Looking for</p>
-          <div className="flex flex-wrap gap-2">
-            {purposes.map(p => (
-              <span key={p.value} className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium ${p.color}`}>
-                {p.icon} {p.value}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Languages */}
-        <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Languages</p>
-          <div className="flex flex-wrap gap-1.5">
-            {profile.spoken_languages.map(l => (
-              <Badge key={l} variant="brand">{l}</Badge>
-            ))}
-          </div>
-          {profile.learning_languages.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-1.5">
-              <span className="text-xs text-gray-400">Learning:</span>
-              {profile.learning_languages.map(l => (
-                <Badge key={l} className="bg-purple-100 text-purple-700">{l}</Badge>
-              ))}
+      {/* Profile card */}
+      <div className="bg-white px-5 pt-5 pb-4 border-b border-stone-100">
+        <div className="flex items-start gap-4 mb-4">
+          <Avatar src={profile.avatar_url} name={profile.display_name} size="lg" />
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-0.5">
+              <p className="font-extrabold text-stone-900 text-lg leading-tight">{profile.display_name}</p>
+              <span className="text-xl">{flag}</span>
             </div>
-          )}
+            <p className="text-xs text-stone-400 mb-2">{profile.arrival_stage || 'Samee member'}</p>
+            {profile.bio && <p className="text-sm text-stone-600 leading-relaxed">{profile.bio}</p>}
+          </div>
         </div>
 
-        {/* Bio */}
-        {profile.bio && (
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">About</p>
-            <p className="text-sm text-gray-700 leading-relaxed">{profile.bio}</p>
+        {/* Stats */}
+        <div className="flex gap-6 mb-4">
+          <div className="text-center">
+            <p className="font-extrabold text-stone-900 text-lg">{tweets.length}</p>
+            <p className="text-xs text-stone-400">Posts</p>
           </div>
+          <div className="text-center">
+            <p className="font-extrabold text-stone-900 text-lg">{followerCount}</p>
+            <p className="text-xs text-stone-400">Followers</p>
+          </div>
+          <div className="text-center">
+            <p className="font-extrabold text-stone-900 text-lg">{followingCount}</p>
+            <p className="text-xs text-stone-400">Following</p>
+          </div>
+        </div>
+
+        {!isMe && (
+          <button onClick={toggleFollow} disabled={toggling}
+            className={`w-full py-2.5 rounded-2xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50 ${
+              isFollowing
+                ? 'bg-stone-100 text-stone-700 border border-stone-200'
+                : 'bg-brand-500 text-white shadow-md shadow-brand-200'
+            }`}>
+            {toggling ? '...' : isFollowing ? '✓ Following' : '+ Follow'}
+          </button>
         )}
-
-        {/* Mentor Section */}
-        {profile.is_mentor && profile.helper_categories?.length > 0 && (
-          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">🤝</span>
-              <div>
-                <div className="font-bold text-sm text-emerald-800">Japan Mentor</div>
-                <div className="text-xs text-emerald-600">Can help with:</div>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {profile.helper_categories.map(c => (
-                <span key={c} className="px-2.5 py-1 bg-white border border-emerald-200 rounded-full text-xs font-semibold text-emerald-700">
-                  {c}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex gap-3 pt-2">
-          {matched ? (
-            <Button
-              fullWidth
-              size="lg"
-              onClick={() => matchId && router.push(`/chat/${matchId}`)}
-              className="bg-green-500 hover:bg-green-600"
-            >
-              💬 Send Message
-            </Button>
-          ) : (
-            <Button
-              fullWidth
-              size="lg"
-              variant={liked ? 'secondary' : 'primary'}
-              onClick={handleLike}
-            >
-              {liked ? '❤️ Liked!' : '🤍 Like'}
-            </Button>
-          )}
-        </div>
-
-        {/* Block */}
-        {showBlockConfirm ? (
-          <div className="bg-red-50 rounded-2xl p-4 text-center">
-            <p className="text-sm text-red-700 mb-3">Block {profile.display_name}? They won't be able to see you.</p>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" className="flex-1" onClick={() => setShowBlockConfirm(false)}>Cancel</Button>
-              <Button variant="danger" size="sm" className="flex-1" onClick={handleBlock}>Block</Button>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowBlockConfirm(true)}
-            className="w-full text-center text-xs text-gray-400 hover:text-red-400 py-2"
-          >
-            Block this user
+        {isMe && (
+          <button onClick={() => router.push('/mypage')}
+            className="w-full py-2.5 rounded-2xl font-bold text-sm bg-stone-100 text-stone-700 border border-stone-200">
+            Edit profile →
           </button>
         )}
       </div>
 
-      {showReport && (
-        <ReportModal
-          reportedId={profile.id}
-          reportedName={profile.display_name}
-          onClose={() => setShowReport(false)}
-        />
-      )}
+      {/* Tweet feed */}
+      <div className="divide-y divide-stone-100">
+        {tweets.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-3xl mb-2">🐦</p>
+            <p className="text-sm font-medium text-stone-500">No posts yet</p>
+          </div>
+        ) : (
+          tweets.map(tweet => (
+            <div key={tweet.id} className="bg-white px-5 py-4">
+              <div className="flex items-start gap-3">
+                <Avatar src={profile.avatar_url} name={profile.display_name} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                    <span className="font-bold text-stone-900 text-sm">{profile.display_name}</span>
+                    <span className="text-sm">{flag}</span>
+                    <span className="text-xs text-stone-400">{timeAgo(tweet.created_at)}</span>
+                  </div>
+                  <p className="text-sm text-stone-800 leading-relaxed">{tweet.content}</p>
+                  <button onClick={() => toggleLike(tweet.id)}
+                    className={`flex items-center gap-1.5 mt-2.5 text-xs font-semibold transition-all active:scale-90 ${
+                      likedIds.has(tweet.id) ? 'text-rose-500' : 'text-stone-400 hover:text-rose-400'
+                    }`}>
+                    <Heart size={14} fill={likedIds.has(tweet.id) ? 'currentColor' : 'none'} />
+                    {tweet.likes_count > 0 && <span>{tweet.likes_count}</span>}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      <div className="h-28" />
     </div>
   )
 }

@@ -29,6 +29,8 @@ export default function MyPage() {
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [showFindById, setShowFindById] = useState(false)
   const [idCopied, setIdCopied] = useState(false)
+  const [followers, setFollowers] = useState(0)
+  const [following, setFollowing] = useState(0)
 
   useEffect(() => {
     async function load() {
@@ -36,14 +38,18 @@ export default function MyPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const [{ data: p }, { count: ls }, { count: lr }, { count: mc }, { count: ms }] = await Promise.all([
+      const [{ data: p }, { count: ls }, { count: lr }, { count: mc }, { count: ms }, { count: fw }, { count: fwg }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('likes').select('id', { count: 'exact', head: true }).eq('from_user_id', user.id),
         supabase.from('likes').select('id', { count: 'exact', head: true }).eq('to_user_id', user.id),
         supabase.from('matches').select('id', { count: 'exact', head: true })
           .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`),
         supabase.from('messages').select('id', { count: 'exact', head: true }).eq('sender_id', user.id),
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id),
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', user.id),
       ])
+      setFollowers(fw ?? 0)
+      setFollowing(fwg ?? 0)
 
       if (!p) { router.push('/onboarding'); return }
       setProfile(p)
@@ -123,6 +129,22 @@ export default function MyPage() {
 
         {/* Profile completion */}
         <ProfileCompletionBanner profile={profile} />
+
+        {/* Follow stats */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-4">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Your Community</p>
+          <div className="grid grid-cols-2 gap-3 text-center">
+            {[
+              { value: followers, label: 'Followers', color: 'text-brand-500' },
+              { value: following, label: 'Following',  color: 'text-emerald-500' },
+            ].map(s => (
+              <div key={s.label} className="bg-stone-50 rounded-xl p-3">
+                <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Stats (Ava's KPIs visible to user) */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4">
