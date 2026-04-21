@@ -29,6 +29,8 @@ export default function ChatDetailPage() {
   const [showMenu, setShowMenu] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const [showIcebreakers, setShowIcebreakers] = useState(false)
+  // reactions[messageId][userId] = emoji
+  const [reactionsMap, setReactionsMap] = useState<Record<string, Record<string, string>>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -49,14 +51,32 @@ export default function ChatDetailPage() {
       if (!match) { router.push('/chat'); return }
 
       const otherId = match.user1_id === user.id ? match.user2_id : match.user1_id
-      const [{ data: profile }, { data: msgs }] = await Promise.all([
+      const [{ data: profile }, { data: msgs }, { data: rxns }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', otherId).single(),
         supabase.from('messages').select('*').eq('match_id', matchId)
           .order('created_at', { ascending: true }),
+        supabase.from('message_reactions').select('*')
+          .in('message_id', [matchId]),
       ])
       setOther(profile)
       setMessages(msgs || [])
       setShowIcebreakers((msgs || []).length === 0)
+
+      // Load reactions for all messages in this match
+      if (msgs && msgs.length > 0) {
+        const { data: allRxns } = await supabase
+          .from('message_reactions')
+          .select('*')
+          .in('message_id', msgs.map((m: Message) => m.id))
+        if (allRxns) {
+          const map: Record<string, Record<string, string>> = {}
+          for (const r of allRxns) {
+            if (!map[r.message_id]) map[r.message_id] = {}
+            map[r.message_id][r.user_id] = r.emoji
+          }
+          setReactionsMap(map)
+        }
+      }
       setLoading(false)
     }
     load()
@@ -73,11 +93,38 @@ export default function ChatDetailPage() {
         filter: `match_id=eq.${matchId}`,
       }, payload => {
         setMessages(prev => {
-          // avoid duplicate from optimistic update
           if (prev.some(m => m.id === (payload.new as Message).id)) return prev
           return [...prev, payload.new as Message]
         })
         setShowIcebreakers(false)
+      })
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'message_reactions',
+      }, payload => {
+        const r = payload.new as { message_id: string; user_id: string; emoji: string }
+        setReactionsMap(prev => ({
+          ...prev,
+          [r.message_id]: { ...(prev[r.message_id] || {}), [r.user_id]: r.emoji },
+        }))
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'message_reactions',
+      }, payload => {
+        const r = payload.new as { message_id: string; user_id: string; emoji: string }
+        setReactionsMap(prev => ({
+          ...prev,
+          [r.message_id]: { ...(prev[r.message_id] || {}), [r.user_id]: r.emoji },
+        }))
+      })
+      .on('postgres_changes', {
+        event: 'DELETE', schema: 'public', table: 'message_reactions',
+      }, payload => {
+        const r = payload.old as { message_id: string; user_id: string }
+        setReactionsMap(prev => {
+          const updated = { ...(prev[r.message_id] || {}) }
+          delete updated[r.user_id]
+          return { ...prev, [r.message_id]: updated }
+        })
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
@@ -114,6 +161,32 @@ export default function ChatDetailPage() {
     }
     setSending(false)
     inputRef.current?.focus()
+  }
+
+  async function handleReact(messageId: string, emoji: string) {
+    if (!currentUserId) return
+    const supabase = createClient()
+    const existing = reactionsMap[messageId]?.[currentUserId]
+    if (existing === emoji) {
+      // Toggle off
+      await supabase.from('message_reactions')
+        .delete()
+        .eq('message_id', messageId)
+        .eq('user_id', currentUserId)
+      setReactionsMap(prev => {
+        const updated = { ...(prev[messageId] || {}) }
+        delete updated[currentUserId]
+        return { ...prev, [messageId]: updated }
+      })
+    } else {
+      // Upsert
+      await supabase.from('message_reactions')
+        .upsert({ message_id: messageId, user_id: currentUserId, emoji })
+      setReactionsMap(prev => ({
+        ...prev,
+        [messageId]: { ...(prev[messageId] || {}), [currentUserId]: emoji },
+      }))
+    }
   }
 
   async function handleBlock() {
@@ -224,13 +297,27 @@ export default function ChatDetailPage() {
           </div>
         )}
 
-        {messages.map(msg => (
-          <ChatBubble
-            key={msg.id}
-            message={msg}
-            isMine={msg.sender_id === currentUserId}
-          />
-        ))}
+        {messages.map(msg => {
+          const msgReactions = reactionsMap[msg.id] || {}
+          const counts: Record<string, number> = {}
+          for (const emoji of Object.values(msgReactions)) {
+            counts[emoji] = (counts[emoji] || 0) + 1
+          }
+          const reactionList = Object.entries(counts).map(([emoji, count]) => ({
+            emoji,
+            count,
+            isMine: msgReactions[currentUserId!] === emoji,
+          }))
+          return (
+            <ChatBubble
+              key={msg.id}
+              message={msg}
+              isMine={msg.sender_id === currentUserId}
+              reactions={reactionList}
+              onReact={handleReact}
+            />
+          )
+        })}
         <div ref={bottomRef} className="h-1" />
       </div>
 

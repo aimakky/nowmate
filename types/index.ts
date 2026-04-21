@@ -90,6 +90,7 @@ export interface HelpRequest {
   message: string
   area: string
   status: 'open' | 'resolved'
+  is_urgent: boolean
   created_at: string
   profiles?: Pick<Profile, 'display_name' | 'nationality' | 'avatar_url' | 'arrival_stage' | 'is_mentor'>
 }

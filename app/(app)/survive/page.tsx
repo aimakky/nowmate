@@ -90,6 +90,8 @@ export default function SurvivePage() {
   const [showShareModal, setShowShareModal] = useState(false)
   const [showPremiumCTA, setShowPremiumCTA] = useState(false)
   const [pendingHelpReq, setPendingHelpReq] = useState<HelpRequest | null>(null)
+  const [isUrgent, setIsUrgent] = useState(false)
+  const [urgentLimitReached, setUrgentLimitReached] = useState(false)
 
   // Pre-fill category from checklist
   const [prefillCategory, setPrefillCategory] = useState('')
@@ -152,13 +154,33 @@ export default function SurvivePage() {
     if (!currentUserId || !postCategory || !postMessage.trim()) return
     setPosting(true)
     const supabase = createClient()
+
+    if (isUrgent) {
+      // Check daily limit
+      const today = new Date().toISOString().slice(0, 10)
+      const { count } = await supabase
+        .from('help_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', currentUserId)
+        .eq('is_urgent', true)
+        .gte('created_at', `${today}T00:00:00Z`)
+      if ((count ?? 0) >= 1) {
+        setUrgentLimitReached(true)
+        setIsUrgent(false)
+        setPosting(false)
+        return
+      }
+    }
+
     await supabase.from('help_requests').insert({
       user_id: currentUserId,
       category: postCategory,
       message: postMessage.trim(),
       area: postArea || currentArea,
+      is_urgent: isUrgent,
     })
     setPostMessage('')
+    setIsUrgent(false)
     setShowPostForm(false)
     setPosting(false)
     await fetchRequests()
@@ -310,9 +332,34 @@ export default function SurvivePage() {
         <div className="px-4 pb-6 space-y-3">
 
           {/* Post Form */}
+          {/* SOS Now button */}
+          {!showPostForm && (
+            <button
+              onClick={() => { setIsUrgent(true); setShowPostForm(true) }}
+              className="w-full py-3 bg-red-500 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm shadow-red-200 active:scale-[0.98] transition-all"
+            >
+              🚨 SOS — Need help RIGHT NOW
+            </button>
+          )}
+          {urgentLimitReached && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-xs text-amber-700 text-center">
+              ⚠️ You can only post 1 urgent SOS per day. Use regular help for non-emergencies.
+            </div>
+          )}
+
           {showPostForm ? (
-            <div className="bg-white border border-brand-100 rounded-2xl p-4 shadow-sm space-y-3">
-              <div className="font-bold text-sm text-gray-800">🙋 Ask for help</div>
+            <div className={`bg-white border rounded-2xl p-4 shadow-sm space-y-3 ${isUrgent ? 'border-red-300' : 'border-brand-100'}`}>
+              {isUrgent ? (
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-sm text-red-600">🚨 Emergency SOS</div>
+                  <button onClick={() => setIsUrgent(false)} className="text-xs text-gray-400 underline">Switch to normal</button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-sm text-gray-800">🙋 Ask for help</div>
+                  <button onClick={() => setIsUrgent(true)} className="text-xs text-red-500 font-semibold">🚨 Mark as urgent</button>
+                </div>
+              )}
 
               <div>
                 <p className="text-xs text-gray-500 mb-1.5">Category</p>
@@ -398,15 +445,18 @@ export default function SurvivePage() {
               <p className="text-xs text-gray-400 mt-1">Be the first to ask for help!</p>
             </div>
           ) : (
-            requests.map(req => {
+            [...requests].sort((a, b) => (b.is_urgent ? 1 : 0) - (a.is_urgent ? 1 : 0)).map(req => {
               const isOwn = req.user_id === currentUserId
               const catInfo = HELPER_CATEGORIES.find(c => c.value === req.category)
               const flag = req.profiles ? getNationalityFlag(req.profiles.nationality || '') : ''
               return (
-                <div key={req.id} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm space-y-2">
-                  <div className="flex items-center gap-2">
+                <div key={req.id} className={`rounded-2xl p-4 shadow-sm space-y-2 border ${req.is_urgent ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'}`}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {req.is_urgent && (
+                      <span className="text-xs font-black text-red-600 bg-red-100 px-2 py-0.5 rounded-full animate-pulse">🚨 URGENT</span>
+                    )}
                     <span className="text-base">{catInfo?.emoji}</span>
-                    <span className="text-xs font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">{req.category}</span>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${req.is_urgent ? 'text-red-700 bg-red-100' : 'text-brand-600 bg-brand-50'}`}>{req.category}</span>
                     <span className="text-xs text-gray-400">{req.area}</span>
                     {isOwn && <span className="ml-auto text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Your request</span>}
                   </div>
