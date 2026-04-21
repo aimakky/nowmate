@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag } from '@/lib/utils'
+import { getNationalityFlag, getDistanceKm, formatDistance } from '@/lib/utils'
 import type { Post } from '@/types'
 
 const TAGS = [
@@ -49,11 +49,21 @@ export default function HomePage() {
   const [freeNowUsers, setFreeNowUsers] = useState<{ id: string; display_name: string; nationality: string; free_now_until: string }[]>([])
   const [myFreeUntil, setMyFreeUntil] = useState<string | null>(null)
   const [settingFree, setSettingFree] = useState(false)
+  const [myCoords, setMyCoords] = useState<{ lat: number; lng: number } | null>(null)
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (user) setCurrentUserId(user.id)
     })
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => setMyCoords({
+          lat: Math.round(pos.coords.latitude * 100) / 100,
+          lng: Math.round(pos.coords.longitude * 100) / 100,
+        }),
+        () => {}
+      )
+    }
   }, [])
 
   // Fetch free-now users
@@ -219,6 +229,9 @@ export default function HomePage() {
             const flag = post.profiles ? getNationalityFlag(post.profiles.nationality || '') : ''
             const joinCount = post.post_joins?.length ?? 0
             const msgCount = post.post_messages?.length ?? 0
+            const distStr = myCoords && (post as any).lat && (post as any).lng
+              ? formatDistance(getDistanceKm(myCoords.lat, myCoords.lng, (post as any).lat, (post as any).lng))
+              : null
 
             return (
               <div key={post.id}
@@ -234,6 +247,7 @@ export default function HomePage() {
                     {post.tag}
                   </span>
                   {post.area && <span className="text-xs text-stone-400">📍 {post.area}</span>}
+                  {distStr && <span className="text-xs font-semibold text-brand-500 bg-brand-50 px-1.5 py-0.5 rounded-full">📡 {distStr}</span>}
                 </div>
                 <p className="text-sm text-stone-800 leading-relaxed mb-3 font-medium">{post.content}</p>
                 <div className="flex items-center justify-between" onClick={e => e.stopPropagation()}>

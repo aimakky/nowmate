@@ -42,6 +42,7 @@ export default function CreatePage() {
   const [showShare, setShowShare] = useState(false)
   const [postedId, setPostedId] = useState<string | null>(null)
   const [limitError, setLimitError] = useState(false)
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null)
 
   useEffect(() => {
     async function init() {
@@ -53,6 +54,16 @@ export default function CreatePage() {
       if (data?.area) setArea(data.area)
     }
     init()
+    // Get location silently (no blocking prompt)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => setUserCoords({
+          lat: Math.round(pos.coords.latitude * 100) / 100,
+          lng: Math.round(pos.coords.longitude * 100) / 100,
+        }),
+        () => {} // ignore denial
+      )
+    }
   }, [router])
 
   async function handlePost() {
@@ -92,6 +103,7 @@ export default function CreatePage() {
       content: content.trim(),
       tag,
       area,
+      ...(userCoords ? { lat: userCoords.lat, lng: userCoords.lng } : {}),
     }).select().single()
 
     if (data) {
