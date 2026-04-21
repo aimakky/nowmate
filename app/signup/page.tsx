@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { createClient } from '@/lib/supabase/client'
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
@@ -71,7 +71,7 @@ export default function SignupPage() {
       <div className="flex-1 flex flex-col justify-center px-6 max-w-sm mx-auto w-full">
         <div className="mb-8 text-center">
           <div className="w-14 h-14 bg-brand-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md shadow-brand-200">
-            <span className="text-white font-extrabold text-2xl">N</span>
+            <span className="text-white font-extrabold text-2xl">S</span>
           </div>
           <h1 className="text-2xl font-extrabold text-gray-900">Join Samee</h1>
           <p className="text-gray-500 text-sm mt-1">Free forever. For foreigners in Japan.</p>
@@ -141,5 +141,13 @@ export default function SignupPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
   )
 }
