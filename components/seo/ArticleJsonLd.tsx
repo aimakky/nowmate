@@ -1,4 +1,4 @@
-﻿interface Props {
+interface Props {
   title: string
   description: string
   url: string

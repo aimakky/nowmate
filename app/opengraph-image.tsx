@@ -1,4 +1,4 @@
-﻿import { ImageResponse } from 'next/og'
+import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
 export const alt = 'Samee — Just landed? We\'ve got you.'
