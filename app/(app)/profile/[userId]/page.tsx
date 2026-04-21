@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, checkJapanLocation } from '@/lib/utils'
+import { getNationalityFlag, checkSupportedLocation } from '@/lib/utils'
 import { ArrowLeft } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import TweetCard, { TweetData } from '@/components/ui/TweetCard'
@@ -25,7 +25,7 @@ export default function UserProfilePage() {
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (user) setMyId(user.id)
     })
-    checkJapanLocation().then(s => setCanInteract(s === 'supported'))
+    checkSupportedLocation().then(s => setCanInteract(s === 'supported'))
   }, [])
 
   useEffect(() => {

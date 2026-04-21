@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { AREAS } from '@/lib/constants'
-import { checkJapanLocation } from '@/lib/utils'
+import { checkSupportedLocation, detectCurrentCountryCode } from '@/lib/utils'
 
 const TAGS = [
   { value: 'Drinks',      emoji: '🍻', label: 'Drinks' },
@@ -45,6 +45,7 @@ export default function CreatePage() {
   const [limitError, setLimitError] = useState(false)
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [locationStatus, setLocationStatus] = useState<'checking' | 'supported' | 'outside' | 'denied'>('checking')
+  const [postCountry, setPostCountry] = useState<string>('JP')
 
   useEffect(() => {
     async function init() {
@@ -52,11 +53,11 @@ export default function CreatePage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
-      const { data } = await supabase.from('profiles').select('area').eq('id', user.id).single()
+      const { data } = await supabase.from('profiles').select('area, current_country').eq('id', user.id).single()
       if (data?.area) setArea(data.area)
+      if (data?.current_country) setPostCountry(data.current_country)
     }
     init()
-    // Location check — used for Japan gate + coords on post
     navigator.geolocation?.getCurrentPosition(
       pos => {
         const lat = Math.round(pos.coords.latitude * 100) / 100
@@ -65,7 +66,8 @@ export default function CreatePage() {
       },
       () => {}
     )
-    checkJapanLocation().then(s => setLocationStatus(s))
+    checkSupportedLocation().then(s => setLocationStatus(s))
+    detectCurrentCountryCode().then(code => { if (code) setPostCountry(code) })
   }, [router])
 
   async function handlePost() {
@@ -105,6 +107,7 @@ export default function CreatePage() {
       content: content.trim(),
       tag,
       area,
+      country: postCountry,
       ...(userCoords ? { lat: userCoords.lat, lng: userCoords.lng } : {}),
     }).select().single()
 

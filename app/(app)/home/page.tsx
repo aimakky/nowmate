@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, getDistanceKm, formatDistance, timeAgo, checkJapanLocation } from '@/lib/utils'
+import { getNationalityFlag, getDistanceKm, formatDistance, timeAgo, checkSupportedLocation, detectCurrentCountryCode, SUPPORTED_COUNTRIES } from '@/lib/utils'
 import Avatar from '@/components/ui/Avatar'
 import TweetCard, { TweetData } from '@/components/ui/TweetCard'
 import type { Post } from '@/types'
@@ -48,24 +48,50 @@ export default function HomePage() {
   const [tweetInput, setTweetInput] = useState('')
   const [posting, setPosting] = useState(false)
   const [tweetLocationStatus, setTweetLocationStatus] = useState<'checking' | 'supported' | 'outside' | 'denied'>('checking')
+  const [currentCountry, setCurrentCountry] = useState<string>('JP')
+  const [showCountryPicker, setShowCountryPicker] = useState(false)
 
   useEffect(() => {
-    createClient().auth.getUser().then(({ data: { user } }) => {
-      if (user) setCurrentUserId(user.id)
-    })
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => setMyCoords({
+    async function init() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setCurrentUserId(user.id)
+        // Load saved country preference
+        const { data: profile } = await supabase
+          .from('profiles').select('current_country').eq('id', user.id).single()
+        if (profile?.current_country) setCurrentCountry(profile.current_country)
+      }
+    }
+    init()
+
+    // GPS: coords for distance + country detection
+    navigator.geolocation?.getCurrentPosition(
+      async pos => {
+        setMyCoords({
           lat: Math.round(pos.coords.latitude * 100) / 100,
           lng: Math.round(pos.coords.longitude * 100) / 100,
-        }),
-        () => {}
-      )
-    }
-    checkJapanLocation().then(s => setTweetLocationStatus(s))
+        })
+      },
+      () => {}
+    )
+
+    // Auto-detect country and save to profile
+    detectCurrentCountryCode().then(async code => {
+      if (code) {
+        setCurrentCountry(code)
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          await supabase.from('profiles').update({ current_country: code }).eq('id', user.id)
+        }
+      }
+    })
+
+    checkSupportedLocation().then(s => setTweetLocationStatus(s))
   }, [])
 
-  // Following feed: tweets from people I follow + my own
+  // Following feed: tweets from people I follow + my own (country-filtered)
   const fetchFollowingFeed = useCallback(async () => {
     if (!currentUserId) return
     const supabase = createClient()
@@ -76,10 +102,11 @@ export default function HomePage() {
       .from('tweets')
       .select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)')
       .in('user_id', ids)
+      .eq('country', currentCountry)
       .order('created_at', { ascending: false })
       .limit(50)
     setFollowingTweets((data || []) as TweetData[])
-  }, [currentUserId])
+  }, [currentUserId, currentCountry])
 
   useEffect(() => { if (feedTab === 'following') fetchFollowingFeed() }, [feedTab, fetchFollowingFeed])
 
@@ -88,7 +115,7 @@ export default function HomePage() {
     setPosting(true)
     const supabase = createClient()
     const { data } = await supabase.from('tweets')
-      .insert({ user_id: currentUserId, content: tweetInput.trim() })
+      .insert({ user_id: currentUserId, content: tweetInput.trim(), country: currentCountry })
       .select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)')
       .single()
     if (data) setFollowingTweets(prev => [data as TweetData, ...prev])
@@ -120,6 +147,7 @@ export default function HomePage() {
       .from('posts')
       .select('*, profiles(display_name, nationality, avatar_url, arrival_stage), post_joins(user_id), post_messages(id)')
       .eq('status', 'active')
+      .eq('country', currentCountry)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(50)
@@ -132,7 +160,7 @@ export default function HomePage() {
       ))
     }
     setLoading(false)
-  }, [filterTag, currentUserId])
+  }, [filterTag, currentUserId, currentCountry])
 
   useEffect(() => { fetchPosts() }, [fetchPosts])
 
@@ -167,15 +195,56 @@ export default function HomePage() {
     router.push(`/post/${post.id}`)
   }
 
+  async function handleCountryChange(code: string) {
+    setCurrentCountry(code)
+    setShowCountryPicker(false)
+    // Save preference to profile
+    if (currentUserId) {
+      const supabase = createClient()
+      await supabase.from('profiles').update({ current_country: code }).eq('id', currentUserId)
+    }
+  }
+
   const isFreeNow = myFreeUntil && new Date(myFreeUntil) > new Date()
   const othersOnline = freeNowUsers.filter(u => u.id !== currentUserId)
+  const currentCountryInfo = SUPPORTED_COUNTRIES.find(c => c.code === currentCountry)
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
       <Header title="Samee" />
 
+      {/* Country selector */}
+      <div className="px-4 pt-3 pb-0 relative">
+        <button
+          onClick={() => setShowCountryPicker(p => !p)}
+          className="flex items-center gap-1.5 bg-white border border-stone-200 rounded-xl px-3 py-1.5 shadow-sm active:scale-95 transition-all">
+          <span className="text-base">{currentCountryInfo?.flag ?? '🌍'}</span>
+          <span className="text-xs font-bold text-stone-700">{currentCountryInfo?.name ?? 'Global'}</span>
+          <span className="text-[10px] text-stone-400">▼</span>
+        </button>
+
+        {showCountryPicker && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowCountryPicker(false)} />
+            <div className="absolute top-10 left-4 z-50 bg-white border border-stone-200 rounded-2xl shadow-xl p-2 grid grid-cols-3 gap-1 w-64">
+              {SUPPORTED_COUNTRIES.map(c => (
+                <button key={c.code} onClick={() => handleCountryChange(c.code)}
+                  className={`flex flex-col items-center gap-1 p-2.5 rounded-xl text-xs font-semibold transition-all active:scale-95 ${
+                    currentCountry === c.code
+                      ? 'bg-brand-50 text-brand-700 ring-1 ring-brand-300'
+                      : 'hover:bg-stone-50 text-stone-600'
+                  }`}>
+                  <span className="text-xl">{c.flag}</span>
+                  <span className="text-[10px]">{c.name}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Discover / Following tabs */}
-      <div className="px-4 pt-3 pb-0">
+      <div className="px-4 pt-2 pb-0">
         <div className="flex gap-1 bg-stone-100 rounded-xl p-1">
           <button onClick={() => setFeedTab('discover')}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${

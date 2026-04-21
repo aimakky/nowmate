@@ -74,6 +74,21 @@ export async function checkSupportedLocation(): Promise<'supported' | 'outside' 
   })
 }
 
+// Returns country code string (e.g. 'JP') or null
+export async function detectCurrentCountryCode(): Promise<string | null> {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) { resolve(null); return }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const country = detectCountry(pos.coords.latitude, pos.coords.longitude)
+        resolve(country?.code ?? null)
+      },
+      () => resolve(null),
+      { timeout: 8000, maximumAge: 300000 }
+    )
+  })
+}
+
 // Legacy alias kept for zero-diff imports
 export const checkJapanLocation = checkSupportedLocation
 

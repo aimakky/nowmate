@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, checkJapanLocation } from '@/lib/utils'
+import { getNationalityFlag, checkSupportedLocation } from '@/lib/utils'
 import { Mic, Users, Plus, Radio } from 'lucide-react'
 import Header from '@/components/layout/Header'
 
@@ -43,7 +43,7 @@ export default function VoicePage() {
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id)
     })
-    checkJapanLocation().then(status => setLocationStatus(status))
+    checkSupportedLocation().then(status => setLocationStatus(status))
   }, [])
 
   const fetchRooms = useCallback(async () => {
@@ -135,7 +135,7 @@ export default function VoicePage() {
             Voice rooms are only available in supported countries. Please enable location access to continue.
           </p>
           <button
-            onClick={() => checkJapanLocation().then(s => setLocationStatus(s))}
+            onClick={() => checkSupportedLocation().then(s => setLocationStatus(s))}
             className="px-6 py-3 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-md shadow-brand-200 active:scale-95 transition-all">
             Try again
           </button>

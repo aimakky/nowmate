@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, timeAgo, checkJapanLocation } from '@/lib/utils'
+import { getNationalityFlag, timeAgo, checkSupportedLocation } from '@/lib/utils'
 import { ArrowLeft } from 'lucide-react'
 import TweetCard, { TweetData } from '@/components/ui/TweetCard'
 import Avatar from '@/components/ui/Avatar'
@@ -37,7 +37,7 @@ export default function TweetDetailPage() {
         if (data) setMyProfile(data)
       }
     })
-    checkJapanLocation().then(s => setCanInteract(s === 'supported'))
+    checkSupportedLocation().then(s => setCanInteract(s === 'supported'))
   }, [])
 
   const load = useCallback(async () => {

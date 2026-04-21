@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, checkJapanLocation } from '@/lib/utils'
+import { getNationalityFlag, checkSupportedLocation } from '@/lib/utils'
 import { ArrowLeft, Mic, MicOff, Radio, LogOut, Users } from 'lucide-react'
 
 const CAT_EMOJI: Record<string, string> = {
@@ -44,7 +44,7 @@ export default function VoiceRoomPage() {
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id)
     })
-    checkJapanLocation().then(s => setLocationStatus(s))
+    checkSupportedLocation().then(s => setLocationStatus(s))
   }, [])
 
   // Fetch room info
@@ -256,7 +256,7 @@ export default function VoiceRoomPage() {
           Voice rooms are only available in supported countries. Please enable location access to continue.
         </p>
         <button
-          onClick={() => checkJapanLocation().then(s => setLocationStatus(s))}
+          onClick={() => checkSupportedLocation().then(s => setLocationStatus(s))}
           className="px-6 py-3 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-md shadow-brand-200 active:scale-95 transition-all">
           Try again
         </button>
