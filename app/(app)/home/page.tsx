@@ -236,7 +236,7 @@ export default function HomePage() {
           ) : (
             <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
               {followingTweets.map(tweet => (
-                <TweetCard key={tweet.id} tweet={tweet} myId={currentUserId} onUpdate={fetchFollowingFeed} />
+                <TweetCard key={tweet.id} tweet={tweet} myId={currentUserId} onUpdate={fetchFollowingFeed} canInteract={tweetLocationStatus === 'japan'} />
               ))}
             </div>
           )}
@@ -275,7 +275,7 @@ export default function HomePage() {
           </div>
           <button
             onClick={handleFreeNow}
-            disabled={settingFree}
+            disabled={settingFree || tweetLocationStatus !== 'japan'}
             className={`flex-shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-50 ${
               isFreeNow
                 ? 'bg-emerald-500 text-white'

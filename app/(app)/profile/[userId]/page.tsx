@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag } from '@/lib/utils'
+import { getNationalityFlag, checkJapanLocation } from '@/lib/utils'
 import { ArrowLeft } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import TweetCard, { TweetData } from '@/components/ui/TweetCard'
@@ -19,11 +19,13 @@ export default function UserProfilePage() {
   const [followingCount, setFollowingCount] = useState(0)
   const [toggling, setToggling] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [canInteract, setCanInteract] = useState(false)
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (user) setMyId(user.id)
     })
+    checkJapanLocation().then(s => setCanInteract(s === 'japan'))
   }, [])
 
   useEffect(() => {
@@ -156,7 +158,7 @@ if (loading) return (
           </div>
         ) : (
           tweets.map(tweet => (
-            <TweetCard key={tweet.id} tweet={tweet} myId={myId} onUpdate={reloadTweets} />
+            <TweetCard key={tweet.id} tweet={tweet} myId={myId} onUpdate={reloadTweets} canInteract={canInteract} />
           ))
         )}
       </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, timeAgo } from '@/lib/utils'
+import { getNationalityFlag, timeAgo, checkJapanLocation } from '@/lib/utils'
 import { ArrowLeft } from 'lucide-react'
 import TweetCard, { TweetData } from '@/components/ui/TweetCard'
 import Avatar from '@/components/ui/Avatar'
@@ -26,6 +26,7 @@ export default function TweetDetailPage() {
   const [replyInput, setReplyInput] = useState('')
   const [posting, setPosting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [canInteract, setCanInteract] = useState(false)
 
   useEffect(() => {
     createClient().auth.getUser().then(async ({ data: { user } }) => {
@@ -36,6 +37,7 @@ export default function TweetDetailPage() {
         if (data) setMyProfile(data)
       }
     })
+    checkJapanLocation().then(s => setCanInteract(s === 'japan'))
   }, [])
 
   const load = useCallback(async () => {
@@ -94,34 +96,40 @@ export default function TweetDetailPage() {
 
       {/* Main tweet */}
       <div className="bg-white border-b-4 border-stone-100">
-        <TweetCard tweet={tweet} myId={myId} onUpdate={load} showBorder={false} />
+        <TweetCard tweet={tweet} myId={myId} onUpdate={load} showBorder={false} canInteract={canInteract} />
       </div>
 
-      {/* Reply compose */}
+      {/* Reply compose — Japan only */}
       {myId && (
-        <div className="bg-white border-b border-stone-100 px-4 py-3 flex items-start gap-3">
-          <div className="flex-shrink-0 mt-0.5">
-            <Avatar src={myProfile?.avatar_url} name={myProfile?.display_name} size="sm" />
-          </div>
-          <div className="flex-1">
-            <textarea
-              value={replyInput}
-              onChange={e => setReplyInput(e.target.value.slice(0, 280))}
-              placeholder="Write a reply..."
-              rows={2}
-              className="w-full text-sm resize-none focus:outline-none text-stone-800 placeholder-stone-400"
-            />
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-xs text-stone-400">{replyInput.length}/280</span>
-              <button
-                onClick={postReply}
-                disabled={!replyInput.trim() || posting}
-                className="px-4 py-1.5 bg-brand-500 text-white rounded-xl text-xs font-bold disabled:opacity-40 active:scale-95 transition-all">
-                {posting ? '...' : 'Reply'}
-              </button>
+        canInteract ? (
+          <div className="bg-white border-b border-stone-100 px-4 py-3 flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <Avatar src={myProfile?.avatar_url} name={myProfile?.display_name} size="sm" />
+            </div>
+            <div className="flex-1">
+              <textarea
+                value={replyInput}
+                onChange={e => setReplyInput(e.target.value.slice(0, 280))}
+                placeholder="Write a reply..."
+                rows={2}
+                className="w-full text-sm resize-none focus:outline-none text-stone-800 placeholder-stone-400"
+              />
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs text-stone-400">{replyInput.length}/280</span>
+                <button
+                  onClick={postReply}
+                  disabled={!replyInput.trim() || posting}
+                  className="px-4 py-1.5 bg-brand-500 text-white rounded-xl text-xs font-bold disabled:opacity-40 active:scale-95 transition-all">
+                  {posting ? '...' : 'Reply'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-stone-50 border-b border-stone-100 px-4 py-3 text-center">
+            <span className="text-xs text-stone-400">🇯🇵 Replies are only available in Japan</span>
+          </div>
+        )
       )}
 
       {/* Replies */}

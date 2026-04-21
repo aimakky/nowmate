@@ -40,9 +40,10 @@ interface Props {
   myId: string | null
   onUpdate: () => void
   showBorder?: boolean
+  canInteract?: boolean  // false = outside Japan (read-only mode)
 }
 
-export default function TweetCard({ tweet, myId, onUpdate, showBorder = true }: Props) {
+export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, canInteract = true }: Props) {
   const router = useRouter()
   const [showPicker, setShowPicker] = useState(false)
   const [reposting, setReposting] = useState(false)
@@ -58,7 +59,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true }: 
   const hasReactions = activeReactions.length > 0
 
   async function toggleReaction(key: string) {
-    if (!myId) return
+    if (!myId || !canInteract) return
     const supabase = createClient()
     if (myReaction === key) {
       await supabase.from('tweet_reactions').delete()
@@ -74,7 +75,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true }: 
   }
 
   async function handleRepost() {
-    if (!myId || reposting) return
+    if (!myId || reposting || !canInteract) return
     // Check if already reposted
     const supabase = createClient()
     const { data: existing } = await supabase.from('tweets')
@@ -144,60 +145,83 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true }: 
 
           {/* Action bar */}
           <div className="flex items-center gap-1 relative">
-            {/* Reaction picker trigger */}
-            <div className="relative">
-              <button
-                onClick={() => setShowPicker(p => !p)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90 ${
-                  myReaction
-                    ? 'text-brand-600 bg-brand-50'
-                    : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
-                }`}>
-                {myReaction
-                  ? <span>{REACTIONS.find(r => r.key === myReaction)?.emoji}</span>
-                  : <span>＋ React</span>
-                }
-              </button>
+            {canInteract ? (
+              <>
+                {/* Reaction picker trigger */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowPicker(p => !p)}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90 ${
+                      myReaction
+                        ? 'text-brand-600 bg-brand-50'
+                        : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
+                    }`}>
+                    {myReaction
+                      ? <span>{REACTIONS.find(r => r.key === myReaction)?.emoji}</span>
+                      : <span>＋ React</span>
+                    }
+                  </button>
 
-              {/* Emoji picker popup */}
-              {showPicker && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
-                  <div className="absolute bottom-9 left-0 z-50 bg-white border border-stone-200 rounded-2xl shadow-xl p-2 flex gap-1">
-                    {REACTIONS.map(r => (
-                      <button key={r.key}
-                        onClick={() => toggleReaction(r.key)}
-                        title={r.label}
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all hover:scale-125 active:scale-95 ${
-                          myReaction === r.key ? 'bg-brand-100 ring-2 ring-brand-300' : 'hover:bg-stone-100'
-                        }`}>
-                        {r.emoji}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+                  {/* Emoji picker popup */}
+                  {showPicker && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
+                      <div className="absolute bottom-9 left-0 z-50 bg-white border border-stone-200 rounded-2xl shadow-xl p-2 flex gap-1">
+                        {REACTIONS.map(r => (
+                          <button key={r.key}
+                            onClick={() => toggleReaction(r.key)}
+                            title={r.label}
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all hover:scale-125 active:scale-95 ${
+                              myReaction === r.key ? 'bg-brand-100 ring-2 ring-brand-300' : 'hover:bg-stone-100'
+                            }`}>
+                            {r.emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
 
-            {/* Reply */}
-            <button
-              onClick={() => router.push(`/tweet/${tweet.id}`)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-all active:scale-90">
-              <MessageCircle size={13} />
-              {(tweet.reply_count ?? tweet.tweet_replies?.length ?? 0) > 0 && (
-                <span>{tweet.reply_count ?? tweet.tweet_replies?.length}</span>
-              )}
-            </button>
+                {/* Reply */}
+                <button
+                  onClick={() => router.push(`/tweet/${tweet.id}`)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-all active:scale-90">
+                  <MessageCircle size={13} />
+                  {(tweet.reply_count ?? tweet.tweet_replies?.length ?? 0) > 0 && (
+                    <span>{tweet.reply_count ?? tweet.tweet_replies?.length}</span>
+                  )}
+                </button>
 
-            {/* Repost */}
-            {tweet.repost_of === null && (
-              <button
-                onClick={handleRepost}
-                disabled={reposting}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-stone-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all active:scale-90 disabled:opacity-40">
-                <Repeat2 size={13} />
-                {(tweet.repost_count ?? 0) > 0 && <span>{tweet.repost_count}</span>}
-              </button>
+                {/* Repost */}
+                {tweet.repost_of === null && (
+                  <button
+                    onClick={handleRepost}
+                    disabled={reposting}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-stone-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all active:scale-90 disabled:opacity-40">
+                    <Repeat2 size={13} />
+                    {(tweet.repost_count ?? 0) > 0 && <span>{tweet.repost_count}</span>}
+                  </button>
+                )}
+              </>
+            ) : (
+              /* Read-only mode — outside Japan */
+              <div className="flex items-center gap-1.5">
+                {hasReactions === false && (
+                  <span className="text-[11px] text-stone-300 font-medium">🇯🇵 Japan only</span>
+                )}
+                {(tweet.reply_count ?? 0) > 0 && (
+                  <span className="flex items-center gap-1 px-2 py-1 text-xs text-stone-300">
+                    <MessageCircle size={12} />
+                    {tweet.reply_count}
+                  </span>
+                )}
+                {(tweet.repost_count ?? 0) > 0 && (
+                  <span className="flex items-center gap-1 px-2 py-1 text-xs text-stone-300">
+                    <Repeat2 size={12} />
+                    {tweet.repost_count}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>
