@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -44,7 +44,7 @@ export default function CreatePage() {
   const [postedId, setPostedId] = useState<string | null>(null)
   const [limitError, setLimitError] = useState(false)
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null)
-  const [locationStatus, setLocationStatus] = useState<'checking' | 'japan' | 'outside' | 'denied'>('checking')
+  const [locationStatus, setLocationStatus] = useState<'checking' | 'supported' | 'outside' | 'denied'>('checking')
 
   useEffect(() => {
     async function init() {
@@ -134,13 +134,13 @@ export default function CreatePage() {
       </div>
       <div className="flex flex-col items-center justify-center flex-1 px-8 text-center">
         <div className="text-6xl mb-5">🇯🇵</div>
-        <h2 className="font-extrabold text-stone-900 text-xl mb-3">Japan only feature</h2>
+        <h2 className="font-extrabold text-stone-900 text-xl mb-3">Available in 9 countries</h2>
         <p className="text-sm text-stone-500 leading-relaxed mb-6">
           Posting is only available for people physically in Japan.{'\n'}
           Come back when you're here! 🗾
         </p>
         <div className="bg-stone-50 border border-stone-100 rounded-2xl px-5 py-4 text-xs text-stone-400">
-          📍 Your location appears to be outside Japan
+          📍 Your location is outside a supported country
         </div>
       </div>
     </div>
@@ -155,7 +155,7 @@ export default function CreatePage() {
         <div className="text-6xl mb-5">📍</div>
         <h2 className="font-extrabold text-stone-900 text-xl mb-3">Location required</h2>
         <p className="text-sm text-stone-500 leading-relaxed mb-6">
-          Posting is only available in Japan. Please enable location access to continue.
+          Posting is only available in supported countries. Please enable location access to continue.
         </p>
         <button
           onClick={() => checkJapanLocation().then(s => setLocationStatus(s))}

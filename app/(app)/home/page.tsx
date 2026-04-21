@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -47,7 +47,7 @@ export default function HomePage() {
   const [followingTweets, setFollowingTweets] = useState<TweetData[]>([])
   const [tweetInput, setTweetInput] = useState('')
   const [posting, setPosting] = useState(false)
-  const [tweetLocationStatus, setTweetLocationStatus] = useState<'checking' | 'japan' | 'outside' | 'denied'>('checking')
+  const [tweetLocationStatus, setTweetLocationStatus] = useState<'checking' | 'supported' | 'outside' | 'denied'>('checking')
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -196,7 +196,7 @@ export default function HomePage() {
       {feedTab === 'following' && (
         <div className="px-4 pb-28 pt-3 space-y-0">
           {/* Tweet compose — Japan only */}
-          {tweetLocationStatus === 'japan' ? (
+          {tweetLocationStatus === 'supported' ? (
             <div className="bg-white border border-stone-100 rounded-2xl p-4 mb-3 shadow-sm">
               <textarea
                 value={tweetInput}
@@ -236,7 +236,7 @@ export default function HomePage() {
           ) : (
             <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
               {followingTweets.map(tweet => (
-                <TweetCard key={tweet.id} tweet={tweet} myId={currentUserId} onUpdate={fetchFollowingFeed} canInteract={tweetLocationStatus === 'japan'} />
+                <TweetCard key={tweet.id} tweet={tweet} myId={currentUserId} onUpdate={fetchFollowingFeed} canInteract={tweetLocationStatus === 'supported'} />
               ))}
             </div>
           )}
@@ -275,7 +275,7 @@ export default function HomePage() {
           </div>
           <button
             onClick={handleFreeNow}
-            disabled={settingFree || tweetLocationStatus !== 'japan'}
+            disabled={settingFree || tweetLocationStatus !== 'supported'}
             className={`flex-shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-50 ${
               isFreeNow
                 ? 'bg-emerald-500 text-white'

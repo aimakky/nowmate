@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -37,7 +37,7 @@ export default function VoicePage() {
   const [newCat, setNewCat] = useState('雑談')
   const [newIsOpen, setNewIsOpen] = useState(true)
   const [creating, setCreating] = useState(false)
-  const [locationStatus, setLocationStatus] = useState<'checking' | 'japan' | 'outside' | 'denied'>('checking')
+  const [locationStatus, setLocationStatus] = useState<'checking' | 'supported' | 'outside' | 'denied'>('checking')
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -111,13 +111,13 @@ export default function VoicePage() {
         <Header title="Voice" />
         <div className="flex flex-col items-center justify-center min-h-[75vh] px-8 text-center">
           <div className="text-6xl mb-5">🇯🇵</div>
-          <h2 className="font-extrabold text-stone-900 text-xl mb-3">Japan only feature</h2>
+          <h2 className="font-extrabold text-stone-900 text-xl mb-3">Available in 9 countries</h2>
           <p className="text-sm text-stone-500 leading-relaxed mb-6">
             Voice rooms are exclusively for people physically in Japan.{'\n'}
             Come back when you're here! 🗾
           </p>
           <div className="bg-stone-50 border border-stone-100 rounded-2xl px-5 py-4 text-xs text-stone-400">
-            📍 Your location appears to be outside Japan
+            📍 Your location is outside a supported country
           </div>
         </div>
       </div>
@@ -132,7 +132,7 @@ export default function VoicePage() {
           <div className="text-6xl mb-5">📍</div>
           <h2 className="font-extrabold text-stone-900 text-xl mb-3">Location required</h2>
           <p className="text-sm text-stone-500 leading-relaxed mb-6">
-            Voice rooms are only available in Japan. Please enable location access to continue.
+            Voice rooms are only available in supported countries. Please enable location access to continue.
           </p>
           <button
             onClick={() => checkJapanLocation().then(s => setLocationStatus(s))}
@@ -200,7 +200,7 @@ export default function VoicePage() {
             const hostFlag = getNationalityFlag(room.profiles?.nationality || '')
             return (
               <div key={room.id}
-                onClick={() => locationStatus === 'japan' && router.push(`/voice/${room.id}`)}
+                onClick={() => locationStatus === 'supported' && router.push(`/voice/${room.id}`)}
                 className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm cursor-pointer active:scale-[0.99] transition-all hover:shadow-md">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-3">

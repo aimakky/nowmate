@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -37,7 +37,7 @@ export default function TweetDetailPage() {
         if (data) setMyProfile(data)
       }
     })
-    checkJapanLocation().then(s => setCanInteract(s === 'japan'))
+    checkJapanLocation().then(s => setCanInteract(s === 'supported'))
   }, [])
 
   const load = useCallback(async () => {
@@ -127,7 +127,7 @@ export default function TweetDetailPage() {
           </div>
         ) : (
           <div className="bg-stone-50 border-b border-stone-100 px-4 py-3 text-center">
-            <span className="text-xs text-stone-400">🇯🇵 Replies are only available in Japan</span>
+            <span className="text-xs text-stone-400">🇯🇵 Replies are only available in supported countries</span>
           </div>
         )
       )}

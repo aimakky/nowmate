@@ -41,23 +41,41 @@ export function formatDistance(km: number): string {
   return `${Math.round(km)}km`
 }
 
-// Japan bounding box check (covers all main islands incl. Okinawa & Hokkaido)
-export function isInJapan(lat: number, lng: number): boolean {
-  return lat >= 24.0 && lat <= 46.0 && lng >= 122.0 && lng <= 154.0
+// ─── Supported Countries (geo-gate) ────────────────────────────────────────
+export const SUPPORTED_COUNTRIES = [
+  { code: 'JP', name: 'Japan',       flag: '🇯🇵', latMin: 24,   latMax: 46,  lngMin: 122,  lngMax: 154  },
+  { code: 'KR', name: 'Korea',       flag: '🇰🇷', latMin: 33,   latMax: 39,  lngMin: 124,  lngMax: 132  },
+  { code: 'CN', name: 'China',       flag: '🇨🇳', latMin: 18,   latMax: 54,  lngMin: 73,   lngMax: 135  },
+  { code: 'VN', name: 'Vietnam',     flag: '🇻🇳', latMin: 8,    latMax: 24,  lngMin: 102,  lngMax: 110  },
+  { code: 'BR', name: 'Brazil',      flag: '🇧🇷', latMin: -34,  latMax: 6,   lngMin: -74,  lngMax: -34  },
+  { code: 'PH', name: 'Philippines', flag: '🇵🇭', latMin: 4,    latMax: 21,  lngMin: 116,  lngMax: 127  },
+  { code: 'US', name: 'USA',         flag: '🇺🇸', latMin: 24,   latMax: 50,  lngMin: -125, lngMax: -66  },
+  { code: 'DE', name: 'Germany',     flag: '🇩🇪', latMin: 47,   latMax: 56,  lngMin: 6,    lngMax: 15   },
+  { code: 'AU', name: 'Australia',   flag: '🇦🇺', latMin: -44,  latMax: -10, lngMin: 113,  lngMax: 154  },
+]
+
+export function detectCountry(lat: number, lng: number) {
+  return SUPPORTED_COUNTRIES.find(c =>
+    lat >= c.latMin && lat <= c.latMax && lng >= c.lngMin && lng <= c.lngMax
+  ) ?? null
 }
 
-// Get current position and check if in Japan
-// Returns: 'japan' | 'outside' | 'denied' | 'checking'
-export async function checkJapanLocation(): Promise<'japan' | 'outside' | 'denied'> {
+// Returns: 'supported' | 'outside' | 'denied'
+export async function checkSupportedLocation(): Promise<'supported' | 'outside' | 'denied'> {
   return new Promise(resolve => {
     if (!navigator.geolocation) { resolve('denied'); return }
     navigator.geolocation.getCurrentPosition(
-      pos => resolve(isInJapan(pos.coords.latitude, pos.coords.longitude) ? 'japan' : 'outside'),
+      pos => resolve(
+        detectCountry(pos.coords.latitude, pos.coords.longitude) ? 'supported' : 'outside'
+      ),
       () => resolve('denied'),
       { timeout: 8000, maximumAge: 300000 }
     )
   })
 }
+
+// Legacy alias kept for zero-diff imports
+export const checkJapanLocation = checkSupportedLocation
 
 export function getNationalityFlag(code: string): string {
   const map: Record<string, string> = {

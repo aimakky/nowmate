@@ -49,6 +49,18 @@ const TESTIMONIALS = [
 
 const NATIONALITY_PREVIEW = ['🇧🇷','🇳🇵','🇻🇳','🇨🇳','🇵🇭','🇮🇳','🇰🇷','🇲🇲','🇺🇸','🇮🇩','🇹🇭','🇧🇩','🇫🇷','🇩🇪','🇬🇧']
 
+const SUPPORTED_COUNTRIES_LP = [
+  { flag: '🇯🇵', name: 'Japan',       status: 'Live 🟢' },
+  { flag: '🇰🇷', name: 'Korea',       status: 'Live 🟢' },
+  { flag: '🇨🇳', name: 'China',       status: 'Live 🟢' },
+  { flag: '🇻🇳', name: 'Vietnam',     status: 'Live 🟢' },
+  { flag: '🇧🇷', name: 'Brazil',      status: 'Live 🟢' },
+  { flag: '🇵🇭', name: 'Philippines', status: 'Live 🟢' },
+  { flag: '🇺🇸', name: 'USA',         status: 'Live 🟢' },
+  { flag: '🇩🇪', name: 'Germany',     status: 'Live 🟢' },
+  { flag: '🇦🇺', name: 'Australia',   status: 'Live 🟢' },
+]
+
 export default async function TopPage() {
   const supabase = createClient()
   const { count } = await supabase
@@ -223,6 +235,22 @@ export default async function TopPage() {
           className="inline-block px-8 py-3.5 bg-white text-brand-600 rounded-2xl font-extrabold text-sm shadow-md active:scale-95 transition-all">
           Find your people →
         </Link>
+      </section>
+
+      {/* Supported Countries */}
+      <section className="px-5 py-10">
+        <p className="text-xs font-bold text-stone-400 uppercase tracking-widest text-center mb-2">Now available in</p>
+        <h2 className="text-2xl font-extrabold text-center text-stone-900 mb-6">9 Countries 🌍</h2>
+        <div className="grid grid-cols-3 gap-2.5">
+          {SUPPORTED_COUNTRIES_LP.map(c => (
+            <div key={c.name} className="bg-white border border-stone-100 rounded-2xl px-3 py-3 flex flex-col items-center gap-1.5 shadow-sm">
+              <span className="text-3xl">{c.flag}</span>
+              <p className="font-bold text-stone-800 text-xs">{c.name}</p>
+              <p className="text-[10px] text-emerald-600 font-semibold">{c.status}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-center text-stone-400 mt-4">More countries coming soon →</p>
       </section>
 
       {/* I'm free now feature highlight */}

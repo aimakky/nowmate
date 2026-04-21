@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -25,7 +25,7 @@ export default function UserProfilePage() {
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (user) setMyId(user.id)
     })
-    checkJapanLocation().then(s => setCanInteract(s === 'japan'))
+    checkJapanLocation().then(s => setCanInteract(s === 'supported'))
   }, [])
 
   useEffect(() => {

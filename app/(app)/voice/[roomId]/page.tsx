@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -27,7 +27,7 @@ export default function VoiceRoomPage() {
   const [joined, setJoined] = useState(false)
   const [joining, setJoining] = useState(false)
   const [micError, setMicError] = useState(false)
-  const [locationStatus, setLocationStatus] = useState<'checking' | 'japan' | 'outside' | 'denied'>('checking')
+  const [locationStatus, setLocationStatus] = useState<'checking' | 'supported' | 'outside' | 'denied'>('checking')
 
   // WebRTC refs
   const localStreamRef = useRef<MediaStream | null>(null)
@@ -230,12 +230,12 @@ export default function VoiceRoomPage() {
       </div>
       <div className="flex flex-col items-center justify-center flex-1 px-8 text-center">
         <div className="text-6xl mb-5">🇯🇵</div>
-        <h2 className="font-extrabold text-stone-900 text-xl mb-3">Japan only feature</h2>
+        <h2 className="font-extrabold text-stone-900 text-xl mb-3">Available in 9 countries</h2>
         <p className="text-sm text-stone-500 leading-relaxed mb-6">
-          Voice rooms are exclusively for people physically in Japan. Come back when you're here! 🗾
+          Voice rooms are available in Japan, Korea, Vietnam, Brazil, Philippines, USA, Germany, China & Australia.{"\n"}You appear to be outside a supported country.
         </p>
         <div className="bg-stone-50 border border-stone-100 rounded-2xl px-5 py-4 text-xs text-stone-400">
-          📍 Your location appears to be outside Japan
+          📍 Your location is outside a supported country
         </div>
       </div>
     </div>
@@ -253,7 +253,7 @@ export default function VoiceRoomPage() {
         <div className="text-6xl mb-5">📍</div>
         <h2 className="font-extrabold text-stone-900 text-xl mb-3">Location required</h2>
         <p className="text-sm text-stone-500 leading-relaxed mb-6">
-          Voice rooms are only available in Japan. Please enable location access to continue.
+          Voice rooms are only available in supported countries. Please enable location access to continue.
         </p>
         <button
           onClick={() => checkJapanLocation().then(s => setLocationStatus(s))}
