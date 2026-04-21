@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag } from '@/lib/utils'
+import { getNationalityFlag, checkJapanLocation } from '@/lib/utils'
 import { Mic, Users, Plus, Radio } from 'lucide-react'
 import Header from '@/components/layout/Header'
 
@@ -37,11 +37,13 @@ export default function VoicePage() {
   const [newCat, setNewCat] = useState('雑談')
   const [newIsOpen, setNewIsOpen] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [locationStatus, setLocationStatus] = useState<'checking' | 'japan' | 'outside' | 'denied'>('checking')
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id)
     })
+    checkJapanLocation().then(status => setLocationStatus(status))
   }, [])
 
   const fetchRooms = useCallback(async () => {
@@ -102,9 +104,57 @@ export default function VoicePage() {
     tab === 'open' ? r.is_open : followingIds.has(r.host_id) || r.host_id === userId
   )
 
+  // Location gate
+  if (locationStatus === 'outside') {
+    return (
+      <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
+        <Header title="Voice" />
+        <div className="flex flex-col items-center justify-center min-h-[75vh] px-8 text-center">
+          <div className="text-6xl mb-5">🇯🇵</div>
+          <h2 className="font-extrabold text-stone-900 text-xl mb-3">Japan only feature</h2>
+          <p className="text-sm text-stone-500 leading-relaxed mb-6">
+            Voice rooms are exclusively for people physically in Japan.{'\n'}
+            Come back when you're here! 🗾
+          </p>
+          <div className="bg-stone-50 border border-stone-100 rounded-2xl px-5 py-4 text-xs text-stone-400">
+            📍 Your location appears to be outside Japan
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (locationStatus === 'denied') {
+    return (
+      <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
+        <Header title="Voice" />
+        <div className="flex flex-col items-center justify-center min-h-[75vh] px-8 text-center">
+          <div className="text-6xl mb-5">📍</div>
+          <h2 className="font-extrabold text-stone-900 text-xl mb-3">Location required</h2>
+          <p className="text-sm text-stone-500 leading-relaxed mb-6">
+            Voice rooms are only available in Japan. Please enable location access to continue.
+          </p>
+          <button
+            onClick={() => checkJapanLocation().then(s => setLocationStatus(s))}
+            className="px-6 py-3 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-md shadow-brand-200 active:scale-95 transition-all">
+            Try again
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
       <Header title="Voice" />
+      {locationStatus === 'checking' && (
+        <div className="px-4 pt-3">
+          <div className="bg-brand-50 border border-brand-100 rounded-2xl px-4 py-2.5 flex items-center gap-2.5">
+            <span className="w-3.5 h-3.5 border-2 border-brand-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+            <span className="text-xs font-semibold text-brand-700">Checking your location…</span>
+          </div>
+        </div>
+      )}
 
       {/* Follow / Open tabs */}
       <div className="px-4 pt-3 pb-2">
@@ -150,7 +200,7 @@ export default function VoicePage() {
             const hostFlag = getNationalityFlag(room.profiles?.nationality || '')
             return (
               <div key={room.id}
-                onClick={() => router.push(`/voice/${room.id}`)}
+                onClick={() => locationStatus === 'japan' && router.push(`/voice/${room.id}`)}
                 className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm cursor-pointer active:scale-[0.99] transition-all hover:shadow-md">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-3">

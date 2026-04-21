@@ -41,6 +41,24 @@ export function formatDistance(km: number): string {
   return `${Math.round(km)}km`
 }
 
+// Japan bounding box check (covers all main islands incl. Okinawa & Hokkaido)
+export function isInJapan(lat: number, lng: number): boolean {
+  return lat >= 24.0 && lat <= 46.0 && lng >= 122.0 && lng <= 154.0
+}
+
+// Get current position and check if in Japan
+// Returns: 'japan' | 'outside' | 'denied' | 'checking'
+export async function checkJapanLocation(): Promise<'japan' | 'outside' | 'denied'> {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) { resolve('denied'); return }
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve(isInJapan(pos.coords.latitude, pos.coords.longitude) ? 'japan' : 'outside'),
+      () => resolve('denied'),
+      { timeout: 8000, maximumAge: 300000 }
+    )
+  })
+}
+
 export function getNationalityFlag(code: string): string {
   const map: Record<string, string> = {
     US:'🇺🇸', CN:'🇨🇳', KR:'🇰🇷', VN:'🇻🇳', PH:'🇵🇭',

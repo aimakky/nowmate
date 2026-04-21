@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag } from '@/lib/utils'
+import { getNationalityFlag, checkJapanLocation } from '@/lib/utils'
 import { ArrowLeft, Mic, MicOff, Radio, LogOut, Users } from 'lucide-react'
 
 const CAT_EMOJI: Record<string, string> = {
@@ -27,6 +27,7 @@ export default function VoiceRoomPage() {
   const [joined, setJoined] = useState(false)
   const [joining, setJoining] = useState(false)
   const [micError, setMicError] = useState(false)
+  const [locationStatus, setLocationStatus] = useState<'checking' | 'japan' | 'outside' | 'denied'>('checking')
 
   // WebRTC refs
   const localStreamRef = useRef<MediaStream | null>(null)
@@ -43,6 +44,7 @@ export default function VoiceRoomPage() {
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id)
     })
+    checkJapanLocation().then(s => setLocationStatus(s))
   }, [])
 
   // Fetch room info
@@ -212,9 +214,53 @@ export default function VoiceRoomPage() {
 
   // ─────────────────────────────────────────────────────────
 
-  if (!room) return (
+  if (!room || locationStatus === 'checking') return (
     <div className="min-h-screen flex items-center justify-center bg-[#FAFAF9]">
       <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+
+  if (locationStatus === 'outside') return (
+    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9] flex flex-col">
+      <div className="bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex items-center gap-3">
+        <button onClick={() => router.back()} className="p-1 -ml-1 text-stone-500">
+          <ArrowLeft size={20} />
+        </button>
+        <p className="font-extrabold text-stone-900">Voice Room</p>
+      </div>
+      <div className="flex flex-col items-center justify-center flex-1 px-8 text-center">
+        <div className="text-6xl mb-5">🇯🇵</div>
+        <h2 className="font-extrabold text-stone-900 text-xl mb-3">Japan only feature</h2>
+        <p className="text-sm text-stone-500 leading-relaxed mb-6">
+          Voice rooms are exclusively for people physically in Japan. Come back when you're here! 🗾
+        </p>
+        <div className="bg-stone-50 border border-stone-100 rounded-2xl px-5 py-4 text-xs text-stone-400">
+          📍 Your location appears to be outside Japan
+        </div>
+      </div>
+    </div>
+  )
+
+  if (locationStatus === 'denied') return (
+    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9] flex flex-col">
+      <div className="bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex items-center gap-3">
+        <button onClick={() => router.back()} className="p-1 -ml-1 text-stone-500">
+          <ArrowLeft size={20} />
+        </button>
+        <p className="font-extrabold text-stone-900">Voice Room</p>
+      </div>
+      <div className="flex flex-col items-center justify-center flex-1 px-8 text-center">
+        <div className="text-6xl mb-5">📍</div>
+        <h2 className="font-extrabold text-stone-900 text-xl mb-3">Location required</h2>
+        <p className="text-sm text-stone-500 leading-relaxed mb-6">
+          Voice rooms are only available in Japan. Please enable location access to continue.
+        </p>
+        <button
+          onClick={() => checkJapanLocation().then(s => setLocationStatus(s))}
+          className="px-6 py-3 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-md shadow-brand-200 active:scale-95 transition-all">
+          Try again
+        </button>
+      </div>
     </div>
   )
 
