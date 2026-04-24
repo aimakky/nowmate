@@ -2,14 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Mic, MessageCircle, User, Plus } from 'lucide-react'
+import { Compass, Mic, MessageCircle, User, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const LEFT_ITEMS = [
-  { href: '/home',  label: 'Home',  icon: Home },
-  { href: '/voice', label: 'Voice', icon: Mic },
+  { href: '/villages', label: '村',    icon: Compass },
+  { href: '/voice',    label: 'Voice', icon: Mic },
 ]
 
 const RIGHT_ITEMS = [
