@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft } from 'lucide-react'
+import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 
 const VILLAGE_TYPES = [
   { id: '雑談',     label: '落ち着いた雑談村',   icon: '🌿', desc: '気軽に話せる雰囲気' },
@@ -23,7 +24,8 @@ export default function CreateVillagePage() {
   const [type,        setType]        = useState('雑談')
   const [creating,    setCreating]    = useState(false)
 
-  const selectedType = VILLAGE_TYPES.find(t => t.id === type)!
+  const selectedType  = VILLAGE_TYPES.find(t => t.id === type)!
+  const selectedStyle = VILLAGE_TYPE_STYLES[type] ?? VILLAGE_TYPE_STYLES['雑談']
 
   async function handleCreate() {
     if (!name.trim() || creating) return
@@ -66,15 +68,41 @@ export default function CreateVillagePage() {
       <div className="px-4 pt-5 pb-32 space-y-5">
 
         {/* ── Live Preview ── */}
-        <div className="bg-white border border-stone-100 rounded-2xl p-5 text-center shadow-sm">
-          <div className="text-5xl mb-3">{selectedType.icon}</div>
-          <p className="font-extrabold text-stone-900 text-base">
-            {name || '村の名前をつけてください'}
-          </p>
-          <p className="text-xs text-stone-400 mt-1">{selectedType.label}</p>
-          <p className="text-xs text-stone-500 mt-2 line-clamp-2 min-h-[2.5rem]">
-            {description || '村の説明がここに表示されます'}
-          </p>
+        <div className="rounded-3xl overflow-hidden shadow-md border border-white">
+          {/* Gradient banner */}
+          <div
+            className="relative flex items-center justify-center"
+            style={{ background: selectedStyle.gradient, height: 120 }}
+          >
+            {/* Noise */}
+            <div
+              className="absolute inset-0 opacity-[0.07]"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }}
+            />
+            <div
+              className="absolute top-2 left-2 text-[9px] font-bold text-white/80 px-2 py-0.5 rounded-full"
+              style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.2)' }}
+            >
+              🌱 芽吹いた村
+            </div>
+            <span style={{ fontSize: '2.8rem', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.25))' }}>
+              {selectedType.icon}
+            </span>
+          </div>
+          {/* Info */}
+          <div className="bg-white px-4 py-3">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <p className="font-extrabold text-stone-900 text-sm leading-tight">
+                {name || '村の名前'}
+              </p>
+              <span className={`flex-shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full border ${selectedStyle.badgeBg}`}>
+                {selectedStyle.label}
+              </span>
+            </div>
+            <p className="text-xs text-stone-400 line-clamp-2">
+              {description || '村の説明がここに表示されます'}
+            </p>
+          </div>
         </div>
 
         {/* ── Village Name ── */}
@@ -114,25 +142,30 @@ export default function CreateVillagePage() {
             村のタイプ
           </p>
           <div className="grid grid-cols-2 gap-2">
-            {VILLAGE_TYPES.map(t => (
-              <button
-                key={t.id}
-                onClick={() => setType(t.id)}
-                className={`flex items-center gap-2.5 p-3 rounded-2xl border-2 text-left transition-all active:scale-95 ${
-                  type === t.id
-                    ? 'border-brand-400 bg-brand-50'
-                    : 'border-stone-200 bg-white'
-                }`}
-              >
-                <span className="text-xl flex-shrink-0">{t.icon}</span>
-                <div className="min-w-0">
-                  <p className={`text-xs font-bold truncate ${type === t.id ? 'text-brand-700' : 'text-stone-700'}`}>
-                    {t.label}
-                  </p>
-                  <p className="text-[10px] text-stone-400 truncate">{t.desc}</p>
-                </div>
-              </button>
-            ))}
+            {VILLAGE_TYPES.map(t => {
+              const ts = VILLAGE_TYPE_STYLES[t.id] ?? VILLAGE_TYPE_STYLES['雑談']
+              const selected = type === t.id
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setType(t.id)}
+                  className="flex items-center gap-2.5 p-3 rounded-2xl border-2 text-left transition-all active:scale-95"
+                  style={
+                    selected
+                      ? { borderColor: ts.accent, background: `${ts.accent}12` }
+                      : { borderColor: '#e7e5e4', background: '#fff' }
+                  }
+                >
+                  <span className="text-xl flex-shrink-0">{t.icon}</span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold truncate" style={{ color: selected ? ts.accent : '#44403c' }}>
+                      {t.label}
+                    </p>
+                    <p className="text-[10px] text-stone-400 truncate">{t.desc}</p>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
 
@@ -149,7 +182,11 @@ export default function CreateVillagePage() {
         <button
           onClick={handleCreate}
           disabled={!name.trim() || creating}
-          className="w-full py-4 bg-brand-500 text-white rounded-2xl font-extrabold text-base disabled:opacity-40 shadow-lg shadow-brand-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          className="w-full py-4 rounded-2xl font-extrabold text-base text-white disabled:opacity-40 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          style={{
+            background: selectedStyle.gradient,
+            boxShadow: `0 8px 24px ${selectedStyle.accent}40`,
+          }}
         >
           {creating
             ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

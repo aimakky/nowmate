@@ -3,24 +3,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Compass } from 'lucide-react'
-import Header from '@/components/layout/Header'
-import VillageCard, { type Village } from '@/components/ui/VillageCard'
+import { Plus, Search } from 'lucide-react'
+import VillageCard, { type Village, getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 
 const FILTERS = [
-  { id: 'all',    label: 'すべて',    emoji: '🏕️' },
-  { id: 'busy',   label: 'にぎやか',  emoji: '🔥' },
-  { id: 'safe',   label: '安心',      emoji: '🕊️' },
-  { id: 'new',    label: '新しい村',  emoji: '🌱' },
-  { id: 'member', label: '参加中',    emoji: '🏠' },
-]
-
-const SECTION_HEADERS = [
-  { filter: 'all',    title: 'あなたに合いそうな村',    sub: 'にぎわっている順に表示しています' },
-  { filter: 'busy',   title: '今にぎわっている村',       sub: '今週の投稿が多い村です' },
-  { filter: 'safe',   title: '安心して話せる村',         sub: '安全・安心な交流が続いています' },
-  { filter: 'new',    title: '新しくできた村',           sub: '最近誕生した村を探してみましょう' },
-  { filter: 'member', title: '参加中の村',               sub: 'あなたが住民の村です' },
+  { id: 'all',    label: 'すべて',   emoji: '🏕️' },
+  { id: 'busy',   label: 'にぎやか', emoji: '🔥' },
+  { id: 'safe',   label: '安心',     emoji: '🕊️' },
+  { id: 'new',    label: '新しい村', emoji: '🌱' },
+  { id: 'member', label: '参加中',   emoji: '🏠' },
 ]
 
 export default function VillagesPage() {
@@ -31,6 +22,8 @@ export default function VillagesPage() {
   const [search, setSearch]       = useState('')
   const [userId, setUserId]       = useState<string | null>(null)
   const [memberIds, setMemberIds] = useState<Set<string>>(new Set())
+
+  const weeklyEvent = getCurrentWeeklyEvent()
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -62,7 +55,7 @@ export default function VillagesPage() {
     setMemberIds(new Set((data || []).map((m: any) => m.village_id)))
   }, [userId])
 
-  useEffect(() => { fetchVillages() }, [fetchVillages])
+  useEffect(() => { fetchVillages() },    [fetchVillages])
   useEffect(() => { fetchMemberships() }, [fetchMemberships])
 
   async function handleJoin(villageId: string) {
@@ -78,8 +71,6 @@ export default function VillagesPage() {
     }
   }
 
-  const sectionInfo = SECTION_HEADERS.find(s => s.filter === filter)!
-
   const displayed = villages.filter(v => {
     if (filter === 'member') return memberIds.has(v.id)
     if (search) {
@@ -89,45 +80,74 @@ export default function VillagesPage() {
     return true
   })
 
+  const featured   = displayed[0]
+  const rest       = displayed.slice(1)
+
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
-      {/* ── Custom Header ── */}
-      <div className="bg-white border-b border-stone-100 px-4 pt-5 pb-3 sticky top-0 z-10">
-        <div className="flex items-center justify-between mb-3">
+
+      {/* ── Hero Header ── */}
+      <div
+        className="relative overflow-hidden px-4 pt-12 pb-5 sticky top-0 z-10"
+        style={{ background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)' }}
+      >
+        {/* Stars background */}
+        <div className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage: `radial-gradient(1px 1px at 20% 30%, white, transparent),
+              radial-gradient(1px 1px at 60% 15%, white, transparent),
+              radial-gradient(1.5px 1.5px at 80% 55%, white, transparent),
+              radial-gradient(1px 1px at 35% 70%, white, transparent),
+              radial-gradient(1px 1px at 90% 25%, white, transparent),
+              radial-gradient(1px 1px at 50% 85%, white, transparent)`,
+          }}
+        />
+
+        {/* Weekly event badge */}
+        <div className="flex items-center gap-1.5 mb-3">
+          <span className="text-sm">{weeklyEvent.icon}</span>
+          <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">
+            今週のイベント：{weeklyEvent.label}
+          </span>
+        </div>
+
+        <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            <h1 className="font-extrabold text-stone-900 text-lg leading-tight">村を探す</h1>
-            <p className="text-xs text-stone-400">自分に合う村を見つけよう</p>
+            <h1 className="font-extrabold text-white text-2xl leading-tight mb-0.5">村を探す</h1>
+            <p className="text-xs text-white/50">自分に合う村で話そう</p>
           </div>
           <button
             onClick={() => router.push('/villages/create')}
-            className="flex items-center gap-1.5 px-3 py-2 bg-brand-500 text-white rounded-xl text-xs font-bold shadow-sm shadow-brand-200 active:scale-95 transition-all"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold flex-shrink-0 active:scale-95 transition-all"
+            style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}
           >
-            <Plus size={14} /> 村を作る
+            <Plus size={13} /> 村を作る
           </button>
         </div>
 
         {/* Search */}
         <div className="relative">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="村を検索..."
-            className="w-full pl-9 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-2xl text-sm focus:outline-none focus:border-brand-400 focus:bg-white transition-colors"
+            className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-sm focus:outline-none text-white placeholder-white/30"
+            style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)' }}
           />
         </div>
       </div>
 
       {/* ── Filters ── */}
-      <div className="px-4 pt-3 pb-2 flex gap-2 overflow-x-auto scrollbar-none">
+      <div className="px-4 py-3 flex gap-2 overflow-x-auto scrollbar-none bg-white border-b border-stone-100 shadow-sm">
         {FILTERS.map(f => (
           <button
             key={f.id}
             onClick={() => { setFilter(f.id); setSearch('') }}
             className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
               filter === f.id
-                ? 'bg-brand-500 text-white border-brand-500 shadow-sm shadow-brand-200'
-                : 'bg-white border-stone-200 text-stone-500'
+                ? 'bg-stone-900 text-white border-stone-900 shadow-md'
+                : 'bg-white border-stone-200 text-stone-500 hover:border-stone-300'
             }`}
           >
             <span>{f.emoji}</span> {f.label}
@@ -135,29 +155,39 @@ export default function VillagesPage() {
         ))}
       </div>
 
-      {/* ── Section title ── */}
-      {!search && (
-        <div className="px-4 pt-1 pb-3">
-          <p className="font-bold text-stone-800 text-sm">{sectionInfo.title}</p>
-          <p className="text-[11px] text-stone-400">{sectionInfo.sub}</p>
-        </div>
-      )}
+      {/* ── Content ── */}
+      <div className="px-4 pt-4 pb-32">
 
-      {/* ── Village list ── */}
-      <div className="px-4 pb-32 space-y-3">
         {loading ? (
-          [...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-stone-100 h-56 animate-pulse" />
-          ))
+          <div className="space-y-3">
+            {/* Featured skeleton */}
+            <div className="bg-white rounded-3xl overflow-hidden shadow-md animate-pulse">
+              <div className="h-[120px] bg-stone-200" />
+              <div className="p-4 space-y-2">
+                <div className="h-4 bg-stone-100 rounded-full w-2/3" />
+                <div className="h-3 bg-stone-100 rounded-full w-full" />
+                <div className="h-3 bg-stone-100 rounded-full w-4/5" />
+              </div>
+            </div>
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="bg-white rounded-3xl overflow-hidden shadow-md animate-pulse">
+                <div className="h-24 bg-stone-200" />
+                <div className="p-4 space-y-2">
+                  <div className="h-4 bg-stone-100 rounded-full w-2/3" />
+                  <div className="h-3 bg-stone-100 rounded-full w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : displayed.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="text-5xl mb-3">
+          <div className="text-center py-20">
+            <div className="text-6xl mb-4">
               {filter === 'member' ? '🏠' : '🏕️'}
             </div>
-            <p className="font-bold text-stone-700">
+            <p className="font-extrabold text-stone-800 text-base mb-1.5">
               {filter === 'member' ? 'まだ村に参加していません' : '村が見つかりません'}
             </p>
-            <p className="text-sm text-stone-400 mt-1.5 mb-5">
+            <p className="text-sm text-stone-400 mb-6">
               {filter === 'member'
                 ? '気に入った村に「参加する」を押してみましょう'
                 : '最初の村を作ってみましょう'}
@@ -165,28 +195,66 @@ export default function VillagesPage() {
             {filter !== 'member' && (
               <button
                 onClick={() => router.push('/villages/create')}
-                className="px-5 py-2.5 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-sm active:scale-95 transition-all"
+                className="px-6 py-3 bg-stone-900 text-white rounded-2xl text-sm font-bold shadow-md active:scale-95 transition-all"
               >
                 🏕️ 村を作る
               </button>
             )}
           </div>
         ) : (
-          displayed.map(v => (
-            <VillageCard
-              key={v.id}
-              village={v}
-              isMember={memberIds.has(v.id)}
-              onJoin={() => handleJoin(v.id)}
-            />
-          ))
+          <>
+            {/* ── Featured (first village) ── */}
+            {featured && !search && (
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest">おすすめの村</span>
+                  <div className="flex-1 h-px bg-stone-100" />
+                </div>
+                <VillageCard
+                  village={featured}
+                  isMember={memberIds.has(featured.id)}
+                  onJoin={() => handleJoin(featured.id)}
+                  featured={true}
+                />
+              </div>
+            )}
+
+            {/* ── Rest ── */}
+            {(search ? displayed : rest).length > 0 && (
+              <>
+                {!search && (
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest">
+                      {filter === 'all'    ? 'その他の村'    :
+                       filter === 'busy'   ? '今にぎわっている村' :
+                       filter === 'safe'   ? '安心して話せる村'   :
+                       filter === 'new'    ? '新しくできた村'     :
+                       '参加中の村'}
+                    </span>
+                    <div className="flex-1 h-px bg-stone-100" />
+                  </div>
+                )}
+                <div className="space-y-3">
+                  {(search ? displayed : rest).map(v => (
+                    <VillageCard
+                      key={v.id}
+                      village={v}
+                      isMember={memberIds.has(v.id)}
+                      onJoin={() => handleJoin(v.id)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
         )}
       </div>
 
       {/* ── FAB ── */}
       <button
         onClick={() => router.push('/villages/create')}
-        className="fixed bottom-24 right-5 w-14 h-14 bg-brand-500 rounded-2xl flex items-center justify-center shadow-xl shadow-brand-200 hover:bg-brand-600 active:scale-90 transition-all z-30"
+        className="fixed bottom-24 right-5 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
+        style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', boxShadow: '0 8px 24px rgba(99,102,241,0.4)' }}
       >
         <Plus size={22} className="text-white" />
       </button>
