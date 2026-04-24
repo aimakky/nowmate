@@ -9,9 +9,12 @@ import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import ProfileCompletionBanner from '@/components/features/ProfileCompletionBanner'
 import FindByIdModal from '@/components/features/FindByIdModal'
+import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
+import { TrustCard, TrustHowToCard } from '@/components/ui/TrustBadge'
 import { createClient } from '@/lib/supabase/client'
 import { PURPOSES, NATIONALITIES } from '@/lib/constants'
 import { getNationalityFlag } from '@/lib/utils'
+import { getUserTrust } from '@/lib/trust'
 import type { Profile } from '@/types'
 
 interface Stats {
@@ -26,11 +29,13 @@ export default function MyPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [stats, setStats] = useState<Stats>({ likes_sent: 0, likes_received: 0, matches: 0, messages_sent: 0 })
   const [loading, setLoading] = useState(true)
-  const [showPremiumModal, setShowPremiumModal] = useState(false)
-  const [showFindById, setShowFindById] = useState(false)
-  const [idCopied, setIdCopied] = useState(false)
-  const [followers, setFollowers] = useState(0)
-  const [following, setFollowing] = useState(0)
+  const [showPremiumModal,  setShowPremiumModal]  = useState(false)
+  const [showFindById,      setShowFindById]      = useState(false)
+  const [showPhoneVerify,   setShowPhoneVerify]   = useState(false)
+  const [idCopied,          setIdCopied]          = useState(false)
+  const [followers,         setFollowers]         = useState(0)
+  const [following,         setFollowing]         = useState(0)
+  const [trust,             setTrust]             = useState<any>(null)
 
   useEffect(() => {
     async function load() {
@@ -54,6 +59,11 @@ export default function MyPage() {
       if (!p) { router.push('/onboarding'); return }
       setProfile(p)
       setStats({ likes_sent: ls ?? 0, likes_received: lr ?? 0, matches: mc ?? 0, messages_sent: ms ?? 0 })
+
+      // Trust score
+      const trustData = await getUserTrust(user.id)
+      setTrust(trustData)
+
       setLoading(false)
     }
     load()
@@ -129,6 +139,34 @@ export default function MyPage() {
 
         {/* Profile completion */}
         <ProfileCompletionBanner profile={profile} />
+
+        {/* ── 村での信頼 ── */}
+        {trust && (
+          <TrustCard trust={{
+            score:          trust.score,
+            tier:           trust.tier,
+            total_helped:   trust.total_helped,
+            phone_verified: trust.phone_verified,
+          }} />
+        )}
+
+        {/* 電話未認証バナー */}
+        {trust && !trust.phone_verified && (
+          <button
+            onClick={() => setShowPhoneVerify(true)}
+            className="w-full bg-sky-50 border border-sky-200 rounded-2xl px-4 py-3.5 flex items-center gap-3 text-left active:scale-[0.99] transition-all"
+          >
+            <span className="text-2xl">📱</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-sky-700">電話番号を認証する</p>
+              <p className="text-xs text-sky-500 mt-0.5">投稿・通話が解放されます · +30pt</p>
+            </div>
+            <span className="text-sky-400">›</span>
+          </button>
+        )}
+
+        {/* ポイントの積み方 */}
+        {trust && <TrustHowToCard />}
 
         {/* Follow stats */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4">
@@ -277,6 +315,21 @@ export default function MyPage() {
           Sign Out
         </Button>
       </div>
+
+      {/* Phone Verify Modal */}
+      {showPhoneVerify && (
+        <PhoneVerifyModal
+          onClose={() => setShowPhoneVerify(false)}
+          onVerified={async () => {
+            const supabase = createClient()
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+              const t = await getUserTrust(user.id)
+              setTrust(t)
+            }
+          }}
+        />
+      )}
 
       {/* Find by ID Modal */}
       {showFindById && profile && (
