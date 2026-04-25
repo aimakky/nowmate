@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   ArrowLeft, Mic, Users, Send, Flag, CheckCircle, Crown,
-  Pin, Trash2, Settings2, BookOpen, Save, X, PinOff,
+  Pin, Trash2, Settings2, BookOpen, Save, X, PinOff, Flame,
 } from 'lucide-react'
 import { timeAgo } from '@/lib/utils'
 import { getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
@@ -14,7 +14,7 @@ import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
 import { getUserTrust, getTierById, awardPoints } from '@/lib/trust'
 
 // ─── Constants ────────────────────────────────────────────────
-const POST_CATEGORIES = ['全部', '雑談', '相談', '仕事', '趣味', '今日のひとこと', '初参加あいさつ']
+const POST_CATEGORIES = ['全部', '雑談', '相談', '仕事', '趣味', '今日のひとこと', '初参加あいさつ', '今日のお題']
 
 const CAT_ICONS: Record<string, string> = {
   '全部':           '📋',
@@ -24,6 +24,7 @@ const CAT_ICONS: Record<string, string> = {
   '趣味':           '🎨',
   '今日のひとこと':   '✏️',
   '初参加あいさつ':   '🌱',
+  '今日のお題':       '❓',
 }
 
 const CAT_COLORS: Record<string, string> = {
@@ -33,6 +34,7 @@ const CAT_COLORS: Record<string, string> = {
   '趣味':           '#d44060',
   '今日のひとこと':   '#d99820',
   '初参加あいさつ':   '#14a89a',
+  '今日のお題':       '#7c3aed',
 }
 
 const VOICE_ROOM_NAMES: Record<string, string> = {
@@ -58,9 +60,27 @@ function getLevelInfo(count: number) {
 
 function getWeekLabel(weekStart: string) {
   const d = new Date(weekStart)
-  const m = d.getMonth() + 1
-  const w = d.getDate()
-  return `${m}月${w}日の週`
+  return `${d.getMonth() + 1}月${d.getDate()}日の週`
+}
+
+/** JST 時刻（時）を返す */
+function getJSTHour() {
+  return (new Date().getUTCHours() + 9) % 24
+}
+
+/** JST 日付文字列 YYYY-MM-DD を返す */
+function getJSTDate() {
+  const jst = new Date(Date.now() + 9 * 3600 * 1000)
+  return jst.toISOString().split('T')[0]
+}
+
+// ─── ストリーク表示ヘルパー ────────────────────────────────────
+function streakEmoji(n: number) {
+  if (n >= 30) return '✨'
+  if (n >= 14) return '🌳'
+  if (n >= 7)  return '🔥'
+  if (n >= 3)  return '🌿'
+  return '🌱'
 }
 
 // ─── 相談解決モーダル ─────────────────────────────────────────
@@ -77,24 +97,11 @@ function ResolveModal({
     setResolving(true)
     const supabase = createClient()
     await supabase.from('village_posts')
-      .update({ is_resolved: true, resolved_by_user_id: userId })
-      .eq('id', post.id)
+      .update({ is_resolved: true, resolved_by_user_id: userId }).eq('id', post.id)
     await supabase.from('consultation_resolutions').upsert({
       post_id: post.id, resolved_by: userId, helper_user_id: selectedHelper ?? null,
     })
-    if (selectedHelper) {
-      const { data: helperTrust } = await supabase
-        .from('user_trust').select('tier').eq('user_id', selectedHelper).single()
-      const helperTier = getTierById(helperTrust?.tier ?? 'visitor')
-      if (helperTier.canConsult) {
-        await supabase.from('villages')
-          .update({ welcome_reply_count_7d: post.village_id })
-          .eq('id', post.village_id)
-      }
-    }
-    onResolved()
-    onClose()
-    setResolving(false)
+    onResolved(); onClose(); setResolving(false)
   }
 
   return (
@@ -105,8 +112,7 @@ function ResolveModal({
           <div className="text-3xl mb-2">✅</div>
           <h3 className="font-extrabold text-stone-900 text-base">解決済みにする</h3>
           <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-            誰かのおかげで解決しましたか？<br />
-            選ぶとその住民の信頼ポイントが上がります。
+            誰かのおかげで解決しましたか？<br />選ぶとその住民の信頼ポイントが上がります。
           </p>
         </div>
         <div className="space-y-2 mb-5 max-h-48 overflow-y-auto">
@@ -115,13 +121,9 @@ function ResolveModal({
             className={`w-full text-left px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
               selectedHelper === null ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-stone-200 text-stone-600'
             }`}
-          >
-            🙋 自分で解決しました
-          </button>
+          >🙋 自分で解決しました</button>
           {others.map(m => (
-            <button
-              key={m.user_id}
-              onClick={() => setSelectedHelper(m.user_id)}
+            <button key={m.user_id} onClick={() => setSelectedHelper(m.user_id)}
               className={`w-full text-left px-4 py-2.5 rounded-xl border flex items-center gap-2.5 transition-all ${
                 selectedHelper === m.user_id ? 'border-emerald-400 bg-emerald-50' : 'border-stone-200'
               }`}
@@ -133,26 +135,18 @@ function ResolveModal({
                 {m.profiles?.display_name ?? '住民'}
               </span>
               {selectedHelper === m.user_id && (
-                <span className="text-[10px] bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
-                  +25pt
-                </span>
+                <span className="text-[10px] bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">+25pt</span>
               )}
             </button>
           ))}
         </div>
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-3 rounded-2xl border border-stone-200 text-sm font-bold text-stone-500">
-            キャンセル
-          </button>
-          <button
-            onClick={handleResolve}
-            disabled={resolving}
+          <button onClick={onClose} className="flex-1 py-3 rounded-2xl border border-stone-200 text-sm font-bold text-stone-500">キャンセル</button>
+          <button onClick={handleResolve} disabled={resolving}
             className="flex-1 py-3 rounded-2xl text-white text-sm font-bold disabled:opacity-40 active:scale-95 transition-all"
             style={{ background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' }}
           >
-            {resolving
-              ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
-              : '解決済みにする'}
+            {resolving ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" /> : '解決済みにする'}
           </button>
         </div>
       </div>
@@ -160,27 +154,221 @@ function ResolveModal({
   )
 }
 
-// ─── PostCard (shared between Posts tab and Admin tab) ────────
+// ─── 今日のお題カード ─────────────────────────────────────────
+function DailyPromptCard({
+  prompt, stampCount, hasStamped, style, canPost,
+  onAnswer, onSuggest, isBonfireTime,
+}: {
+  prompt: { id: string; text: string } | null
+  stampCount: number
+  hasStamped: boolean
+  style: any
+  canPost: boolean
+  onAnswer: (text: string) => Promise<void>
+  onSuggest: (text: string) => Promise<void>
+  isBonfireTime: boolean
+}) {
+  const [expanded,   setExpanded]   = useState(false)
+  const [answer,     setAnswer]     = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [showSuggest, setShowSuggest] = useState(false)
+  const [suggestText, setSuggestText] = useState('')
+  const [suggesting,  setSuggesting]  = useState(false)
+
+  async function handleAnswer() {
+    if (!answer.trim()) return
+    setSubmitting(true)
+    await onAnswer(answer.trim())
+    setAnswer('')
+    setExpanded(false)
+    setSubmitting(false)
+  }
+
+  async function handleSuggest() {
+    if (!suggestText.trim()) return
+    setSuggesting(true)
+    await onSuggest(suggestText.trim())
+    setSuggestText('')
+    setShowSuggest(false)
+    setSuggesting(false)
+  }
+
+  if (!prompt) return null
+
+  return (
+    <div
+      className="rounded-3xl overflow-hidden shadow-md"
+      style={{
+        background: isBonfireTime
+          ? 'linear-gradient(135deg, #1c0a00 0%, #3d1500 100%)'
+          : `linear-gradient(135deg, ${style.accent}18 0%, ${style.accent}08 100%)`,
+        border: isBonfireTime
+          ? '1px solid rgba(255,140,0,0.3)'
+          : `1px solid ${style.accent}30`,
+      }}
+    >
+      {/* Header */}
+      <div
+        className="px-4 py-2.5 flex items-center gap-2"
+        style={{
+          background: isBonfireTime
+            ? 'linear-gradient(90deg, rgba(255,100,0,0.4) 0%, rgba(255,60,0,0.2) 100%)'
+            : `${style.accent}20`,
+        }}
+      >
+        <span className="text-base">{isBonfireTime ? '🔥' : '❓'}</span>
+        <p className="text-xs font-extrabold uppercase tracking-wider flex-1"
+          style={{ color: isBonfireTime ? '#ff9950' : style.accent }}>
+          {isBonfireTime ? '焚き火のお題' : '今日のお題'}
+        </p>
+        {stampCount > 0 && (
+          <span
+            className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+            style={{
+              background: isBonfireTime ? 'rgba(255,140,0,0.25)' : `${style.accent}20`,
+              color: isBonfireTime ? '#ffaa60' : style.accent,
+            }}
+          >
+            {stampCount}人が回答
+          </span>
+        )}
+      </div>
+
+      <div className="p-4">
+        {/* Question */}
+        <p className="font-bold leading-relaxed mb-3"
+          style={{ color: isBonfireTime ? '#ffe0c0' : '#1c1917', fontSize: '0.9rem' }}>
+          {prompt.text}
+        </p>
+
+        {hasStamped ? (
+          /* 回答済み */
+          <div className="flex items-center gap-2">
+            <span
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
+              style={{
+                background: isBonfireTime ? 'rgba(255,140,0,0.2)' : `${style.accent}15`,
+                color: isBonfireTime ? '#ffaa60' : style.accent,
+              }}
+            >
+              <CheckCircle size={12} /> 今日は答えました ✨
+            </span>
+            <button
+              onClick={() => setShowSuggest(v => !v)}
+              className="text-[10px] text-stone-400 hover:text-stone-600 transition-colors ml-auto"
+            >
+              別のお題を提案する
+            </button>
+          </div>
+        ) : (
+          /* 未回答 */
+          expanded ? (
+            <div className="space-y-2">
+              <textarea
+                value={answer}
+                onChange={e => setAnswer(e.target.value.slice(0, 200))}
+                placeholder="あなたの答えを書いてください…"
+                rows={3}
+                autoFocus
+                className="w-full px-3 py-2.5 rounded-2xl border text-sm resize-none focus:outline-none leading-relaxed"
+                style={{
+                  background: isBonfireTime ? 'rgba(255,255,255,0.06)' : '#fff',
+                  borderColor: isBonfireTime ? 'rgba(255,140,0,0.3)' : `${style.accent}40`,
+                  color: isBonfireTime ? '#ffe0c0' : '#1c1917',
+                }}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setExpanded(false); setAnswer('') }}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold border"
+                  style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#a8a29e' }}
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={handleAnswer}
+                  disabled={!answer.trim() || submitting}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-1"
+                  style={{
+                    background: isBonfireTime
+                      ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)'
+                      : style.accent,
+                  }}
+                >
+                  {submitting
+                    ? <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                    : <><Send size={11} /> 答える</>}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => canPost ? setExpanded(true) : undefined}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white active:scale-95 transition-all"
+                style={{
+                  background: isBonfireTime
+                    ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)'
+                    : style.accent,
+                  opacity: canPost ? 1 : 0.5,
+                }}
+              >
+                {canPost ? '✍️ 答える' : '📱 認証すると答えられます'}
+              </button>
+              <button
+                onClick={() => setShowSuggest(v => !v)}
+                className="text-[10px] text-stone-400 hover:text-stone-600 transition-colors flex-shrink-0"
+              >
+                提案する
+              </button>
+            </div>
+          )
+        )}
+
+        {/* お題を提案するフォーム */}
+        {showSuggest && (
+          <div className="mt-3 pt-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+            <p className="text-[10px] font-bold mb-2" style={{ color: isBonfireTime ? '#ffaa60' : style.accent }}>
+              💡 明日以降のお題を提案する
+            </p>
+            <div className="flex gap-2">
+              <input
+                value={suggestText}
+                onChange={e => setSuggestText(e.target.value.slice(0, 80))}
+                placeholder="みんなへの質問を書いてね"
+                className="flex-1 px-3 py-2 rounded-xl border text-xs focus:outline-none"
+                style={{
+                  background: isBonfireTime ? 'rgba(255,255,255,0.06)' : '#fff',
+                  borderColor: isBonfireTime ? 'rgba(255,140,0,0.2)' : '#e7e5e4',
+                  color: isBonfireTime ? '#ffe0c0' : '#1c1917',
+                }}
+              />
+              <button
+                onClick={handleSuggest}
+                disabled={!suggestText.trim() || suggesting}
+                className="px-3 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40"
+                style={{ background: style.accent }}
+              >
+                {suggesting ? '…' : '送る'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── PostCard ─────────────────────────────────────────────────
 function PostCard({
-  post,
-  style,
-  likedPosts,
-  onToggleLike,
-  onResolve,
-  onPin,
-  onDelete,
-  isPinned,
-  userId,
-  isHost,
+  post, style, likedPosts, onToggleLike, onResolve, onPin, onDelete, isPinned, userId, isHost,
 }: {
   post: any; style: any; likedPosts: Set<string>
   onToggleLike: (id: string) => void
   onResolve?: (post: any) => void
-  onPin?: (postId: string | null) => void
-  onDelete?: (postId: string) => void
-  isPinned?: boolean
-  userId: string | null
-  isHost: boolean
+  onPin?: (id: string | null) => void
+  onDelete?: (id: string) => void
+  isPinned?: boolean; userId: string | null; isHost: boolean
 }) {
   const catColor = CAT_COLORS[post.category] ?? style.accent
 
@@ -188,119 +376,76 @@ function PostCard({
     <div
       className="bg-white rounded-3xl overflow-hidden shadow-sm"
       style={{
-        border: isPinned
-          ? `1px solid ${style.accent}60`
-          : post.is_resolved
-            ? '1px solid #bbf7d0'
-            : '1px solid #f5f5f4',
-        boxShadow: isPinned
-          ? `0 2px 16px ${style.accent}18`
-          : post.is_resolved
-            ? '0 2px 12px rgba(34,197,94,0.08)'
-            : '0 2px 12px rgba(0,0,0,0.05)',
+        border: isPinned ? `1px solid ${style.accent}60`
+          : post.is_resolved ? '1px solid #bbf7d0' : '1px solid #f5f5f4',
+        boxShadow: isPinned ? `0 2px 16px ${style.accent}18`
+          : post.is_resolved ? '0 2px 12px rgba(34,197,94,0.08)' : '0 2px 12px rgba(0,0,0,0.05)',
       }}
     >
-      {/* Category accent bar */}
       <div className="h-1 w-full" style={{ background: isPinned ? style.accent : catColor }} />
-
       <div className="p-4">
-        {/* Pinned banner */}
         {isPinned && (
-          <div
-            className="flex items-center gap-1.5 text-[10px] font-bold mb-2 px-2 py-1 rounded-full w-fit"
-            style={{ background: `${style.accent}15`, color: style.accent }}
-          >
+          <div className="flex items-center gap-1.5 text-[10px] font-bold mb-2 px-2 py-1 rounded-full w-fit"
+            style={{ background: `${style.accent}15`, color: style.accent }}>
             <Pin size={10} /> ピン留め中
           </div>
         )}
-
-        {/* Post header */}
         <div className="flex items-start justify-between mb-2.5">
           <div className="flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold text-white flex-shrink-0"
-              style={{ background: `linear-gradient(135deg, ${catColor} 0%, ${catColor}99 100%)` }}
-            >
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold text-white flex-shrink-0"
+              style={{ background: `linear-gradient(135deg, ${catColor} 0%, ${catColor}99 100%)` }}>
               {post.profiles?.display_name?.[0] ?? '?'}
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <p className="text-xs font-bold text-stone-800">
-                  {post.profiles?.display_name ?? '住民'}
-                </p>
+                <p className="text-xs font-bold text-stone-800">{post.profiles?.display_name ?? '住民'}</p>
                 {post.user_trust?.tier && <TrustBadge tierId={post.user_trust.tier} size="xs" />}
               </div>
               <p className="text-[10px] text-stone-400">{timeAgo(post.created_at)}</p>
             </div>
           </div>
-
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {post.is_resolved && (
               <span className="flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
                 <CheckCircle size={10} /> 解決済み
               </span>
             )}
-            <span
-              className="text-[10px] px-2 py-0.5 rounded-full font-bold"
-              style={{ background: `${catColor}15`, color: catColor, border: `1px solid ${catColor}30` }}
-            >
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
+              style={{ background: `${catColor}15`, color: catColor, border: `1px solid ${catColor}30` }}>
               {CAT_ICONS[post.category]} {post.category}
             </span>
           </div>
         </div>
-
         <p className="text-sm text-stone-800 leading-relaxed mb-3">{post.content}</p>
-
-        {/* Actions */}
         <div className="flex items-center justify-between pt-2 border-t border-stone-50">
-          <button
-            onClick={() => onToggleLike(post.id)}
+          <button onClick={() => onToggleLike(post.id)}
             className="flex items-center gap-1.5 text-xs font-semibold transition-all active:scale-90"
-            style={{ color: likedPosts.has(post.id) ? '#f43f5e' : '#a8a29e' }}
-          >
+            style={{ color: likedPosts.has(post.id) ? '#f43f5e' : '#a8a29e' }}>
             <span className="text-base">{likedPosts.has(post.id) ? '❤️' : '🤍'}</span>
             <span>{post.reaction_count}</span>
           </button>
-
           <div className="flex items-center gap-1.5">
             {post.category === '相談' && post.user_id === userId && !post.is_resolved && onResolve && (
-              <button
-                onClick={() => onResolve(post)}
+              <button onClick={() => onResolve(post)}
                 className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full active:scale-95 transition-all"
-                style={{ background: '#dcfce7', color: '#16a34a', border: '1px solid #bbf7d0' }}
-              >
+                style={{ background: '#dcfce7', color: '#16a34a', border: '1px solid #bbf7d0' }}>
                 <CheckCircle size={10} /> 解決済みにする
               </button>
             )}
-
-            {/* Host-only: pin/unpin */}
             {isHost && onPin && (
-              <button
-                onClick={() => onPin(isPinned ? null : post.id)}
+              <button onClick={() => onPin(isPinned ? null : post.id)}
                 className="p-1.5 rounded-full transition-all active:scale-90"
-                style={{ background: isPinned ? `${style.accent}20` : '#f5f5f4', color: isPinned ? style.accent : '#a8a29e' }}
-                title={isPinned ? 'ピン解除' : 'ピン留め'}
-              >
+                style={{ background: isPinned ? `${style.accent}20` : '#f5f5f4', color: isPinned ? style.accent : '#a8a29e' }}>
                 {isPinned ? <PinOff size={12} /> : <Pin size={12} />}
               </button>
             )}
-
-            {/* Host-only: delete */}
             {isHost && onDelete && post.user_id !== userId && (
-              <button
-                onClick={() => onDelete(post.id)}
-                className="p-1.5 rounded-full transition-all active:scale-90 text-stone-300 hover:text-red-400 hover:bg-red-50"
-                title="投稿を削除"
-              >
+              <button onClick={() => onDelete(post.id)}
+                className="p-1.5 rounded-full transition-all active:scale-90 text-stone-300 hover:text-red-400 hover:bg-red-50">
                 <Trash2 size={12} />
               </button>
             )}
-
-            {!isHost && (
-              <button className="text-stone-200 hover:text-stone-400 transition-colors">
-                <Flag size={12} />
-              </button>
-            )}
+            {!isHost && <button className="text-stone-200 hover:text-stone-400 transition-colors"><Flag size={12} /></button>}
           </div>
         </div>
       </div>
@@ -311,8 +456,9 @@ function PostCard({
 // ─── Main Page ────────────────────────────────────────────────
 export default function VillageDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const router = useRouter()
+  const router  = useRouter()
 
+  // ── Core state ──────────────────────────────────────────
   const [village,     setVillage]     = useState<any>(null)
   const [posts,       setPosts]       = useState<any[]>([])
   const [voiceRooms,  setVoiceRooms]  = useState<any[]>([])
@@ -321,31 +467,45 @@ export default function VillageDetailPage() {
   const [diary,       setDiary]       = useState<any[]>([])
   const [pinnedPost,  setPinnedPost]  = useState<any>(null)
 
-  const [tab,         setTab]         = useState<'posts' | 'voice' | 'members' | 'diary' | 'admin'>('posts')
-  const [postCat,     setPostCat]     = useState('全部')
-  const [isMember,    setIsMember]    = useState(false)
-  const [isHost,      setIsHost]      = useState(false)
-  const [userId,      setUserId]      = useState<string | null>(null)
-  const [loading,     setLoading]     = useState(true)
-  const [newPost,     setNewPost]     = useState('')
-  const [newPostCat,  setNewPostCat]  = useState('雑談')
-  const [posting,     setPosting]     = useState(false)
-  const [likedPosts,  setLikedPosts]  = useState<Set<string>>(new Set())
-  const [joining,     setJoining]     = useState(false)
+  const [tab,       setTab]       = useState<'posts' | 'voice' | 'members' | 'diary' | 'admin'>('posts')
+  const [postCat,   setPostCat]   = useState('全部')
+  const [isMember,  setIsMember]  = useState(false)
+  const [isHost,    setIsHost]    = useState(false)
+  const [userId,    setUserId]    = useState<string | null>(null)
+  const [loading,   setLoading]   = useState(true)
+  const [newPost,   setNewPost]   = useState('')
+  const [newPostCat,setNewPostCat]= useState('雑談')
+  const [posting,   setPosting]   = useState(false)
+  const [likedPosts,setLikedPosts]= useState<Set<string>>(new Set())
+  const [joining,   setJoining]   = useState(false)
 
-  // Admin state
-  const [rules,       setRules]       = useState<string[]>(['', '', ''])
-  const [savingRules, setSavingRules] = useState(false)
-  const [savedRules,  setSavedRules]  = useState(false)
+  // ── 中毒性 3機能 ─────────────────────────────────────────
+  const [todayPrompt,     setTodayPrompt]     = useState<{ id: string; text: string } | null>(null)
+  const [stampCount,      setStampCount]      = useState(0)
+  const [hasStampedToday, setHasStampedToday] = useState(false)
+  const [visitStreak,     setVisitStreak]     = useState(0)
+  const [jstHour,         setJstHour]         = useState(getJSTHour)
+
+  // ── Admin state ──────────────────────────────────────────
+  const [rules,           setRules]           = useState<string[]>(['', '', ''])
+  const [savingRules,     setSavingRules]     = useState(false)
+  const [savedRules,      setSavedRules]      = useState(false)
   const [generatingDiary, setGeneratingDiary] = useState(false)
-  const [kickingUser, setKickingUser] = useState<string | null>(null)
+  const [kickingUser,     setKickingUser]     = useState<string | null>(null)
 
   const [showPhoneVerify, setShowPhoneVerify] = useState(false)
   const [resolvePost,     setResolvePost]     = useState<any>(null)
 
-  const weeklyEvent = getCurrentWeeklyEvent()
+  // JST時刻を毎分更新
+  useEffect(() => {
+    const t = setInterval(() => setJstHour(getJSTHour()), 60_000)
+    return () => clearInterval(t)
+  }, [])
 
-  // ── Auth ──────────────────────────────────────────────────
+  const isBonfireTime = jstHour >= 21 && jstHour < 23
+  const weeklyEvent   = getCurrentWeeklyEvent()
+
+  // ── Auth ─────────────────────────────────────────────────
   useEffect(() => {
     createClient().auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
@@ -355,14 +515,11 @@ export default function VillageDetailPage() {
     })
   }, [])
 
-  // ── Fetchers ──────────────────────────────────────────────
+  // ── Fetchers ─────────────────────────────────────────────
   const fetchVillage = useCallback(async () => {
     const { data } = await createClient()
       .from('villages').select('*, profiles(display_name)').eq('id', id).single()
-    if (data) {
-      setVillage(data)
-      setRules(data.rules ?? ['', '', ''])
-    }
+    if (data) { setVillage(data); setRules(data.rules ?? ['', '', '']) }
     setLoading(false)
   }, [id])
 
@@ -379,20 +536,17 @@ export default function VillageDetailPage() {
     let q = createClient()
       .from('village_posts')
       .select('*, profiles(display_name, avatar_url), user_trust!village_posts_user_id_fkey(tier, is_shadow_banned)')
-      .eq('village_id', id)
-      .order('created_at', { ascending: false })
-      .limit(50)
+      .eq('village_id', id).order('created_at', { ascending: false }).limit(50)
     if (postCat !== '全部') q = q.eq('category', postCat)
     const { data } = await q
-    const filtered = (data || []).filter((p: any) => !p.user_trust?.is_shadow_banned)
-    setPosts(filtered)
+    setPosts((data || []).filter((p: any) => !p.user_trust?.is_shadow_banned))
   }, [id, postCat])
 
   const fetchPinnedPost = useCallback(async () => {
     if (!village?.pinned_post_id) { setPinnedPost(null); return }
     const { data } = await createClient()
       .from('village_posts')
-      .select('*, profiles(display_name, avatar_url), user_trust!village_posts_user_id_fkey(tier)')
+      .select('*, profiles(display_name), user_trust!village_posts_user_id_fkey(tier)')
       .eq('id', village.pinned_post_id).single()
     setPinnedPost(data ?? null)
   }, [village?.pinned_post_id])
@@ -401,18 +555,15 @@ export default function VillageDetailPage() {
     const { data } = await createClient()
       .from('voice_rooms')
       .select('*, profiles(display_name), voice_participants(user_id, is_listener)')
-      .eq('village_id', id).eq('status', 'active')
-      .order('created_at', { ascending: false })
+      .eq('village_id', id).eq('status', 'active').order('created_at', { ascending: false })
     setVoiceRooms(data || [])
   }, [id])
 
   const fetchMembers = useCallback(async () => {
     const { data } = await createClient()
       .from('village_members')
-      .select('user_id, role, joined_at, profiles(display_name, avatar_url), user_trust(tier)')
-      .eq('village_id', id)
-      .order('joined_at', { ascending: true })
-      .limit(50)
+      .select('user_id, role, joined_at, visit_streak, max_streak, profiles(display_name, avatar_url), user_trust(tier)')
+      .eq('village_id', id).order('joined_at', { ascending: true }).limit(50)
     setMembers(data || [])
   }, [id])
 
@@ -427,20 +578,48 @@ export default function VillageDetailPage() {
     const { data } = await createClient()
       .from('village_diary')
       .select('*, top_post:top_post_id(content, profiles(display_name))')
-      .eq('village_id', id)
-      .order('week_start', { ascending: false })
-      .limit(8)
+      .eq('village_id', id).order('week_start', { ascending: false }).limit(8)
     setDiary(data || [])
   }, [id])
 
-  useEffect(() => { fetchVillage() },    [fetchVillage])
-  useEffect(() => { checkMembership() }, [checkMembership])
-  useEffect(() => { fetchPosts() },      [fetchPosts])
-  useEffect(() => { fetchVoiceRooms() }, [fetchVoiceRooms])
-  useEffect(() => { fetchMembers() },    [fetchMembers])
-  useEffect(() => { fetchLikes() },      [fetchLikes])
-  useEffect(() => { fetchDiary() },      [fetchDiary])
-  useEffect(() => { fetchPinnedPost() }, [fetchPinnedPost])
+  const fetchTodayPrompt = useCallback(async () => {
+    const { data } = await createClient().rpc('get_today_prompt')
+    setTodayPrompt((data as any)?.[0] ?? null)
+  }, [])
+
+  const fetchStamps = useCallback(async () => {
+    if (!userId) return
+    const today = getJSTDate()
+    const supabase = createClient()
+    const [{ count }, { data: myStamp }] = await Promise.all([
+      supabase.from('daily_stamps').select('*', { count: 'exact', head: true })
+        .eq('village_id', id).eq('date', today),
+      supabase.from('daily_stamps').select('id')
+        .eq('village_id', id).eq('user_id', userId).eq('date', today).maybeSingle(),
+    ])
+    setStampCount(count ?? 0)
+    setHasStampedToday(!!myStamp)
+  }, [id, userId])
+
+  const recordVisit = useCallback(async () => {
+    if (!userId || !isMember) return
+    const { data } = await createClient().rpc('record_village_visit', {
+      p_village_id: id, p_user_id: userId,
+    })
+    setVisitStreak(data ?? 0)
+  }, [id, userId, isMember])
+
+  useEffect(() => { fetchVillage() },     [fetchVillage])
+  useEffect(() => { checkMembership() },  [checkMembership])
+  useEffect(() => { fetchPosts() },       [fetchPosts])
+  useEffect(() => { fetchVoiceRooms() },  [fetchVoiceRooms])
+  useEffect(() => { fetchMembers() },     [fetchMembers])
+  useEffect(() => { fetchLikes() },       [fetchLikes])
+  useEffect(() => { fetchDiary() },       [fetchDiary])
+  useEffect(() => { fetchPinnedPost() },  [fetchPinnedPost])
+  useEffect(() => { fetchTodayPrompt() }, [fetchTodayPrompt])
+  useEffect(() => { fetchStamps() },      [fetchStamps])
+  useEffect(() => { recordVisit() },      [recordVisit])
 
   const tier = userTrust ? getTierById(userTrust.tier) : getTierById('visitor')
 
@@ -451,29 +630,22 @@ export default function VillageDetailPage() {
     const supabase = createClient()
     if (isMember) {
       await supabase.from('village_members').delete().eq('village_id', id).eq('user_id', userId)
-      setIsMember(false)
-      setIsHost(false)
+      setIsMember(false); setIsHost(false)
     } else {
       await supabase.from('village_members').insert({ village_id: id, user_id: userId })
       setIsMember(true)
-
       // Milestone check
-      const { data: updatedVillage } = await supabase
-        .from('villages').select('member_count, milestone_reached').eq('id', id).single()
-      if (updatedVillage) {
-        const count    = updatedVillage.member_count ?? 0
-        const reached  = (updatedVillage.milestone_reached as number[]) ?? []
-        const nextMile = MILESTONES.find(m => m <= count && !reached.includes(m))
+      const { data: v } = await supabase.from('villages').select('member_count, milestone_reached').eq('id', id).single()
+      if (v) {
+        const reached  = (v.milestone_reached as number[]) ?? []
+        const nextMile = MILESTONES.find(m => m <= (v.member_count ?? 0) && !reached.includes(m))
         if (nextMile) {
           await supabase.rpc('notify_village_milestone', { p_village_id: id, p_milestone: nextMile })
-          await supabase.from('villages').update({
-            milestone_reached: [...reached, nextMile],
-          }).eq('id', id)
+          await supabase.from('villages').update({ milestone_reached: [...reached, nextMile] }).eq('id', id)
         }
       }
     }
-    setJoining(false)
-    fetchVillage()
+    setJoining(false); fetchVillage()
   }
 
   async function submitPost() {
@@ -481,13 +653,30 @@ export default function VillageDetailPage() {
     if (!tier.canPost) { setShowPhoneVerify(true); return }
     setPosting(true)
     await createClient().from('village_posts').insert({
-      village_id: id, user_id: userId,
-      content: newPost.trim(), category: newPostCat,
+      village_id: id, user_id: userId, content: newPost.trim(), category: newPostCat,
     })
     if (newPostCat === '初参加あいさつ') await awardPoints('welcomed_new_member', id)
-    setNewPost('')
+    setNewPost(''); await fetchPosts(); setPosting(false)
+  }
+
+  async function answerPrompt(text: string) {
+    if (!userId || !todayPrompt) return
+    if (!tier.canPost) { setShowPhoneVerify(true); return }
+    const supabase = createClient()
+    await supabase.from('village_posts').insert({
+      village_id: id, user_id: userId, content: text, category: '今日のお題',
+    })
+    await supabase.from('daily_stamps').upsert({
+      user_id: userId, village_id: id, date: getJSTDate(),
+    }, { onConflict: 'user_id,village_id,date', ignoreDuplicates: true })
+    setHasStampedToday(true)
+    setStampCount(prev => prev + 1)
     await fetchPosts()
-    setPosting(false)
+  }
+
+  async function submitPromptSuggestion(text: string) {
+    if (!userId || !text.trim()) return
+    await createClient().from('prompt_pool').insert({ text, submitted_by: userId })
   }
 
   async function toggleLike(postId: string) {
@@ -509,9 +698,8 @@ export default function VillageDetailPage() {
     if (!userId || !village) return
     if (!tier.canCreateRoom) { setShowPhoneVerify(true); return }
     const supabase = createClient()
-    const roomName = VOICE_ROOM_NAMES[village.type] ?? '🌿 村の広場'
     const { data } = await supabase.from('voice_rooms').insert({
-      host_id: userId, title: roomName,
+      host_id: userId, title: VOICE_ROOM_NAMES[village.type] ?? '🌿 村の広場',
       category: '雑談', is_open: true, village_id: id,
     }).select().single()
     if (data) {
@@ -521,20 +709,16 @@ export default function VillageDetailPage() {
     }
   }
 
-  // ── Admin actions ─────────────────────────────────────────
+  // ── Admin ─────────────────────────────────────────────────
   async function saveRules() {
     setSavingRules(true)
-    const cleaned = rules.map(r => r.trim()).filter(Boolean)
-    await createClient().from('villages').update({ rules: cleaned }).eq('id', id)
-    setSavingRules(false)
-    setSavedRules(true)
-    setTimeout(() => setSavedRules(false), 2000)
-    fetchVillage()
+    await createClient().from('villages').update({ rules: rules.map(r => r.trim()).filter(Boolean) }).eq('id', id)
+    setSavingRules(false); setSavedRules(true); setTimeout(() => setSavedRules(false), 2000); fetchVillage()
   }
 
   async function setPinnedPostId(postId: string | null) {
     await createClient().from('villages').update({ pinned_post_id: postId }).eq('id', id)
-    await fetchVillage()
+    fetchVillage()
   }
 
   async function deletePost(postId: string) {
@@ -548,8 +732,7 @@ export default function VillageDetailPage() {
 
   async function kickMember(memberId: string) {
     setKickingUser(memberId)
-    await createClient().from('village_members').delete()
-      .eq('village_id', id).eq('user_id', memberId)
+    await createClient().from('village_members').delete().eq('village_id', id).eq('user_id', memberId)
     setMembers(prev => prev.filter(m => m.user_id !== memberId))
     setKickingUser(null)
   }
@@ -557,8 +740,7 @@ export default function VillageDetailPage() {
   async function generateDiary() {
     setGeneratingDiary(true)
     await createClient().rpc('generate_village_diary', { p_village_id: id })
-    await fetchDiary()
-    setGeneratingDiary(false)
+    await fetchDiary(); setGeneratingDiary(false)
   }
 
   // ─────────────────────────────────────────────────────────
@@ -575,6 +757,11 @@ export default function VillageDetailPage() {
   const safetyScore  = village.report_count_7d === 0 ? 5 : village.report_count_7d < 2 ? 3 : 1
   const welcomeScore = Math.min(5, Math.floor(village.welcome_reply_count_7d / 2) + 1)
 
+  // 焚き火モード：ヒーローに重ねるグラデント
+  const bonfireOverlay = isBonfireTime
+    ? 'linear-gradient(180deg, rgba(120,40,0,0.55) 0%, rgba(180,60,0,0.35) 100%)'
+    : null
+
   const allTabs = [
     { key: 'posts',   label: '📝 投稿' },
     { key: 'voice',   label: '🎙️ 通話' },
@@ -586,59 +773,60 @@ export default function VillageDetailPage() {
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
 
-      {/* ══ HERO HEADER ═══════════════════════════════════════ */}
-      <div
-        className="relative overflow-hidden"
-        style={{ background: style.gradient, minHeight: 200 }}
-      >
+      {/* ══ HERO ═══════════════════════════════════════════════ */}
+      <div className="relative overflow-hidden" style={{ background: style.gradient, minHeight: 200 }}>
         {/* Noise texture */}
-        <div
-          className="absolute inset-0 opacity-[0.07]"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-          }}
+        <div className="absolute inset-0 opacity-[0.07]"
+          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }}
         />
+        {/* 焚き火オーバーレイ */}
+        {bonfireOverlay && (
+          <div className="absolute inset-0 transition-opacity duration-1000" style={{ background: bonfireOverlay }} />
+        )}
 
         {/* Back */}
-        <button
-          onClick={() => router.back()}
+        <button onClick={() => router.back()}
           className="absolute top-4 left-4 w-9 h-9 flex items-center justify-center rounded-full active:scale-90 transition-all z-10"
-          style={{ background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}
-        >
+          style={{ background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}>
           <ArrowLeft size={18} className="text-white" />
         </button>
 
-        {/* Join / Joined */}
-        <button
-          onClick={toggleMembership}
-          disabled={joining}
+        {/* Join */}
+        <button onClick={toggleMembership} disabled={joining}
           className="absolute top-4 right-4 px-4 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 z-10"
-          style={
-            isMember
-              ? { background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(8px)' }
-              : { background: '#fff', color: style.accent, fontWeight: 800 }
-          }
-        >
+          style={isMember
+            ? { background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(8px)' }
+            : { background: '#fff', color: style.accent, fontWeight: 800 }}>
           {joining ? '…' : isMember ? '住民 ✓' : '参加する →'}
         </button>
 
         {/* Level badge */}
-        <div
-          className="absolute top-14 left-4 flex items-center gap-1 text-white text-[9px] font-bold px-2.5 py-1 rounded-full"
-          style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}
-        >
+        <div className="absolute top-14 left-4 flex items-center gap-1 text-white text-[9px] font-bold px-2.5 py-1 rounded-full"
+          style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}>
           {level.icon} {level.label}
         </div>
 
-        {village.season_title && (
-          <div
-            className="absolute top-14 right-4 text-white text-[9px] font-bold px-2.5 py-1 rounded-full max-w-[130px] truncate"
-            style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}
-          >
+        {/* ストリークバッジ */}
+        {visitStreak >= 2 && (
+          <div className="absolute top-14 right-4 flex items-center gap-1 text-[9px] font-bold px-2.5 py-1 rounded-full"
+            style={{
+              background: isBonfireTime ? 'rgba(255,100,0,0.35)' : 'rgba(0,0,0,0.25)',
+              border: `1px solid ${isBonfireTime ? 'rgba(255,140,0,0.5)' : 'rgba(255,255,255,0.2)'}`,
+              backdropFilter: 'blur(8px)',
+              color: isBonfireTime ? '#ffcc80' : '#fde047',
+            }}>
+            {streakEmoji(visitStreak)} {visitStreak}日連続
+          </div>
+        )}
+
+        {village.season_title && !visitStreak && (
+          <div className="absolute top-14 right-4 text-white text-[9px] font-bold px-2.5 py-1 rounded-full max-w-[130px] truncate"
+            style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}>
             {village.season_title}
           </div>
         )}
 
+        {/* Center */}
         <div className="flex flex-col items-center justify-center pt-16 pb-6 px-6">
           <span style={{ fontSize: '3.5rem', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))' }}>
             {village.icon}
@@ -650,20 +838,16 @@ export default function VillageDetailPage() {
             {village.description}
           </p>
           {isHost && (
-            <div
-              className="mt-2 flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
-              style={{ background: 'rgba(255,215,0,0.25)', color: '#fde047', border: '1px solid rgba(255,215,0,0.3)' }}
-            >
+            <div className="mt-2 flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
+              style={{ background: 'rgba(255,215,0,0.25)', color: '#fde047', border: '1px solid rgba(255,215,0,0.3)' }}>
               <Crown size={10} /> 村長
             </div>
           )}
         </div>
 
         {/* Stats bar */}
-        <div
-          className="mx-4 mb-4 rounded-2xl px-4 py-3 grid grid-cols-3 gap-3"
-          style={{ background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.15)' }}
-        >
+        <div className="mx-4 mb-4 rounded-2xl px-4 py-3 grid grid-cols-3 gap-3"
+          style={{ background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.15)' }}>
           {[
             { label: 'にぎわい',   value: busyScore },
             { label: '安心度',     value: safetyScore },
@@ -673,11 +857,8 @@ export default function VillageDetailPage() {
               <p className="text-[9px] text-white/50 font-semibold mb-1">{label}</p>
               <div className="flex gap-0.5 justify-center">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-2.5 h-1.5 rounded-full"
-                    style={{ background: i < value ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.2)' }}
-                  />
+                  <div key={i} className="w-2.5 h-1.5 rounded-full"
+                    style={{ background: i < value ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.2)' }} />
                 ))}
               </div>
             </div>
@@ -685,13 +866,32 @@ export default function VillageDetailPage() {
         </div>
       </div>
 
+      {/* ══ 焚き火バナー（21-23時JST）══════════════════════════ */}
+      {isBonfireTime && (
+        <div className="mx-4 mt-3 rounded-2xl px-4 py-3 flex items-center gap-3"
+          style={{ background: 'linear-gradient(135deg, #1c0a00 0%, #2d1200 100%)', border: '1px solid rgba(255,120,0,0.35)' }}>
+          <div className="relative flex-shrink-0">
+            <span className="text-2xl">🔥</span>
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-orange-400 rounded-full animate-ping" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs font-extrabold text-orange-300">夜の焚き火タイム</p>
+            <p className="text-[10px] text-orange-500/80 mt-0.5">
+              {stampCount > 0 ? `今夜${stampCount}人が集まっています` : '今夜最初に火をつけよう'}
+            </p>
+          </div>
+          <div className="flex items-center gap-1 text-[10px] font-bold text-orange-400/60">
+            <Flame size={11} />
+            <span>〜23:00</span>
+          </div>
+        </div>
+      )}
+
       {/* ── 見習いバナー ── */}
       {userTrust && userTrust.tier === 'visitor' && (
-        <div
-          onClick={() => setShowPhoneVerify(true)}
+        <div onClick={() => setShowPhoneVerify(true)}
           className="mx-4 mt-3 rounded-2xl px-4 py-3 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all"
-          style={{ background: `${style.accent}15`, border: `1px solid ${style.accent}30` }}
-        >
+          style={{ background: `${style.accent}15`, border: `1px solid ${style.accent}30` }}>
           <span className="text-2xl">📱</span>
           <div className="flex-1">
             <p className="text-xs font-bold" style={{ color: style.accent }}>電話番号を認証して「住民」になろう</p>
@@ -701,12 +901,10 @@ export default function VillageDetailPage() {
         </div>
       )}
 
-      {/* ── Rules banner (if set) ── */}
+      {/* ── ルールバナー ── */}
       {village.rules && village.rules.length > 0 && (
-        <div
-          className="mx-4 mt-3 rounded-2xl px-4 py-3"
-          style={{ background: `${style.accent}08`, border: `1px solid ${style.accent}20` }}
-        >
+        <div className="mx-4 mt-3 rounded-2xl px-4 py-3"
+          style={{ background: `${style.accent}08`, border: `1px solid ${style.accent}20` }}>
           <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: style.accent }}>
             📜 村のルール
           </p>
@@ -718,11 +916,9 @@ export default function VillageDetailPage() {
         </div>
       )}
 
-      {/* ── Weekly event ── */}
-      <div
-        className="mx-4 mt-3 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl"
-        style={{ background: `${style.accent}12`, border: `1px solid ${style.accent}25` }}
-      >
+      {/* ── 週次イベント ── */}
+      <div className="mx-4 mt-3 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl"
+        style={{ background: `${style.accent}12`, border: `1px solid ${style.accent}25` }}>
         <span className="text-base">{weeklyEvent.icon}</span>
         <div>
           <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: style.accent }}>今週のイベント</p>
@@ -736,121 +932,97 @@ export default function VillageDetailPage() {
 
       {/* ── Tabs ── */}
       <div className="px-4 pt-3 pb-2 sticky top-0 z-10 bg-[#FAFAF9]">
-        <div
-          className="flex gap-1 rounded-2xl p-1 overflow-x-auto scrollbar-none"
-          style={{ background: `${style.accent}12`, border: `1px solid ${style.accent}20` }}
-        >
+        <div className="flex gap-1 rounded-2xl p-1 overflow-x-auto scrollbar-none"
+          style={{ background: `${style.accent}12`, border: `1px solid ${style.accent}20` }}>
           {allTabs.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setTab(key as any)}
+            <button key={key} onClick={() => setTab(key as any)}
               className="flex-shrink-0 flex-1 py-2 text-[11px] font-bold rounded-xl transition-all whitespace-nowrap px-1"
-              style={
-                tab === key
-                  ? { background: style.accent, color: '#fff', boxShadow: `0 2px 8px ${style.accent}40` }
-                  : { color: style.accent }
-              }
-            >
+              style={tab === key
+                ? { background: style.accent, color: '#fff', boxShadow: `0 2px 8px ${style.accent}40` }
+                : { color: style.accent }}>
               {label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* ════════════════ POSTS TAB ════════════════ */}
+      {/* ════════ POSTS TAB ════════ */}
       {tab === 'posts' && (
         <div className="px-4 pb-32 space-y-3">
 
-          {/* Category filter */}
+          {/* カテゴリフィルター */}
           <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
             {POST_CATEGORIES.map(c => (
-              <button
-                key={c}
-                onClick={() => setPostCat(c)}
+              <button key={c} onClick={() => setPostCat(c)}
                 className="flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-bold border transition-all"
-                style={
-                  postCat === c
-                    ? { background: style.accent, color: '#fff', border: `1px solid ${style.accent}` }
-                    : { background: '#fff', borderColor: '#e7e5e4', color: '#78716c' }
-                }
-              >
+                style={postCat === c
+                  ? { background: c === '今日のお題' ? '#7c3aed' : style.accent, color: '#fff', border: `1px solid ${c === '今日のお題' ? '#7c3aed' : style.accent}` }
+                  : { background: '#fff', borderColor: '#e7e5e4', color: '#78716c' }}>
                 {CAT_ICONS[c]} {c}
               </button>
             ))}
           </div>
 
-          {/* Compose */}
+          {/* 今日のお題カード（メンバーのみ表示） */}
+          {isMember && (
+            <DailyPromptCard
+              prompt={todayPrompt}
+              stampCount={stampCount}
+              hasStamped={hasStampedToday}
+              style={style}
+              canPost={tier.canPost}
+              onAnswer={answerPrompt}
+              onSuggest={submitPromptSuggestion}
+              isBonfireTime={isBonfireTime}
+            />
+          )}
+
+          {/* 投稿コンポーザー */}
           {isMember && (
             tier.canPost ? (
               <div className="bg-white border border-stone-100 rounded-3xl p-4 shadow-md"
-                style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}
-              >
+                style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                 <div className="flex gap-1.5 overflow-x-auto scrollbar-none mb-3 pb-0.5">
                   {POST_CATEGORIES.slice(1).map(c => (
-                    <button
-                      key={c}
-                      onClick={() => setNewPostCat(c)}
+                    <button key={c} onClick={() => setNewPostCat(c)}
                       className="flex-shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all"
-                      style={
-                        newPostCat === c
-                          ? { background: `${CAT_COLORS[c] ?? style.accent}18`, color: CAT_COLORS[c] ?? style.accent, borderColor: `${CAT_COLORS[c] ?? style.accent}40` }
-                          : { background: '#fafaf9', borderColor: '#e7e5e4', color: '#a8a29e' }
-                      }
-                    >
+                      style={newPostCat === c
+                        ? { background: `${CAT_COLORS[c] ?? style.accent}18`, color: CAT_COLORS[c] ?? style.accent, borderColor: `${CAT_COLORS[c] ?? style.accent}40` }
+                        : { background: '#fafaf9', borderColor: '#e7e5e4', color: '#a8a29e' }}>
                       {CAT_ICONS[c]} {c}
                     </button>
                   ))}
                 </div>
                 <div className="flex gap-2 items-end">
-                  <textarea
-                    value={newPost}
-                    onChange={e => setNewPost(e.target.value)}
-                    placeholder="村に投稿する…"
-                    rows={2}
-                    maxLength={300}
-                    className="flex-1 px-3 py-2.5 rounded-2xl border border-stone-200 text-sm resize-none focus:outline-none"
-                  />
-                  <button
-                    onClick={submitPost}
-                    disabled={!newPost.trim() || posting}
+                  <textarea value={newPost} onChange={e => setNewPost(e.target.value)}
+                    placeholder="村に投稿する…" rows={2} maxLength={300}
+                    className="flex-1 px-3 py-2.5 rounded-2xl border border-stone-200 text-sm resize-none focus:outline-none" />
+                  <button onClick={submitPost} disabled={!newPost.trim() || posting}
                     className="w-11 h-11 rounded-2xl flex items-center justify-center disabled:opacity-40 active:scale-90 transition-all flex-shrink-0"
-                    style={{ background: style.accent, boxShadow: `0 4px 12px ${style.accent}50` }}
-                  >
-                    {posting
-                      ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      : <Send size={15} className="text-white" />}
+                    style={{ background: style.accent, boxShadow: `0 4px 12px ${style.accent}50` }}>
+                    {posting ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Send size={15} className="text-white" />}
                   </button>
                 </div>
               </div>
             ) : (
-              <button
-                onClick={() => setShowPhoneVerify(true)}
+              <button onClick={() => setShowPhoneVerify(true)}
                 className="w-full rounded-2xl px-4 py-3.5 text-center border-dashed border-2 transition-all active:scale-[0.99]"
-                style={{ borderColor: `${style.accent}40`, background: `${style.accent}08` }}
-              >
+                style={{ borderColor: `${style.accent}40`, background: `${style.accent}08` }}>
                 <p className="text-xs font-bold" style={{ color: style.accent }}>📱 電話認証すると投稿できます</p>
                 <p className="text-[10px] text-stone-400 mt-0.5">タップして認証 (+30pt)</p>
               </button>
             )
           )}
 
-          {/* Pinned post */}
+          {/* ピン留め投稿 */}
           {pinnedPost && postCat === '全部' && (
-            <PostCard
-              post={pinnedPost}
-              style={style}
-              likedPosts={likedPosts}
-              onToggleLike={toggleLike}
-              onResolve={setResolvePost}
-              onPin={isHost ? setPinnedPostId : undefined}
-              onDelete={isHost ? deletePost : undefined}
-              isPinned={true}
-              userId={userId}
-              isHost={isHost}
-            />
+            <PostCard post={pinnedPost} style={style} likedPosts={likedPosts}
+              onToggleLike={toggleLike} onResolve={setResolvePost}
+              onPin={isHost ? setPinnedPostId : undefined} onDelete={isHost ? deletePost : undefined}
+              isPinned={true} userId={userId} isHost={isHost} />
           )}
 
-          {/* Post list */}
+          {/* 投稿一覧 */}
           {posts.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-4xl mb-3">🌿</p>
@@ -858,58 +1030,37 @@ export default function VillageDetailPage() {
               <p className="text-xs text-stone-400 mt-1">最初の投稿をしてみましょう</p>
             </div>
           ) : (
-            posts
-              .filter(p => p.id !== village?.pinned_post_id || postCat !== '全部')
-              .map(post => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  style={style}
-                  likedPosts={likedPosts}
-                  onToggleLike={toggleLike}
-                  onResolve={setResolvePost}
-                  onPin={isHost ? setPinnedPostId : undefined}
-                  onDelete={isHost ? deletePost : undefined}
-                  isPinned={false}
-                  userId={userId}
-                  isHost={isHost}
-                />
-              ))
+            posts.filter(p => p.id !== village?.pinned_post_id || postCat !== '全部').map(post => (
+              <PostCard key={post.id} post={post} style={style} likedPosts={likedPosts}
+                onToggleLike={toggleLike} onResolve={setResolvePost}
+                onPin={isHost ? setPinnedPostId : undefined} onDelete={isHost ? deletePost : undefined}
+                isPinned={false} userId={userId} isHost={isHost} />
+            ))
           )}
         </div>
       )}
 
-      {/* ════════════════ VOICE TAB ════════════════ */}
+      {/* ════════ VOICE TAB ════════ */}
       {tab === 'voice' && (
         <div className="px-4 pb-32 space-y-3 pt-1">
-          <div
-            className="rounded-2xl px-4 py-3.5 flex items-start gap-3"
-            style={{ background: `${style.accent}10`, border: `1px solid ${style.accent}20` }}
-          >
+          <div className="rounded-2xl px-4 py-3.5 flex items-start gap-3"
+            style={{ background: `${style.accent}10`, border: `1px solid ${style.accent}20` }}>
             <span className="text-2xl mt-0.5">🎙️</span>
             <div>
               <p className="text-sm font-bold" style={{ color: style.accent }}>村の通話広場</p>
-              <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
-                住民と声で話せます。聴くだけでも参加OKです。
-              </p>
+              <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">住民と声で話せます。聴くだけでも参加OKです。</p>
             </div>
           </div>
-
           {isMember && (
-            <button
-              onClick={createVoiceRoom}
+            <button onClick={createVoiceRoom}
               className="w-full py-4 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-all"
-              style={
-                tier.canCreateRoom
-                  ? { background: style.gradient, color: '#fff', boxShadow: `0 6px 20px ${style.accent}40` }
-                  : { background: '#f5f5f4', color: '#a8a29e' }
-              }
-            >
+              style={tier.canCreateRoom
+                ? { background: style.gradient, color: '#fff', boxShadow: `0 6px 20px ${style.accent}40` }
+                : { background: '#f5f5f4', color: '#a8a29e' }}>
               <Mic size={16} />
               {tier.canCreateRoom ? '広場を開く' : '「常連」になると広場を開けます'}
             </button>
           )}
-
           {voiceRooms.length === 0 ? (
             <div className="text-center py-14">
               <p className="text-4xl mb-3">🔥</p>
@@ -917,51 +1068,39 @@ export default function VillageDetailPage() {
               <p className="text-xs text-stone-400 mt-1">最初に広場を開いてみましょう</p>
             </div>
           ) : (
-            voiceRooms.map(room => {
-              const total = room.voice_participants?.length ?? 0
-              return (
-                <div
-                  key={room.id}
-                  onClick={() => router.push(`/voice/${room.id}`)}
-                  className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm cursor-pointer active:scale-[0.99] hover:shadow-md transition-all"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-stone-900 text-sm">{room.title}</p>
-                      <p className="text-xs text-stone-400 mt-0.5">{room.profiles?.display_name} が開催中</p>
+            voiceRooms.map(room => (
+              <div key={room.id} onClick={() => router.push(`/voice/${room.id}`)}
+                className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm cursor-pointer active:scale-[0.99] hover:shadow-md transition-all">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-stone-900 text-sm">{room.title}</p>
+                    <p className="text-xs text-stone-400 mt-0.5">{room.profiles?.display_name} が開催中</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 bg-red-50 border border-red-100 px-2 py-1 rounded-full">
+                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                      <span className="text-xs font-bold text-red-600">LIVE</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 bg-red-50 border border-red-100 px-2 py-1 rounded-full">
-                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                        <span className="text-xs font-bold text-red-600">LIVE</span>
-                      </div>
-                      <span className="flex items-center gap-1 text-xs font-semibold text-stone-600">
-                        <Users size={12} /> {total}
-                      </span>
-                    </div>
+                    <span className="flex items-center gap-1 text-xs font-semibold text-stone-600">
+                      <Users size={12} /> {room.voice_participants?.length ?? 0}
+                    </span>
                   </div>
                 </div>
-              )
-            })
+              </div>
+            ))
           )}
         </div>
       )}
 
-      {/* ════════════════ MEMBERS TAB ════════════════ */}
+      {/* ════════ MEMBERS TAB ════════ */}
       {tab === 'members' && (
         <div className="px-4 pb-32 space-y-2 pt-1">
-          <p className="text-xs text-stone-400 font-semibold mb-3">
-            {village.member_count} 人が住んでいます
-          </p>
+          <p className="text-xs text-stone-400 font-semibold mb-3">{village.member_count} 人が住んでいます</p>
           {members.map((m: any) => (
-            <div
-              key={m.user_id}
-              className="bg-white border border-stone-100 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm"
-            >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold text-white flex-shrink-0"
-                style={{ background: style.gradient }}
-              >
+            <div key={m.user_id}
+              className="bg-white border border-stone-100 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold text-white flex-shrink-0"
+                style={{ background: style.gradient }}>
                 {m.profiles?.display_name?.[0] ?? '?'}
               </div>
               <div className="flex-1 min-w-0">
@@ -969,15 +1108,21 @@ export default function VillageDetailPage() {
                   <p className="text-sm font-bold text-stone-800 truncate">{m.profiles?.display_name ?? '住民'}</p>
                   {m.user_trust?.tier && <TrustBadge tierId={m.user_trust.tier} size="xs" />}
                 </div>
-                <p className="text-[10px] text-stone-400">
-                  {m.role === 'host' ? '👑 村長' : '住民'} · {timeAgo(m.joined_at)}に参加
-                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-[10px] text-stone-400">
+                    {m.role === 'host' ? '👑 村長' : '住民'} · {timeAgo(m.joined_at)}に参加
+                  </p>
+                  {/* ストリーク表示 */}
+                  {(m.visit_streak ?? 0) >= 3 && (
+                    <span className="text-[10px] font-bold" style={{ color: style.accent }}>
+                      {streakEmoji(m.visit_streak)} {m.visit_streak}日連続
+                    </span>
+                  )}
+                </div>
               </div>
               {m.role === 'host' && (
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: `${style.accent}20` }}
-                >
+                <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: `${style.accent}20` }}>
                   <Crown size={13} style={{ color: style.accent }} />
                 </div>
               )}
@@ -986,100 +1131,62 @@ export default function VillageDetailPage() {
         </div>
       )}
 
-      {/* ════════════════ DIARY TAB ════════════════ */}
+      {/* ════════ DIARY TAB ════════ */}
       {tab === 'diary' && (
         <div className="px-4 pb-32 space-y-3 pt-1">
-          {/* Header */}
-          <div
-            className="rounded-2xl px-4 py-3.5 flex items-start gap-3"
-            style={{ background: `${style.accent}10`, border: `1px solid ${style.accent}20` }}
-          >
+          <div className="rounded-2xl px-4 py-3.5 flex items-start gap-3"
+            style={{ background: `${style.accent}10`, border: `1px solid ${style.accent}20` }}>
             <span className="text-2xl mt-0.5">📰</span>
             <div className="flex-1">
               <p className="text-sm font-bold" style={{ color: style.accent }}>村のだより</p>
-              <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
-                毎週の村の活動まとめが届きます
-              </p>
+              <p className="text-xs text-stone-500 mt-0.5">毎週の村の活動まとめ</p>
             </div>
             {isHost && (
-              <button
-                onClick={generateDiary}
-                disabled={generatingDiary}
+              <button onClick={generateDiary} disabled={generatingDiary}
                 className="px-3 py-1.5 rounded-full text-[10px] font-bold text-white flex items-center gap-1 disabled:opacity-50 active:scale-95 transition-all"
-                style={{ background: style.accent }}
-              >
-                {generatingDiary
-                  ? <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
-                  : <BookOpen size={11} />}
+                style={{ background: style.accent }}>
+                {generatingDiary ? <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" /> : <BookOpen size={11} />}
                 {generatingDiary ? '生成中…' : '今週分を作成'}
               </button>
             )}
           </div>
-
           {diary.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-4xl mb-3">📭</p>
               <p className="text-sm font-bold text-stone-600">まだ村のだよりがありません</p>
-              {isHost && (
-                <p className="text-xs text-stone-400 mt-1">「今週分を作成」ボタンで生成できます</p>
-              )}
+              {isHost && <p className="text-xs text-stone-400 mt-1">「今週分を作成」ボタンで生成できます</p>}
             </div>
           ) : (
             diary.map((entry: any) => (
-              <div
-                key={entry.id}
-                className="bg-white rounded-2xl overflow-hidden shadow-sm border border-stone-100"
-              >
-                {/* Header bar */}
-                <div
-                  className="px-4 py-2.5 flex items-center justify-between"
-                  style={{ background: `${style.accent}15`, borderBottom: `1px solid ${style.accent}20` }}
-                >
-                  <p className="text-xs font-extrabold" style={{ color: style.accent }}>
-                    {getWeekLabel(entry.week_start)}
-                  </p>
+              <div key={entry.id} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-stone-100">
+                <div className="px-4 py-2.5 flex items-center justify-between"
+                  style={{ background: `${style.accent}15`, borderBottom: `1px solid ${style.accent}20` }}>
+                  <p className="text-xs font-extrabold" style={{ color: style.accent }}>{getWeekLabel(entry.week_start)}</p>
                   <p className="text-[10px] text-stone-400">村のだより</p>
                 </div>
-
                 <div className="p-4 space-y-3">
-                  {/* Summary text */}
                   <p className="text-sm text-stone-700 leading-relaxed">{entry.summary_text}</p>
-
-                  {/* Stats row */}
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { value: entry.new_members, label: '新しい住民', icon: '🌱' },
-                      { value: entry.total_posts,  label: '投稿数',     icon: '📝' },
+                      { value: entry.new_members,    label: '新しい住民', icon: '🌱' },
+                      { value: entry.total_posts,    label: '投稿数',     icon: '📝' },
                       { value: entry.resolved_count, label: '解決した相談', icon: '✅' },
                     ].map(s => (
-                      <div
-                        key={s.label}
-                        className="text-center rounded-xl py-2"
-                        style={{ background: `${style.accent}08`, border: `1px solid ${style.accent}18` }}
-                      >
+                      <div key={s.label} className="text-center rounded-xl py-2"
+                        style={{ background: `${style.accent}08`, border: `1px solid ${style.accent}18` }}>
                         <p className="text-base mb-0.5">{s.icon}</p>
                         <p className="font-extrabold text-stone-900 text-base leading-none">{s.value}</p>
                         <p className="text-[9px] text-stone-400 mt-0.5">{s.label}</p>
                       </div>
                     ))}
                   </div>
-
-                  {/* Top post */}
                   {entry.top_post && (
-                    <div
-                      className="rounded-xl p-3"
-                      style={{ background: `${style.accent}08`, border: `1px solid ${style.accent}20` }}
-                    >
-                      <p className="text-[10px] font-bold mb-1" style={{ color: style.accent }}>
-                        🏆 今週の注目投稿
-                      </p>
-                      <p className="text-xs text-stone-700 line-clamp-2 leading-relaxed">
-                        {entry.top_post?.content}
-                      </p>
+                    <div className="rounded-xl p-3"
+                      style={{ background: `${style.accent}08`, border: `1px solid ${style.accent}20` }}>
+                      <p className="text-[10px] font-bold mb-1" style={{ color: style.accent }}>🏆 今週の注目投稿</p>
+                      <p className="text-xs text-stone-700 line-clamp-2 leading-relaxed">{entry.top_post?.content}</p>
                       {entry.top_post?.profiles?.display_name && (
-                        <p className="text-[10px] text-stone-400 mt-1">
-                          by {entry.top_post.profiles.display_name}
-                        </p>
+                        <p className="text-[10px] text-stone-400 mt-1">by {entry.top_post.profiles.display_name}</p>
                       )}
                     </div>
                   )}
@@ -1090,15 +1197,11 @@ export default function VillageDetailPage() {
         </div>
       )}
 
-      {/* ════════════════ ADMIN TAB (Host only) ════════════════ */}
+      {/* ════════ ADMIN TAB ════════ */}
       {tab === 'admin' && isHost && (
         <div className="px-4 pb-32 space-y-4 pt-1">
-
-          {/* Admin header */}
-          <div
-            className="rounded-2xl px-4 py-3.5 flex items-center gap-3"
-            style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%)' }}
-          >
+          <div className="rounded-2xl px-4 py-3.5 flex items-center gap-3"
+            style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%)' }}>
             <Crown size={20} className="text-yellow-300 flex-shrink-0" />
             <div>
               <p className="text-sm font-bold text-white">村長ダッシュボード</p>
@@ -1106,114 +1209,74 @@ export default function VillageDetailPage() {
             </div>
           </div>
 
-          {/* Rules editor */}
+          {/* ルール設定 */}
           <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
                 <Settings2 size={12} /> 村のルール
               </p>
-              <p className="text-[10px] text-stone-400">3つまで設定できます</p>
+              <p className="text-[10px] text-stone-400">3つまで</p>
             </div>
             <div className="space-y-2 mb-3">
               {[0, 1, 2].map(i => (
                 <div key={i} className="flex items-center gap-2">
                   <span className="text-xs text-stone-400 font-bold flex-shrink-0 w-4">{i + 1}.</span>
-                  <input
-                    value={rules[i] ?? ''}
-                    onChange={e => setRules(prev => {
-                      const next = [...prev]
-                      next[i] = e.target.value
-                      return next
-                    })}
-                    maxLength={60}
-                    placeholder={`ルール ${i + 1}（任意）`}
-                    className="flex-1 px-3 py-2 rounded-xl border border-stone-200 text-sm focus:outline-none focus:border-indigo-300"
-                  />
+                  <input value={rules[i] ?? ''}
+                    onChange={e => setRules(prev => { const n = [...prev]; n[i] = e.target.value; return n })}
+                    maxLength={60} placeholder={`ルール ${i + 1}（任意）`}
+                    className="flex-1 px-3 py-2 rounded-xl border border-stone-200 text-sm focus:outline-none focus:border-indigo-300" />
                   {rules[i] && (
-                    <button
-                      onClick={() => setRules(prev => { const n = [...prev]; n[i] = ''; return n })}
-                      className="text-stone-300 hover:text-stone-500 flex-shrink-0"
-                    >
-                      <X size={14} />
-                    </button>
+                    <button onClick={() => setRules(prev => { const n = [...prev]; n[i] = ''; return n })}
+                      className="text-stone-300 hover:text-stone-500 flex-shrink-0"><X size={14} /></button>
                   )}
                 </div>
               ))}
             </div>
-            <button
-              onClick={saveRules}
-              disabled={savingRules}
+            <button onClick={saveRules} disabled={savingRules}
               className="w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 active:scale-[0.99] transition-all"
-              style={{
-                background: savedRules
-                  ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
-                  : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-              }}
-            >
-              {savingRules
-                ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                : savedRules
-                  ? <><CheckCircle size={14} /> 保存しました</>
-                  : <><Save size={14} /> ルールを保存</>
-              }
+              style={{ background: savedRules ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' }}>
+              {savingRules ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : savedRules ? <><CheckCircle size={14} /> 保存しました</> : <><Save size={14} /> ルールを保存</>}
             </button>
           </div>
 
-          {/* Pinned post */}
+          {/* ピン留め */}
           <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm">
             <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Pin size={12} /> ピン留め投稿
             </p>
             {pinnedPost ? (
               <div className="space-y-3">
-                <div
-                  className="rounded-xl p-3"
-                  style={{ background: `${style.accent}08`, border: `1px solid ${style.accent}25` }}
-                >
-                  <p className="text-xs font-bold mb-1" style={{ color: style.accent }}>
-                    現在ピン留め中
-                  </p>
+                <div className="rounded-xl p-3" style={{ background: `${style.accent}08`, border: `1px solid ${style.accent}25` }}>
+                  <p className="text-xs font-bold mb-1" style={{ color: style.accent }}>現在ピン留め中</p>
                   <p className="text-sm text-stone-700 line-clamp-2">{pinnedPost.content}</p>
-                  <p className="text-[10px] text-stone-400 mt-1">
-                    by {pinnedPost.profiles?.display_name}
-                  </p>
+                  <p className="text-[10px] text-stone-400 mt-1">by {pinnedPost.profiles?.display_name}</p>
                 </div>
-                <button
-                  onClick={() => setPinnedPostId(null)}
-                  className="w-full py-2.5 rounded-xl border border-stone-200 text-sm font-bold text-stone-500 flex items-center justify-center gap-1.5 active:scale-[0.99] transition-all"
-                >
+                <button onClick={() => setPinnedPostId(null)}
+                  className="w-full py-2.5 rounded-xl border border-stone-200 text-sm font-bold text-stone-500 flex items-center justify-center gap-1.5 active:scale-[0.99] transition-all">
                   <PinOff size={13} /> ピン解除
                 </button>
               </div>
             ) : (
-              <p className="text-xs text-stone-400 text-center py-3">
-                「投稿」タブの各投稿からピン留めできます
-              </p>
+              <p className="text-xs text-stone-400 text-center py-3">投稿タブの各投稿からピン留めできます</p>
             )}
           </div>
 
-          {/* Diary generation */}
+          {/* だより生成 */}
           <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm">
             <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <BookOpen size={12} /> 村のだより
             </p>
-            <p className="text-xs text-stone-500 mb-3 leading-relaxed">
-              今週の活動（新規住民・投稿数・解決した相談）をまとめた「村のだより」を生成します。
-            </p>
-            <button
-              onClick={async () => { await generateDiary(); setTab('diary') }}
-              disabled={generatingDiary}
+            <p className="text-xs text-stone-500 mb-3 leading-relaxed">今週の活動をまとめた「村のだより」を生成します。</p>
+            <button onClick={async () => { await generateDiary(); setTab('diary') }} disabled={generatingDiary}
               className="w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 active:scale-[0.99] transition-all disabled:opacity-50"
-              style={{ background: style.accent }}
-            >
-              {generatingDiary
-                ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                : <BookOpen size={14} />}
+              style={{ background: style.accent }}>
+              {generatingDiary ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <BookOpen size={14} />}
               今週のだよりを生成
             </button>
           </div>
 
-          {/* Member management */}
+          {/* 住民管理 */}
           <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
             <div className="px-4 py-3 border-b border-stone-50 flex items-center justify-between">
               <p className="text-xs font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -1224,21 +1287,16 @@ export default function VillageDetailPage() {
             <div className="divide-y divide-stone-50 max-h-72 overflow-y-auto">
               {members.filter(m => m.role !== 'host').map((m: any) => (
                 <div key={m.user_id} className="flex items-center gap-3 px-4 py-3">
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold text-white flex-shrink-0"
-                    style={{ background: style.gradient }}
-                  >
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold text-white flex-shrink-0"
+                    style={{ background: style.gradient }}>
                     {m.profiles?.display_name?.[0] ?? '?'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-stone-800 truncate">{m.profiles?.display_name ?? '住民'}</p>
                     <p className="text-[10px] text-stone-400">{timeAgo(m.joined_at)}に参加</p>
                   </div>
-                  <button
-                    onClick={() => kickMember(m.user_id)}
-                    disabled={kickingUser === m.user_id}
-                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-400 border border-red-100 hover:bg-red-50 transition-all active:scale-95 disabled:opacity-40"
-                  >
+                  <button onClick={() => kickMember(m.user_id)} disabled={kickingUser === m.user_id}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-400 border border-red-100 hover:bg-red-50 transition-all active:scale-95 disabled:opacity-40">
                     {kickingUser === m.user_id ? '…' : '退村'}
                   </button>
                 </div>
@@ -1253,22 +1311,12 @@ export default function VillageDetailPage() {
 
       {/* ── Modals ── */}
       {showPhoneVerify && (
-        <PhoneVerifyModal
-          onClose={() => setShowPhoneVerify(false)}
-          onVerified={async () => {
-            const trust = await getUserTrust(userId!)
-            setUserTrust(trust)
-          }}
-        />
+        <PhoneVerifyModal onClose={() => setShowPhoneVerify(false)}
+          onVerified={async () => { const t = await getUserTrust(userId!); setUserTrust(t) }} />
       )}
       {resolvePost && (
-        <ResolveModal
-          post={resolvePost}
-          members={members}
-          userId={userId!}
-          onClose={() => setResolvePost(null)}
-          onResolved={() => fetchPosts()}
-        />
+        <ResolveModal post={resolvePost} members={members} userId={userId!}
+          onClose={() => setResolvePost(null)} onResolved={() => fetchPosts()} />
       )}
     </div>
   )
