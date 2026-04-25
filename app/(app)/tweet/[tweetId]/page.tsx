@@ -104,7 +104,7 @@ export default function TweetDetailPage() {
         canInteract ? (
           <div className="bg-white border-b border-stone-100 px-4 py-3 flex items-start gap-3">
             <div className="flex-shrink-0 mt-0.5">
-              <Avatar src={myProfile?.avatar_url} name={myProfile?.display_name} size="sm" />
+              <Avatar src={myProfile?.avatar_url} name={myProfile?.display_name ?? ''} size="sm" />
             </div>
             <div className="flex-1">
               <textarea

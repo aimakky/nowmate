@@ -161,7 +161,7 @@ export default function CreatePage() {
           Posting is only available in supported countries. Please enable location access to continue.
         </p>
         <button
-          onClick={() => checkJapanLocation().then(s => setLocationStatus(s))}
+          onClick={() => checkSupportedLocation().then(s => setLocationStatus(s))}
           className="px-6 py-3 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-md shadow-brand-200 active:scale-95 transition-all">
           Try again
         </button>

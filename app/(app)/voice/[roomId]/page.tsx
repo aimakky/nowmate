@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag, checkSupportedLocation } from '@/lib/utils'
-import { ArrowLeft, Mic, MicOff, Radio, LogOut, Users } from 'lucide-react'
+import { ArrowLeft, Mic, MicOff, Radio, LogOut, Users, Plus } from 'lucide-react'
 
 const CAT_EMOJI: Record<string, string> = {
   '雑談': '💬', '飲み': '🍻', '相談': '🤝', '作業': '💻', 'Language': '🗣️', 'Other': '✨'
@@ -65,7 +65,7 @@ export default function VoiceRoomPage() {
       .from('voice_participants')
       .select('user_id, is_listener, profiles(display_name, nationality, avatar_url)')
       .eq('room_id', roomId)
-    setParticipants((data || []) as Participant[])
+    setParticipants((data || []) as unknown as Participant[])
   }, [roomId])
 
   useEffect(() => {

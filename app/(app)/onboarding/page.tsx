@@ -2,36 +2,36 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { AREAS, GENDERS, ARRIVAL_STAGES } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
-import type { Gender, ArrivalStage } from '@/types'
+import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 
 const STEPS = [
-  { title: 'Your Japan Journey', emoji: '✈️', sub: 'How long have you been in Japan?' },
-  { title: 'Your People',        emoji: '👥', sub: 'People who get where you are' },
-  { title: 'About You',          emoji: '👋', sub: 'Just the basics — you can add more later' },
+  { title: '年齢確認',     emoji: '🔒', sub: '18歳以上の方のみご利用いただけます' },
+  { title: 'プロフィール', emoji: '👋', sub: '村での名前を決めましょう' },
+  { title: '村を選ぶ',     emoji: '🏕️', sub: 'まず参加する村を選んでみましょう' },
 ]
 
-const STAGE_MESSAGES: Record<string, { headline: string; sub: string; emoji: string }> = {
-  new:      { headline: 'Just arrived? You\'re not alone.', sub: 'Hundreds of newcomers like you are navigating Japan right now.', emoji: '✈️' },
-  settling: { headline: 'Building your life in Japan.', sub: 'Connect with expats who\'ve been through exactly what you\'re going through.', emoji: '🏠' },
-  local:    { headline: 'You\'re a Japan veteran.', sub: 'Share your hard-earned knowledge and help newcomers land on their feet.', emoji: '🗾' },
-}
+const VILLAGE_TYPES = [
+  { id: '雑談',     emoji: '🌿', desc: '気軽に話せる' },
+  { id: '仕事終わり', emoji: '🌙', desc: '仕事後にほっとひと息' },
+  { id: '相談',     emoji: '🤝', desc: 'なんでも相談OK' },
+  { id: '趣味',     emoji: '🎨', desc: '好きを語り合う' },
+  { id: '職業',     emoji: '💼', desc: '同じ仕事の仲間と' },
+  { id: '地域',     emoji: '📍', desc: '地元でつながる' },
+  { id: '初参加',   emoji: '🌱', desc: '初めての方大歓迎' },
+  { id: '焚き火',   emoji: '🔥', desc: '夜に話しやすい' },
+]
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const [confirmed, setConfirmed] = useState(false)
-  const [step, setStep] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [userId, setUserId] = useState<string | null>(null)
-  const [stageCount, setStageCount] = useState<number>(0)
-
-  const [arrivalStage, setArrivalStage] = useState<ArrivalStage | ''>('')
-  const [name, setName] = useState('')
-  const [age, setAge] = useState('')
-  const [gender, setGender] = useState<Gender | ''>('')
-  const [area, setArea] = useState('Tokyo')
+  const [step,         setStep]         = useState(0)
+  const [loading,      setLoading]      = useState(false)
+  const [error,        setError]        = useState('')
+  const [userId,       setUserId]       = useState<string | null>(null)
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
+  const [name,         setName]         = useState('')
+  const [bio,          setBio]          = useState('')
+  const [selectedTypes,setSelectedTypes]= useState<string[]>([])
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -40,269 +40,243 @@ export default function OnboardingPage() {
     })
   }, [router])
 
-  async function fetchStageCount(stage: ArrivalStage) {
-    const supabase = createClient()
-    const { count } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('arrival_stage', stage)
-      .eq('is_active', true)
-    setStageCount(Math.max(count ?? 0, 12))
-  }
-
   const canNext = [
-    arrivalStage !== '',
-    true,
-    name.trim().length >= 2 && parseInt(age) >= 18 && gender !== '',
+    ageConfirmed,
+    name.trim().length >= 2,
+    true, // 村選択は任意
   ][step]
 
   async function handleNext() {
-    if (step === 0 && arrivalStage) {
-      fetchStageCount(arrivalStage as ArrivalStage)
+    if (step < STEPS.length - 1) {
+      setStep(s => s + 1)
+      return
     }
-    setStep(s => s + 1)
-  }
-
-  async function handleFinish() {
+    // 最終ステップ：プロフィール作成 → 村に参加
     if (!userId) return
-    setLoading(true); setError('')
-    const { error: uErr } = await createClient().from('profiles').upsert({
-      id: userId,
+    setLoading(true)
+    setError('')
+    const supabase = createClient()
+
+    // プロフィール作成/更新
+    const { error: profileErr } = await supabase.from('profiles').upsert({
+      id:           userId,
       display_name: name.trim(),
-      age: parseInt(age),
-      gender,
-      area,
-      arrival_stage: arrivalStage || null,
-      nationality: '',
-      spoken_languages: [],
-      learning_languages: [],
-      purposes: ['Friend'],
-      bio: null,
-      avatar_url: null,
-      is_online: true,
-      is_active: true,
-      updated_at: new Date().toISOString(),
+      bio:          bio.trim() || null,
+      age:          18, // 年齢確認済み
+      gender:       'other',
+      nationality:  'JP',
+      area:         'Tokyo',
+      spoken_languages:  [],
+      learning_languages:[],
+      purposes:          [],
+      is_active:    true,
+      updated_at:   new Date().toISOString(),
     })
-    if (uErr) { setError('Something went wrong. Please try again.'); setLoading(false); return }
 
-    // Welcome bot messages
-    fetch('/api/welcome-bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) })
-
-    // Claim invite reward if ref exists
-    const inviteRef = localStorage.getItem('nm_invite_ref')
-    if (inviteRef) {
-      fetch('/api/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inviteeId: userId, inviterSameeId: inviteRef }) })
-      localStorage.removeItem('nm_invite_ref')
+    if (profileErr) {
+      setError('プロフィールの作成に失敗しました。もう一度お試しください。')
+      setLoading(false)
+      return
     }
 
-    router.push('/home')
-  }
+    // user_trust の初期レコード作成（まだなければ）
+    await supabase.from('user_trust').upsert({
+      user_id: userId,
+      score:   0,
+      tier:    'visitor',
+      total_helped: 0,
+      is_shadow_banned: false,
+    }, { onConflict: 'user_id', ignoreDuplicates: true })
 
-  // Pre-screen: confirm foreigner status
-  if (!confirmed) {
-    return (
-      <div className="min-h-screen bg-[#FAFAF9] flex flex-col items-center justify-center max-w-md mx-auto px-5 text-center">
-        <div className="text-5xl mb-4">🌏</div>
-        <h1 className="text-2xl font-extrabold text-stone-900 mb-2">Samee is for foreigners in Japan</h1>
-        <p className="text-sm text-stone-500 leading-relaxed mb-8">
-          This app is built exclusively for non-Japanese people living in or visiting Japan.
-          It's a space to connect with others who understand what it's like to navigate Japan as an outsider.
-        </p>
-        <button
-          onClick={() => setConfirmed(true)}
-          className="w-full h-12 bg-brand-500 text-white rounded-2xl font-bold text-sm mb-3 shadow-md shadow-brand-200 active:scale-[0.98] transition-all"
-        >
-          Yes, I'm a foreigner in Japan →
-        </button>
-        <button
-          onClick={() => router.push('/')}
-          className="w-full h-12 border-2 border-stone-200 text-stone-500 rounded-2xl font-semibold text-sm"
-        >
-          No, I'm Japanese
-        </button>
-        <p className="text-xs text-stone-400 mt-4">18+ only · Free forever</p>
-      </div>
-    )
+    // 選択した村タイプから最初の村を探して参加
+    if (selectedTypes.length > 0) {
+      for (const type of selectedTypes.slice(0, 3)) {
+        const { data: villages } = await supabase
+          .from('villages').select('id').eq('type', type).eq('is_public', true)
+          .order('member_count', { ascending: false }).limit(1)
+        if (villages?.[0]) {
+          await supabase.from('village_members').upsert({
+            village_id: villages[0].id,
+            user_id:    userId,
+            role:       'member',
+          }, { onConflict: 'village_id,user_id', ignoreDuplicates: true })
+        }
+      }
+    }
+
+    router.push('/villages')
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col max-w-md mx-auto">
-      {/* Top bar */}
-      <div className="px-5 pt-6 pb-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-black text-xs">N</span>
-            </div>
-            <span className="font-bold text-gray-700 text-sm">Samee</span>
-          </div>
-          <span className="text-xs text-gray-400 font-medium">{step + 1} / {STEPS.length}</span>
-        </div>
-        {/* Progress bar */}
-        <div className="flex gap-1.5">
+    <div className="min-h-screen bg-[#FAFAF9] flex flex-col max-w-md mx-auto">
+
+      {/* ── Progress bar ── */}
+      <div className="px-5 pt-8 pb-4">
+        <div className="flex gap-1.5 mb-6">
           {STEPS.map((_, i) => (
-            <div key={i} className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${i <= step ? 'bg-brand-500' : 'bg-gray-200'}`} />
+            <div
+              key={i}
+              className="flex-1 h-1 rounded-full transition-all duration-300"
+              style={{ background: i <= step ? '#4f46e5' : '#e7e5e4' }}
+            />
           ))}
         </div>
+        <p className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider">
+          ステップ {step + 1} / {STEPS.length}
+        </p>
+        <h2 className="font-extrabold text-stone-900 text-2xl mt-1">{STEPS[step].title}</h2>
+        <p className="text-stone-400 text-sm mt-0.5">{STEPS[step].sub}</p>
       </div>
 
-      {/* Step header */}
-      <div className="px-5 pb-6">
-        <div className="text-3xl mb-1.5">{STEPS[step].emoji}</div>
-        <h1 className="text-2xl font-extrabold text-gray-900">{STEPS[step].title}</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{STEPS[step].sub}</p>
-      </div>
+      <div className="flex-1 px-5 pb-32 overflow-y-auto">
 
-      {/* Content */}
-      <div className="flex-1 px-5 overflow-y-auto">
-
-        {/* STEP 0: Arrival Stage */}
+        {/* ─── STEP 0: 年齢確認 ─── */}
         {step === 0 && (
-          <div className="space-y-3">
-            {ARRIVAL_STAGES.map(s => (
-              <button key={s.value} onClick={() => setArrivalStage(s.value)}
-                className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl border-2 transition-all text-left ${
-                  arrivalStage === s.value
-                    ? 'bg-brand-50 border-brand-400 shadow-sm'
-                    : 'bg-white border-gray-200 hover:border-brand-300'
-                }`}>
-                <span className="text-3xl">{s.emoji}</span>
-                <div className="flex-1">
-                  <div className={`font-bold text-base ${arrivalStage === s.value ? 'text-brand-700' : 'text-gray-800'}`}>{s.label}</div>
-                  <div className="text-sm text-gray-500">{s.desc}</div>
-                </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                  arrivalStage === s.value ? 'bg-brand-500 border-brand-500' : 'border-gray-300'
-                }`}>
-                  {arrivalStage === s.value && <span className="text-white text-xs font-bold">✓</span>}
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
+          <div className="space-y-4 pt-4">
+            <div
+              className="rounded-3xl p-6 text-center"
+              style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%)' }}
+            >
+              <div className="text-5xl mb-4">🔒</div>
+              <h3 className="font-extrabold text-white text-lg mb-2">ご利用は18歳以上</h3>
+              <p className="text-white/60 text-xs leading-relaxed">
+                sameeは18歳以上の方のためのコミュニティです。<br />
+                健全な村づくりのため、年齢確認をお願いしています。
+              </p>
+            </div>
 
-        {/* STEP 1: People preview */}
-        {step === 1 && arrivalStage && (
-          <div className="space-y-4">
-            <div className="bg-brand-50 border border-brand-100 rounded-2xl p-5 text-center">
-              <div className="text-5xl mb-3">{STAGE_MESSAGES[arrivalStage]?.emoji}</div>
-              <h2 className="text-xl font-extrabold text-gray-900 mb-2">{STAGE_MESSAGES[arrivalStage]?.headline}</h2>
-              <p className="text-sm text-gray-500 leading-relaxed">{STAGE_MESSAGES[arrivalStage]?.sub}</p>
-            </div>
-            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm text-center">
-              <div className="text-3xl font-black text-brand-500 mb-1">{stageCount}+</div>
-              <div className="text-sm text-gray-600 font-semibold">people at your stage in Samee</div>
-              <div className="flex justify-center -space-x-2 mt-3">
-                {['🇧🇷','🇺🇸','🇮🇳','🇫🇷','🇩🇪'].map((flag, i) => (
-                  <div key={i}
-                    className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-100 to-brand-200 border-2 border-white flex items-center justify-center text-sm"
-                    style={{ zIndex: 10 - i }}>
-                    {flag}
-                  </div>
-                ))}
-                <div className="w-9 h-9 rounded-full bg-brand-500 border-2 border-white flex items-center justify-center text-[10px] font-bold text-white">
-                  +more
-                </div>
-              </div>
-            </div>
-            <div className="space-y-2">
+            <div className="bg-white border border-stone-100 rounded-2xl p-4 space-y-3">
               {[
-                { icon: '💬', text: 'Chat after matching — no random messages' },
-                { icon: '🤝', text: 'Real help from people who\'ve been there' },
-                { icon: '🔒', text: 'Safe, verified 18+ community' },
-              ].map(item => (
-                <div key={item.text} className="flex items-center gap-3 px-4 py-3 bg-white rounded-2xl border border-gray-100">
-                  <span className="text-xl">{item.icon}</span>
-                  <span className="text-sm text-gray-700 font-medium">{item.text}</span>
+                { icon: '🏕️', text: '村コミュニティで気軽に話せる' },
+                { icon: '🤝', text: '相談広場で悩みを相談・解決できる' },
+                { icon: '✏️', text: 'タイムラインでつぶやける' },
+                { icon: '🎙️', text: '通話で声で話せる（住民以上）' },
+              ].map(({ icon, text }) => (
+                <div key={text} className="flex items-center gap-3">
+                  <span className="text-xl">{icon}</span>
+                  <span className="text-sm text-stone-700 font-medium">{text}</span>
                 </div>
               ))}
             </div>
+
+            <button
+              onClick={() => setAgeConfirmed(v => !v)}
+              className="w-full flex items-start gap-3 p-4 bg-white border-2 rounded-2xl transition-all text-left active:scale-[0.99]"
+              style={{ borderColor: ageConfirmed ? '#4f46e5' : '#e7e5e4' }}
+            >
+              <div
+                className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all"
+                style={{ borderColor: ageConfirmed ? '#4f46e5' : '#d6d3d1', background: ageConfirmed ? '#4f46e5' : '#fff' }}
+              >
+                {ageConfirmed && <span className="text-white text-[11px] font-bold">✓</span>}
+              </div>
+              <span className="text-sm text-stone-700 font-medium leading-relaxed">
+                私は<span className="font-extrabold text-indigo-600">18歳以上</span>であることを確認しました。
+                利用規約とプライバシーポリシーに同意します。
+              </span>
+            </button>
           </div>
         )}
 
-        {/* STEP 2: Basic info */}
-        {step === 2 && (
-          <div className="space-y-5">
+        {/* ─── STEP 1: プロフィール ─── */}
+        {step === 1 && (
+          <div className="space-y-4 pt-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Display Name *</label>
+              <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+                ニックネーム <span className="text-rose-400">*</span>
+              </label>
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="What should people call you?"
-                maxLength={30}
-                className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 text-sm focus:outline-none focus:border-brand-400 transition"
+                placeholder="例：たろう、ゆきこ、さくら"
+                maxLength={20}
+                autoFocus
+                className="w-full px-4 py-3.5 rounded-2xl border-2 border-stone-200 text-sm focus:outline-none focus:border-indigo-400 bg-white"
               />
+              <p className="text-[10px] text-stone-400 mt-1">2〜20文字。後から変更できます。</p>
             </div>
+
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Age *</label>
-              <input
-                type="number" min="18" max="99"
-                value={age}
-                onChange={e => setAge(e.target.value)}
-                placeholder="18"
-                className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 text-sm focus:outline-none focus:border-brand-400 transition"
+              <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+                自己紹介 <span className="text-stone-300 normal-case font-normal">（任意）</span>
+              </label>
+              <textarea
+                value={bio}
+                onChange={e => setBio(e.target.value.slice(0, 150))}
+                placeholder="好きなことや趣味、一言で自己紹介してみましょう"
+                rows={3}
+                className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 bg-white leading-relaxed"
               />
-              {age && parseInt(age) < 18 && <p className="text-xs text-red-500 mt-1">Must be 18 or older</p>}
+              <p className="text-right text-[10px] text-stone-400 mt-1">{bio.length}/150</p>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Gender *</label>
-              <div className="grid grid-cols-3 gap-2">
-                {GENDERS.map(g => (
-                  <button key={g.value} onClick={() => setGender(g.value as Gender)}
-                    className={`py-3 rounded-2xl text-sm font-semibold border-2 transition-all ${
-                      gender === g.value
-                        ? 'bg-brand-500 text-white border-brand-500'
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-brand-300'
-                    }`}>
-                    {g.label}
+
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3">
+              <p className="text-xs text-indigo-600 leading-relaxed">
+                💡 ニックネームは村の住民に表示されます。本名でなくてOKです。
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ─── STEP 2: 村を選ぶ ─── */}
+        {step === 2 && (
+          <div className="space-y-3 pt-4">
+            <p className="text-xs text-stone-500 leading-relaxed">
+              好きなタイプの村をいくつでも選んでください（スキップもOK）
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {VILLAGE_TYPES.map(t => {
+                const ts = VILLAGE_TYPE_STYLES[t.id] ?? VILLAGE_TYPE_STYLES['雑談']
+                const selected = selectedTypes.includes(t.id)
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setSelectedTypes(prev =>
+                      prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id]
+                    )}
+                    className="flex items-center gap-2.5 p-3 rounded-2xl border-2 text-left transition-all active:scale-95"
+                    style={selected
+                      ? { borderColor: ts.accent, background: `${ts.accent}12` }
+                      : { borderColor: '#e7e5e4', background: '#fff' }
+                    }
+                  >
+                    <span className="text-2xl flex-shrink-0">{t.emoji}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold truncate" style={{ color: selected ? ts.accent : '#44403c' }}>
+                        {t.id}
+                      </p>
+                      <p className="text-[10px] text-stone-400 truncate">{t.desc}</p>
+                    </div>
                   </button>
-                ))}
-              </div>
+                )
+              })}
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Area in Japan</label>
-              <div className="grid grid-cols-2 gap-1.5">
-                {AREAS.slice(0, 8).map(a => (
-                  <button key={a} onClick={() => setArea(a)}
-                    className={`py-2.5 px-3 rounded-xl text-sm border-2 transition-all font-medium ${
-                      area === a
-                        ? 'bg-brand-500 text-white border-brand-500'
-                        : 'bg-white text-gray-700 border-gray-200 hover:border-brand-300'
-                    }`}>
-                    {a}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {error && <p className="text-sm text-red-500 bg-red-50 px-4 py-3 rounded-2xl">{error}</p>}
           </div>
         )}
       </div>
 
-      {/* Footer nav */}
-      <div className="px-5 py-5 border-t border-gray-100 flex gap-3 bg-white">
-        {step > 0 && (
-          <button onClick={() => setStep(s => s - 1)}
-            className="flex-1 py-3.5 border-2 border-gray-200 text-gray-600 rounded-2xl font-semibold text-sm">
-            ← Back
-          </button>
-        )}
-        {step < STEPS.length - 1 ? (
+      {/* ── Bottom CTA ── */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-stone-100 px-5 py-4 max-w-md mx-auto">
+        {error && <p className="text-xs text-red-500 mb-3 text-center">{error}</p>}
+        <button
+          onClick={handleNext}
+          disabled={!canNext || loading}
+          className="w-full py-4 rounded-2xl font-extrabold text-white text-base disabled:opacity-40 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', boxShadow: canNext ? '0 8px 24px rgba(99,102,241,0.35)' : 'none' }}
+        >
+          {loading
+            ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            : step < STEPS.length - 1
+              ? '次へ →'
+              : selectedTypes.length > 0 ? `${selectedTypes.length}つの村に参加して始める →` : '村を探しに行く →'
+          }
+        </button>
+        {step === 2 && (
           <button
             onClick={handleNext}
-            disabled={!canNext}
-            className="flex-1 py-3.5 bg-brand-500 text-white rounded-2xl font-bold text-sm disabled:opacity-40 active:scale-[0.98] transition-all shadow-md shadow-brand-200">
-            {step === 1 ? 'Set up my profile →' : 'Continue →'}
-          </button>
-        ) : (
-          <button
-            onClick={handleFinish}
-            disabled={!canNext || loading}
-            className="flex-1 py-3.5 bg-brand-500 text-white rounded-2xl font-bold text-sm disabled:opacity-40 active:scale-[0.98] transition-all shadow-md shadow-brand-200 flex items-center justify-center gap-2">
-            {loading
-              ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              : 'Start Exploring 🎉'
-            }
+            className="w-full py-2 text-xs text-stone-400 mt-1"
+          >
+            スキップして後で選ぶ
           </button>
         )}
       </div>

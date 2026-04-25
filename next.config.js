@@ -19,6 +19,7 @@ const nextConfig = {
       { source: '/chat',            destination: '/timeline', permanent: true },
       { source: '/chat/:matchId',   destination: '/timeline', permanent: true },
       { source: '/community',       destination: '/villages', permanent: true },
+      { source: '/create',          destination: '/villages/create', permanent: true },
     ]
   },
 }

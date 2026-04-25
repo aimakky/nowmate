@@ -2,77 +2,37 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Header from '@/components/layout/Header'
-import Button from '@/components/ui/Button'
-import Input from '@/components/ui/Input'
 import { createClient } from '@/lib/supabase/client'
-import { AREAS, NATIONALITIES, LANGUAGES, PURPOSES, GENDERS, ARRIVAL_STAGES } from '@/lib/constants'
-import type { Profile, Purpose, Gender, ArrivalStage, HelperCategory } from '@/types'
-
-const HELPER_CATEGORIES: { value: HelperCategory; emoji: string; label: string }[] = [
-  { value: 'Banking',   emoji: '🏦', label: 'Banking' },
-  { value: 'Housing',   emoji: '🏠', label: 'Housing' },
-  { value: 'Medical',   emoji: '🏥', label: 'Medical' },
-  { value: 'Visa',      emoji: '🛂', label: 'Visa' },
-  { value: 'Japanese',  emoji: '🗣️', label: 'Japanese' },
-  { value: 'Tax',       emoji: '📊', label: 'Tax' },
-  { value: 'Transport', emoji: '🚃', label: 'Transport' },
-  { value: 'Jobs',      emoji: '💼', label: 'Jobs' },
-]
+import { ArrowLeft, Camera, Check, Trash2 } from 'lucide-react'
 
 export default function SettingsPage() {
   const router = useRouter()
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-
-  // Editable fields
-  const [name, setName] = useState('')
-  const [age, setAge] = useState('')
-  const [gender, setGender] = useState<Gender | ''>('')
-  const [nationality, setNationality] = useState('')
-  const [area, setArea] = useState('')
-  const [spokenLangs, setSpokenLangs] = useState<string[]>([])
-  const [learningLangs, setLearningLangs] = useState<string[]>([])
-  const [purposes, setPurposes] = useState<Purpose[]>([])
-  const [bio, setBio] = useState('')
-  const [arrivalStage, setArrivalStage] = useState<ArrivalStage | ''>('')
-  const [avatarFile, setAvatarFile] = useState<File | null>(null)
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState(false)
-  const [isMentor, setIsMentor] = useState(false)
-  const [helperCategories, setHelperCategories] = useState<HelperCategory[]>([])
+  const [profile,        setProfile]        = useState<any>(null)
+  const [loading,        setLoading]        = useState(true)
+  const [saving,         setSaving]         = useState(false)
+  const [saved,          setSaved]          = useState(false)
+  const [name,           setName]           = useState('')
+  const [bio,            setBio]            = useState('')
+  const [avatarFile,     setAvatarFile]     = useState<File | null>(null)
+  const [avatarPreview,  setAvatarPreview]  = useState<string | null>(null)
+  const [deleteConfirm,  setDeleteConfirm]  = useState(false)
+  const [deleting,       setDeleting]       = useState(false)
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) { router.push('/login'); return }
       const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      if (!p) return
+      if (!p) { router.push('/onboarding'); return }
       setProfile(p)
-      setName(p.display_name)
-      setAge(String(p.age))
-      setGender(p.gender)
-      setNationality(p.nationality)
-      setArea(p.area)
-      setSpokenLangs(p.spoken_languages)
-      setLearningLangs(p.learning_languages)
-      setPurposes(p.purposes)
-      setBio(p.bio || '')
-      setArrivalStage(p.arrival_stage || '')
+      setName(p.display_name ?? '')
+      setBio(p.bio ?? '')
       setAvatarPreview(p.avatar_url)
-      setIsMentor(p.is_mentor || false)
-      setHelperCategories(p.helper_categories || [])
       setLoading(false)
     }
     load()
-  }, [])
-
-  function toggleArr<T>(arr: T[], val: T, set: (v: T[]) => void) {
-    set(arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val])
-  }
+  }, [router])
 
   async function handleSave() {
     if (!profile) return
@@ -93,18 +53,8 @@ export default function SettingsPage() {
 
     await supabase.from('profiles').update({
       display_name: name.trim(),
-      age: parseInt(age),
-      gender,
-      nationality,
-      area,
-      arrival_stage: arrivalStage || null,
-      spoken_languages: spokenLangs,
-      learning_languages: learningLangs,
-      purposes,
       bio: bio.trim() || null,
       avatar_url,
-      is_mentor: isMentor,
-      helper_categories: isMentor ? helperCategories : [],
       updated_at: new Date().toISOString(),
     }).eq('id', profile.id)
 
@@ -114,6 +64,7 @@ export default function SettingsPage() {
   }
 
   async function handleDeleteAccount() {
+    setDeleting(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -122,188 +73,123 @@ export default function SettingsPage() {
     router.push('/')
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center h-screen bg-[#FAFAF9]">
+      <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
 
   return (
-    <div className="max-w-md mx-auto bg-white min-h-screen">
-      <Header title="Edit Profile" showBack />
-      <div className="px-5 py-4 space-y-6">
+    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
 
-        {/* Avatar */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-20 h-20 rounded-3xl overflow-hidden bg-brand-100 border-2 border-brand-200">
-            {avatarPreview
-              ? <img src={avatarPreview} className="w-full h-full object-cover" alt="" />
-              : <div className="w-full h-full flex items-center justify-center text-brand-300 text-3xl">👤</div>
-            }
-          </div>
-          <label className="text-sm text-brand-500 font-semibold cursor-pointer">
-            Change Photo
-            <input type="file" accept="image/*" className="hidden"
-              onChange={e => {
-                const f = e.target.files?.[0]
-                if (f) { setAvatarFile(f); setAvatarPreview(URL.createObjectURL(f)) }
-              }}
-            />
-          </label>
-        </div>
+      {/* ── Header ── */}
+      <div className="bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex items-center gap-3 sticky top-0 z-10">
+        <button onClick={() => router.back()} className="p-1 -ml-1 text-stone-500">
+          <ArrowLeft size={20} />
+        </button>
+        <p className="font-extrabold text-stone-900">プロフィールを編集</p>
+      </div>
 
-        <Input label="Display Name" value={name} onChange={e => setName(e.target.value)} />
-        <Input label="Age" type="number" value={age} onChange={e => setAge(e.target.value)} min="18" max="99" />
+      <div className="px-4 pt-5 pb-32 space-y-5">
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Gender</label>
-          <div className="grid grid-cols-3 gap-2">
-            {GENDERS.map(g => (
-              <button key={g.value} onClick={() => setGender(g.value as Gender)}
-                className={`py-2.5 rounded-2xl text-sm font-medium border transition ${gender === g.value ? 'bg-brand-500 text-white border-brand-500' : 'border-gray-200 text-gray-600'}`}>
-                {g.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Nationality</label>
-          <select value={nationality} onChange={e => setNationality(e.target.value)}
-            className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-            {NATIONALITIES.map(n => <option key={n.code} value={n.code}>{n.flag} {n.name}</option>)}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">How long in Japan?</label>
-          <div className="space-y-2">
-            {ARRIVAL_STAGES.map(s => (
-              <button key={s.value} onClick={() => setArrivalStage(s.value)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition text-left ${
-                  arrivalStage === s.value ? 'bg-brand-50 border-brand-400' : 'border-gray-200'
-                }`}>
-                <span className="text-xl">{s.emoji}</span>
-                <div>
-                  <div className={`font-bold text-sm ${arrivalStage === s.value ? 'text-brand-700' : 'text-gray-800'}`}>{s.label}</div>
-                  <div className="text-xs text-gray-500">{s.desc}</div>
-                </div>
-                {arrivalStage === s.value && <span className="ml-auto text-brand-500 font-bold">✓</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Area in Japan</label>
-          <select value={area} onChange={e => setArea(e.target.value)}
-            className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-            {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Languages I speak</label>
-          <div className="grid grid-cols-2 gap-1.5">
-            {LANGUAGES.map(l => (
-              <button key={l} onClick={() => toggleArr(spokenLangs, l, setSpokenLangs)}
-                className={`py-2 px-3 rounded-xl text-xs border transition text-left ${spokenLangs.includes(l) ? 'bg-brand-500 text-white border-brand-500' : 'border-gray-200 text-gray-600'}`}>
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Languages I'm learning</label>
-          <div className="grid grid-cols-2 gap-1.5">
-            {LANGUAGES.map(l => (
-              <button key={l} onClick={() => toggleArr(learningLangs, l, setLearningLangs)}
-                className={`py-2 px-3 rounded-xl text-xs border transition text-left ${learningLangs.includes(l) ? 'bg-purple-500 text-white border-purple-500' : 'border-gray-200 text-gray-600'}`}>
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Looking for</label>
-          <div className="space-y-2">
-            {PURPOSES.map(p => (
-              <button key={p.value} onClick={() => toggleArr(purposes, p.value, setPurposes)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition ${purposes.includes(p.value) ? 'bg-brand-50 border-brand-400 text-brand-700' : 'border-gray-200 text-gray-700'}`}>
-                <span>{p.icon}</span>
-                <span className="text-sm font-medium">{p.value}</span>
-                {purposes.includes(p.value) && <span className="ml-auto text-brand-500">✓</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">About me</label>
-          <textarea value={bio} onChange={e => setBio(e.target.value.slice(0, 300))} rows={4}
-            className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-400"
-          />
-          <p className="text-xs text-gray-400 text-right">{bio.length}/300</p>
-        </div>
-
-        {/* Mentor Section — Japan Local only */}
-        {arrivalStage === 'local' && (
-          <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-bold text-sm text-gray-800">🤝 Become a Mentor</div>
-                <div className="text-xs text-gray-500 mt-0.5">Help newcomers settle into Japan life</div>
-              </div>
-              <button
-                onClick={() => setIsMentor(m => !m)}
-                className={`w-12 h-6 rounded-full transition-colors relative ${isMentor ? 'bg-brand-500' : 'bg-gray-300'}`}
-              >
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${isMentor ? 'left-6' : 'left-0.5'}`} />
-              </button>
+        {/* ── アイコン ── */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative">
+            <div className="w-24 h-24 rounded-3xl overflow-hidden border-4 border-white shadow-lg bg-stone-100">
+              {avatarPreview
+                ? <img src={avatarPreview} className="w-full h-full object-cover" alt="" />
+                : <div className="w-full h-full flex items-center justify-center text-stone-300 text-4xl">🙂</div>
+              }
             </div>
-            {isMentor && (
-              <div>
-                <p className="text-xs font-semibold text-gray-500 mb-2">What can you help with?</p>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {HELPER_CATEGORIES.map(c => (
-                    <button
-                      key={c.value}
-                      onClick={() => toggleArr(helperCategories, c.value, setHelperCategories)}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs border transition ${
-                        helperCategories.includes(c.value)
-                          ? 'bg-brand-500 text-white border-brand-500'
-                          : 'border-gray-200 text-gray-600'
-                      }`}
-                    >
-                      {c.emoji} {c.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <label
+              className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shadow-md"
+              style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' }}
+            >
+              <Camera size={14} className="text-white" />
+              <input type="file" accept="image/*" className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0]
+                  if (f) { setAvatarFile(f); setAvatarPreview(URL.createObjectURL(f)) }
+                }}
+              />
+            </label>
           </div>
-        )}
+          <p className="text-xs text-stone-400">タップして写真を変更</p>
+        </div>
 
-        <Button fullWidth size="lg" loading={saving} onClick={handleSave}>
-          {saved ? '✓ Saved!' : 'Save Changes'}
-        </Button>
+        {/* ── ニックネーム ── */}
+        <div>
+          <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+            ニックネーム <span className="text-rose-400">*</span>
+          </label>
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="村でのあなたの名前"
+            maxLength={20}
+            className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm focus:outline-none focus:border-indigo-400 bg-white"
+          />
+          <p className="text-right text-[10px] text-stone-400 mt-1">{name.length}/20</p>
+        </div>
 
-        <div className="border-t border-gray-100 pt-4">
+        {/* ── 自己紹介 ── */}
+        <div>
+          <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+            自己紹介
+          </label>
+          <textarea
+            value={bio}
+            onChange={e => setBio(e.target.value.slice(0, 200))}
+            placeholder="どんな人か教えてください（任意）"
+            rows={4}
+            className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 bg-white leading-relaxed"
+          />
+          <p className="text-right text-[10px] text-stone-400 mt-1">{bio.length}/200</p>
+        </div>
+
+        {/* ── 保存ボタン ── */}
+        <button
+          onClick={handleSave}
+          disabled={!name.trim() || saving}
+          className="w-full py-4 rounded-2xl font-bold text-white text-sm disabled:opacity-40 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          style={{ background: saved ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' }}
+        >
+          {saving
+            ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            : saved
+              ? <><Check size={16} /> 保存しました</>
+              : '変更を保存する'
+          }
+        </button>
+
+        {/* ── アカウント削除 ── */}
+        <div className="border-t border-stone-100 pt-4">
           {deleteConfirm ? (
-            <div className="bg-red-50 rounded-2xl p-4">
-              <p className="text-sm text-red-700 mb-3 text-center">Are you sure? This cannot be undone.</p>
+            <div className="bg-red-50 border border-red-100 rounded-2xl p-4">
+              <p className="text-sm text-red-700 font-bold mb-1 text-center">本当に削除しますか？</p>
+              <p className="text-xs text-red-400 mb-3 text-center">この操作は取り消せません。</p>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" className="flex-1" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
-                <Button variant="danger" size="sm" className="flex-1" onClick={handleDeleteAccount}>Delete</Button>
+                <button
+                  onClick={() => setDeleteConfirm(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-200 text-sm font-bold text-stone-500"
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleting}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold disabled:opacity-40"
+                >
+                  {deleting ? '削除中…' : '削除する'}
+                </button>
               </div>
             </div>
           ) : (
-            <button onClick={() => setDeleteConfirm(true)} className="w-full text-center text-xs text-gray-400 hover:text-red-400 py-2">
-              Delete Account
+            <button
+              onClick={() => setDeleteConfirm(true)}
+              className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-stone-400 hover:text-red-400 transition-colors"
+            >
+              <Trash2 size={12} /> アカウントを削除する
             </button>
           )}
         </div>
