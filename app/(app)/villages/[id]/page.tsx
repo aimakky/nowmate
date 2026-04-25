@@ -498,6 +498,11 @@ export default function VillageDetailPage() {
   const [showPhoneVerify, setShowPhoneVerify] = useState(false)
   const [resolvePost,     setResolvePost]     = useState<any>(null)
 
+  // ── 廃村システム ─────────────────────────────────────────────
+  const [daysLeft,      setDaysLeft]      = useState<number | null>(null)
+  const [isAbandoned,   setIsAbandoned]   = useState(false)
+  const [showRevival,   setShowRevival]   = useState(false)
+
   // JST時刻を毎分更新
   useEffect(() => {
     const t = setInterval(() => setJstHour(getJSTHour()), 60_000)
@@ -521,8 +526,21 @@ export default function VillageDetailPage() {
   const fetchVillage = useCallback(async () => {
     const { data } = await createClient()
       .from('villages').select('*, profiles(display_name)').eq('id', id).single()
-    if (data) { setVillage(data); setRules(data.rules ?? ['', '', '']) }
+    if (data) {
+      setVillage(data)
+      setRules(data.rules ?? ['', '', ''])
+      setIsAbandoned(data.is_abandoned ?? false)
+    }
     setLoading(false)
+  }, [id])
+
+  // 廃村チェック（ページ読み込み時）
+  const checkAbandonment = useCallback(async () => {
+    const { data } = await createClient().rpc('check_village_abandonment', { p_village_id: id })
+    if (data) {
+      setIsAbandoned(data.is_abandoned ?? false)
+      setDaysLeft(data.days_left ?? null)
+    }
   }, [id])
 
   const checkMembership = useCallback(async () => {
@@ -611,17 +629,18 @@ export default function VillageDetailPage() {
     setVisitStreak(data ?? 0)
   }, [id, userId, isMember])
 
-  useEffect(() => { fetchVillage() },     [fetchVillage])
-  useEffect(() => { checkMembership() },  [checkMembership])
-  useEffect(() => { fetchPosts() },       [fetchPosts])
-  useEffect(() => { fetchVoiceRooms() },  [fetchVoiceRooms])
-  useEffect(() => { fetchMembers() },     [fetchMembers])
-  useEffect(() => { fetchLikes() },       [fetchLikes])
-  useEffect(() => { fetchDiary() },       [fetchDiary])
-  useEffect(() => { fetchPinnedPost() },  [fetchPinnedPost])
-  useEffect(() => { fetchTodayPrompt() }, [fetchTodayPrompt])
-  useEffect(() => { fetchStamps() },      [fetchStamps])
-  useEffect(() => { recordVisit() },      [recordVisit])
+  useEffect(() => { fetchVillage() },       [fetchVillage])
+  useEffect(() => { checkMembership() },    [checkMembership])
+  useEffect(() => { fetchPosts() },         [fetchPosts])
+  useEffect(() => { fetchVoiceRooms() },    [fetchVoiceRooms])
+  useEffect(() => { fetchMembers() },       [fetchMembers])
+  useEffect(() => { fetchLikes() },         [fetchLikes])
+  useEffect(() => { fetchDiary() },         [fetchDiary])
+  useEffect(() => { fetchPinnedPost() },    [fetchPinnedPost])
+  useEffect(() => { fetchTodayPrompt() },   [fetchTodayPrompt])
+  useEffect(() => { fetchStamps() },        [fetchStamps])
+  useEffect(() => { recordVisit() },        [recordVisit])
+  useEffect(() => { checkAbandonment() },   [checkAbandonment])
 
   const tier = userTrust ? getTierById(userTrust.tier) : getTierById('visitor')
 
@@ -654,10 +673,19 @@ export default function VillageDetailPage() {
     if (!userId || !newPost.trim() || posting) return
     if (!tier.canPost) { setShowPhoneVerify(true); return }
     setPosting(true)
-    await createClient().from('village_posts').insert({
+    const supabase = createClient()
+    await supabase.from('village_posts').insert({
       village_id: id, user_id: userId, content: newPost.trim(), category: newPostCat,
     })
     if (newPostCat === '初参加あいさつ') await awardPoints('welcomed_new_member', id)
+    // 廃村だった場合は復興
+    if (isAbandoned) {
+      await supabase.rpc('revive_village', { p_village_id: id })
+      setIsAbandoned(false)
+      setDaysLeft(30)
+      setShowRevival(true)
+      setTimeout(() => setShowRevival(false), 5000)
+    }
     setNewPost(''); await fetchPosts(); setPosting(false)
   }
 
@@ -885,6 +913,84 @@ export default function VillageDetailPage() {
           <div className="flex items-center gap-1 text-[10px] font-bold text-orange-400/60">
             <Flame size={11} />
             <span>〜23:00</span>
+          </div>
+        </div>
+      )}
+
+      {/* ══ 復興セレブレーション ══════════════════════════════ */}
+      {showRevival && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-white rounded-3xl shadow-2xl px-8 py-7 text-center animate-bounce mx-6"
+            style={{ border: '2px solid #22c55e', boxShadow: '0 0 40px rgba(34,197,94,0.3)' }}>
+            <div className="text-5xl mb-3">🌱</div>
+            <p className="font-extrabold text-stone-900 text-lg">村が復興しました！</p>
+            <p className="text-xs text-stone-500 mt-1">あなたの投稿が村を救いました</p>
+          </div>
+        </div>
+      )}
+
+      {/* ══ 廃村バナー ══════════════════════════════════════════ */}
+      {isAbandoned && (
+        <div className="mx-4 mt-3 rounded-2xl overflow-hidden"
+          style={{ background: 'linear-gradient(135deg,#1c1c1c 0%,#2d2d2d 100%)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="px-4 py-3 flex items-center gap-3">
+            <span className="text-2xl flex-shrink-0">🏚️</span>
+            <div className="flex-1">
+              <p className="text-xs font-extrabold text-stone-300">この村は廃村です</p>
+              <p className="text-[10px] text-stone-500 mt-0.5 leading-relaxed">
+                長い間、誰も投稿しませんでした。<br />
+                あなたの一言が村を復興させるかもしれません。
+              </p>
+            </div>
+            {village?.revival_count > 0 && (
+              <div className="flex-shrink-0 text-center">
+                <p className="text-lg font-extrabold text-stone-400">{village.revival_count}</p>
+                <p className="text-[8px] text-stone-600">度目の復興</p>
+              </div>
+            )}
+          </div>
+          {isMember && tier.canPost && (
+            <div className="px-4 pb-3">
+              <button
+                onClick={() => { setNewPostCat('雑談'); document.querySelector('textarea')?.focus() }}
+                className="w-full py-2.5 rounded-xl text-xs font-bold text-white active:scale-95 transition-all"
+                style={{ background: 'linear-gradient(135deg,#22c55e 0%,#16a34a 100%)' }}>
+                🌱 この村を復興する
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══ 廃村警告バナー（7日以下）══════════════════════════ */}
+      {!isAbandoned && daysLeft !== null && daysLeft <= 7 && (
+        <div className="mx-4 mt-3 rounded-2xl px-4 py-3 flex items-center gap-3"
+          style={{
+            background: daysLeft <= 3
+              ? 'linear-gradient(135deg,#450a0a 0%,#7f1d1d 100%)'
+              : 'linear-gradient(135deg,#1c1407 0%,#3d2c00 100%)',
+            border: `1px solid ${daysLeft <= 3 ? 'rgba(239,68,68,0.4)' : 'rgba(234,179,8,0.3)'}`,
+          }}>
+          <div className="relative flex-shrink-0">
+            <span className="text-2xl">{daysLeft <= 3 ? '⚠️' : '🕯️'}</span>
+            {daysLeft <= 3 && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full animate-ping"
+                style={{ background: '#ef4444' }} />
+            )}
+          </div>
+          <div className="flex-1">
+            <p className="text-xs font-extrabold" style={{ color: daysLeft <= 3 ? '#fca5a5' : '#fde68a' }}>
+              {daysLeft <= 3 ? `あと${daysLeft}日で廃村になります` : `${daysLeft}日後に廃村の危機`}
+            </p>
+            <p className="text-[10px] mt-0.5" style={{ color: daysLeft <= 3 ? '#f87171' : '#d97706' }}>
+              誰かが投稿すると廃村を免れます
+            </p>
+          </div>
+          <div className="flex-shrink-0 text-center">
+            <p className="font-extrabold text-2xl" style={{ color: daysLeft <= 3 ? '#ef4444' : '#eab308' }}>
+              {daysLeft}
+            </p>
+            <p className="text-[8px]" style={{ color: daysLeft <= 3 ? '#f87171' : '#ca8a04' }}>日</p>
           </div>
         </div>
       )}

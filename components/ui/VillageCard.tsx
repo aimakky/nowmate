@@ -16,6 +16,9 @@ export interface Village {
   voice_join_count_7d: number
   season_title: string | null
   created_at: string
+  last_post_at: string | null
+  is_abandoned: boolean | null
+  revival_count: number | null
 }
 
 // ─── 村タイプごとのスタイル ───────────────────────────────────
@@ -189,10 +192,31 @@ export default function VillageCard({
           </div>
         )}
 
+        {/* 廃村・危機バッジ */}
+        {village.is_abandoned && (
+          <div className="absolute inset-0 flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'grayscale(80%)' }}>
+            <div className="text-center">
+              <p className="text-2xl mb-1">🏚️</p>
+              <p className="text-white font-extrabold text-xs px-3 py-1 rounded-full"
+                style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                廃村 · Abandoned
+              </p>
+              {(village.revival_count ?? 0) > 0 && (
+                <p className="text-white/50 text-[9px] mt-1">{village.revival_count}度復興</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Icon */}
         <span
           className="select-none"
-          style={{ fontSize: featured ? '3.5rem' : '2.8rem', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.25))' }}
+          style={{
+            fontSize: featured ? '3.5rem' : '2.8rem',
+            filter: `drop-shadow(0 2px 8px rgba(0,0,0,0.25)) ${village.is_abandoned ? 'grayscale(1)' : ''}`,
+            opacity: village.is_abandoned ? 0.4 : 1,
+          }}
         >
           {village.icon}
         </span>
