@@ -11,6 +11,8 @@ import { timeAgo } from '@/lib/utils'
 import { getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 import TrustBadge from '@/components/ui/TrustBadge'
 import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
+import MoodWeather from '@/components/features/MoodWeather'
+import DriftBottle from '@/components/features/DriftBottle'
 import { getUserTrust, getTierById, awardPoints } from '@/lib/trust'
 
 // ─── Constants ────────────────────────────────────────────────
@@ -962,6 +964,25 @@ export default function VillageDetailPage() {
               </button>
             ))}
           </div>
+
+          {/* 感情の天気図 */}
+          <MoodWeather
+            villageId={id}
+            villageName={village.name}
+            userId={userId ?? ''}
+            style={style}
+            isMember={isMember}
+          />
+
+          {/* 漂流瓶 */}
+          <DriftBottle
+            villageId={id}
+            villageName={village.name}
+            userId={userId ?? ''}
+            style={style}
+            isMember={isMember}
+            canPost={tier.canPost}
+          />
 
           {/* 今日のお題カード（メンバーのみ表示） */}
           {isMember && (

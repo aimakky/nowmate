@@ -22,6 +22,7 @@ export default function MyPage() {
   const [qaTitles,       setQaTitles]       = useState<any[]>([])
   const [hostedVillages, setHostedVillages] = useState<any[]>([])
   const [joinedVillages, setJoinedVillages] = useState<any[]>([])
+  const [myBottles,      setMyBottles]      = useState<any[]>([])
   const [loading,        setLoading]        = useState(true)
   const [showPhoneVerify,setShowPhoneVerify]= useState(false)
   const [idCopied,       setIdCopied]       = useState(false)
@@ -41,6 +42,7 @@ export default function MyPage() {
         qaTitlesRes,
         hostedRes,
         joinedRes,
+        bottlesRes,
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         getUserTrust(user.id),
@@ -55,6 +57,12 @@ export default function MyPage() {
           .select('villages(id, name, icon, type, member_count, post_count_7d)')
           .eq('user_id', user.id).eq('role', 'member')
           .order('joined_at', { ascending: false }).limit(6),
+        supabase.from('drift_bottles')
+          .select(`id, message, status, created_at,
+            recipient_village:recipient_village_id(name, icon)`)
+          .eq('sender_user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10),
       ])
 
       if (!p) { router.push('/onboarding'); return }
@@ -66,6 +74,7 @@ export default function MyPage() {
       setQaTitles((qaTitlesRes as any)?.data ?? [])
       setHostedVillages(((hostedRes as any)?.data ?? []).map((r: any) => r.villages).filter(Boolean))
       setJoinedVillages(((joinedRes as any)?.data ?? []).map((r: any) => r.villages).filter(Boolean))
+      setMyBottles((bottlesRes as any)?.data ?? [])
       setLoading(false)
     }
     load()
@@ -268,6 +277,46 @@ export default function MyPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── 私の漂流瓶 ── */}
+        {myBottles.length > 0 && (
+          <div className="rounded-2xl overflow-hidden shadow-sm"
+            style={{ background: 'linear-gradient(135deg,#0c1445 0%,#0a2540 100%)', border: '1px solid rgba(100,140,255,0.2)' }}>
+            <div className="px-4 py-3 flex items-center justify-between border-b border-white/8">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🍶</span>
+                <p className="text-xs font-bold text-blue-200">私の漂流瓶</p>
+              </div>
+              <p className="text-[10px] text-blue-400/50">{myBottles.length}本</p>
+            </div>
+            <div className="divide-y divide-white/5">
+              {myBottles.map((b: any) => {
+                const rv = Array.isArray(b.recipient_village) ? b.recipient_village[0] : b.recipient_village
+                const statusInfo =
+                  b.status === 'replied'   ? { icon: '💌', label: '返事あり',  color: '#34d399' } :
+                  b.status === 'delivered' ? { icon: '📬', label: '届いた',    color: '#60a5fa' } :
+                                            { icon: '🌊', label: '漂流中',    color: '#94a3b8' }
+                return (
+                  <div key={b.id} className="px-4 py-3 flex items-center gap-3">
+                    <span className="text-lg flex-shrink-0">{statusInfo.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-white/75 line-clamp-1">{b.message}</p>
+                      <p className="text-[10px] text-blue-400/50 mt-0.5">
+                        {rv ? `${rv.icon} ${rv.name}へ` : '送信先不明'}
+                      </p>
+                    </div>
+                    <span
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                      style={{ background: `${statusInfo.color}20`, color: statusInfo.color, border: `1px solid ${statusInfo.color}30` }}
+                    >
+                      {statusInfo.label}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 
