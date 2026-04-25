@@ -2,14 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Compass, Scroll, HelpCircle, User } from 'lucide-react'
+import { Compass, Scroll, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
-  { href: '/villages',  label: '村',       icon: Compass     },
-  { href: '/timeline',  label: 'つぶやき',  icon: Scroll      },
-  { href: '/qa',        label: '相談',      icon: HelpCircle  },
-  { href: '/mypage',    label: 'マイページ', icon: User        },
+  { href: '/villages',  label: '村',       icon: Compass },
+  { href: '/timeline',  label: 'つぶやき',  icon: Scroll  },
+  { href: '/mypage',    label: 'マイページ', icon: User    },
 ]
 
 export default function BottomNav() {
