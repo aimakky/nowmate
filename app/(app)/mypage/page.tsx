@@ -23,6 +23,9 @@ export default function MyPage() {
   const [hostedVillages, setHostedVillages] = useState<any[]>([])
   const [joinedVillages, setJoinedVillages] = useState<any[]>([])
   const [myBottles,      setMyBottles]      = useState<any[]>([])
+  const [followingPosts, setFollowingPosts] = useState<any[]>([])
+  const [followingCount, setFollowingCount] = useState(0)
+  const [followersCount, setFollowersCount] = useState(0)
   const [loading,        setLoading]        = useState(true)
   const [showPhoneVerify,setShowPhoneVerify]= useState(false)
   const [idCopied,       setIdCopied]       = useState(false)
@@ -43,6 +46,8 @@ export default function MyPage() {
         hostedRes,
         joinedRes,
         bottlesRes,
+        followsRes,
+        followersRes,
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         getUserTrust(user.id),
@@ -63,6 +68,8 @@ export default function MyPage() {
           .eq('sender_user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(10),
+        supabase.from('user_follows').select('following_id').eq('follower_id', user.id),
+        supabase.from('user_follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', user.id),
       ])
 
       if (!p) { router.push('/onboarding'); return }
@@ -75,6 +82,25 @@ export default function MyPage() {
       setHostedVillages(((hostedRes as any)?.data ?? []).map((r: any) => r.villages).filter(Boolean))
       setJoinedVillages(((joinedRes as any)?.data ?? []).map((r: any) => r.villages).filter(Boolean))
       setMyBottles((bottlesRes as any)?.data ?? [])
+
+      // フォロー
+      const followingIds: string[] = ((followsRes as any)?.data ?? []).map((r: any) => r.following_id)
+      setFollowingCount(followingIds.length)
+      setFollowersCount((followersRes as any)?.count ?? 0)
+
+      // フォロー中ユーザーの最新投稿
+      if (followingIds.length > 0) {
+        const { data: fPosts } = await supabase
+          .from('village_posts')
+          .select(`id, content, created_at, user_id,
+            profiles:user_id(display_name, avatar_url),
+            villages:village_id(id, name, icon)`)
+          .in('user_id', followingIds)
+          .order('created_at', { ascending: false })
+          .limit(10)
+        setFollowingPosts(fPosts ?? [])
+      }
+
       setLoading(false)
     }
     load()
@@ -140,17 +166,19 @@ export default function MyPage() {
 
         {/* Activity stats */}
         <div
-          className="mt-4 grid grid-cols-3 gap-2 rounded-2xl px-3 py-3"
+          className="mt-4 grid grid-cols-5 gap-1.5 rounded-2xl px-3 py-3"
           style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
         >
           {[
-            { value: villageCount, label: '参加村' },
-            { value: postCount,    label: '投稿数' },
-            { value: tweetCount,   label: 'ツイート' },
+            { value: villageCount,   label: '参加村' },
+            { value: postCount,      label: '投稿数' },
+            { value: tweetCount,     label: 'つぶやき' },
+            { value: followingCount, label: 'フォロー' },
+            { value: followersCount, label: 'フォロワー' },
           ].map(s => (
             <div key={s.label} className="text-center">
-              <p className="font-extrabold text-white text-lg leading-none">{s.value}</p>
-              <p className="text-white/50 text-[10px] mt-0.5 font-medium">{s.label}</p>
+              <p className="font-extrabold text-white text-base leading-none">{s.value}</p>
+              <p className="text-white/50 text-[9px] mt-0.5 font-medium leading-tight">{s.label}</p>
             </div>
           ))}
         </div>
@@ -314,6 +342,58 @@ export default function MyPage() {
                       {statusInfo.label}
                     </span>
                   </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── フォロー中の投稿 ── */}
+        {followingPosts.length > 0 && (
+          <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 py-3 border-b border-stone-50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">👥</span>
+                <p className="text-xs font-bold text-stone-700">フォロー中の投稿</p>
+              </div>
+              <p className="text-[10px] text-stone-400">{followingCount}人をフォロー中</p>
+            </div>
+            <div className="divide-y divide-stone-50">
+              {followingPosts.map((fp: any) => {
+                const prof = Array.isArray(fp.profiles) ? fp.profiles[0] : fp.profiles
+                const vil  = Array.isArray(fp.villages)  ? fp.villages[0]  : fp.villages
+                const ago  = (() => {
+                  const diff = Date.now() - new Date(fp.created_at).getTime()
+                  const m = Math.floor(diff / 60000)
+                  if (m < 60)  return `${m}分前`
+                  const h = Math.floor(m / 60)
+                  if (h < 24)  return `${h}時間前`
+                  return `${Math.floor(h / 24)}日前`
+                })()
+                return (
+                  <Link
+                    key={fp.id}
+                    href={`/villages/${vil?.id ?? ''}`}
+                    className="flex gap-3 px-4 py-3 hover:bg-stone-50 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-sm flex-shrink-0 overflow-hidden">
+                      {prof?.avatar_url
+                        ? <img src={prof.avatar_url} alt="" className="w-full h-full object-cover" />
+                        : '🙂'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-xs font-bold text-stone-800 truncate">{prof?.display_name ?? '…'}</span>
+                        {vil && (
+                          <span className="text-[10px] text-stone-400 flex-shrink-0">
+                            in {vil.icon}{vil.name}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">{fp.content}</p>
+                      <p className="text-[10px] text-stone-300 mt-1">{ago}</p>
+                    </div>
+                  </Link>
                 )
               })}
             </div>
