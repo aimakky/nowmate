@@ -8,7 +8,8 @@ import { TrustCard, TrustHowToCard } from '@/components/ui/TrustBadge'
 import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
 import { getUserTrust } from '@/lib/trust'
 import { getTitleName, TITLE_LEVEL_STYLE } from '@/lib/qa'
-import { Settings, LogOut, ChevronRight } from 'lucide-react'
+import { Settings, LogOut, ChevronRight, Crown, Users } from 'lucide-react'
+import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 
 export default function MyPage() {
   const router = useRouter()
@@ -19,6 +20,8 @@ export default function MyPage() {
   const [postCount,      setPostCount]      = useState(0)
   const [tweetCount,     setTweetCount]     = useState(0)
   const [qaTitles,       setQaTitles]       = useState<any[]>([])
+  const [hostedVillages, setHostedVillages] = useState<any[]>([])
+  const [joinedVillages, setJoinedVillages] = useState<any[]>([])
   const [loading,        setLoading]        = useState(true)
   const [showPhoneVerify,setShowPhoneVerify]= useState(false)
   const [idCopied,       setIdCopied]       = useState(false)
@@ -36,6 +39,8 @@ export default function MyPage() {
         { count: pc },
         { count: tc },
         qaTitlesRes,
+        hostedRes,
+        joinedRes,
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         getUserTrust(user.id),
@@ -43,6 +48,13 @@ export default function MyPage() {
         supabase.from('village_posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('tweets').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('qa_titles').select('*').eq('user_id', user.id).order('awarded_at', { ascending: false }),
+        supabase.from('village_members')
+          .select('villages(id, name, icon, type, member_count, post_count_7d, description)')
+          .eq('user_id', user.id).eq('role', 'host'),
+        supabase.from('village_members')
+          .select('villages(id, name, icon, type, member_count, post_count_7d)')
+          .eq('user_id', user.id).eq('role', 'member')
+          .order('joined_at', { ascending: false }).limit(6),
       ])
 
       if (!p) { router.push('/onboarding'); return }
@@ -52,6 +64,8 @@ export default function MyPage() {
       setPostCount(pc ?? 0)
       setTweetCount(tc ?? 0)
       setQaTitles((qaTitlesRes as any)?.data ?? [])
+      setHostedVillages(((hostedRes as any)?.data ?? []).map((r: any) => r.villages).filter(Boolean))
+      setJoinedVillages(((joinedRes as any)?.data ?? []).map((r: any) => r.villages).filter(Boolean))
       setLoading(false)
     }
     load()
@@ -162,6 +176,100 @@ export default function MyPage() {
 
         {/* ── 信頼の積み方 ── */}
         {trust && <TrustHowToCard />}
+
+        {/* ── 私の村 ── */}
+        {(hostedVillages.length > 0 || joinedVillages.length > 0) && (
+          <div className="space-y-3">
+
+            {/* 村長の村 */}
+            {hostedVillages.length > 0 && (
+              <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
+                <div
+                  className="px-4 py-3 flex items-center justify-between"
+                  style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%)' }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Crown size={14} className="text-yellow-300" />
+                    <p className="text-xs font-bold text-white">村長の村</p>
+                  </div>
+                  <p className="text-[10px] text-white/50">{hostedVillages.length}村</p>
+                </div>
+                <div className="divide-y divide-stone-50">
+                  {hostedVillages.map((v: any) => {
+                    const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
+                    return (
+                      <div key={v.id} className="flex items-center gap-3 px-4 py-3">
+                        {/* Village gradient thumb */}
+                        <div
+                          className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
+                          style={{ background: vs.gradient }}
+                        >
+                          {v.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="flex items-center gap-0.5 text-[10px] text-stone-400">
+                              <Users size={9} /> {v.member_count}人
+                            </span>
+                            <span className="text-[10px] text-stone-400">
+                              今週{v.post_count_7d}件
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Link
+                            href={`/villages/${v.id}`}
+                            className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-white active:scale-95 transition-all"
+                            style={{ background: vs.accent }}
+                          >
+                            村を見る
+                          </Link>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 参加中の村 */}
+            {joinedVillages.length > 0 && (
+              <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
+                <div className="px-4 py-3 border-b border-stone-50 flex items-center justify-between">
+                  <p className="text-xs font-bold text-stone-500 uppercase tracking-wider">参加中の村</p>
+                  <Link href="/villages" className="text-[10px] text-indigo-500 font-bold">すべて見る →</Link>
+                </div>
+                <div className="divide-y divide-stone-50">
+                  {joinedVillages.map((v: any) => {
+                    const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
+                    return (
+                      <Link
+                        key={v.id}
+                        href={`/villages/${v.id}`}
+                        className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition-colors active:bg-stone-50"
+                      >
+                        <div
+                          className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+                          style={{ background: vs.gradient }}
+                        >
+                          {v.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-stone-800 truncate">{v.name}</p>
+                          <p className="text-[10px] text-stone-400">
+                            {v.member_count}人 · 今週{v.post_count_7d}件
+                          </p>
+                        </div>
+                        <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Q&A 称号 ── */}
         {qaTitles.length > 0 && (
