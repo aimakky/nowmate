@@ -83,7 +83,7 @@ export default function QAPage() {
             <p className="text-xs text-white/50">匿名で気軽に相談・回答しよう</p>
           </div>
           <button
-            onClick={() => canPost ? router.push('/qa/create') : router.push('/qa/create')}
+            onClick={() => router.push('/qa/create')}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold flex-shrink-0 active:scale-95 transition-all"
             style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}
           >

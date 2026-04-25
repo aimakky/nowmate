@@ -62,7 +62,7 @@ export default function VoicePage() {
     if (!userId) return
     const supabase = createClient()
     const { data } = await supabase
-      .from('follows')
+      .from('user_follows')
       .select('following_id')
       .eq('follower_id', userId)
     setFollowingIds(new Set((data || []).map((f: any) => f.following_id)))

@@ -51,12 +51,10 @@ export default function ChatDetailPage() {
       if (!match) { router.push('/chat'); return }
 
       const otherId = match.user1_id === user.id ? match.user2_id : match.user1_id
-      const [{ data: profile }, { data: msgs }, { data: rxns }] = await Promise.all([
+      const [{ data: profile }, { data: msgs }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', otherId).single(),
         supabase.from('messages').select('*').eq('match_id', matchId)
           .order('created_at', { ascending: true }),
-        supabase.from('message_reactions').select('*')
-          .in('message_id', [matchId]),
       ])
       setOther(profile)
       setMessages(msgs || [])

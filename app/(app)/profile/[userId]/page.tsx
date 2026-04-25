@@ -35,8 +35,8 @@ export default function UserProfilePage() {
       const [{ data: p }, { data: tw }, { count: followers }, { count: following }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
         supabase.from('tweets').select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)').eq('user_id', userId).order('created_at', { ascending: false }).limit(30),
-        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', userId),
-        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId),
+        supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', userId),
+        supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId),
       ])
       setProfile(p)
       setTweets((tw || []) as TweetData[])
@@ -50,7 +50,7 @@ export default function UserProfilePage() {
   useEffect(() => {
     if (!myId || !userId) return
     const supabase = createClient()
-    supabase.from('follows').select('follower_id').eq('follower_id', myId).eq('following_id', userId).maybeSingle()
+    supabase.from('user_follows').select('follower_id').eq('follower_id', myId).eq('following_id', userId).maybeSingle()
       .then(({ data }) => setIsFollowing(!!data))
   }, [myId, userId])
 
@@ -59,11 +59,11 @@ export default function UserProfilePage() {
     setToggling(true)
     const supabase = createClient()
     if (isFollowing) {
-      await supabase.from('follows').delete().eq('follower_id', myId).eq('following_id', userId)
+      await supabase.from('user_follows').delete().eq('follower_id', myId).eq('following_id', userId)
       setIsFollowing(false)
       setFollowerCount(c => Math.max(0, c - 1))
     } else {
-      await supabase.from('follows').insert({ follower_id: myId, following_id: userId })
+      await supabase.from('user_follows').insert({ follower_id: myId, following_id: userId })
       setIsFollowing(true)
       setFollowerCount(c => c + 1)
     }

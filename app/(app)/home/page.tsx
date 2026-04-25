@@ -96,7 +96,7 @@ export default function HomePage() {
     if (!currentUserId) return
     const supabase = createClient()
     const { data: followData } = await supabase
-      .from('follows').select('following_id').eq('follower_id', currentUserId)
+      .from('user_follows').select('following_id').eq('follower_id', currentUserId)
     const ids = [...(followData || []).map((f: any) => f.following_id), currentUserId]
     const { data } = await supabase
       .from('tweets')

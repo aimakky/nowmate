@@ -596,6 +596,12 @@ export default function VillageDetailPage() {
   const [isAbandoned,   setIsAbandoned]   = useState(false)
   const [showRevival,   setShowRevival]   = useState(false)
 
+  // ── フォロー・今ヒマ ──────────────────────────────────────────
+  const [followingIds,  setFollowingIds]  = useState<Set<string>>(new Set())
+  const [freeMembers,   setFreeMembers]   = useState<any[]>([])
+  const [isFreeNow,     setIsFreeNow]     = useState(false)
+  const [togglingFree,  setTogglingFree]  = useState(false)
+
   // ── 村外交システム ────────────────────────────────────────────
   const [diplomacyIn,    setDiplomacyIn]    = useState<any[]>([])
   const [diplomacyOut,   setDiplomacyOut]   = useState<any[]>([])
@@ -813,6 +819,54 @@ export default function VillageDetailPage() {
     await fetchPosts()
   }
 
+  // ── フォロー取得 ──────────────────────────────────────────────
+  const fetchFollowing = useCallback(async () => {
+    if (!userId) return
+    const { data } = await createClient().from('user_follows').select('following_id').eq('follower_id', userId)
+    setFollowingIds(new Set((data || []).map((r: any) => r.following_id)))
+  }, [userId])
+
+  // ── 今ヒマ取得（30秒ポーリング）──────────────────────────────
+  const fetchFreeNow = useCallback(async () => {
+    const { data } = await createClient().rpc('get_free_now_members', { p_village_id: id })
+    const members = (data || []) as any[]
+    setFreeMembers(members)
+    setIsFreeNow(userId ? members.some((m: any) => m.user_id === userId) : false)
+  }, [id, userId])
+
+  // ── フォロートグル ────────────────────────────────────────────
+  async function toggleFollow(targetId: string) {
+    if (!userId) return
+    const supabase = createClient()
+    if (followingIds.has(targetId)) {
+      await supabase.from('user_follows').delete().eq('follower_id', userId).eq('following_id', targetId)
+      setFollowingIds(prev => { const n = new Set(prev); n.delete(targetId); return n })
+    } else {
+      await supabase.from('user_follows').upsert({ follower_id: userId, following_id: targetId })
+      setFollowingIds(prev => new Set([...prev, targetId]))
+    }
+  }
+
+  // ── 今ヒマトグル ──────────────────────────────────────────────
+  async function toggleFreeNow() {
+    if (!userId || !isMember || togglingFree) return
+    setTogglingFree(true)
+    const supabase = createClient()
+    if (isFreeNow) {
+      await supabase.from('village_free_now').delete().eq('user_id', userId).eq('village_id', id)
+      setIsFreeNow(false)
+      setFreeMembers(prev => prev.filter(m => m.user_id !== userId))
+    } else {
+      await supabase.from('village_free_now').upsert({
+        user_id: userId, village_id: id,
+        expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      }, { onConflict: 'user_id,village_id' })
+      setIsFreeNow(true)
+      await fetchFreeNow()
+    }
+    setTogglingFree(false)
+  }
+
   useEffect(() => { fetchVillage() },       [fetchVillage])
   useEffect(() => { checkMembership() },    [checkMembership])
   useEffect(() => { fetchPosts() },         [fetchPosts])
@@ -826,6 +880,13 @@ export default function VillageDetailPage() {
   useEffect(() => { recordVisit() },        [recordVisit])
   useEffect(() => { checkAbandonment() },   [checkAbandonment])
   useEffect(() => { fetchDiplomacy() },     [fetchDiplomacy])
+  useEffect(() => { fetchFollowing() },     [fetchFollowing])
+  useEffect(() => { fetchFreeNow() },       [fetchFreeNow])
+  // 今ヒマを30秒ごとにポーリング
+  useEffect(() => {
+    const t = setInterval(() => fetchFreeNow(), 30_000)
+    return () => clearInterval(t)
+  }, [fetchFreeNow])
 
   const tier = userTrust ? getTierById(userTrust.tier) : getTierById('visitor')
 
@@ -1358,6 +1419,65 @@ export default function VillageDetailPage() {
       {/* ════════ VOICE TAB ════════ */}
       {tab === 'voice' && (
         <div className="px-4 pb-32 space-y-3 pt-1">
+
+          {/* ── 今ヒマパネル ── */}
+          {isMember && (
+            <div className="rounded-2xl overflow-hidden shadow-sm"
+              style={{
+                background: isFreeNow
+                  ? 'linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%)'
+                  : 'white',
+                border: isFreeNow ? '1px solid #86efac' : '1px solid #f5f5f4',
+              }}>
+              <div className="px-4 py-3.5 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-extrabold" style={{ color: isFreeNow ? '#16a34a' : '#1c1917' }}>
+                    {isFreeNow ? '🙋 今ヒマと伝えています' : '🙋 今ヒマですか？'}
+                  </p>
+                  <p className="text-[11px] text-stone-400 mt-0.5">
+                    {isFreeNow
+                      ? '15分間、住民に表示されます'
+                      : '住民に「今話せます」と伝えよう'}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleFreeNow}
+                  disabled={togglingFree}
+                  className="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-90 disabled:opacity-50"
+                  style={isFreeNow
+                    ? { background: '#dcfce7', color: '#16a34a', border: '1px solid #86efac' }
+                    : { background: style.accent, color: '#fff', boxShadow: `0 3px 10px ${style.accent}40` }}>
+                  {togglingFree ? '…' : isFreeNow ? 'やめる' : 'ヒマです！'}
+                </button>
+              </div>
+
+              {/* 今ヒマな他の住民 */}
+              {freeMembers.filter(m => m.user_id !== userId).length > 0 && (
+                <div className="px-4 pb-3 space-y-2">
+                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">今ヒマな住民</p>
+                  <div className="space-y-1.5">
+                    {freeMembers.filter(m => m.user_id !== userId).map(m => (
+                      <div key={m.user_id}
+                        className="flex items-center gap-2.5 px-3 py-2 bg-white rounded-xl border border-stone-100">
+                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse flex-shrink-0" />
+                        <span className="text-sm font-semibold text-stone-700">{m.display_name}</span>
+                        <span className="ml-auto text-[10px] text-stone-400">
+                          {Math.max(0, Math.ceil((new Date(m.expires_at).getTime() - Date.now()) / 60000))}分
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={createVoiceRoom}
+                    className="w-full py-3 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 active:scale-[0.99] transition-all"
+                    style={{ background: 'linear-gradient(135deg,#22c55e 0%,#16a34a 100%)', boxShadow: '0 4px 12px rgba(34,197,94,0.35)' }}>
+                    🎙️ 今すぐ一緒に話す →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="rounded-2xl px-4 py-3.5 flex items-start gap-3"
             style={{ background: `${style.accent}10`, border: `1px solid ${style.accent}20` }}>
             <span className="text-2xl mt-0.5">🎙️</span>
@@ -1435,12 +1555,24 @@ export default function VillageDetailPage() {
                   )}
                 </div>
               </div>
-              {m.role === 'host' && (
-                <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: `${style.accent}20` }}>
-                  <Crown size={13} style={{ color: style.accent }} />
-                </div>
-              )}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {m.role === 'host' && (
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center"
+                    style={{ background: `${style.accent}20` }}>
+                    <Crown size={13} style={{ color: style.accent }} />
+                  </div>
+                )}
+                {m.user_id !== userId && (
+                  <button
+                    onClick={() => toggleFollow(m.user_id)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-90"
+                    style={followingIds.has(m.user_id)
+                      ? { background: '#f5f5f4', color: '#78716c', border: '1px solid #e7e5e4' }
+                      : { background: style.accent, color: '#fff', boxShadow: `0 2px 8px ${style.accent}40` }}>
+                    {followingIds.has(m.user_id) ? 'フォロー中' : 'フォロー'}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
