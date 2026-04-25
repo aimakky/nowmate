@@ -9,15 +9,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="pb-20">
+      <div style={{ paddingBottom: 'max(calc(4rem + env(safe-area-inset-bottom, 8px)), 5.5rem)' }}>
         {children}
       </div>
       <BottomNav />
 
-      {/* Floating feedback button */}
+      {/* Floating feedback button — left side to avoid FAB conflict */}
       <button
         onClick={() => setShowFeedback(true)}
-        className="fixed bottom-24 right-4 z-30 w-11 h-11 bg-white border border-gray-200 rounded-2xl shadow-md flex items-center justify-center text-lg hover:shadow-lg hover:scale-105 active:scale-95 transition-all"
+        className="fixed bottom-24 left-4 z-30 w-11 h-11 bg-white border border-gray-200 rounded-2xl shadow-md flex items-center justify-center text-lg hover:shadow-lg hover:scale-105 active:scale-95 transition-all"
         title="Share feedback"
       >
         💡

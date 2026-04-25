@@ -55,11 +55,13 @@
     overflow: hidden;
   }
 
-  .scrollbar-hide {
+  .scrollbar-hide,
+  .scrollbar-none {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide::-webkit-scrollbar,
+  .scrollbar-none::-webkit-scrollbar { display: none; }
 
   .glass {
     background: rgba(255,255,255,0.85);
