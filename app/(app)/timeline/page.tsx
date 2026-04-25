@@ -71,31 +71,51 @@ function CharRing({ current, max }: { current: number; max: number }) {
 
 // ─── Compose Bottom Sheet ─────────────────────────────────────
 function ComposeSheet({
-  userId, onClose, onPosted,
-}: { userId: string; onClose: () => void; onPosted: () => void }) {
+  userId, canPost, onClose, onPosted, onNeedVerify,
+}: { userId: string; canPost: boolean; onClose: () => void; onPosted: () => void; onNeedVerify: () => void }) {
   const [content, setContent] = useState('')
   const [tag,     setTag]     = useState('talk')
   const [posting, setPosting] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   const MAX = 280
 
-  useEffect(() => { setTimeout(() => ref.current?.focus(), 80) }, [])
+  // モバイルでキーボードが開いたときシートの高さを追従させる
+  const [sheetBottom, setSheetBottom] = useState(0)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return
+    const vv = window.visualViewport
+    function onResize() {
+      // visualViewport.height = キーボードを除いた実際の表示高さ
+      const hidden = window.innerHeight - vv!.height - vv!.offsetTop
+      setSheetBottom(hidden > 0 ? hidden : 0)
+    }
+    vv.addEventListener('resize', onResize)
+    vv.addEventListener('scroll', onResize)
+    return () => { vv.removeEventListener('resize', onResize); vv.removeEventListener('scroll', onResize) }
+  }, [])
 
   async function submit() {
     if (!content.trim() || posting) return
+    if (!canPost) { onClose(); onNeedVerify(); return }
     setPosting(true)
-    await createClient().from('tweets').insert({ user_id: userId, content: content.trim(), tag })
-    onPosted()
-    onClose()
+    const { error } = await createClient().from('tweets').insert({ user_id: userId, content: content.trim(), tag })
+    if (!error) { onPosted(); onClose() }
     setPosting(false)
   }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl shadow-2xl max-h-[90vh] flex flex-col">
+      <div
+        className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col"
+        style={{
+          maxHeight: 'min(85dvh, 85vh)',
+          bottom: sheetBottom,
+          transition: 'bottom 0.15s ease-out',
+        }}
+      >
         {/* ヘッダー */}
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-stone-100">
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-stone-100 flex-shrink-0">
           <button onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-stone-100 transition-all active:scale-90">
             <X size={18} className="text-stone-500" />
@@ -109,18 +129,34 @@ function ComposeSheet({
           </button>
         </div>
 
+        {/* 未認証バナー */}
+        {!canPost && (
+          <button
+            onClick={() => { onClose(); onNeedVerify() }}
+            className="mx-4 mt-3 rounded-2xl px-4 py-3 flex items-center gap-3 text-left active:scale-[0.99] transition-all border flex-shrink-0"
+            style={{ background: `${X_BLUE}08`, borderColor: `${X_BLUE}25` }}
+          >
+            <span className="text-xl">📱</span>
+            <div className="flex-1">
+              <p className="text-xs font-bold" style={{ color: X_BLUE }}>投稿するには電話認証が必要です</p>
+              <p className="text-[10px] text-stone-400 mt-0.5">タップして認証する（30秒で完了）</p>
+            </div>
+            <span style={{ color: X_BLUE }}>›</span>
+          </button>
+        )}
+
         {/* 本文 */}
-        <div className="flex gap-3 px-4 pt-4 pb-2 flex-1 overflow-y-auto">
+        <div className="flex gap-3 px-4 pt-4 pb-2 flex-1 overflow-y-auto min-h-0">
           <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold text-white flex-shrink-0"
             style={{ background: `linear-gradient(135deg, ${TAGS.find(t => t.id === tag)?.color ?? X_BLUE} 0%, ${TAGS.find(t => t.id === tag)?.color ?? X_BLUE}bb 100%)` }}>
             ✏️
           </div>
           <div className="flex-1">
             {/* タグチップ */}
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-none mb-3 pb-0.5">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none mb-3 pb-0.5 -mx-1 px-1">
               {TAGS.map(t => (
                 <button key={t.id} onClick={() => setTag(t.id)}
-                  className="flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all active:scale-90"
+                  className="flex-shrink-0 px-2.5 py-1.5 rounded-full text-[11px] font-bold border transition-all active:scale-90"
                   style={tag === t.id
                     ? { background: `${t.color}18`, color: t.color, borderColor: `${t.color}50` }
                     : { background: '#fafaf9', borderColor: '#e7e5e4', color: '#a8a29e' }}>
@@ -133,14 +169,18 @@ function ComposeSheet({
               value={content}
               onChange={e => setContent(e.target.value.slice(0, MAX))}
               placeholder="いまどうしてる？"
-              rows={5}
+              rows={4}
+              inputMode="text"
               className="w-full text-[17px] text-stone-900 resize-none focus:outline-none leading-relaxed placeholder:text-stone-300 bg-transparent"
             />
           </div>
         </div>
 
-        {/* フッター */}
-        <div className="flex items-center justify-end gap-3 px-4 pb-8 pt-3 border-t border-stone-100">
+        {/* フッター（safe-area対応） */}
+        <div
+          className="flex items-center justify-end gap-3 px-4 pt-3 border-t border-stone-100 flex-shrink-0"
+          style={{ paddingBottom: `max(env(safe-area-inset-bottom, 0px), 16px)` }}
+        >
           <CharRing current={content.length} max={MAX} />
           <div className="w-px h-5 bg-stone-200" />
           <span className="text-xs font-medium" style={{ color: content.length > MAX * 0.9 ? '#ef4444' : '#a8a29e' }}>
@@ -631,9 +671,13 @@ export default function TimelinePage() {
 
       {/* ══ 投稿 FAB ════════════════════════════════════════════ */}
       <button
-        onClick={() => tier.canPost ? setShowCompose(true) : setShowVerify(true)}
-        className="fixed bottom-24 right-4 w-14 h-14 rounded-full flex items-center justify-center shadow-xl z-30 active:scale-90 transition-all"
-        style={{ background: X_BLUE, boxShadow: `0 4px 20px ${X_BLUE}60` }}>
+        onClick={() => userId ? setShowCompose(true) : undefined}
+        className="fixed right-4 w-14 h-14 rounded-full flex items-center justify-center shadow-xl z-30 active:scale-90 transition-all"
+        style={{
+          background: X_BLUE,
+          boxShadow: `0 4px 20px ${X_BLUE}60`,
+          bottom: `max(calc(env(safe-area-inset-bottom, 0px) + 5.5rem), 5.5rem)`,
+        }}>
         <PenLine size={22} className="text-white" />
       </button>
 
@@ -641,8 +685,10 @@ export default function TimelinePage() {
       {showCompose && userId && (
         <ComposeSheet
           userId={userId}
+          canPost={tier.canPost}
           onClose={() => setShowCompose(false)}
           onPosted={() => fetchTweets(true)}
+          onNeedVerify={() => setShowVerify(true)}
         />
       )}
 
