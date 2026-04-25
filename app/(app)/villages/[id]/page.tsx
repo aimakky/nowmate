@@ -363,16 +363,52 @@ function DailyPromptCard({
 
 // ─── PostCard ─────────────────────────────────────────────────
 function PostCard({
-  post, style, likedPosts, onToggleLike, onResolve, onPin, onDelete, isPinned, userId, isHost,
+  post, style, likedPosts, onToggleLike, onResolve, onPin, onDelete, isPinned, userId, isHost, villageId,
 }: {
   post: any; style: any; likedPosts: Set<string>
   onToggleLike: (id: string) => void
   onResolve?: (post: any) => void
   onPin?: (id: string | null) => void
   onDelete?: (id: string) => void
-  isPinned?: boolean; userId: string | null; isHost: boolean
+  isPinned?: boolean; userId: string | null; isHost: boolean; villageId: string
 }) {
   const catColor = CAT_COLORS[post.category] ?? style.accent
+  const [showComments,    setShowComments]    = useState(false)
+  const [comments,        setComments]        = useState<any[]>([])
+  const [loadingComments, setLoadingComments] = useState(false)
+  const [commentText,     setCommentText]     = useState('')
+  const [submitting,      setSubmitting]      = useState(false)
+  const [localCount,      setLocalCount]      = useState(post.comment_count ?? 0)
+
+  async function loadComments() {
+    setLoadingComments(true)
+    const { data } = await createClient()
+      .from('village_post_comments')
+      .select('*, profiles(display_name)')
+      .eq('post_id', post.id)
+      .order('created_at', { ascending: true })
+      .limit(30)
+    setComments(data || [])
+    setLoadingComments(false)
+  }
+
+  async function toggleComments() {
+    const next = !showComments
+    setShowComments(next)
+    if (next && comments.length === 0) await loadComments()
+  }
+
+  async function submitComment() {
+    if (!commentText.trim() || submitting || !userId) return
+    setSubmitting(true)
+    await createClient().from('village_post_comments').insert({
+      post_id: post.id, village_id: villageId, user_id: userId, content: commentText.trim(),
+    })
+    setCommentText('')
+    setLocalCount((n: number) => n + 1)
+    await loadComments()
+    setSubmitting(false)
+  }
 
   return (
     <div
@@ -420,12 +456,20 @@ function PostCard({
         </div>
         <p className="text-sm text-stone-800 leading-relaxed mb-3">{post.content}</p>
         <div className="flex items-center justify-between pt-2 border-t border-stone-50">
-          <button onClick={() => onToggleLike(post.id)}
-            className="flex items-center gap-1.5 text-xs font-semibold transition-all active:scale-90"
-            style={{ color: likedPosts.has(post.id) ? '#f43f5e' : '#a8a29e' }}>
-            <span className="text-base">{likedPosts.has(post.id) ? '❤️' : '🤍'}</span>
-            <span>{post.reaction_count}</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => onToggleLike(post.id)}
+              className="flex items-center gap-1.5 text-xs font-semibold transition-all active:scale-90"
+              style={{ color: likedPosts.has(post.id) ? '#f43f5e' : '#a8a29e' }}>
+              <span className="text-base">{likedPosts.has(post.id) ? '❤️' : '🤍'}</span>
+              <span>{post.reaction_count}</span>
+            </button>
+            <button onClick={toggleComments}
+              className="flex items-center gap-1.5 text-xs font-semibold transition-all active:scale-90"
+              style={{ color: showComments ? style.accent : '#a8a29e' }}>
+              <span className="text-base">💬</span>
+              <span>{localCount}</span>
+            </button>
+          </div>
           <div className="flex items-center gap-1.5">
             {post.category === '相談' && post.user_id === userId && !post.is_resolved && onResolve && (
               <button onClick={() => onResolve(post)}
@@ -451,6 +495,55 @@ function PostCard({
           </div>
         </div>
       </div>
+
+      {/* ── コメントセクション ── */}
+      {showComments && (
+        <div className="border-t border-stone-100 bg-stone-50/70 px-4 py-3 space-y-3">
+          {loadingComments ? (
+            <div className="flex justify-center py-3">
+              <span className="w-4 h-4 border-2 border-stone-300 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : comments.length === 0 ? (
+            <p className="text-[11px] text-stone-400 text-center py-2">まだコメントがありません。最初のコメントをどうぞ！</p>
+          ) : (
+            <div className="space-y-2.5">
+              {comments.map(c => (
+                <div key={c.id} className="flex gap-2.5">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white flex-shrink-0 mt-0.5"
+                    style={{ background: style.accent }}>
+                    {c.profiles?.display_name?.[0] ?? '?'}
+                  </div>
+                  <div className="flex-1 bg-white rounded-2xl px-3 py-2 shadow-sm border border-stone-100">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[11px] font-bold text-stone-800">{c.profiles?.display_name ?? '住民'}</span>
+                      <span className="text-[9px] text-stone-400">{timeAgo(c.created_at)}</span>
+                    </div>
+                    <p className="text-xs text-stone-700 leading-relaxed mt-0.5">{c.content}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {userId && (
+            <div className="flex gap-2 pt-0.5">
+              <input
+                value={commentText}
+                onChange={e => setCommentText(e.target.value.slice(0, 300))}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment() } }}
+                placeholder="コメントする…"
+                className="flex-1 px-3 py-2 rounded-2xl border border-stone-200 text-xs bg-white focus:outline-none focus:border-stone-400 transition-colors"
+              />
+              <button onClick={submitComment} disabled={!commentText.trim() || submitting}
+                className="w-9 h-9 rounded-2xl flex items-center justify-center disabled:opacity-40 active:scale-90 transition-all flex-shrink-0"
+                style={{ background: style.accent }}>
+                {submitting
+                  ? <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                  : <Send size={13} className="text-white" />}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -469,7 +562,7 @@ export default function VillageDetailPage() {
   const [diary,       setDiary]       = useState<any[]>([])
   const [pinnedPost,  setPinnedPost]  = useState<any>(null)
 
-  const [tab,       setTab]       = useState<'posts' | 'voice' | 'members' | 'diary' | 'admin'>('posts')
+  const [tab,       setTab]       = useState<'posts' | 'voice' | 'members' | 'diary' | 'diplo' | 'admin'>('posts')
   const [postCat,   setPostCat]   = useState('全部')
   const [isMember,  setIsMember]  = useState(false)
   const [isHost,    setIsHost]    = useState(false)
@@ -502,6 +595,24 @@ export default function VillageDetailPage() {
   const [daysLeft,      setDaysLeft]      = useState<number | null>(null)
   const [isAbandoned,   setIsAbandoned]   = useState(false)
   const [showRevival,   setShowRevival]   = useState(false)
+
+  // ── 村外交システム ────────────────────────────────────────────
+  const [diplomacyIn,    setDiplomacyIn]    = useState<any[]>([])
+  const [diplomacyOut,   setDiplomacyOut]   = useState<any[]>([])
+  const [mergeRequests,  setMergeRequests]  = useState<any[]>([])
+  const [showDiploForm,  setShowDiploForm]  = useState(false)
+  const [showMergeForm,  setShowMergeForm]  = useState(false)
+  const [diploMsg,       setDiploMsg]       = useState('')
+  const [diploEmoji,     setDiploEmoji]     = useState('📜')
+  const [diploTarget,    setDiploTarget]    = useState<any>(null)
+  const [diploSearch,    setDiploSearch]    = useState('')
+  const [diploResults,   setDiploResults]   = useState<any[]>([])
+  const [sendingDiplo,   setSendingDiplo]   = useState(false)
+  const [mergeTarget,    setMergeTarget]    = useState<any>(null)
+  const [mergeSearch,    setMergeSearch]    = useState('')
+  const [mergeResults,   setMergeResults]   = useState<any[]>([])
+  const [mergeMsg,       setMergeMsg]       = useState('')
+  const [sendingMerge,   setSendingMerge]   = useState(false)
 
   // JST時刻を毎分更新
   useEffect(() => {
@@ -629,6 +740,79 @@ export default function VillageDetailPage() {
     setVisitStreak(data ?? 0)
   }, [id, userId, isMember])
 
+  // ── 外交フェッチャー ──────────────────────────────────────────
+  const fetchDiplomacy = useCallback(async () => {
+    const supabase = createClient()
+    const [{ data: inData }, { data: outData }, { data: mergeData }] = await Promise.all([
+      supabase.from('village_diplomacy')
+        .select('*, from_village:from_village_id(id,name,icon,type), sender:sender_id(display_name)')
+        .eq('to_village_id', id).order('created_at', { ascending: false }).limit(20),
+      supabase.from('village_diplomacy')
+        .select('*, to_village:to_village_id(id,name,icon,type)')
+        .eq('from_village_id', id).order('created_at', { ascending: false }).limit(20),
+      supabase.from('village_merge_requests')
+        .select('*, from_village:from_village_id(id,name,icon), to_village:to_village_id(id,name,icon), requester:requester_id(display_name)')
+        .or(`from_village_id.eq.${id},to_village_id.eq.${id}`)
+        .eq('status', 'pending').order('created_at', { ascending: false }),
+    ])
+    setDiplomacyIn(inData || [])
+    setDiplomacyOut(outData || [])
+    setMergeRequests(mergeData || [])
+  }, [id])
+
+  // 外交：村検索
+  async function searchVillages(q: string, setter: (v: any[]) => void) {
+    if (!q.trim()) { setter([]); return }
+    const { data } = await createClient()
+      .from('villages').select('id,name,icon,type,member_count')
+      .ilike('name', `%${q}%`).neq('id', id).limit(5)
+    setter(data || [])
+  }
+
+  // 外交メッセージ送信
+  async function sendDiplomacy() {
+    if (!diploTarget || !diploMsg.trim() || !userId || sendingDiplo) return
+    setSendingDiplo(true)
+    await createClient().from('village_diplomacy').insert({
+      from_village_id: id, to_village_id: diploTarget.id,
+      sender_id: userId, message: diploMsg.trim(), emoji: diploEmoji,
+    })
+    setDiploMsg(''); setDiploTarget(null); setDiploSearch(''); setDiploResults([]); setShowDiploForm(false)
+    await fetchDiplomacy()
+    setSendingDiplo(false)
+  }
+
+  // 外交返答（ホストのみ）
+  async function respondDiplomacy(diploId: string, status: 'accepted' | 'declined', reply?: string) {
+    await createClient().from('village_diplomacy')
+      .update({ status, reply: reply ?? null, responded_at: new Date().toISOString() })
+      .eq('id', diploId)
+    await fetchDiplomacy()
+  }
+
+  // 合併申請
+  async function sendMergeRequest() {
+    if (!mergeTarget || !userId || sendingMerge) return
+    setSendingMerge(true)
+    await createClient().from('village_merge_requests').insert({
+      from_village_id: id, to_village_id: mergeTarget.id,
+      requester_id: userId, message: mergeMsg.trim() || null,
+    })
+    setMergeMsg(''); setMergeTarget(null); setMergeSearch(''); setMergeResults([]); setShowMergeForm(false)
+    await fetchDiplomacy()
+    setSendingMerge(false)
+  }
+
+  // 合併実行（ホストが受諾）
+  async function executeMerge(fromId: string, toId: string) {
+    if (!userId) return
+    await createClient().rpc('merge_villages', { p_from_id: fromId, p_to_id: toId, p_user_id: userId })
+    await fetchDiplomacy()
+    await fetchVillage()
+    await fetchMembers()
+    await fetchPosts()
+  }
+
   useEffect(() => { fetchVillage() },       [fetchVillage])
   useEffect(() => { checkMembership() },    [checkMembership])
   useEffect(() => { fetchPosts() },         [fetchPosts])
@@ -641,6 +825,7 @@ export default function VillageDetailPage() {
   useEffect(() => { fetchStamps() },        [fetchStamps])
   useEffect(() => { recordVisit() },        [recordVisit])
   useEffect(() => { checkAbandonment() },   [checkAbandonment])
+  useEffect(() => { fetchDiplomacy() },     [fetchDiplomacy])
 
   const tier = userTrust ? getTierById(userTrust.tier) : getTierById('visitor')
 
@@ -792,11 +977,14 @@ export default function VillageDetailPage() {
     ? 'linear-gradient(180deg, rgba(120,40,0,0.55) 0%, rgba(180,60,0,0.35) 100%)'
     : null
 
+  const pendingDiploCount = diplomacyIn.filter(d => d.status === 'pending').length + mergeRequests.filter(r => r.to_village_id === id).length
+
   const allTabs = [
     { key: 'posts',   label: '📝 投稿' },
     { key: 'voice',   label: '🎙️ 通話' },
     { key: 'members', label: '👥 住民' },
     { key: 'diary',   label: '📰 だより' },
+    { key: 'diplo',   label: `🌐 外交${pendingDiploCount > 0 ? ` (${pendingDiploCount})` : ''}` },
     ...(isHost ? [{ key: 'admin', label: '⚙️ 管理' }] : []),
   ]
 
@@ -1146,7 +1334,7 @@ export default function VillageDetailPage() {
             <PostCard post={pinnedPost} style={style} likedPosts={likedPosts}
               onToggleLike={toggleLike} onResolve={setResolvePost}
               onPin={isHost ? setPinnedPostId : undefined} onDelete={isHost ? deletePost : undefined}
-              isPinned={true} userId={userId} isHost={isHost} />
+              isPinned={true} userId={userId} isHost={isHost} villageId={id} />
           )}
 
           {/* 投稿一覧 */}
@@ -1161,7 +1349,7 @@ export default function VillageDetailPage() {
               <PostCard key={post.id} post={post} style={style} likedPosts={likedPosts}
                 onToggleLike={toggleLike} onResolve={setResolvePost}
                 onPin={isHost ? setPinnedPostId : undefined} onDelete={isHost ? deletePost : undefined}
-                isPinned={false} userId={userId} isHost={isHost} />
+                isPinned={false} userId={userId} isHost={isHost} villageId={id} />
             ))
           )}
         </div>
@@ -1324,6 +1512,240 @@ export default function VillageDetailPage() {
         </div>
       )}
 
+      {/* ════════ DIPLOMACY TAB ════════ */}
+      {tab === 'diplo' && (
+        <div className="px-4 pb-32 space-y-4 pt-1">
+
+          {/* ヘッダー */}
+          <div className="rounded-2xl px-4 py-3.5 flex items-start gap-3"
+            style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)', border: '1px solid rgba(99,179,237,0.2)' }}>
+            <span className="text-2xl mt-0.5">🌐</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-white">村外交センター</p>
+              <p className="text-xs text-white/60 mt-0.5 leading-relaxed">他の村と交流したり、同盟を結んだり、合併を申請できます。</p>
+            </div>
+          </div>
+
+          {/* 手紙を送るボタン */}
+          {isMember && (
+            <button onClick={() => setShowDiploForm(v => !v)}
+              className="w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-all"
+              style={{ background: 'linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)', color: '#fff', boxShadow: '0 6px 20px rgba(59,130,246,0.35)' }}>
+              📜 他の村に手紙を送る
+            </button>
+          )}
+
+          {/* 外交手紙フォーム */}
+          {showDiploForm && (
+            <div className="bg-white rounded-3xl p-4 shadow-md border border-stone-100">
+              <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">📮 外交手紙を送る</p>
+
+              {/* 絵文字選択 */}
+              <div className="flex gap-2 mb-3">
+                {['📜','🤝','⚔️','🎉','💌','🌸'].map(e => (
+                  <button key={e} onClick={() => setDiploEmoji(e)}
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-all active:scale-90"
+                    style={{ background: diploEmoji === e ? `${style.accent}20` : '#f5f5f4', border: diploEmoji === e ? `1.5px solid ${style.accent}` : '1.5px solid transparent' }}>
+                    {e}
+                  </button>
+                ))}
+              </div>
+
+              {/* 村検索 */}
+              {!diploTarget ? (
+                <div className="mb-3">
+                  <input
+                    value={diploSearch}
+                    onChange={e => { setDiploSearch(e.target.value); searchVillages(e.target.value, setDiploResults) }}
+                    placeholder="送り先の村を検索…"
+                    className="w-full px-3 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none"
+                  />
+                  {diploResults.length > 0 && (
+                    <div className="mt-2 space-y-1.5">
+                      {diploResults.map(v => (
+                        <button key={v.id} onClick={() => { setDiploTarget(v); setDiploSearch(v.name); setDiploResults([]) }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border border-stone-100 bg-stone-50 active:scale-[0.98] transition-all text-left">
+                          <span className="text-xl">{v.icon}</span>
+                          <div>
+                            <p className="text-sm font-bold text-stone-800">{v.name}</p>
+                            <p className="text-[10px] text-stone-400">{v.member_count} 住民</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl border border-blue-200 bg-blue-50">
+                  <span className="text-xl">{diploTarget.icon}</span>
+                  <p className="text-sm font-bold text-blue-800 flex-1">{diploTarget.name}</p>
+                  <button onClick={() => { setDiploTarget(null); setDiploSearch('') }}
+                    className="text-blue-400"><X size={14} /></button>
+                </div>
+              )}
+
+              {/* メッセージ */}
+              <textarea
+                value={diploMsg}
+                onChange={e => setDiploMsg(e.target.value.slice(0, 200))}
+                placeholder="メッセージを書いてください（200文字以内）"
+                rows={3}
+                className="w-full px-3 py-2.5 rounded-xl border border-stone-200 text-sm resize-none focus:outline-none mb-3"
+              />
+              <div className="flex gap-2">
+                <button onClick={() => setShowDiploForm(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-200 text-sm font-bold text-stone-500">キャンセル</button>
+                <button onClick={sendDiplomacy} disabled={!diploTarget || !diploMsg.trim() || sendingDiplo}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                  style={{ background: 'linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)' }}>
+                  {sendingDiplo ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Send size={13} /> 送る</>}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 受信した外交メッセージ */}
+          {diplomacyIn.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2.5 px-1">📬 届いた手紙</p>
+              <div className="space-y-3">
+                {diplomacyIn.map(d => (
+                  <div key={d.id} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-stone-100">
+                    <div className="h-1 w-full" style={{
+                      background: d.status === 'accepted' ? '#22c55e' : d.status === 'declined' ? '#ef4444' : '#3b82f6'
+                    }} />
+                    <div className="p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-3xl">{d.emoji}</span>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{d.from_village?.icon}</span>
+                            <p className="text-sm font-bold text-stone-800">{d.from_village?.name}</p>
+                          </div>
+                          <p className="text-[10px] text-stone-400">{d.sender?.display_name} · {timeAgo(d.created_at)}</p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          d.status === 'accepted' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : d.status === 'declined' ? 'bg-red-50 text-red-600 border border-red-200'
+                          : 'bg-blue-50 text-blue-700 border border-blue-200'
+                        }`}>
+                          {d.status === 'accepted' ? '✅ 承認済み' : d.status === 'declined' ? '❌ 断った' : '⏳ 返事待ち'}
+                        </span>
+                      </div>
+                      <div className="bg-stone-50 rounded-2xl px-3 py-2.5 mb-3">
+                        <p className="text-sm text-stone-700 leading-relaxed">{d.message}</p>
+                      </div>
+                      {d.status === 'pending' && isHost && (
+                        <div className="flex gap-2">
+                          <button onClick={() => respondDiplomacy(d.id, 'declined')}
+                            className="flex-1 py-2.5 rounded-xl border border-stone-200 text-xs font-bold text-stone-500 active:scale-95 transition-all">
+                            断る
+                          </button>
+                          <button onClick={() => respondDiplomacy(d.id, 'accepted')}
+                            className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white active:scale-95 transition-all"
+                            style={{ background: 'linear-gradient(135deg,#22c55e 0%,#16a34a 100%)' }}>
+                            🤝 同盟を結ぶ
+                          </button>
+                        </div>
+                      )}
+                      {d.status === 'accepted' && (
+                        <div className="text-center">
+                          <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
+                            🌟 同盟村
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 送信した外交メッセージ */}
+          {diplomacyOut.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2.5 px-1">📤 送った手紙</p>
+              <div className="space-y-2">
+                {diplomacyOut.map(d => (
+                  <div key={d.id} className="bg-white rounded-2xl p-3 shadow-sm border border-stone-100 flex items-center gap-3">
+                    <span className="text-2xl">{d.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-base">{d.to_village?.icon}</span>
+                        <p className="text-sm font-bold text-stone-800 truncate">{d.to_village?.name}</p>
+                      </div>
+                      <p className="text-[10px] text-stone-500 mt-0.5 truncate">{d.message}</p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                      d.status === 'accepted' ? 'bg-emerald-50 text-emerald-700'
+                      : d.status === 'declined' ? 'bg-red-50 text-red-600'
+                      : 'bg-stone-100 text-stone-500'
+                    }`}>
+                      {d.status === 'accepted' ? '✅' : d.status === 'declined' ? '❌' : '⏳'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 合併申請 */}
+          {mergeRequests.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2.5 px-1">🔀 合併申請</p>
+              <div className="space-y-3">
+                {mergeRequests.map(r => {
+                  const isIncoming = r.to_village_id === id
+                  const other = isIncoming ? r.from_village : r.to_village
+                  return (
+                    <div key={r.id} className="bg-white rounded-3xl p-4 shadow-sm border border-amber-100"
+                      style={{ borderColor: 'rgba(245,158,11,0.3)' }}>
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-3xl">🔀</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-stone-800">
+                            {isIncoming ? `${other?.name} から合併の申請` : `${other?.name} へ合併申請中`}
+                          </p>
+                          <p className="text-[10px] text-stone-400">{r.requester?.display_name} · {timeAgo(r.created_at)}</p>
+                        </div>
+                      </div>
+                      {r.message && (
+                        <div className="bg-amber-50 rounded-xl px-3 py-2 mb-3 border border-amber-100">
+                          <p className="text-xs text-amber-900 leading-relaxed">{r.message}</p>
+                        </div>
+                      )}
+                      {isIncoming && isHost && (
+                        <div className="flex gap-2">
+                          <button onClick={() => respondDiplomacy(r.id, 'declined')}
+                            className="flex-1 py-2.5 rounded-xl border border-stone-200 text-xs font-bold text-stone-500">
+                            断る
+                          </button>
+                          <button onClick={() => executeMerge(r.from_village_id, id)}
+                            className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white active:scale-95 transition-all"
+                            style={{ background: 'linear-gradient(135deg,#f59e0b 0%,#d97706 100%)' }}>
+                            🔀 合併を承認する
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 空状態 */}
+          {diplomacyIn.length === 0 && diplomacyOut.length === 0 && mergeRequests.length === 0 && !showDiploForm && (
+            <div className="text-center py-16">
+              <p className="text-5xl mb-3">🌐</p>
+              <p className="text-sm font-bold text-stone-600">まだ外交がありません</p>
+              <p className="text-xs text-stone-400 mt-1">他の村と交流を始めよう</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ════════ ADMIN TAB ════════ */}
       {tab === 'admin' && isHost && (
         <div className="px-4 pb-32 space-y-4 pt-1">
@@ -1401,6 +1823,61 @@ export default function VillageDetailPage() {
               {generatingDiary ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <BookOpen size={14} />}
               今週のだよりを生成
             </button>
+          </div>
+
+          {/* 合併申請 */}
+          <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm">
+            <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+              🔀 村の合併
+            </p>
+            <p className="text-xs text-stone-400 mb-3 leading-relaxed">別の村に合併を申請できます。承認されると、住民と投稿が移行されます。</p>
+            <button onClick={() => setShowMergeForm(v => !v)}
+              className="w-full py-2.5 rounded-xl text-sm font-bold border border-amber-200 text-amber-700 bg-amber-50 flex items-center justify-center gap-1.5 active:scale-[0.99] transition-all">
+              🔀 合併を申請する
+            </button>
+            {showMergeForm && (
+              <div className="mt-3 space-y-3">
+                {!mergeTarget ? (
+                  <div>
+                    <input
+                      value={mergeSearch}
+                      onChange={e => { setMergeSearch(e.target.value); searchVillages(e.target.value, setMergeResults) }}
+                      placeholder="合併先の村を検索…"
+                      className="w-full px-3 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none"
+                    />
+                    {mergeResults.length > 0 && (
+                      <div className="mt-2 space-y-1.5">
+                        {mergeResults.map(v => (
+                          <button key={v.id} onClick={() => { setMergeTarget(v); setMergeSearch(v.name); setMergeResults([]) }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border border-stone-100 bg-stone-50 text-left active:scale-[0.98] transition-all">
+                            <span className="text-xl">{v.icon}</span>
+                            <p className="text-sm font-bold text-stone-800">{v.name}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-200 bg-amber-50">
+                    <span className="text-xl">{mergeTarget.icon}</span>
+                    <p className="text-sm font-bold text-amber-800 flex-1">{mergeTarget.name}</p>
+                    <button onClick={() => { setMergeTarget(null); setMergeSearch('') }}><X size={14} className="text-amber-400" /></button>
+                  </div>
+                )}
+                <textarea
+                  value={mergeMsg}
+                  onChange={e => setMergeMsg(e.target.value.slice(0, 200))}
+                  placeholder="メッセージ（任意）"
+                  rows={2}
+                  className="w-full px-3 py-2.5 rounded-xl border border-stone-200 text-sm resize-none focus:outline-none"
+                />
+                <button onClick={sendMergeRequest} disabled={!mergeTarget || sendingMerge}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                  style={{ background: 'linear-gradient(135deg,#f59e0b 0%,#d97706 100%)' }}>
+                  {sendingMerge ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : '🔀 合併を申請する'}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 住民管理 */}
