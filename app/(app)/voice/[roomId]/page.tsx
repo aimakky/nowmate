@@ -527,13 +527,14 @@ export default function VoiceRoomPage() {
             <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Mic size={11} /> 話している ({speakers.length})
             </p>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-5 gap-2">
               {speakers.map(p => (
                 <Avatar key={p.user_id}
                   participant={p}
                   isMe={p.user_id === userId}
                   isMuted={p.user_id === userId && isMuted}
                   isHost={p.user_id === room.host_id}
+                  size="sm"
                 />
               ))}
             </div>
@@ -546,18 +547,14 @@ export default function VoiceRoomPage() {
             <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Radio size={11} /> 聞いている ({listeners.length})
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-5 gap-2">
               {listeners.map(p => (
-                <div key={p.user_id}
-                  className="flex items-center gap-1.5 bg-white border border-stone-100 rounded-xl px-2.5 py-1.5">
-                  <span className="text-sm">{getNationalityFlag(p.profiles?.nationality || '')}</span>
-                  <span className="text-xs text-stone-600 font-medium">
-                    {p.profiles?.display_name?.split(' ')[0]}
-                  </span>
-                  {p.join_mode === 'silent' && (
-                    <span className="text-[9px] text-stone-300">（こっそり）</span>
-                  )}
-                </div>
+                <Avatar key={p.user_id}
+                  participant={p}
+                  isMe={p.user_id === userId}
+                  isHost={p.user_id === room.host_id}
+                  size="sm"
+                />
               ))}
             </div>
           </div>
