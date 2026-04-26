@@ -10,6 +10,8 @@ import { getUserTrust } from '@/lib/trust'
 import { getTitleName, TITLE_LEVEL_STYLE } from '@/lib/qa'
 import { Settings, LogOut, ChevronRight, Crown, Users } from 'lucide-react'
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
+import MissionsCard from '@/components/features/MissionsCard'
+import GrowthPortfolio from '@/components/features/GrowthPortfolio'
 
 export default function MyPage() {
   const router = useRouter()
@@ -185,6 +187,17 @@ export default function MyPage() {
       </div>
 
       <div className="px-4 pt-4 pb-32 space-y-4">
+
+        {/* ── 7日間ミッション ── */}
+        <MissionsCard userId={profile.id} />
+
+        {/* ── 成長ポートフォリオ ── */}
+        <GrowthPortfolio
+          postCount={postCount}
+          tweetCount={tweetCount}
+          followingCount={followingCount}
+          villageCount={villageCount}
+        />
 
         {/* ── Trust Card ── */}
         {trust && (

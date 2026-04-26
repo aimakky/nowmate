@@ -104,6 +104,9 @@ export default function OnboardingPage() {
       }
     }
 
+    // 7日間ミッション初期化
+    await supabase.rpc('initialize_user_missions', { p_user_id: userId })
+
     router.push('/villages')
   }
 
