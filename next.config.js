@@ -10,17 +10,14 @@ const nextConfig = {
     ],
   },
   async redirects() {
-    // マッチング・出会い系機能を全廃止 → 村へリダイレクト
+    // 廃止済みページのリダイレクト
     return [
-      { source: '/home',            destination: '/villages', permanent: true },
-      { source: '/explore',         destination: '/villages', permanent: true },
-      { source: '/matches',         destination: '/villages', permanent: true },
-      { source: '/likes-me',        destination: '/villages', permanent: true },
-      { source: '/chat',            destination: '/timeline', permanent: true },
-      { source: '/chat/:matchId',   destination: '/timeline', permanent: true },
-      { source: '/community',       destination: '/villages', permanent: true },
+      { source: '/explore',         destination: '/villages',        permanent: true },
+      { source: '/matches',         destination: '/villages',        permanent: true },
+      { source: '/likes-me',        destination: '/villages',        permanent: true },
+      { source: '/community',       destination: '/villages',        permanent: true },
       { source: '/create',          destination: '/villages/create', permanent: true },
-      { source: '/qa',              destination: '/villages',        permanent: true },
+      { source: '/qa',              destination: '/timeline',        permanent: true },
       { source: '/qa/:path*',       destination: '/villages',        permanent: true },
     ]
   },
