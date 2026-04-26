@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, ChevronRight } from 'lucide-react'
 import VillageCard, { type Village, getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 import VillageOnboarding from '@/components/features/VillageOnboarding'
+import TonightInput from '@/components/features/TonightInput'
 import Link from 'next/link'
 
 // ── カテゴリ定義（精神年齢フィルター設計済み） ────────────────
@@ -297,6 +298,11 @@ export default function VillagesPage() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* ── 今夜の一言 ── */}
+      <div className="pt-3">
+        <TonightInput userId={userId} />
       </div>
 
       {/* ── Content ── */}
