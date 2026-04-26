@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { awardPoints } from '@/lib/trust'
-import { X, Phone, ShieldCheck, ChevronRight } from 'lucide-react'
+import { X, Phone, ShieldCheck } from 'lucide-react'
 
 interface Props {
   onClose: () => void
@@ -11,9 +11,8 @@ interface Props {
 }
 
 export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
-  const [step,    setStep]    = useState<'intro' | 'phone' | 'otp' | 'success'>('intro')
+  const [step,    setStep]    = useState<'intro' | 'phone' | 'success'>('intro')
   const [phone,   setPhone]   = useState('')
-  const [otp,     setOtp]     = useState('')
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
 
@@ -25,55 +24,27 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
     return n
   }
 
-  // ─── OTP送信 ──────────────────────────────────────────────
-  async function sendOtp() {
+  // ─── 電話番号保存 + 認証完了 ────────────────────────────────
+  async function submitPhone() {
     if (!phone.trim()) return
-    setLoading(true)
-    setError('')
-    const supabase   = createClient()
-    const formatted  = formatPhone(phone)
-
-    // Supabase phone auth（SMS provider 未設定時はフォールバック）
-    const { error: err } = await supabase.auth.updateUser({ phone: formatted })
-
-    if (!err) {
-      setStep('otp')
-    } else {
-      // SMS provider 未設定 → 電話番号のみ保存してポイント付与（開発フォールバック）
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        await supabase.from('profiles').update({ phone: formatted }).eq('id', user.id)
-        await awardPoints('phone_verified')
-        setStep('success')
-        setTimeout(() => { onVerified(); onClose() }, 1500)
-      } else {
-        setError('ログインが必要です')
-      }
-    }
-    setLoading(false)
-  }
-
-  // ─── OTP確認 ──────────────────────────────────────────────
-  async function verifyOtp() {
-    if (otp.length < 6) return
     setLoading(true)
     setError('')
     const supabase  = createClient()
     const formatted = formatPhone(phone)
 
-    const { error: err } = await supabase.auth.verifyOtp({
-      phone: formatted,
-      token: otp,
-      type: 'phone_change',
-    })
-
-    if (err) {
-      setError('認証コードが正しくありません。もう一度お試しください。')
-    } else {
-      await awardPoints('phone_verified')
-      setStep('success')
-      setTimeout(() => { onVerified(); onClose() }, 1500)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setError('ログインが必要です')
+      setLoading(false)
+      return
     }
+
+    // 電話番号を profiles に保存 + 信頼ポイント付与（phone_verified フラグも自動更新）
+    await supabase.from('profiles').update({ phone_number: formatted }).eq('id', user.id)
+    await awardPoints('phone_verified')
+
+    setStep('success')
+    setTimeout(() => { onVerified(); onClose() }, 1500)
     setLoading(false)
   }
 
@@ -141,7 +112,7 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
             </div>
 
             <p className="text-sm text-stone-500 mb-4">
-              SMS認証コードを送信します
+              電話番号を登録して「住民」になりましょう
             </p>
 
             <div className="flex gap-2 mb-2">
@@ -166,59 +137,13 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
             )}
 
             <button
-              onClick={sendOtp}
+              onClick={submitPhone}
               disabled={!phone.trim() || loading}
               className="w-full py-3.5 bg-brand-500 text-white rounded-2xl font-bold disabled:opacity-40 flex items-center justify-center gap-2 shadow-md shadow-brand-200 active:scale-95 transition-all"
             >
               {loading
                 ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                : '認証コードを送信'}
-            </button>
-          </div>
-        )}
-
-        {/* ── OTP input ── */}
-        {step === 'otp' && (
-          <div className="p-6">
-            <div className="flex items-center gap-3 mb-5">
-              <button onClick={() => setStep('phone')} className="text-stone-400 p-1">←</button>
-              <h3 className="font-extrabold text-stone-900">認証コードを入力</h3>
-            </div>
-
-            <p className="text-sm text-stone-500 mb-5">
-              <span className="font-bold text-stone-800">{phone}</span> にSMSを送信しました。
-              6桁のコードを入力してください。
-            </p>
-
-            <input
-              type="number"
-              value={otp}
-              onChange={e => setOtp(e.target.value.slice(0, 6))}
-              placeholder="123456"
-              maxLength={6}
-              className="w-full px-4 py-4 rounded-2xl border-2 border-stone-200 text-2xl font-bold text-center tracking-[0.5em] focus:outline-none focus:border-brand-400 mb-2"
-              autoFocus
-            />
-
-            {error && (
-              <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2 mb-4">{error}</p>
-            )}
-
-            <button
-              onClick={verifyOtp}
-              disabled={otp.length < 6 || loading}
-              className="w-full py-3.5 bg-brand-500 text-white rounded-2xl font-bold disabled:opacity-40 flex items-center justify-center gap-2 shadow-md shadow-brand-200 active:scale-95 transition-all mt-3"
-            >
-              {loading
-                ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                : '確認する'}
-            </button>
-
-            <button
-              onClick={sendOtp}
-              className="w-full py-2 text-xs text-stone-400 mt-2 hover:text-stone-600"
-            >
-              コードを再送する
+                : '認証する'}
             </button>
           </div>
         )}
