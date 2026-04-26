@@ -158,6 +158,24 @@ export function getCurrentWeeklyEvent() {
   return WEEKLY_EVENTS[w % WEEKLY_EVENTS.length]
 }
 
+// ─── 焚き火（村の温度）────────────────────────────────────────
+export function getFireStatus(lastPostAt: string | null): {
+  emoji: string
+  label: string
+  bgColor: string
+  textColor: string
+  animate: boolean
+} {
+  if (!lastPostAt) {
+    return { emoji: '🌫️', label: '静かな村', bgColor: 'rgba(120,113,108,0.1)', textColor: '#a8a29e', animate: false }
+  }
+  const hours = (Date.now() - new Date(lastPostAt).getTime()) / (1000 * 60 * 60)
+  if (hours < 6)  return { emoji: '🔥', label: '燃えてる',  bgColor: 'rgba(234,88,12,0.15)',   textColor: '#ea580c', animate: true  }
+  if (hours < 24) return { emoji: '🌿', label: '穏やか',    bgColor: 'rgba(22,163,74,0.12)',   textColor: '#16a34a', animate: false }
+  if (hours < 72) return { emoji: '🌫️', label: '静かな村', bgColor: 'rgba(120,113,108,0.1)',  textColor: '#a8a29e', animate: false }
+  return               { emoji: '💤', label: '眠れる村',    bgColor: 'rgba(148,163,184,0.1)',  textColor: '#94a3b8', animate: false }
+}
+
 // ─── Main Card ───────────────────────────────────────────────
 export default function VillageCard({
   village,
@@ -179,6 +197,7 @@ export default function VillageCard({
   const busyScore    = Math.min(5, Math.floor(village.post_count_7d / 5))
   const safetyScore  = village.report_count_7d === 0 ? 5 : village.report_count_7d < 2 ? 3 : 1
   const welcomeScore = Math.min(5, Math.floor(village.welcome_reply_count_7d / 2) + 1)
+  const fire         = getFireStatus(village.last_post_at ?? null)
 
   return (
     <div
@@ -217,13 +236,22 @@ export default function VillageCard({
           )}
         </div>
 
-        {/* 職業限定バッジ — top right */}
-        {village.job_locked && village.job_type ? (
-          <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-indigo-600/90 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20">
+        {/* 焚き火バッジ — top right */}
+        <div
+          className="absolute top-2.5 right-2.5 flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20 backdrop-blur-md"
+          style={{ background: 'rgba(0,0,0,0.35)', color: '#fff' }}
+        >
+          <span className={fire.animate ? 'animate-pulse' : ''}>{fire.emoji}</span>
+          <span>{fire.label}</span>
+        </div>
+
+        {/* 職業限定バッジ / season_title — second row right */}
+        {(village.job_locked && village.job_type) ? (
+          <div className="absolute top-8 right-2.5 flex items-center gap-1 bg-indigo-600/90 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20">
             💼 {village.job_type}限定
           </div>
         ) : village.season_title ? (
-          <div className="absolute top-2.5 right-2.5 bg-black/20 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20 max-w-[120px] truncate">
+          <div className="absolute top-8 right-2.5 bg-black/20 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20 max-w-[120px] truncate">
             {village.season_title}
           </div>
         ) : null}

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, ChevronRight } from 'lucide-react'
-import VillageCard, { type Village, getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
+import VillageCard, { type Village, getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES, getFireStatus } from '@/components/ui/VillageCard'
 import VillageOnboarding from '@/components/features/VillageOnboarding'
 import TonightInput from '@/components/features/TonightInput'
 import Link from 'next/link'
@@ -82,6 +82,7 @@ function SmallVillageCard({ village, isMember, onJoin }: {
 }) {
   const router = useRouter()
   const style  = VILLAGE_TYPE_STYLES[village.type] ?? VILLAGE_TYPE_STYLES['雑談']
+  const fire   = getFireStatus(village.last_post_at ?? null)
   return (
     <div
       className="flex-shrink-0 w-44 rounded-2xl overflow-hidden shadow-sm cursor-pointer active:scale-[0.97] transition-all bg-white border border-stone-100"
@@ -91,6 +92,11 @@ function SmallVillageCard({ village, isMember, onJoin }: {
         <span className="text-3xl" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))' }}>
           {village.icon}
         </span>
+        {/* 焚き火バッジ */}
+        <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 bg-black/30 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+          <span className={`text-[10px] ${fire.animate ? 'animate-pulse' : ''}`}>{fire.emoji}</span>
+          <span className="text-[8px] font-bold text-white/90">{fire.label}</span>
+        </div>
       </div>
       <div className="p-2.5">
         <p className="font-bold text-stone-900 text-xs truncate leading-snug">{village.name}</p>
@@ -365,6 +371,7 @@ export default function VillagesPage() {
             <div className="space-y-2">
               {jobVillages.map((v: any) => {
                 const unread = unreadCounts[v.id] ?? 0
+                const fire   = getFireStatus(v.last_post_at ?? null)
                 return (
                   <button key={v.id}
                     onClick={() => router.push(`/villages/${v.id}`)}
@@ -384,9 +391,18 @@ export default function VillagesPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-indigo-500 font-bold mt-0.5">
-                        {v.job_type}限定 · 👥 {v.member_count}人
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-[10px] text-indigo-500 font-bold">
+                          {v.job_type}限定 · 👥 {v.member_count}人
+                        </p>
+                        <span
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5"
+                          style={{ background: fire.bgColor, color: fire.textColor }}
+                        >
+                          <span className={fire.animate ? 'animate-pulse' : ''}>{fire.emoji}</span>
+                          {fire.label}
+                        </span>
+                      </div>
                     </div>
                     <span className="text-stone-300 text-sm flex-shrink-0">›</span>
                   </button>

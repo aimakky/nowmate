@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { timeAgo } from '@/lib/utils'
 import { getOccupationBadge } from '@/lib/occupation'
-import { getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
+import { getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES, getFireStatus } from '@/components/ui/VillageCard'
 import TrustBadge from '@/components/ui/TrustBadge'
 import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
 import MoodWeather from '@/components/features/MoodWeather'
@@ -1149,6 +1149,7 @@ export default function VillageDetailPage() {
   const busyScore    = Math.min(5, Math.floor(village.post_count_7d / 5))
   const safetyScore  = village.report_count_7d === 0 ? 5 : village.report_count_7d < 2 ? 3 : 1
   const welcomeScore = Math.min(5, Math.floor(village.welcome_reply_count_7d / 2) + 1)
+  const fire         = getFireStatus(village.last_post_at ?? null)
 
   // 焚き火モード：ヒーローに重ねるグラデント
   const bonfireOverlay = isBonfireTime
@@ -1233,12 +1234,22 @@ export default function VillageDetailPage() {
           <p className="text-white/70 text-xs mt-1 text-center line-clamp-2 max-w-[280px]">
             {village.description}
           </p>
-          {isHost && (
-            <div className="mt-2 flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
-              style={{ background: 'rgba(255,215,0,0.25)', color: '#fde047', border: '1px solid rgba(255,215,0,0.3)' }}>
-              <Crown size={10} /> 村長
+          {/* 焚き火ステータス */}
+          <div className="mt-2.5 flex items-center gap-2">
+            <div
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold"
+              style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', backdropFilter: 'blur(8px)' }}
+            >
+              <span className={fire.animate ? 'animate-pulse' : ''}>{fire.emoji}</span>
+              <span>{fire.label}</span>
             </div>
-          )}
+            {isHost && (
+              <div className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
+                style={{ background: 'rgba(255,215,0,0.25)', color: '#fde047', border: '1px solid rgba(255,215,0,0.3)' }}>
+                <Crown size={10} /> 村長
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Stats bar */}
