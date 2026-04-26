@@ -7,14 +7,14 @@ import { ArrowLeft } from 'lucide-react'
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 
 const VILLAGE_TYPES = [
-  { id: '雑談',     label: '落ち着いた雑談村',   icon: '🌿', desc: '気軽に話せる雰囲気',     category: 'tonight' },
-  { id: '仕事終わり', label: '仕事終わりの村',   icon: '🌙', desc: '仕事の後にほっとひと息', category: 'work'    },
-  { id: '相談',     label: '相談の村',           icon: '🤝', desc: 'なんでも相談できる場所', category: 'help'    },
-  { id: '趣味',     label: '趣味の村',           icon: '🎨', desc: '好きを語れる村',         category: 'think'   },
-  { id: '職業',     label: '職業別の村',         icon: '💼', desc: '同じ仕事の仲間と',       category: 'work'    },
-  { id: '地域',     label: '地域別の村',         icon: '📍', desc: '地元で繋がろう',         category: 'life'    },
-  { id: '初参加',   label: '初参加歓迎の村',     icon: '🌱', desc: '初めての人も大歓迎',     category: 'start'   },
-  { id: '焚き火',   label: '夜の焚き火村',       icon: '🔥', desc: '夜に話しやすい場所',     category: 'tonight' },
+  { id: '雑談',      label: '話して、整理する村',       icon: '🌿', desc: '話すことで気持ちや考えが整理される',   category: 'tonight' },
+  { id: '仕事終わり', label: '仕事後を豊かにする村',    icon: '🌙', desc: '一日を振り返り、明日につながる話を',  category: 'work'    },
+  { id: '相談',      label: '経験を還元する村',         icon: '🤝', desc: '悩みを持ち込んでいい。経験者が待つ',  category: 'help'    },
+  { id: '趣味',      label: '趣味で視点を広げる村',     icon: '🎨', desc: '好きから学べることを語り合う場所',    category: 'think'   },
+  { id: '職業',      label: '同じ道を歩む人と話す村',   icon: '💼', desc: '仕事のリアル・キャリアを語り合う',    category: 'work'    },
+  { id: '地域',      label: '暮らしをより良くする村',   icon: '📍', desc: '地元のリアルを共に育てていく場所',    category: 'life'    },
+  { id: '初参加',    label: '最初の一歩を歓迎する村',   icon: '🌱', desc: 'コミュニティが初めてでも大丈夫',      category: 'start'   },
+  { id: '焚き火',    label: '今日を静かに終わらせる村', icon: '🔥', desc: '話してもいい、聞いていてもいい',      category: 'tonight' },
 ]
 
 export default function CreateVillagePage() {
@@ -129,7 +129,7 @@ export default function CreateVillagePage() {
           <textarea
             value={description}
             onChange={e => setDescription(e.target.value)}
-            placeholder="どんな村か教えてください。誰に来てほしいか、どんな話をするかなど。"
+            placeholder="この村でどんなことが増えてほしいか書いてください。どんな話をする場所か、来てほしい人のイメージなど。"
             maxLength={100}
             rows={3}
             className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-brand-400 bg-white"
@@ -170,12 +170,28 @@ export default function CreateVillagePage() {
           </div>
         </div>
 
-        {/* ── Note ── */}
-        <div className="bg-stone-50 border border-stone-100 rounded-2xl px-4 py-3">
-          <p className="text-xs text-stone-500 leading-relaxed">
-            🌿 村を作ると、あなたが村長になります。<br />
-            安心して話せる村を一緒に育てていきましょう。<br />
-            不適切な投稿があった場合は通報機能をご利用ください。
+        {/* ── 村の哲学ヒント ── */}
+        <div
+          className="rounded-2xl px-4 py-3.5 space-y-2"
+          style={{ background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)', border: '1px solid #ddd6fe' }}
+        >
+          <p className="text-xs font-bold text-violet-700">✍️ 良い村の説明文とは</p>
+          <div className="space-y-1.5">
+            {[
+              { bad: '趣味の村です',              good: '趣味を通じて視点を広げ、人生に活かせることを語り合う村' },
+              { bad: '何でも話していい村',         good: '話しながら気持ちや考えが整理される、静かな場所' },
+              { bad: 'ゲーム好き集まれ！',         good: 'ゲームから仕事・人間関係・思考に活かせることを語り合う' },
+            ].map((ex, i) => (
+              <div key={i} className="flex gap-2 text-[10px]">
+                <span className="text-rose-400 font-bold flex-shrink-0">×</span>
+                <span className="text-stone-400 line-through">{ex.bad}</span>
+                <span className="text-violet-500 font-medium flex-shrink-0">→</span>
+                <span className="text-violet-700 font-medium">{ex.good}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-violet-500 pt-1">
+            🌿 村長になると、あなたが場の空気を作ります。来てほしい人に向けた言葉を書いてください。
           </p>
         </div>
 

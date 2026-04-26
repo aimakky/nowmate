@@ -26,58 +26,67 @@ export interface Village {
 
 // ─── 村タイプごとのスタイル ───────────────────────────────────
 export const VILLAGE_TYPE_STYLES: Record<string, {
-  gradient: string   // CSS gradient
-  accent: string     // hex for bars + button
-  badgeBg: string    // Tailwind class
-  label: string
+  gradient:   string   // CSS gradient
+  accent:     string   // hex for bars + button
+  badgeBg:    string   // Tailwind class
+  label:      string   // バッジ表示名
+  philosophy: string   // 村の哲学（精神年齢フィルター兼ねる）
 }> = {
-  '雑談':     {
-    gradient: 'linear-gradient(135deg, #b5a090 0%, #8b7355 100%)',
-    accent:   '#8b7355',
-    badgeBg:  'bg-amber-50 text-amber-900 border-amber-200',
-    label:    '落ち着いた雑談村',
+  '雑談': {
+    gradient:   'linear-gradient(135deg, #b5a090 0%, #8b7355 100%)',
+    accent:     '#8b7355',
+    badgeBg:    'bg-amber-50 text-amber-900 border-amber-200',
+    label:      '話して、整理する村',
+    philosophy: '話すことで気持ちや考えが整理される。ただの雑談より、少し深い時間を。',
   },
   '仕事終わり': {
-    gradient: 'linear-gradient(135deg, #7b83eb 0%, #4f56c8 100%)',
-    accent:   '#4f56c8',
-    badgeBg:  'bg-indigo-50 text-indigo-800 border-indigo-200',
-    label:    '仕事終わりの村',
+    gradient:   'linear-gradient(135deg, #7b83eb 0%, #4f56c8 100%)',
+    accent:     '#4f56c8',
+    badgeBg:    'bg-indigo-50 text-indigo-800 border-indigo-200',
+    label:      '仕事後を豊かにする村',
+    philosophy: '一日を振り返り、明日につながる話をしよう。愚痴より、気づきを。',
   },
   '相談': {
-    gradient: 'linear-gradient(135deg, #56c8e8 0%, #1a9ec8 100%)',
-    accent:   '#1a9ec8',
-    badgeBg:  'bg-sky-50 text-sky-800 border-sky-200',
-    label:    '相談の村',
+    gradient:   'linear-gradient(135deg, #56c8e8 0%, #1a9ec8 100%)',
+    accent:     '#1a9ec8',
+    badgeBg:    'bg-sky-50 text-sky-800 border-sky-200',
+    label:      '経験を還元する村',
+    philosophy: '悩みを持ち込んでいい。経験から答えを出せる人が待っている。',
   },
   '趣味': {
-    gradient: 'linear-gradient(135deg, #f08090 0%, #d44060 100%)',
-    accent:   '#d44060',
-    badgeBg:  'bg-rose-50 text-rose-800 border-rose-200',
-    label:    '趣味の村',
+    gradient:   'linear-gradient(135deg, #f08090 0%, #d44060 100%)',
+    accent:     '#d44060',
+    badgeBg:    'bg-rose-50 text-rose-800 border-rose-200',
+    label:      '趣味で視点を広げる村',
+    philosophy: '好きを語り合うだけでなく、そこから何を学べるかを話す場所。',
   },
   '職業': {
-    gradient: 'linear-gradient(135deg, #f5be5a 0%, #d99820 100%)',
-    accent:   '#d99820',
-    badgeBg:  'bg-amber-50 text-amber-900 border-amber-200',
-    label:    '職業別の村',
+    gradient:   'linear-gradient(135deg, #f5be5a 0%, #d99820 100%)',
+    accent:     '#d99820',
+    badgeBg:    'bg-amber-50 text-amber-900 border-amber-200',
+    label:      '同じ道を歩む人と話す村',
+    philosophy: '仕事の現場の話・キャリアの悩み。同じ職業だからわかることを語り合う。',
   },
   '地域': {
-    gradient: 'linear-gradient(135deg, #5dd89a 0%, #28a865 100%)',
-    accent:   '#28a865',
-    badgeBg:  'bg-emerald-50 text-emerald-800 border-emerald-200',
-    label:    '地域別の村',
+    gradient:   'linear-gradient(135deg, #5dd89a 0%, #28a865 100%)',
+    accent:     '#28a865',
+    badgeBg:    'bg-emerald-50 text-emerald-800 border-emerald-200',
+    label:      '暮らしをより良くする村',
+    philosophy: '地元のリアル・近所の情報。暮らしを共に育てていく場所。',
   },
   '初参加': {
-    gradient: 'linear-gradient(135deg, #4dd8ca 0%, #14a89a 100%)',
-    accent:   '#14a89a',
-    badgeBg:  'bg-teal-50 text-teal-800 border-teal-200',
-    label:    '初参加歓迎の村',
+    gradient:   'linear-gradient(135deg, #4dd8ca 0%, #14a89a 100%)',
+    accent:     '#14a89a',
+    badgeBg:    'bg-teal-50 text-teal-800 border-teal-200',
+    label:      '最初の一歩を歓迎する村',
+    philosophy: 'コミュニティが初めてでも大丈夫。最初の発言を一緒に楽しもう。',
   },
   '焚き火': {
-    gradient: 'linear-gradient(135deg, #f8976a 0%, #e84820 100%)',
-    accent:   '#e84820',
-    badgeBg:  'bg-orange-50 text-orange-900 border-orange-200',
-    label:    '夜の焚き火村',
+    gradient:   'linear-gradient(135deg, #f8976a 0%, #e84820 100%)',
+    accent:     '#e84820',
+    badgeBg:    'bg-orange-50 text-orange-900 border-orange-200',
+    label:      '今日を静かに終わらせる村',
+    philosophy: '夜、焚き火の前に座るように。話してもいい、聞いていてもいい。',
   },
 }
 
@@ -255,8 +264,18 @@ export default function VillageCard({
         </div>
 
         {/* Description */}
-        <p className="text-xs text-stone-500 leading-relaxed mb-3 line-clamp-2">
-          {village.description}
+        {village.description ? (
+          <p className="text-xs text-stone-500 leading-relaxed mb-1.5 line-clamp-2">
+            {village.description}
+          </p>
+        ) : null}
+
+        {/* Village philosophy — 精神年齢フィルター兼ねる説明文 */}
+        <p
+          className="text-[10px] leading-relaxed mb-3 font-medium italic"
+          style={{ color: `${style.accent}cc` }}
+        >
+          {style.philosophy}
         </p>
 
         {/* Vibe tags */}

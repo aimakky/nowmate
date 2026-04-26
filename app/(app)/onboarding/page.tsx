@@ -12,14 +12,14 @@ const STEPS = [
 ]
 
 const VILLAGE_TYPES = [
-  { id: '雑談',     emoji: '🌿', desc: '気軽に話せる' },
-  { id: '仕事終わり', emoji: '🌙', desc: '仕事後にほっとひと息' },
-  { id: '相談',     emoji: '🤝', desc: 'なんでも相談OK' },
-  { id: '趣味',     emoji: '🎨', desc: '好きを語り合う' },
-  { id: '職業',     emoji: '💼', desc: '同じ仕事の仲間と' },
-  { id: '地域',     emoji: '📍', desc: '地元でつながる' },
-  { id: '初参加',   emoji: '🌱', desc: '初めての方大歓迎' },
-  { id: '焚き火',   emoji: '🔥', desc: '夜に話しやすい' },
+  { id: '雑談',      emoji: '🌿', desc: '話して、気持ちを整理する' },
+  { id: '仕事終わり', emoji: '🌙', desc: '一日を振り返り、明日につなげる' },
+  { id: '相談',      emoji: '🤝', desc: '経験者から知恵をもらう' },
+  { id: '趣味',      emoji: '🎨', desc: '好きを通じて視点を広げる' },
+  { id: '職業',      emoji: '💼', desc: '同じ仕事だからわかることを語る' },
+  { id: '地域',      emoji: '📍', desc: '暮らしをより良くする仲間と' },
+  { id: '初参加',    emoji: '🌱', desc: 'はじめての一歩、一緒に踏み出す' },
+  { id: '焚き火',    emoji: '🔥', desc: '今日を静かに終わらせる場所' },
 ]
 
 export default function OnboardingPage() {
@@ -150,16 +150,23 @@ export default function OnboardingPage() {
 
             <div className="bg-white border border-stone-100 rounded-2xl p-4 space-y-3">
               {[
-                { icon: '🏕️', text: '村コミュニティで気軽に話せる' },
-                { icon: '🤝', text: '相談広場で悩みを相談・解決できる' },
-                { icon: '✏️', text: 'タイムラインでつぶやける' },
-                { icon: '🎙️', text: '通話で声で話せる（住民以上）' },
+                { icon: '🔭', text: '村で話すたびに、視点が増える' },
+                { icon: '🤝', text: '相談に答えるたびに、知恵が増える' },
+                { icon: '🌐', text: 'つながるたびに、世界が広がる' },
+                { icon: '🪞', text: '言語化するたびに、自己理解が深まる' },
               ].map(({ icon, text }) => (
                 <div key={text} className="flex items-center gap-3">
                   <span className="text-xl">{icon}</span>
                   <span className="text-sm text-stone-700 font-medium">{text}</span>
                 </div>
               ))}
+            </div>
+
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3">
+              <p className="text-xs text-indigo-700 leading-relaxed">
+                💡 sameeは「使うたびに、何かが増える」コミュニティです。
+                時間を消費するSNSとは逆の場所を目指しています。
+              </p>
             </div>
 
             <button
