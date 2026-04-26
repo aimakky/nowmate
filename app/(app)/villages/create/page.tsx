@@ -17,11 +17,31 @@ const VILLAGE_TYPES = [
   { id: '焚き火',    label: '今日を静かに終わらせる村', icon: '🔥', desc: '話してもいい、聞いていてもいい',      category: 'tonight' },
 ]
 
+const JOB_TYPE_OPTIONS = [
+  { emoji: '🏥', label: '看護師・医療',     value: '看護師' },
+  { emoji: '👨‍⚕️', label: '医師',            value: '医師' },
+  { emoji: '💊', label: '薬剤師',            value: '薬剤師' },
+  { emoji: '🏥', label: '介護・福祉',        value: '介護士' },
+  { emoji: '📚', label: '教師・講師',        value: '教師' },
+  { emoji: '💻', label: 'エンジニア',        value: 'エンジニア' },
+  { emoji: '🎨', label: 'デザイナー',        value: 'デザイナー' },
+  { emoji: '📊', label: '営業・販売',        value: '営業' },
+  { emoji: '🏛️', label: '公務員',            value: '公務員' },
+  { emoji: '⚖️', label: '法律・司法',        value: '法律職' },
+  { emoji: '💼', label: 'コンサル・経営',    value: 'コンサル' },
+  { emoji: '🏦', label: '金融・保険',        value: '金融' },
+  { emoji: '🎬', label: 'クリエイター',      value: 'クリエイター' },
+  { emoji: '🚀', label: '起業家・CEO',       value: '経営者' },
+  { emoji: '🔄', label: '転職・求職中',      value: '転職活動中' },
+]
+
 export default function CreateVillagePage() {
   const router = useRouter()
   const [name,        setName]        = useState('')
   const [description, setDescription] = useState('')
   const [type,        setType]        = useState('雑談')
+  const [jobLocked,   setJobLocked]   = useState(false)
+  const [jobType,     setJobType]     = useState('')
   const [creating,    setCreating]    = useState(false)
 
   const selectedType  = VILLAGE_TYPES.find(t => t.id === type)!
@@ -29,6 +49,7 @@ export default function CreateVillagePage() {
 
   async function handleCreate() {
     if (!name.trim() || creating) return
+    if (jobLocked && !jobType) return
     setCreating(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -37,10 +58,12 @@ export default function CreateVillagePage() {
     const { data } = await supabase.from('villages').insert({
       name:        name.trim(),
       description: description.trim(),
-      type,
-      icon:     selectedType.icon,
-      category: selectedType.category,
-      host_id:  user.id,
+      type:        jobLocked ? '職業' : type,
+      icon:        jobLocked ? '💼' : selectedType.icon,
+      category:    jobLocked ? 'work' : selectedType.category,
+      host_id:     user.id,
+      job_locked:  jobLocked,
+      job_type:    jobLocked ? jobType : null,
     }).select().single()
 
     if (data) {
@@ -137,7 +160,66 @@ export default function CreateVillagePage() {
           <p className="text-right text-[10px] text-stone-400 mt-1">{description.length}/100</p>
         </div>
 
+        {/* ── 職業限定トグル ── */}
+        <div>
+          <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">
+            職業限定村にする
+          </p>
+          <button
+            onClick={() => { setJobLocked(v => !v); if (!jobLocked) setType('職業') }}
+            className="w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left"
+            style={{ borderColor: jobLocked ? '#6366f1' : '#e7e5e4', background: jobLocked ? '#eef2ff' : '#fff' }}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">💼</span>
+              <div>
+                <p className="text-sm font-extrabold" style={{ color: jobLocked ? '#4f46e5' : '#1c1917' }}>
+                  職業限定村
+                </p>
+                <p className="text-[10px] text-stone-400 mt-0.5">同じ職業の人だけが入れる村を作る</p>
+              </div>
+            </div>
+            <div
+              className="w-10 h-6 rounded-full relative transition-all flex-shrink-0"
+              style={{ background: jobLocked ? '#6366f1' : '#d6d3d1' }}
+            >
+              <div
+                className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
+                style={{ left: jobLocked ? '18px' : '2px' }}
+              />
+            </div>
+          </button>
+
+          {jobLocked && (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs font-bold text-stone-500 uppercase tracking-wider">対象の職業</p>
+              <div className="grid grid-cols-2 gap-2">
+                {JOB_TYPE_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setJobType(opt.value)}
+                    className="flex items-center gap-2 p-3 rounded-2xl border-2 text-left transition-all active:scale-95"
+                    style={jobType === opt.value
+                      ? { borderColor: '#6366f1', background: '#eef2ff' }
+                      : { borderColor: '#e7e5e4', background: '#fff' }
+                    }
+                  >
+                    <span className="text-lg flex-shrink-0">{opt.emoji}</span>
+                    <p className="text-xs font-bold truncate" style={{ color: jobType === opt.value ? '#4f46e5' : '#44403c' }}>
+                      {opt.label}
+                    </p>
+                  </button>
+                ))}
+              </div>
+              {!jobType && (
+                <p className="text-xs text-rose-500 font-bold px-1">職業を選択してください</p>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* ── Village Type ── */}
+        {!jobLocked && (
         <div>
           <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">
             村のタイプ
@@ -169,6 +251,7 @@ export default function CreateVillagePage() {
             })}
           </div>
         </div>
+        )}
 
         {/* ── 村の哲学ヒント ── */}
         <div
@@ -198,16 +281,16 @@ export default function CreateVillagePage() {
         {/* ── Submit ── */}
         <button
           onClick={handleCreate}
-          disabled={!name.trim() || creating}
+          disabled={!name.trim() || creating || (jobLocked && !jobType)}
           className="w-full py-4 rounded-2xl font-extrabold text-base text-white disabled:opacity-40 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           style={{
-            background: selectedStyle.gradient,
-            boxShadow: `0 8px 24px ${selectedStyle.accent}40`,
+            background: jobLocked ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' : selectedStyle.gradient,
+            boxShadow: jobLocked ? '0 8px 24px rgba(99,102,241,0.4)' : `0 8px 24px ${selectedStyle.accent}40`,
           }}
         >
           {creating
             ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            : <>{selectedType.icon} 村を作る</>}
+            : jobLocked ? <>💼 {jobType}限定村を作る</> : <>{selectedType.icon} 村を作る</>}
         </button>
       </div>
     </div>

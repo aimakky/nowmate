@@ -22,6 +22,8 @@ export interface Village {
   level?: number
   level_xp?: number
   category?: string
+  job_locked?: boolean
+  job_type?: string | null
 }
 
 // ─── 村タイプごとのスタイル ───────────────────────────────────
@@ -215,12 +217,16 @@ export default function VillageCard({
           )}
         </div>
 
-        {/* Season title — top right */}
-        {village.season_title && (
+        {/* 職業限定バッジ — top right */}
+        {village.job_locked && village.job_type ? (
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-indigo-600/90 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20">
+            💼 {village.job_type}限定
+          </div>
+        ) : village.season_title ? (
           <div className="absolute top-2.5 right-2.5 bg-black/20 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20 max-w-[120px] truncate">
             {village.season_title}
           </div>
-        )}
+        ) : null}
 
         {/* 廃村・危機バッジ */}
         {village.is_abandoned && (
