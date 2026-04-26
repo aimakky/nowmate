@@ -197,6 +197,7 @@ export default function MyPage() {
           tweetCount={tweetCount}
           followingCount={followingCount}
           villageCount={villageCount}
+          displayName={profile?.display_name}
         />
 
         {/* ── Trust Card ── */}
