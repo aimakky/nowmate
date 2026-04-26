@@ -10,6 +10,7 @@ const STEPS = [
   { title: 'プロフィール', emoji: '👋', sub: '村での名前を決めましょう' },
   { title: '職業を選ぶ',   emoji: '💼', sub: 'あなたの職業コミュニティに入ります' },
   { title: '村を選ぶ',     emoji: '🏕️', sub: 'まず参加する村を選んでみましょう' },
+  { title: '最初の一言',   emoji: '✍️', sub: '職業村での初投稿をしてみよう' },
 ]
 
 const OCCUPATION_LIST = [
@@ -58,15 +59,17 @@ const VILLAGE_TYPES = [
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const [step,          setStep]          = useState(0)
-  const [loading,       setLoading]       = useState(false)
-  const [error,         setError]         = useState('')
-  const [userId,        setUserId]        = useState<string | null>(null)
-  const [ageConfirmed,  setAgeConfirmed]  = useState(false)
-  const [name,          setName]          = useState('')
-  const [bio,           setBio]           = useState('')
-  const [occupation,    setOccupation]    = useState('')
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([])
+  const [step,               setStep]               = useState(0)
+  const [loading,            setLoading]            = useState(false)
+  const [error,              setError]              = useState('')
+  const [userId,             setUserId]             = useState<string | null>(null)
+  const [ageConfirmed,       setAgeConfirmed]       = useState(false)
+  const [name,               setName]               = useState('')
+  const [bio,                setBio]                = useState('')
+  const [occupation,         setOccupation]         = useState('')
+  const [selectedTypes,      setSelectedTypes]      = useState<string[]>([])
+  const [firstPost,          setFirstPost]          = useState('')
+  const [occupationVillageId, setOccupationVillageId] = useState<string | null>(null)
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -80,14 +83,34 @@ export default function OnboardingPage() {
     name.trim().length >= 2,
     true, // 職業は任意
     true, // 村選択は任意
+    true, // 最初の一言は任意（スキップ可）
   ][step]
 
   async function handleNext() {
-    if (step < STEPS.length - 1) {
+    // Steps 0, 1, 2: just advance
+    if (step < STEPS.length - 2) {
       setStep(s => s + 1)
       return
     }
-    // 最終ステップ：プロフィール作成 → 職業設定 → 村に参加
+
+    // Step 4 (last): post first post and navigate
+    if (step === STEPS.length - 1) {
+      if (firstPost.trim() && occupationVillageId && userId) {
+        setLoading(true)
+        const supabase = createClient()
+        await supabase.from('village_posts').insert({
+          village_id: occupationVillageId,
+          user_id:    userId,
+          content:    firstPost.trim(),
+          category:   '雑談',
+        })
+        setLoading(false)
+      }
+      router.push('/villages')
+      return
+    }
+
+    // Step 3 (second to last): プロフィール作成 → 職業設定 → 村に参加
     if (!userId) return
     setLoading(true)
     setError('')
@@ -170,6 +193,7 @@ export default function OnboardingPage() {
 
       if (existingVillage) {
         villageId = existingVillage.id
+        setOccupationVillageId(existingVillage.id)
       } else {
         // 職業村がなければ自動作成
         const emoji = occEmoji[occupation] ?? '💼'
@@ -190,6 +214,7 @@ export default function OnboardingPage() {
 
         if (newVillage) {
           villageId = newVillage.id
+          setOccupationVillageId(newVillage.id)
           // スターター投稿を自動ピン留め
           const topicContent = starterTopics[occupation] ?? defaultTopic
           const { data: starterPost } = await supabase
@@ -234,7 +259,20 @@ export default function OnboardingPage() {
     // 7日間ミッション初期化
     await supabase.rpc('initialize_user_missions', { p_user_id: userId })
 
-    router.push('/villages')
+    // 職業村が作成/判明したら保存してStep 4（最初の一言）へ
+    if (occupation && occupation !== 'その他') {
+      // occupationVillageId は上の if-block内で設定済みのはずだが、
+      // ここでも既存の村IDを再取得して確実に保存する
+      if (!occupationVillageId) {
+        const { data: latestV } = await supabase
+          .from('villages').select('id').eq('job_type', occupation).eq('job_locked', true)
+          .order('member_count', { ascending: false }).limit(1).single()
+        if (latestV) setOccupationVillageId(latestV.id)
+      }
+    }
+
+    setLoading(false)
+    setStep(s => s + 1)
   }
 
   return (
@@ -400,6 +438,50 @@ export default function OnboardingPage() {
           </div>
         )}
 
+        {/* ─── STEP 4: 最初の一言 ─── */}
+        {step === 4 && (
+          <div className="space-y-4 pt-4">
+            <div
+              className="rounded-2xl px-4 py-4"
+              style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', border: '1px solid rgba(99,102,241,0.3)' }}
+            >
+              <p className="text-[10px] font-extrabold text-indigo-300 uppercase tracking-widest mb-1">✍️ 最初のひとこと</p>
+              <p className="text-sm font-bold text-white leading-relaxed">
+                {occupation && occupation !== 'その他'
+                  ? `${occupation}村のみんなに一言かけてみよう`
+                  : '村のみんなに一言かけてみよう'}
+              </p>
+              <p className="text-[10px] text-indigo-300/70 mt-1">
+                初投稿は「今日どうでした？」だけでも大丈夫です
+              </p>
+            </div>
+
+            <div>
+              <textarea
+                value={firstPost}
+                onChange={e => setFirstPost(e.target.value.slice(0, 200))}
+                placeholder={occupation && occupation !== 'その他'
+                  ? `${occupation}として、今どんな状況ですか？`
+                  : '村のみんなへ、はじめまして！'}
+                rows={4}
+                autoFocus
+                className="w-full px-4 py-3.5 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 bg-white leading-relaxed"
+              />
+              <div className="flex items-center justify-between mt-1 px-1">
+                <p className="text-[10px] text-stone-400">匿名ではありませんが、同じ職業の人だけが見ます</p>
+                <p className="text-[10px] text-stone-400">{firstPost.length}/200</p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+              <p className="text-xs text-amber-700 leading-relaxed">
+                💡 初投稿した人は、他のメンバーから反応をもらいやすくなります。<br />
+                スキップもできますが、まず一言から始めてみましょう。
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ─── STEP 3: 村を選ぶ ─── */}
         {step === 3 && (
           <div className="space-y-3 pt-4">
@@ -456,11 +538,11 @@ export default function OnboardingPage() {
         >
           {loading
             ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            : step < STEPS.length - 1
-              ? '次へ →'
-              : occupation
-                ? `${occupation}村に入って始める →`
-                : selectedTypes.length > 0 ? `${selectedTypes.length}つの村に参加して始める →` : '村を探しに行く →'
+            : step === STEPS.length - 1
+              ? (firstPost.trim() ? '投稿して始める →' : '村を探しに行く →')
+              : step === STEPS.length - 2
+                ? (occupation && occupation !== 'その他' ? `${occupation}村に入って次へ →` : '次へ →')
+                : '次へ →'
           }
         </button>
         {(step === 2 || step === 3) && (
@@ -469,6 +551,14 @@ export default function OnboardingPage() {
             className="w-full py-2 text-xs text-stone-400 mt-1"
           >
             スキップして後で選ぶ
+          </button>
+        )}
+        {step === 4 && (
+          <button
+            onClick={() => router.push('/villages')}
+            className="w-full py-2 text-xs text-stone-400 mt-1"
+          >
+            スキップして後で投稿する
           </button>
         )}
       </div>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getOccupationBadge, OCCUPATION_EMOJI } from '@/lib/occupation'
 import { timeAgo } from '@/lib/utils'
-import { Heart, RefreshCw, ChevronRight, Users, Globe, Briefcase, Sparkles, Send } from 'lucide-react'
+import { Heart, RefreshCw, ChevronRight, Users, Globe, Briefcase, Sparkles, Send, Share2 } from 'lucide-react'
 import Link from 'next/link'
 
 // ── 型定義 ──────────────────────────────────────────────────────
@@ -70,6 +70,13 @@ function PostCard({
   const liked     = likedIds.has(post.id)
   const catColor  = CAT_COLOR[post.category] ?? '#8b7355'
 
+  function shareToX() {
+    const badge = occBadge ? `${occBadge.emoji} ${occBadge.label}` : '仕事コミュニティ'
+    const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'samee'
+    const text = `${post.content}\n\n— ${badge}が${village}で\n#samee #仕事コミュニティ\nnowmatejapan.com`
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <div className="bg-white border border-stone-100 rounded-2xl shadow-sm overflow-hidden">
       {/* 投稿者 */}
@@ -111,7 +118,7 @@ function PostCard({
             onClick={e => e.stopPropagation()}
             className="flex items-center gap-1.5 active:opacity-70 transition-opacity">
             <span className="text-sm">{post.villages.icon}</span>
-            <span className="text-[11px] font-bold text-stone-500 truncate max-w-[140px]">
+            <span className="text-[11px] font-bold text-stone-500 truncate max-w-[120px]">
               {post.villages.name}
             </span>
             <ChevronRight size={11} className="text-stone-300 flex-shrink-0" />
@@ -119,18 +126,27 @@ function PostCard({
         ) : (
           <span />
         )}
-        <button
-          onClick={() => onToggleLike(post.id)}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-xl transition-all active:scale-90"
-          style={liked
-            ? { background: '#fff1f2', color: '#f43f5e' }
-            : { background: '#f5f5f4', color: '#a8a29e' }
-          }>
-          <Heart size={13} fill={liked ? '#f43f5e' : 'none'} strokeWidth={liked ? 0 : 1.8} />
-          {post.reaction_count > 0 && (
-            <span className="text-[11px] font-bold">{post.reaction_count}</span>
-          )}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={shareToX}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-90"
+            style={{ background: '#f5f5f4', color: '#a8a29e' }}
+            title="Xでシェア">
+            <Share2 size={12} />
+          </button>
+          <button
+            onClick={() => onToggleLike(post.id)}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl transition-all active:scale-90"
+            style={liked
+              ? { background: '#fff1f2', color: '#f43f5e' }
+              : { background: '#f5f5f4', color: '#a8a29e' }
+            }>
+            <Heart size={13} fill={liked ? '#f43f5e' : 'none'} strokeWidth={liked ? 0 : 1.8} />
+            {post.reaction_count > 0 && (
+              <span className="text-[11px] font-bold">{post.reaction_count}</span>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   )

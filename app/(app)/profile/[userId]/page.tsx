@@ -3,24 +3,36 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, checkSupportedLocation } from '@/lib/utils'
-import { ArrowLeft } from 'lucide-react'
+import { getNationalityFlag } from '@/lib/utils'
+import { timeAgo } from '@/lib/utils'
+import { ArrowLeft, Heart, ChevronRight } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
-import TweetCard, { TweetData } from '@/components/ui/TweetCard'
 import TrustBadge from '@/components/ui/TrustBadge'
+import { getOccupationBadge } from '@/lib/occupation'
+import Link from 'next/link'
+
+interface VillagePost {
+  id: string
+  content: string
+  category: string
+  created_at: string
+  village_id: string
+  reaction_count: number
+  villages: { id: string; name: string; icon: string } | null
+}
 
 export default function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>()
   const router = useRouter()
   const [profile, setProfile] = useState<any>(null)
-  const [tweets, setTweets] = useState<TweetData[]>([])
+  const [recentPosts, setRecentPosts] = useState<VillagePost[]>([])
+  const [postCount, setPostCount] = useState(0)
   const [myId, setMyId] = useState<string | null>(null)
   const [isFollowing, setIsFollowing] = useState(false)
   const [followerCount, setFollowerCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
   const [toggling, setToggling] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [canInteract, setCanInteract] = useState(false)
   const [trustTier, setTrustTier] = useState<string | null>(null)
   const [isPremium, setIsPremium] = useState(false)
 
@@ -28,23 +40,32 @@ export default function UserProfilePage() {
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (user) setMyId(user.id)
     })
-    checkSupportedLocation().then(s => setCanInteract(s === 'supported'))
   }, [])
 
   useEffect(() => {
     if (!userId) return
     async function load() {
       const supabase = createClient()
-      const [{ data: p }, { data: tw }, { count: followers }, { count: following }, { data: trust }, { data: premSub }] = await Promise.all([
+      const [{ data: p }, { data: posts }, { count: totalPosts }, { count: followers }, { count: following }, { data: trust }, { data: premSub }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
-        supabase.from('tweets').select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)').eq('user_id', userId).order('created_at', { ascending: false }).limit(30),
+        supabase.from('village_posts')
+          .select('id, content, category, created_at, village_id, reaction_count, villages(id, name, icon)')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(3),
+        supabase.from('village_posts').select('*', { count: 'exact', head: true }).eq('user_id', userId),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', userId),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId),
         supabase.from('user_trust').select('tier').eq('user_id', userId).maybeSingle(),
         supabase.from('premium_subscriptions').select('id').eq('user_id', userId).eq('status', 'active').gt('expires_at', new Date().toISOString()).maybeSingle(),
       ])
       setProfile(p)
-      setTweets((tw || []) as TweetData[])
+      const normalized = (posts || []).map((post: any) => ({
+        ...post,
+        villages: Array.isArray(post.villages) ? post.villages[0] ?? null : post.villages,
+      })) as VillagePost[]
+      setRecentPosts(normalized)
+      setPostCount(totalPosts ?? 0)
       setFollowerCount(followers ?? 0)
       setFollowingCount(following ?? 0)
       if (trust?.tier) setTrustTier(trust.tier)
@@ -75,17 +96,6 @@ export default function UserProfilePage() {
       setFollowerCount(c => c + 1)
     }
     setToggling(false)
-  }
-
-  async function reloadTweets() {
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('tweets')
-      .select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(30)
-    if (data) setTweets(data as TweetData[])
   }
 
 if (loading) return (
@@ -130,16 +140,16 @@ if (loading) return (
         {/* Stats */}
         <div className="flex gap-6 mb-4">
           <div className="text-center">
-            <p className="font-extrabold text-stone-900 text-lg">{tweets.length}</p>
-            <p className="text-xs text-stone-400">考えを出した</p>
+            <p className="font-extrabold text-stone-900 text-lg">{postCount}</p>
+            <p className="text-xs text-stone-400">投稿</p>
           </div>
           <div className="text-center">
             <p className="font-extrabold text-stone-900 text-lg">{followerCount}</p>
-            <p className="text-xs text-stone-400">学ばれてる</p>
+            <p className="text-xs text-stone-400">フォロワー</p>
           </div>
           <div className="text-center">
             <p className="font-extrabold text-stone-900 text-lg">{followingCount}</p>
-            <p className="text-xs text-stone-400">学んでる</p>
+            <p className="text-xs text-stone-400">フォロー中</p>
           </div>
         </div>
 
@@ -161,20 +171,54 @@ if (loading) return (
         )}
       </div>
 
-      {/* Tweet feed */}
-      <div className="bg-white divide-y divide-stone-50">
-        {tweets.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-3xl mb-2">🐦</p>
-            <p className="text-sm font-medium text-stone-500">No posts yet</p>
+      {/* 最近の村投稿 */}
+      <div className="px-4 pt-4 pb-28 space-y-3">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs font-extrabold text-stone-500 uppercase tracking-wider">最近の投稿</p>
+          {postCount > 3 && (
+            <span className="text-[10px] text-stone-400">{postCount}件中3件を表示</span>
+          )}
+        </div>
+
+        {recentPosts.length === 0 ? (
+          <div className="bg-white border border-stone-100 rounded-2xl p-8 text-center">
+            <p className="text-3xl mb-2">✍️</p>
+            <p className="text-sm font-bold text-stone-500">まだ投稿がありません</p>
           </div>
         ) : (
-          tweets.map(tweet => (
-            <TweetCard key={tweet.id} tweet={tweet} myId={myId} onUpdate={reloadTweets} canInteract={canInteract} />
-          ))
+          recentPosts.map(post => {
+            const occBadge = getOccupationBadge(profile?.occupation)
+            return (
+              <div key={post.id} className="bg-white border border-stone-100 rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-4 pt-3.5 pb-2.5">
+                  <p className="text-sm text-stone-800 leading-relaxed">{post.content}</p>
+                </div>
+                <div className="flex items-center justify-between px-4 py-2.5 border-t border-stone-50">
+                  {post.villages ? (
+                    <Link href={`/villages/${post.village_id}`}
+                      className="flex items-center gap-1.5 active:opacity-70 transition-opacity">
+                      <span className="text-sm">{post.villages.icon}</span>
+                      <span className="text-[11px] font-bold text-stone-500 truncate max-w-[160px]">
+                        {post.villages.name}
+                      </span>
+                      <ChevronRight size={11} className="text-stone-300 flex-shrink-0" />
+                    </Link>
+                  ) : <span />}
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-stone-400">{timeAgo(post.created_at)}</span>
+                    {post.reaction_count > 0 && (
+                      <div className="flex items-center gap-1 text-rose-400">
+                        <Heart size={12} fill="#f43f5e" strokeWidth={0} />
+                        <span className="text-[11px] font-bold">{post.reaction_count}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })
         )}
       </div>
-      <div className="h-28" />
     </div>
   )
 }
