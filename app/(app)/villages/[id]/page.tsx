@@ -361,6 +361,43 @@ function DailyPromptCard({
   )
 }
 
+// ─── 締め切りカウントダウン ──────────────────────────────────────
+function DeadlineBadge({ deadline_at, is_closed }: { deadline_at: string; is_closed?: boolean }) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(t)
+  }, [])
+
+  const ms   = new Date(deadline_at).getTime() - now
+  const past = ms <= 0
+
+  if (past || is_closed) {
+    return (
+      <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+        style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca' }}>
+        ⏱️ 締め切り
+      </span>
+    )
+  }
+
+  const h = Math.floor(ms / 3600000)
+  const m = Math.floor((ms % 3600000) / 60000)
+  const label = h > 0 ? `残り${h}時間` : `残り${m}分`
+  const urgent = ms < 3600000 // 1時間未満
+
+  return (
+    <span
+      className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${urgent ? 'animate-pulse' : ''}`}
+      style={urgent
+        ? { background: '#fff7ed', color: '#ea580c', border: '1px solid #fed7aa' }
+        : { background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}
+    >
+      ⏱️ {label}
+    </span>
+  )
+}
+
 // ─── PostCard ─────────────────────────────────────────────────
 function PostCard({
   post, style, likedPosts, onToggleLike, onResolve, onPin, onDelete, isPinned, userId, isHost, villageId,
@@ -442,11 +479,14 @@ function PostCard({
               <p className="text-[10px] text-stone-400">{timeAgo(post.created_at)}</p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
             {post.is_resolved && (
               <span className="flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
                 <CheckCircle size={10} /> 解決済み
               </span>
+            )}
+            {post.deadline_at && (
+              <DeadlineBadge deadline_at={post.deadline_at} is_closed={post.is_deadline_closed} />
             )}
             <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
               style={{ background: `${catColor}15`, color: catColor, border: `1px solid ${catColor}30` }}>
@@ -568,9 +608,10 @@ export default function VillageDetailPage() {
   const [isHost,    setIsHost]    = useState(false)
   const [userId,    setUserId]    = useState<string | null>(null)
   const [loading,   setLoading]   = useState(true)
-  const [newPost,   setNewPost]   = useState('')
-  const [newPostCat,setNewPostCat]= useState('雑談')
-  const [posting,   setPosting]   = useState(false)
+  const [newPost,        setNewPost]        = useState('')
+  const [newPostCat,     setNewPostCat]     = useState('雑談')
+  const [newPostDeadline,setNewPostDeadline]= useState<number | null>(null) // 時間（h）
+  const [posting,        setPosting]        = useState(false)
   const [likedPosts,setLikedPosts]= useState<Set<string>>(new Set())
   const [joining,   setJoining]   = useState(false)
 
@@ -945,8 +986,12 @@ export default function VillageDetailPage() {
     if (!tier.canPost) { setShowPhoneVerify(true); return }
     setPosting(true)
     const supabase = createClient()
+    const deadlineAt = newPostDeadline
+      ? new Date(Date.now() + newPostDeadline * 3600000).toISOString()
+      : null
     await supabase.from('village_posts').insert({
       village_id: id, user_id: userId, content: newPost.trim(), category: newPostCat,
+      ...(deadlineAt ? { deadline_at: deadlineAt } : {}),
     })
     if (newPostCat === '初参加あいさつ') await awardPoints('welcomed_new_member', id)
     // 廃村だった場合は復興
@@ -957,7 +1002,7 @@ export default function VillageDetailPage() {
       setShowRevival(true)
       setTimeout(() => setShowRevival(false), 5000)
     }
-    setNewPost(''); await fetchPosts(); setPosting(false)
+    setNewPost(''); setNewPostDeadline(null); await fetchPosts(); setPosting(false)
   }
 
   async function answerPrompt(text: string) {
@@ -1403,6 +1448,24 @@ export default function VillageDetailPage() {
                     style={{ background: style.accent, boxShadow: `0 4px 12px ${style.accent}50` }}>
                     {posting ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Send size={15} className="text-white" />}
                   </button>
+                </div>
+
+                {/* 締め切り設定 */}
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <span className="text-[10px] text-stone-400 font-medium">⏱️ 締め切り：</span>
+                  {[null, 1, 3, 6, 24].map(h => (
+                    <button
+                      key={h ?? 'none'}
+                      onClick={() => setNewPostDeadline(prev => prev === h ? null : h)}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all active:scale-95"
+                      style={newPostDeadline === h
+                        ? { background: style.accent, color: '#fff', borderColor: style.accent }
+                        : { background: '#fafaf9', color: '#a8a29e', borderColor: '#e7e5e4' }
+                      }
+                    >
+                      {h === null ? 'なし' : h === 1 ? '1時間' : h === 3 ? '3時間' : h === 6 ? '6時間' : '24時間'}
+                    </button>
+                  ))}
                 </div>
               </div>
             ) : (
