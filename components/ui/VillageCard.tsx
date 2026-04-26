@@ -19,6 +19,8 @@ export interface Village {
   last_post_at: string | null
   is_abandoned: boolean | null
   revival_count: number | null
+  level?: number
+  level_xp?: number
 }
 
 // ─── 村タイプごとのスタイル ───────────────────────────────────
@@ -80,13 +82,21 @@ export const VILLAGE_TYPE_STYLES: Record<string, {
 
 const DEFAULT_STYLE = VILLAGE_TYPE_STYLES['雑談']
 
-// ─── レベル ──────────────────────────────────────────────────
-function getLevelInfo(count: number) {
-  if (count >= 500) return { icon: '✨', label: '伝説の村' }
-  if (count >= 200) return { icon: '🏡', label: '栄えた村' }
-  if (count >= 50)  return { icon: '🌳', label: '活発な村' }
-  if (count >= 10)  return { icon: '🌿', label: '育ち中' }
-  return                   { icon: '🌱', label: '芽吹き' }
+// ─── 村レベル（DBのlevelカラム連動）───────────────────────────
+const VILLAGE_LEVELS = [
+  { lv: 1, icon: '🌱', label: '芽吹き',   xpNext: 100  },
+  { lv: 2, icon: '🌿', label: '育ち中',   xpNext: 300  },
+  { lv: 3, icon: '🌳', label: '活発な村', xpNext: 600  },
+  { lv: 4, icon: '🏡', label: '栄えた村', xpNext: 1000 },
+  { lv: 5, icon: '✨', label: '伝説の村', xpNext: null },
+]
+
+function getLevelInfo(level = 1, xp = 0) {
+  const info = VILLAGE_LEVELS.find(l => l.lv === level) ?? VILLAGE_LEVELS[0]
+  const pct  = info.xpNext
+    ? Math.min(100, Math.round((xp / info.xpNext) * 100))
+    : 100
+  return { ...info, pct }
 }
 
 // ─── バイブ ──────────────────────────────────────────────────
@@ -150,7 +160,7 @@ export default function VillageCard({
 }) {
   const router  = useRouter()
   const style   = VILLAGE_TYPE_STYLES[village.type] ?? DEFAULT_STYLE
-  const level   = getLevelInfo(village.member_count)
+  const level   = getLevelInfo(village.level, village.level_xp)
   const vibes   = getVibes(village)
   const event   = getCurrentWeeklyEvent()
 
@@ -181,8 +191,18 @@ export default function VillageCard({
         />
 
         {/* Level badge — top left */}
-        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-black/20 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20">
-          {level.icon} {level.label}
+        <div className="absolute top-2.5 left-2.5 flex flex-col gap-0.5">
+          <div className="flex items-center gap-1 bg-black/20 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20">
+            {level.icon} Lv{level.lv} {level.label}
+          </div>
+          {level.lv < 5 && (
+            <div className="h-1 rounded-full overflow-hidden bg-white/20 w-20">
+              <div
+                className="h-full rounded-full bg-white/70 transition-all"
+                style={{ width: `${level.pct}%` }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Season title — top right */}
@@ -280,7 +300,7 @@ export default function VillageCard({
         <div className="flex items-center justify-between pt-3 border-t border-stone-100">
           <div className="flex items-center gap-1.5 text-stone-500">
             <Users size={13} />
-            <span className="text-xs font-semibold">{village.member_count.toLocaleString()} 住民</span>
+            <span className="text-xs font-semibold">{village.member_count.toLocaleString()} メンバー</span>
           </div>
 
           <button
@@ -292,7 +312,7 @@ export default function VillageCard({
                 : { background: style.accent, color: '#fff', boxShadow: `0 2px 8px ${style.accent}50` }
             }
           >
-            {isMember ? '住民 ✓' : '参加する →'}
+            {isMember ? '参加中 ✓' : 'ここで増やす →'}
           </button>
         </div>
       </div>

@@ -1101,7 +1101,7 @@ export default function VillageDetailPage() {
           style={isMember
             ? { background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(8px)' }
             : { background: '#fff', color: style.accent, fontWeight: 800 }}>
-          {joining ? '…' : isMember ? '住民 ✓' : '参加する →'}
+          {joining ? '…' : isMember ? '参加中 ✓' : 'この村で増やす →'}
         </button>
 
         {/* Level badge */}
@@ -1396,7 +1396,7 @@ export default function VillageDetailPage() {
                 </div>
                 <div className="flex gap-2 items-end">
                   <textarea value={newPost} onChange={e => setNewPost(e.target.value)}
-                    placeholder="村に投稿する…" rows={2} maxLength={300}
+                    placeholder="考えを出す…" rows={2} maxLength={300}
                     className="flex-1 px-3 py-2.5 rounded-2xl border border-stone-200 text-sm resize-none focus:outline-none" />
                   <button onClick={submitPost} disabled={!newPost.trim() || posting}
                     className="w-11 h-11 rounded-2xl flex items-center justify-center disabled:opacity-40 active:scale-90 transition-all flex-shrink-0"
@@ -1594,7 +1594,7 @@ export default function VillageDetailPage() {
                     style={followingIds.has(m.user_id)
                       ? { background: '#f5f5f4', color: '#78716c', border: '1px solid #e7e5e4' }
                       : { background: style.accent, color: '#fff', boxShadow: `0 2px 8px ${style.accent}40` }}>
-                    {followingIds.has(m.user_id) ? 'フォロー中' : 'フォロー'}
+                    {followingIds.has(m.user_id) ? '学んでいる ✓' : 'この人から学ぶ'}
                   </button>
                 )}
               </div>

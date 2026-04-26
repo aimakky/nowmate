@@ -171,10 +171,10 @@ export default function MyPage() {
         >
           {[
             { value: villageCount,   label: '参加村' },
-            { value: postCount,      label: '投稿数' },
-            { value: tweetCount,     label: 'つぶやき' },
-            { value: followingCount, label: 'フォロー' },
-            { value: followersCount, label: 'フォロワー' },
+            { value: postCount,      label: '考えを出した' },
+            { value: tweetCount,     label: '議題参加' },
+            { value: followingCount, label: '学んでる' },
+            { value: followersCount, label: '学ばれてる' },
           ].map(s => (
             <div key={s.label} className="text-center">
               <p className="font-extrabold text-white text-base leading-none">{s.value}</p>
@@ -357,9 +357,9 @@ export default function MyPage() {
             <div className="px-4 py-3 border-b border-stone-50 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-base">👥</span>
-                <p className="text-xs font-bold text-stone-700">フォロー中の投稿</p>
+                <p className="text-xs font-bold text-stone-700">学んでいる人たちの最新の考え</p>
               </div>
-              <p className="text-[10px] text-stone-400">{followingCount}人をフォロー中</p>
+              <p className="text-[10px] text-stone-400">{followingCount}人から学んでいる</p>
             </div>
             <div className="divide-y divide-stone-50">
               {followingPosts.map((fp: any) => {

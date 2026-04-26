@@ -18,11 +18,11 @@ type Notif = {
 }
 
 const TYPE_CONFIG = {
-  like:         { emoji: '❤️', label: 'つぶやきにいいねしました' },
-  reply:        { emoji: '💬', label: 'つぶやきに返信しました' },
-  follow:       { emoji: '👤', label: 'フォローしました' },
-  comment:      { emoji: '🏕️', label: '村の投稿にコメントしました' },
-  bottle_reply: { emoji: '🍶', label: '漂流瓶に返信しました' },
+  like:         { emoji: '💡', label: 'あなたの考えに共感しました' },
+  reply:        { emoji: '💬', label: 'あなたの考えに返しました' },
+  follow:       { emoji: '📖', label: 'あなたから学ぶことにしました' },
+  comment:      { emoji: '🏕️', label: '村の議題にコメントしました' },
+  bottle_reply: { emoji: '🍶', label: '相談に返信しました' },
 }
 
 export default function NotificationsPage() {
@@ -93,7 +93,7 @@ export default function NotificationsPage() {
 
       {/* ── ヘッダー ── */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-stone-100 px-4 pt-4 pb-3">
-        <h1 className="font-extrabold text-stone-900 text-lg">通知</h1>
+        <h1 className="font-extrabold text-stone-900 text-lg">今日の収穫</h1>
       </div>
 
       {loading ? (
@@ -111,9 +111,9 @@ export default function NotificationsPage() {
       ) : notifs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-32 px-8 text-center">
           <div className="text-6xl mb-4">🔔</div>
-          <p className="font-bold text-stone-700 text-base mb-1">まだ通知はありません</p>
+          <p className="font-bold text-stone-700 text-base mb-1">今日の収穫はまだありません</p>
           <p className="text-sm text-stone-400 leading-relaxed">
-            つぶやきへのいいね・返信、フォロー、村のコメントがここに届きます
+            議題への共感・QAへの感謝・村での活動がここに届きます
           </p>
         </div>
       ) : (

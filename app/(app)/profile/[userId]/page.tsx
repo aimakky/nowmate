@@ -131,15 +131,15 @@ if (loading) return (
         <div className="flex gap-6 mb-4">
           <div className="text-center">
             <p className="font-extrabold text-stone-900 text-lg">{tweets.length}</p>
-            <p className="text-xs text-stone-400">Posts</p>
+            <p className="text-xs text-stone-400">考えを出した</p>
           </div>
           <div className="text-center">
             <p className="font-extrabold text-stone-900 text-lg">{followerCount}</p>
-            <p className="text-xs text-stone-400">Followers</p>
+            <p className="text-xs text-stone-400">学ばれてる</p>
           </div>
           <div className="text-center">
             <p className="font-extrabold text-stone-900 text-lg">{followingCount}</p>
-            <p className="text-xs text-stone-400">Following</p>
+            <p className="text-xs text-stone-400">学んでる</p>
           </div>
         </div>
 
@@ -150,7 +150,7 @@ if (loading) return (
                 ? 'bg-stone-100 text-stone-700 border border-stone-200'
                 : 'bg-brand-500 text-white shadow-md shadow-brand-200'
             }`}>
-            {toggling ? '...' : isFollowing ? '✓ Following' : '+ Follow'}
+            {toggling ? '...' : isFollowing ? '✓ この人から学んでいる' : 'この人から学ぶ'}
           </button>
         )}
         {isMe && (
