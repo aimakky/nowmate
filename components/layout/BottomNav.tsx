@@ -2,17 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Compass, MessageCircle, Bell, User } from 'lucide-react'
+import { Compass, MessageCircleQuestion, MessageCircle, Bell, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
-  { href: '/home',          label: 'ホーム', labelEn: 'Home',   icon: Home          },
-  { href: '/villages',      label: '村',     labelEn: 'Villages', icon: Compass     },
-  { href: '/chat',          label: 'チャット', labelEn: 'Chat',  icon: MessageCircle },
-  { href: '/notifications', label: '通知',   labelEn: 'Notif',  icon: Bell          },
-  { href: '/mypage',        label: 'マイページ', labelEn: 'Me',  icon: User          },
+  { href: '/villages',      label: '村',      labelEn: 'Villages', icon: Compass              },
+  { href: '/qa',            label: '相談',    labelEn: 'Ask',      icon: MessageCircleQuestion },
+  { href: '/chat',          label: 'チャット', labelEn: 'Chat',     icon: MessageCircle        },
+  { href: '/notifications', label: '通知',    labelEn: 'Notif',    icon: Bell                 },
+  { href: '/mypage',        label: 'マイページ', labelEn: 'Me',     icon: User                 },
 ]
 
 export default function BottomNav() {
