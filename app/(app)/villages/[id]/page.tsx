@@ -661,6 +661,10 @@ export default function VillageDetailPage() {
   const [welcomeText,   setWelcomeText]   = useState('')
   const [postingWelcome, setPostingWelcome] = useState(false)
 
+  // ── 今日の投稿数・7日間サイレント ─────────────────────────────
+  const [todayCount,     setTodayCount]     = useState(0)
+  const [lastPostDays,   setLastPostDays]   = useState<number | null>(null)
+
   // ── 村外交システム ────────────────────────────────────────────
   const [diplomacyIn,    setDiplomacyIn]    = useState<any[]>([])
   const [diplomacyOut,   setDiplomacyOut]   = useState<any[]>([])
@@ -746,6 +750,35 @@ export default function VillageDetailPage() {
       .eq('id', village.pinned_post_id).single()
     setPinnedPost(data ?? null)
   }, [village?.pinned_post_id])
+
+  const fetchTodayStats = useCallback(async () => {
+    const supabase = createClient()
+    const jstDate = getJSTDate()
+    const todayStart = new Date(`${jstDate}T00:00:00+09:00`).toISOString()
+
+    // 今日の投稿数
+    const { count: tCount } = await supabase
+      .from('village_posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('village_id', id)
+      .gte('created_at', todayStart)
+    setTodayCount(tCount ?? 0)
+
+    // 最後の投稿から何日経過か
+    const { data: lastPost } = await supabase
+      .from('village_posts')
+      .select('created_at')
+      .eq('village_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (lastPost) {
+      const diffMs = Date.now() - new Date(lastPost.created_at).getTime()
+      setLastPostDays(Math.floor(diffMs / (1000 * 60 * 60 * 24)))
+    } else {
+      setLastPostDays(999)
+    }
+  }, [id])
 
   const fetchVoiceRooms = useCallback(async () => {
     const { data } = await createClient()
@@ -941,6 +974,7 @@ export default function VillageDetailPage() {
   useEffect(() => { fetchDiplomacy() },     [fetchDiplomacy])
   useEffect(() => { fetchFollowing() },     [fetchFollowing])
   useEffect(() => { fetchFreeNow() },       [fetchFreeNow])
+  useEffect(() => { fetchTodayStats() },    [fetchTodayStats])
   // 今ヒマを30秒ごとにポーリング
   useEffect(() => {
     const t = setInterval(() => fetchFreeNow(), 30_000)
@@ -1403,6 +1437,32 @@ export default function VillageDetailPage() {
             ))}
           </div>
 
+          {/* 今日の投稿数カウンター */}
+          {todayCount > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+              style={{ background: `${style.accent}10`, border: `1px solid ${style.accent}20` }}>
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: style.accent }} />
+              <p className="text-[11px] font-bold" style={{ color: style.accent }}>
+                今日{todayCount}件の投稿があります
+              </p>
+            </div>
+          )}
+
+          {/* ホストへのナッジ（7日間投稿なし）*/}
+          {isHost && lastPostDays !== null && lastPostDays >= 7 && (
+            <div className="rounded-2xl px-4 py-3 flex items-start gap-3"
+              style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', border: '1px solid #fde68a' }}>
+              <span className="text-lg flex-shrink-0">👋</span>
+              <div className="flex-1">
+                <p className="text-xs font-extrabold text-amber-800">村が静かです</p>
+                <p className="text-[10px] text-amber-600 leading-relaxed mt-0.5">
+                  {lastPostDays >= 999 ? 'まだ誰も投稿していません。' : `${lastPostDays}日間、投稿がありません。`}
+                  村長として最初の投稿をして、住民を呼び込みましょう。
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* 感情の天気図 */}
           <MoodWeather
             villageId={id}
@@ -1515,11 +1575,31 @@ export default function VillageDetailPage() {
 
           {/* 投稿一覧 */}
           {posts.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-4xl mb-3">🌿</p>
-              <p className="text-sm font-bold text-stone-600">まだ投稿がありません</p>
-              <p className="text-xs text-stone-400 mt-1">最初の投稿をしてみましょう</p>
-            </div>
+            (village as any)?.job_locked ? (
+              <div className="rounded-2xl overflow-hidden"
+                style={{ background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)', border: '1px solid #c7d2fe' }}>
+                <div className="px-5 pt-5 pb-4 text-center">
+                  <p className="text-3xl mb-2">💼</p>
+                  <p className="text-sm font-extrabold text-indigo-800">まだ誰も話していません</p>
+                  <p className="text-xs text-indigo-500 leading-relaxed mt-1.5 max-w-[240px] mx-auto">
+                    同じ職業の人だけが入れる村です。<br />
+                    最初の本音を話してみましょう。
+                  </p>
+                </div>
+                {pinnedPost && (
+                  <div className="mx-4 mb-4 px-4 py-3 rounded-xl bg-white/70">
+                    <p className="text-[10px] font-bold text-indigo-400 mb-1">📌 まずはここから</p>
+                    <p className="text-xs font-bold text-indigo-800 leading-relaxed">{pinnedPost.content}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <p className="text-4xl mb-3">🌿</p>
+                <p className="text-sm font-bold text-stone-600">まだ投稿がありません</p>
+                <p className="text-xs text-stone-400 mt-1">最初の投稿をしてみましょう</p>
+              </div>
+            )
           ) : (
             posts.filter(p => p.id !== village?.pinned_post_id || postCat !== '全部').map(post => (
               <PostCard key={post.id} post={post} style={style} likedPosts={likedPosts}

@@ -111,14 +111,17 @@ function SmallVillageCard({ village, isMember, onJoin }: {
 
 export default function VillagesPage() {
   const router = useRouter()
-  const [villages,  setVillages]  = useState<Village[]>([])
-  const [laneData,  setLaneData]  = useState<Record<string, Village[]>>({})
-  const [loading,   setLoading]   = useState(true)
-  const [category,  setCategory]  = useState('all')
-  const [subFilter, setSubFilter] = useState<string | null>(null)
-  const [search,    setSearch]    = useState('')
-  const [userId,    setUserId]    = useState<string | null>(null)
-  const [memberIds, setMemberIds] = useState<Set<string>>(new Set())
+  const [villages,      setVillages]      = useState<Village[]>([])
+  const [laneData,      setLaneData]      = useState<Record<string, Village[]>>({})
+  const [loading,       setLoading]       = useState(true)
+  const [category,      setCategory]      = useState('all')
+  const [subFilter,     setSubFilter]     = useState<string | null>(null)
+  const [search,        setSearch]        = useState('')
+  const [userId,        setUserId]        = useState<string | null>(null)
+  const [memberIds,     setMemberIds]     = useState<Set<string>>(new Set())
+  const [myVillages,    setMyVillages]    = useState<Village[]>([])
+  const [unreadCounts,  setUnreadCounts]  = useState<Record<string, number>>({})
+  const [jobVillages,   setJobVillages]   = useState<Village[]>([])
 
   const weeklyEvent = getCurrentWeeklyEvent()
 
@@ -161,9 +164,33 @@ export default function VillagesPage() {
 
   const fetchMemberships = useCallback(async () => {
     if (!userId) return
-    const { data } = await createClient()
-      .from('village_members').select('village_id').eq('user_id', userId)
-    setMemberIds(new Set((data || []).map((m: any) => m.village_id)))
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('village_members')
+      .select('village_id, villages(*)')
+      .eq('user_id', userId)
+    const joined = (data || []).map((m: any) => m.villages).filter(Boolean) as Village[]
+    setMyVillages(joined)
+    setMemberIds(new Set(joined.map(v => v.id)))
+
+    // 職業限定村を優先表示
+    const jobV = joined.filter((v: any) => v.job_locked)
+    setJobVillages(jobV)
+
+    // 未読件数計算（lastVisit_villages基準）
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const lastVisit = localStorage.getItem('lastVisit_villages') || since24h
+    const counts: Record<string, number> = {}
+    await Promise.all(joined.map(async (v: any) => {
+      const { count } = await supabase
+        .from('village_posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('village_id', v.id)
+        .gte('created_at', lastVisit)
+        .neq('user_id', userId)
+      counts[v.id] = count ?? 0
+    }))
+    setUnreadCounts(counts)
   }, [userId])
 
   useEffect(() => { fetchVillages() },    [fetchVillages])
@@ -300,6 +327,26 @@ export default function VillagesPage() {
         </div>
       </div>
 
+      {/* ── 未読バナー ── */}
+      {(() => {
+        const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0)
+        if (totalUnread === 0) return null
+        return (
+          <div className="px-4 pt-3">
+            <button
+              onClick={() => setSubFilter('member')}
+              className="w-full flex items-center gap-3 bg-brand-50 border border-brand-200 rounded-2xl px-4 py-3 active:scale-[0.99] transition-all"
+            >
+              <span className="w-2 h-2 bg-brand-500 rounded-full animate-pulse flex-shrink-0" />
+              <p className="text-sm font-bold text-brand-700 flex-1 text-left">
+                参加中の村に{totalUnread}件の新着があります
+              </p>
+              <span className="text-[10px] font-bold text-brand-500">見る →</span>
+            </button>
+          </div>
+        )
+      })()}
+
       {/* ── 今夜の一言 ── */}
       <div className="pt-3">
         <TonightInput userId={userId} />
@@ -307,6 +354,47 @@ export default function VillagesPage() {
 
       {/* ── Content ── */}
       <div className="pb-32">
+
+        {/* ══ 職業限定村（参加中かつ全表示時）══ */}
+        {showLanes && jobVillages.length > 0 && (
+          <div className="pt-4 px-4">
+            <div className="flex items-center gap-2 mb-2.5">
+              <span className="text-base">💼</span>
+              <p className="text-xs font-extrabold text-stone-800">あなたの職業村</p>
+            </div>
+            <div className="space-y-2">
+              {jobVillages.map((v: any) => {
+                const unread = unreadCounts[v.id] ?? 0
+                return (
+                  <button key={v.id}
+                    onClick={() => router.push(`/villages/${v.id}`)}
+                    className="w-full flex items-center gap-3 bg-white border border-indigo-100 rounded-2xl px-4 py-3.5 shadow-sm active:scale-[0.99] transition-all text-left"
+                    style={{ background: 'linear-gradient(135deg, #eef2ff 0%, #ffffff 100%)' }}
+                  >
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                      style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' }}>
+                      {v.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-extrabold text-stone-900 truncate">{v.name}</p>
+                        {unread > 0 && (
+                          <span className="flex-shrink-0 w-5 h-5 bg-brand-500 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white">
+                            {unread > 9 ? '9+' : unread}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-indigo-500 font-bold mt-0.5">
+                        {v.job_type}限定 · 👥 {v.member_count}人
+                      </p>
+                    </div>
+                    <span className="text-stone-300 text-sm flex-shrink-0">›</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ══ おすすめレーン（all・サブフィルターなし・非検索時）══ */}
         {showLanes && (
