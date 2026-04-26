@@ -33,18 +33,14 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-phone-otp`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token ?? ''}`,
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
-        },
-        body: JSON.stringify({ phone: formatPhone(phone) }),
-      }
-    )
+    const res = await fetch('/api/phone/send-otp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token ?? ''}`,
+      },
+      body: JSON.stringify({ phone: formatPhone(phone) }),
+    })
 
     const json = await res.json()
     if (!res.ok || json.error) {
@@ -64,18 +60,14 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/verify-phone-otp`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token ?? ''}`,
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
-        },
-        body: JSON.stringify({ phone: formatPhone(phone), otp }),
-      }
-    )
+    const res = await fetch('/api/phone/verify-otp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token ?? ''}`,
+      },
+      body: JSON.stringify({ phone: formatPhone(phone), otp }),
+    })
 
     const json = await res.json()
     if (!res.ok || json.error) {
