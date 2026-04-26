@@ -7,14 +7,14 @@ import { ArrowLeft } from 'lucide-react'
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 
 const VILLAGE_TYPES = [
-  { id: '雑談',     label: '落ち着いた雑談村',   icon: '🌿', desc: '気軽に話せる雰囲気' },
-  { id: '仕事終わり', label: '仕事終わりの村',    icon: '🌙', desc: '仕事の後にほっとひと息' },
-  { id: '相談',     label: '相談の村',           icon: '🤝', desc: 'なんでも相談できる場所' },
-  { id: '趣味',     label: '趣味の村',           icon: '🎨', desc: '好きを語れる村' },
-  { id: '職業',     label: '職業別の村',         icon: '💼', desc: '同じ仕事の仲間と' },
-  { id: '地域',     label: '地域別の村',         icon: '📍', desc: '地元で繋がろう' },
-  { id: '初参加',   label: '初参加歓迎の村',     icon: '🌱', desc: '初めての人も大歓迎' },
-  { id: '焚き火',   label: '夜の焚き火村',       icon: '🔥', desc: '夜に話しやすい場所' },
+  { id: '雑談',     label: '落ち着いた雑談村',   icon: '🌿', desc: '気軽に話せる雰囲気',     category: 'tonight' },
+  { id: '仕事終わり', label: '仕事終わりの村',   icon: '🌙', desc: '仕事の後にほっとひと息', category: 'work'    },
+  { id: '相談',     label: '相談の村',           icon: '🤝', desc: 'なんでも相談できる場所', category: 'help'    },
+  { id: '趣味',     label: '趣味の村',           icon: '🎨', desc: '好きを語れる村',         category: 'think'   },
+  { id: '職業',     label: '職業別の村',         icon: '💼', desc: '同じ仕事の仲間と',       category: 'work'    },
+  { id: '地域',     label: '地域別の村',         icon: '📍', desc: '地元で繋がろう',         category: 'life'    },
+  { id: '初参加',   label: '初参加歓迎の村',     icon: '🌱', desc: '初めての人も大歓迎',     category: 'start'   },
+  { id: '焚き火',   label: '夜の焚き火村',       icon: '🔥', desc: '夜に話しやすい場所',     category: 'tonight' },
 ]
 
 export default function CreateVillagePage() {
@@ -38,8 +38,9 @@ export default function CreateVillagePage() {
       name:        name.trim(),
       description: description.trim(),
       type,
-      icon:    selectedType.icon,
-      host_id: user.id,
+      icon:     selectedType.icon,
+      category: selectedType.category,
+      host_id:  user.id,
     }).select().single()
 
     if (data) {

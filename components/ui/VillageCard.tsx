@@ -21,6 +21,7 @@ export interface Village {
   revival_count: number | null
   level?: number
   level_xp?: number
+  category?: string
 }
 
 // ─── 村タイプごとのスタイル ───────────────────────────────────
