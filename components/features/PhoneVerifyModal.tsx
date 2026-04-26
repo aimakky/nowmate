@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { awardPoints } from '@/lib/trust'
 import { X, Phone, ShieldCheck } from 'lucide-react'
 
 interface Props {
@@ -11,8 +10,9 @@ interface Props {
 }
 
 export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
-  const [step,    setStep]    = useState<'intro' | 'phone' | 'success'>('intro')
+  const [step,    setStep]    = useState<'intro' | 'phone' | 'otp' | 'success'>('intro')
   const [phone,   setPhone]   = useState('')
+  const [otp,     setOtp]     = useState('')
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
 
@@ -24,27 +24,66 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
     return n
   }
 
-  // ─── 電話番号保存 + 認証完了 ────────────────────────────────
-  async function submitPhone() {
+  // ─── SMS送信 ──────────────────────────────────────────────
+  async function sendOtp() {
     if (!phone.trim()) return
     setLoading(true)
     setError('')
-    const supabase  = createClient()
-    const formatted = formatPhone(phone)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setError('ログインが必要です')
-      setLoading(false)
-      return
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-phone-otp`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+        },
+        body: JSON.stringify({ phone: formatPhone(phone) }),
+      }
+    )
+
+    const json = await res.json()
+    if (!res.ok || json.error) {
+      setError(json.error ?? 'SMS送信に失敗しました')
+    } else {
+      setStep('otp')
     }
+    setLoading(false)
+  }
 
-    // 電話番号を profiles に保存 + 信頼ポイント付与（phone_verified フラグも自動更新）
-    await supabase.from('profiles').update({ phone_number: formatted }).eq('id', user.id)
-    await awardPoints('phone_verified')
+  // ─── OTP確認 ──────────────────────────────────────────────
+  async function verifyOtp() {
+    if (otp.length < 6) return
+    setLoading(true)
+    setError('')
 
-    setStep('success')
-    setTimeout(() => { onVerified(); onClose() }, 1500)
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/verify-phone-otp`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+        },
+        body: JSON.stringify({ phone: formatPhone(phone), otp }),
+      }
+    )
+
+    const json = await res.json()
+    if (!res.ok || json.error) {
+      setError(json.error ?? '認証に失敗しました')
+    } else {
+      setStep('success')
+      setTimeout(() => { onVerified(); onClose() }, 1500)
+    }
     setLoading(false)
   }
 
@@ -74,7 +113,6 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
               <span className="font-bold text-sky-600">+30pt 獲得</span>
             </p>
 
-            {/* Benefits */}
             <div className="space-y-2.5 mb-5">
               {[
                 { icon: '💬', text: '村に投稿できる' },
@@ -105,14 +143,12 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
         {step === 'phone' && (
           <div className="p-6">
             <div className="flex items-center gap-3 mb-5">
-              <button onClick={() => setStep('intro')} className="text-stone-400 p-1">
-                ←
-              </button>
+              <button onClick={() => setStep('intro')} className="text-stone-400 p-1">←</button>
               <h3 className="font-extrabold text-stone-900">電話番号を入力</h3>
             </div>
 
             <p className="text-sm text-stone-500 mb-4">
-              電話番号を登録して「住民」になりましょう
+              SMS認証コードを送信します（有効期限10分）
             </p>
 
             <div className="flex gap-2 mb-2">
@@ -137,13 +173,59 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
             )}
 
             <button
-              onClick={submitPhone}
+              onClick={sendOtp}
               disabled={!phone.trim() || loading}
               className="w-full py-3.5 bg-brand-500 text-white rounded-2xl font-bold disabled:opacity-40 flex items-center justify-center gap-2 shadow-md shadow-brand-200 active:scale-95 transition-all"
             >
               {loading
                 ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                : '認証する'}
+                : '認証コードを送信'}
+            </button>
+          </div>
+        )}
+
+        {/* ── OTP input ── */}
+        {step === 'otp' && (
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <button onClick={() => setStep('phone')} className="text-stone-400 p-1">←</button>
+              <h3 className="font-extrabold text-stone-900">認証コードを入力</h3>
+            </div>
+
+            <p className="text-sm text-stone-500 mb-5">
+              <span className="font-bold text-stone-800">{phone}</span> にSMSを送信しました。<br />
+              6桁のコードを入力してください。
+            </p>
+
+            <input
+              type="number"
+              value={otp}
+              onChange={e => setOtp(e.target.value.slice(0, 6))}
+              placeholder="123456"
+              className="w-full px-4 py-4 rounded-2xl border-2 border-stone-200 text-2xl font-bold text-center tracking-[0.5em] focus:outline-none focus:border-brand-400 mb-2"
+              autoFocus
+            />
+
+            {error && (
+              <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2 mb-4">{error}</p>
+            )}
+
+            <button
+              onClick={verifyOtp}
+              disabled={otp.length < 6 || loading}
+              className="w-full py-3.5 bg-brand-500 text-white rounded-2xl font-bold disabled:opacity-40 flex items-center justify-center gap-2 shadow-md shadow-brand-200 active:scale-95 transition-all mt-3"
+            >
+              {loading
+                ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : '確認する'}
+            </button>
+
+            <button
+              onClick={sendOtp}
+              disabled={loading}
+              className="w-full py-2 text-xs text-stone-400 mt-2 hover:text-stone-600 disabled:opacity-40"
+            >
+              コードを再送する
             </button>
           </div>
         )}
