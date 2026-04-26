@@ -22,37 +22,40 @@ export default function BottomNav() {
 
   useEffect(() => {
     async function fetchBadges() {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
 
-      // 未読通知数
-      const { count: nc } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false)
-      setNotifCount(nc ?? 0)
-
-      // 未読チャット数（自分以外が送った直近メッセージのあるマッチ数）
-      const { data: matches } = await supabase
-        .from('matches')
-        .select('id')
-        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
-      if (matches && matches.length > 0) {
-        const matchIds = matches.map((m: any) => m.id)
-        const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
-        const { count: mc } = await supabase
-          .from('messages')
+        // 未読通知数
+        const { count: nc } = await supabase
+          .from('notifications')
           .select('*', { count: 'exact', head: true })
-          .in('match_id', matchIds)
-          .neq('sender_id', user.id)
-          .gte('created_at', since48h)
-        setChatCount(mc ?? 0)
+          .eq('user_id', user.id)
+          .eq('is_read', false)
+        setNotifCount(nc ?? 0)
+
+        // 未読チャット数
+        const { data: matches } = await supabase
+          .from('matches')
+          .select('id')
+          .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+        if (matches && matches.length > 0) {
+          const matchIds = matches.map((m: any) => m.id)
+          const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+          const { count: mc } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .in('match_id', matchIds)
+            .neq('sender_id', user.id)
+            .gte('created_at', since48h)
+          setChatCount(mc ?? 0)
+        }
+      } catch (e) {
+        // バッジ取得失敗はサイレントに無視
       }
     }
     fetchBadges()
-    // 30秒ごとにポーリング
     const interval = setInterval(fetchBadges, 30_000)
     return () => clearInterval(interval)
   }, [])

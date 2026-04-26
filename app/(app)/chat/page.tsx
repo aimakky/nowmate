@@ -29,61 +29,68 @@ export default function ChatListPage() {
 
   useEffect(() => {
     async function load() {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
-      setUserId(user.id)
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) { router.push('/login'); return }
+        setUserId(user.id)
 
-      // マッチ一覧取得
-      const { data: matchData } = await supabase
-        .from('matches')
-        .select('id, user1_id, user2_id')
-        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
-        .order('created_at', { ascending: false })
+        // マッチ一覧取得
+        const { data: matchData, error: matchErr } = await supabase
+          .from('matches')
+          .select('id, user1_id, user2_id')
+          .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+          .order('created_at', { ascending: false })
 
-      if (!matchData || matchData.length === 0) {
-        setLoading(false)
-        return
-      }
+        if (matchErr || !matchData || matchData.length === 0) {
+          setLoading(false)
+          return
+        }
 
-      const otherIds  = matchData.map((m: any) => m.user1_id === user.id ? m.user2_id : m.user1_id)
-      const matchIds  = matchData.map((m: any) => m.id)
+        const otherIds = matchData.map((m: any) =>
+          m.user1_id === user.id ? m.user2_id : m.user1_id
+        )
+        const matchIds = matchData.map((m: any) => m.id)
 
-      const [{ data: profileData }, { data: msgData }] = await Promise.all([
-        supabase.from('profiles')
-          .select('id, display_name, avatar_url, is_online, occupation')
-          .in('id', otherIds),
-        supabase.from('messages')
-          .select('match_id, content, created_at, sender_id')
-          .in('match_id', matchIds)
-          .eq('is_deleted', false)
-          .order('created_at', { ascending: false }),
-      ])
+        const [{ data: profileData }, { data: msgData }] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id, display_name, avatar_url, is_online, occupation')
+            .in('id', otherIds),
+          supabase
+            .from('messages')
+            .select('match_id, content, created_at, sender_id')
+            .in('match_id', matchIds)
+            .order('created_at', { ascending: false }),
+        ])
 
-      const profileMap = new Map((profileData || []).map((p: any) => [p.id, p]))
-      const lastMsgMap = new Map<string, any>()
-      ;(msgData || []).forEach((msg: any) => {
-        if (!lastMsgMap.has(msg.match_id)) lastMsgMap.set(msg.match_id, msg)
-      })
-
-      const directData: DirectChat[] = matchData
-        .map((m: any) => {
-          const otherId = m.user1_id === user.id ? m.user2_id : m.user1_id
-          const other   = profileMap.get(otherId)
-          if (!other) return null
-          return { matchId: m.id, other, lastMessage: lastMsgMap.get(m.id) ?? null }
+        const profileMap = new Map((profileData || []).map((p: any) => [p.id, p]))
+        const lastMsgMap = new Map<string, any>()
+        ;(msgData || []).forEach((msg: any) => {
+          if (!lastMsgMap.has(msg.match_id)) lastMsgMap.set(msg.match_id, msg)
         })
-        .filter(Boolean) as DirectChat[]
 
-      // 最終メッセージ時刻でソート
-      directData.sort((a, b) => {
-        const ta = a.lastMessage?.created_at ?? '0'
-        const tb = b.lastMessage?.created_at ?? '0'
-        return tb.localeCompare(ta)
-      })
+        const directData: DirectChat[] = matchData
+          .map((m: any) => {
+            const otherId = m.user1_id === user.id ? m.user2_id : m.user1_id
+            const other   = profileMap.get(otherId)
+            if (!other) return null
+            return { matchId: m.id, other, lastMessage: lastMsgMap.get(m.id) ?? null }
+          })
+          .filter(Boolean) as DirectChat[]
 
-      setDirects(directData)
-      setLoading(false)
+        directData.sort((a, b) => {
+          const ta = a.lastMessage?.created_at ?? '0'
+          const tb = b.lastMessage?.created_at ?? '0'
+          return tb.localeCompare(ta)
+        })
+
+        setDirects(directData)
+      } catch (e) {
+        console.error('chat load error:', e)
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [router])
