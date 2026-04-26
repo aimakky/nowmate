@@ -129,11 +129,93 @@ export default function OnboardingPage() {
       await supabase.rpc('set_user_occupation', { p_occupation: occupation })
     }
 
-    // 選択した村タイプから最初の村を探して参加
-    const typesToJoin = occupation && occupation !== 'その他'
-      ? ['職業', ...selectedTypes.filter(t => t !== '職業')].slice(0, 3)
-      : selectedTypes.slice(0, 3)
+    // 職業村への参加（なければ自動作成）
+    if (occupation && occupation !== 'その他') {
+      const occEmoji: Record<string, string> = {
+        '看護師':'🏥','医師':'👨‍⚕️','薬剤師':'💊','歯科':'🦷','介護士':'🤲',
+        '教師':'📚','エンジニア':'💻','デザイナー':'🎨','営業':'📊','経理':'💰',
+        'マーケター':'📣','法律職':'⚖️','公務員':'🏛️','警察消防':'👮','建築士':'🏗️',
+        '航空交通':'✈️','飲食':'🍳','サービス業':'🛒','クリエイター':'🎬',
+        '農林水産':'🌾','製造業':'🏭','物流':'📦','不動産':'🏠','コンサル':'💼',
+        '金融':'🏦','人事':'👤','研究者':'🔬','経営者':'🚀','転職活動中':'🔄',
+      }
+      const starterTopics: Record<string, string> = {
+        '看護師':     '【村の最初の問い】\n\n今日の勤務、どうでしたか？\n\n夜勤明けの虚無感、急変対応の後の気持ち、師長との関係、インシデントレポートの苦労……\n同じ看護師にしか伝わらないことを、ここで話してください。\n\n「今日は〇〇がしんどかった」の一言だけでも大丈夫です。',
+        '医師':       '【村の最初の問い】\n\n今週、一番しんどかったことを話しませんか？\n\n患者対応・当直・研修医指導・論文・キャリアの悩み……\n外では言えないことを、同じ医師だけのここで。',
+        '薬剤師':     '【村の最初の問い】\n\n今、薬剤師として何が一番気になっていますか？\n\n調剤業務・服薬指導・OTCへの転向・ドラッグストアvs病院……\n職場では言いにくい本音を話しましょう。',
+        '歯科':       '【村の最初の問い】\n\n歯科の仕事、今どうですか？\n患者対応・技工の話・開業か勤務かの悩み……同じ業界の人間だからわかること、ここで話しましょう。',
+        '介護士':     '【村の最初の問い】\n\n今日の体と心、どんな状態ですか？\n\n腰痛・夜勤・利用者さんとの別れ・給与への葛藤……\n「しんどい」だけ書いてもいい。同じ介護士が聞いています。',
+        '教師':       '【村の最初の問い】\n\n今年一番しんどかった保護者対応か、学級のことを話しませんか？\n\n職員室では言えないこと、担任の重さ、働き方改革と現実のギャップ……\n教師同士だから言える本音を。',
+        'エンジニア': '【村の最初の問い】\n\n今、転職・技術・チームのどれで悩んでいますか？\n\n年収と環境のトレードオフ、レガシーコード、バーンアウト……\n技術背景を説明しなくていい、楽な場所にしましょう。',
+        'デザイナー': '【村の最初の問い】\n\nクライアントのフィードバック、キャリア、フリーvs会社員……\n今デザイナーとして何を考えていますか？',
+        '営業':       '【村の最初の問い】\n\n今月のノルマ、どうですか？\n\n詰められた話・理不尽な顧客・インセンティブへの不満……\n営業同士で本音を話しましょう。',
+        '公務員':     '【村の最初の問い】\n\n「安定してていいよね」と言われるたびに、どう感じますか？\n\n窓口対応・組織の硬直・転職への迷い……\n公務員同士だから共有できる本音を話しましょう。',
+        '経営者':     '【村の最初の問い】\n\n今一番の経営課題は何ですか？\n\n資金・採用・売上・孤独……\n経営者同士だから話せることを、ここで話しましょう。',
+        '転職活動中': '【村の最初の問い】\n\n今どんな理由で転職を考えていますか？\n同じく転職活動中の人と、本音で話しましょう。',
+      }
+      const defaultTopic = `【村の最初の問い】\n\n${occupation}として今感じていること、仕事のリアル、悩みを話しましょう。\n同じ職業の人間だけがいる、安心できる場所です。`
 
+      // 既存の職業村を探す
+      const { data: existingVillage } = await supabase
+        .from('villages')
+        .select('id')
+        .eq('job_type', occupation)
+        .eq('job_locked', true)
+        .eq('is_public', true)
+        .order('member_count', { ascending: false })
+        .limit(1)
+        .single()
+
+      let villageId: string
+
+      if (existingVillage) {
+        villageId = existingVillage.id
+      } else {
+        // 職業村がなければ自動作成
+        const emoji = occEmoji[occupation] ?? '💼'
+        const { data: newVillage } = await supabase
+          .from('villages')
+          .insert({
+            name:        `${occupation}村`,
+            description: `${occupation}だけが集まる村。仕事のリアルを、同じ職業の人間だけで話せる場所。`,
+            type:        '職業',
+            icon:        emoji,
+            category:    'work',
+            host_id:     userId,
+            job_locked:  true,
+            job_type:    occupation,
+          })
+          .select()
+          .single()
+
+        if (newVillage) {
+          villageId = newVillage.id
+          // スターター投稿を自動ピン留め
+          const topicContent = starterTopics[occupation] ?? defaultTopic
+          const { data: starterPost } = await supabase
+            .from('village_posts')
+            .insert({ village_id: villageId, user_id: userId, content: topicContent, category: '雑談' })
+            .select()
+            .single()
+          if (starterPost) {
+            await supabase.from('villages').update({ pinned_post_id: starterPost.id }).eq('id', villageId)
+          }
+        } else {
+          villageId = ''
+        }
+      }
+
+      if (villageId) {
+        await supabase.from('village_members').upsert({
+          village_id: villageId,
+          user_id:    userId,
+          role:       'member',
+        }, { onConflict: 'village_id,user_id', ignoreDuplicates: true })
+      }
+    }
+
+    // その他の村タイプから参加
+    const typesToJoin = selectedTypes.filter(t => t !== '職業').slice(0, 2)
     if (typesToJoin.length > 0) {
       for (const type of typesToJoin) {
         const { data: villages } = await supabase

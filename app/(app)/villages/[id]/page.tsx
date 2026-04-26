@@ -701,7 +701,7 @@ export default function VillageDetailPage() {
   // ── Fetchers ─────────────────────────────────────────────
   const fetchVillage = useCallback(async () => {
     const { data } = await createClient()
-      .from('villages').select('*, profiles(display_name)').eq('id', id).single()
+      .from('villages').select('*, profiles(display_name), job_locked, job_type').eq('id', id).single()
     if (data) {
       setVillage(data)
       setRules(data.rules ?? ['', '', ''])
@@ -1489,6 +1489,20 @@ export default function VillageDetailPage() {
                 <p className="text-[10px] text-stone-400 mt-0.5">タップして認証 (+30pt)</p>
               </button>
             )
+          )}
+
+          {/* 職業限定村：詐称フィルタートピックバナー */}
+          {(village as any)?.job_locked && (village as any)?.job_type && postCat === '全部' && (
+            <div className="rounded-2xl px-4 py-3 flex items-center gap-3"
+              style={{ background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)', border: '1px solid #c7d2fe' }}>
+              <span className="text-xl flex-shrink-0">💼</span>
+              <div>
+                <p className="text-xs font-extrabold text-indigo-700">{(village as any).job_type}限定村</p>
+                <p className="text-[10px] text-indigo-500 leading-relaxed mt-0.5">
+                  同じ職業の人だけが集まる場所です。下の「村の問い」から話してみましょう。
+                </p>
+              </div>
+            </div>
           )}
 
           {/* ピン留め投稿 */}
