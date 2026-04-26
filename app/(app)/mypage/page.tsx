@@ -188,12 +188,15 @@ export default function MyPage() {
 
         {/* ── Trust Card ── */}
         {trust && (
-          <TrustCard trust={{
-            score:          trust.score,
-            tier:           trust.tier,
-            total_helped:   trust.total_helped,
-            phone_verified: trust.phone_verified,
-          }} />
+          <TrustCard
+            trust={{
+              score:          trust.score,
+              tier:           trust.tier,
+              total_helped:   trust.total_helped,
+              phone_verified: trust.phone_verified,
+            }}
+            isPremium={!!profile?.is_premium}
+          />
         )}
 
         {/* ── 電話未認証バナー ── */}

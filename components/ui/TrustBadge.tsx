@@ -8,26 +8,36 @@ export default function TrustBadge({
   score,
   size = 'sm',
   showLabel = true,
+  isPremium = false,
 }: {
   tierId?: string
   score?: number
-  size?: 'xs' | 'sm' | 'md'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   showLabel?: boolean
+  isPremium?: boolean
 }) {
   const tier = tierId ? getTierById(tierId) : getTierFromScore(score ?? 0)
+  const isPillar = tier.id === 'pillar'
 
   const sizeClass = {
     xs: 'text-[9px] px-1 py-0.5 gap-0.5',
     sm: 'text-[10px] px-1.5 py-0.5 gap-1',
     md: 'text-xs px-2 py-1 gap-1',
+    lg: 'text-sm px-3 py-1.5 gap-1.5',
   }[size]
+
+  // 村の柱 or プレミアム → グローアニメーション
+  const glowClass = (isPillar || isPremium)
+    ? 'shadow-[0_0_8px_2px_rgba(251,191,36,0.45)] animate-pulse-slow'
+    : ''
 
   return (
     <span
-      className={`inline-flex items-center font-bold rounded-full border ${tier.color} ${sizeClass}`}
+      className={`inline-flex items-center font-bold rounded-full border ${tier.color} ${sizeClass} ${glowClass} transition-all`}
     >
       <span>{tier.icon}</span>
       {showLabel && <span>{tier.label}</span>}
+      {isPremium && <span className="ml-0.5 text-amber-500">⚡</span>}
     </span>
   )
 }
@@ -35,6 +45,7 @@ export default function TrustBadge({
 // ─── フルカード（マイページで使う）──────────────────────────
 export function TrustCard({
   trust,
+  isPremium = false,
 }: {
   trust: {
     score: number
@@ -42,29 +53,44 @@ export function TrustCard({
     total_helped: number
     phone_verified: boolean
   }
+  isPremium?: boolean
 }) {
   const tier     = getTierById(trust.tier)
   const next     = getNextTier(trust.tier)
   const progress = getProgressToNext(trust.score)
+  const isPillar = tier.id === 'pillar'
 
   return (
-    <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm">
+    <div className={`bg-white border rounded-2xl p-4 shadow-sm transition-all ${
+      isPillar ? 'border-amber-300 shadow-amber-100 shadow-md' : 'border-stone-100'
+    }`}>
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-bold text-stone-400 uppercase tracking-wider">村での立場</p>
-        {trust.phone_verified && (
-          <span className="text-[10px] bg-sky-50 text-sky-600 border border-sky-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-            ✓ 電話認証済み
-          </span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {isPremium && (
+            <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+              ⚡ プレミアム
+            </span>
+          )}
+          {trust.phone_verified && (
+            <span className="text-[10px] bg-sky-50 text-sky-600 border border-sky-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+              ✓ 電話認証済み
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Tier display */}
       <div className="flex items-center gap-3 mb-4">
-        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl border ${tier.color}`}>
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl border ${tier.color} ${
+          isPillar ? 'shadow-[0_0_10px_3px_rgba(251,191,36,0.4)] animate-pulse-slow' : ''
+        }`}>
           {tier.icon}
         </div>
         <div>
-          <p className="font-extrabold text-stone-900 text-base">{tier.label}</p>
+          <p className="font-extrabold text-stone-900 text-base">{tier.label}
+            {isPillar && <span className="ml-1.5 text-xs text-amber-500 font-bold">最高位</span>}
+          </p>
           <p className="text-xs text-stone-400 leading-snug">{tier.desc}</p>
         </div>
       </div>

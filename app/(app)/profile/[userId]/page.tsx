@@ -7,6 +7,7 @@ import { getNationalityFlag, checkSupportedLocation } from '@/lib/utils'
 import { ArrowLeft } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import TweetCard, { TweetData } from '@/components/ui/TweetCard'
+import TrustBadge from '@/components/ui/TrustBadge'
 
 export default function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>()
@@ -20,6 +21,8 @@ export default function UserProfilePage() {
   const [toggling, setToggling] = useState(false)
   const [loading, setLoading] = useState(true)
   const [canInteract, setCanInteract] = useState(false)
+  const [trustTier, setTrustTier] = useState<string | null>(null)
+  const [isPremium, setIsPremium] = useState(false)
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -32,16 +35,20 @@ export default function UserProfilePage() {
     if (!userId) return
     async function load() {
       const supabase = createClient()
-      const [{ data: p }, { data: tw }, { count: followers }, { count: following }] = await Promise.all([
+      const [{ data: p }, { data: tw }, { count: followers }, { count: following }, { data: trust }, { data: premSub }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
         supabase.from('tweets').select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)').eq('user_id', userId).order('created_at', { ascending: false }).limit(30),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', userId),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId),
+        supabase.from('user_trust').select('tier').eq('user_id', userId).maybeSingle(),
+        supabase.from('premium_subscriptions').select('id').eq('user_id', userId).eq('status', 'active').gt('expires_at', new Date().toISOString()).maybeSingle(),
       ])
       setProfile(p)
       setTweets((tw || []) as TweetData[])
       setFollowerCount(followers ?? 0)
       setFollowingCount(following ?? 0)
+      if (trust?.tier) setTrustTier(trust.tier)
+      setIsPremium(!!premSub)
       setLoading(false)
     }
     load()
@@ -110,6 +117,11 @@ if (loading) return (
               <p className="font-extrabold text-stone-900 text-lg leading-tight">{profile.display_name}</p>
               <span className="text-xl">{flag}</span>
             </div>
+            {trustTier && (
+              <div className="mb-1">
+                <TrustBadge tierId={trustTier} size="md" isPremium={isPremium} />
+              </div>
+            )}
             <p className="text-xs text-stone-400 mb-2">{profile.arrival_stage || 'Samee member'}</p>
             {profile.bio && <p className="text-sm text-stone-600 leading-relaxed">{profile.bio}</p>}
           </div>

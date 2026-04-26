@@ -602,6 +602,11 @@ export default function VillageDetailPage() {
   const [isFreeNow,     setIsFreeNow]     = useState(false)
   const [togglingFree,  setTogglingFree]  = useState(false)
 
+  // ── はじめまして投稿モーダル ──────────────────────────────────
+  const [showWelcome,   setShowWelcome]   = useState(false)
+  const [welcomeText,   setWelcomeText]   = useState('')
+  const [postingWelcome, setPostingWelcome] = useState(false)
+
   // ── 村外交システム ────────────────────────────────────────────
   const [diplomacyIn,    setDiplomacyIn]    = useState<any[]>([])
   const [diplomacyOut,   setDiplomacyOut]   = useState<any[]>([])
@@ -901,6 +906,12 @@ export default function VillageDetailPage() {
     } else {
       await supabase.from('village_members').insert({ village_id: id, user_id: userId })
       setIsMember(true)
+      // はじめまして投稿モーダルを表示
+      if (tier.canPost) {
+        const { data: prof } = await supabase.from('profiles').select('display_name').eq('id', userId).single()
+        setWelcomeText(`はじめまして！${prof?.display_name ?? ''}です。よろしくお願いします🌱`)
+        setShowWelcome(true)
+      }
       // Milestone check
       const { data: v } = await supabase.from('villages').select('member_count, milestone_reached').eq('id', id).single()
       if (v) {
@@ -913,6 +924,20 @@ export default function VillageDetailPage() {
       }
     }
     setJoining(false); fetchVillage()
+  }
+
+  async function submitWelcomePost() {
+    if (!userId || !welcomeText.trim() || postingWelcome) return
+    setPostingWelcome(true)
+    const supabase = createClient()
+    await supabase.from('village_posts').insert({
+      village_id: id, user_id: userId,
+      content: welcomeText.trim(),
+      category: '初参加あいさつ',
+    })
+    setShowWelcome(false)
+    setPostingWelcome(false)
+    await fetchPosts()
   }
 
   async function submitPost() {
@@ -2053,6 +2078,59 @@ export default function VillageDetailPage() {
       {resolvePost && (
         <ResolveModal post={resolvePost} members={members} userId={userId!}
           onClose={() => setResolvePost(null)} onResolved={() => fetchPosts()} />
+      )}
+
+      {/* ── はじめまして投稿モーダル ── */}
+      {showWelcome && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl animate-scale-pop">
+            {/* ヘッダー */}
+            <div className="text-center mb-5">
+              <div className="text-5xl mb-3">🌱</div>
+              <h3 className="font-extrabold text-stone-900 text-xl leading-tight mb-1">
+                村へようこそ！
+              </h3>
+              <p className="text-sm text-stone-500 leading-relaxed">
+                最初のあいさつ投稿をしましょう。<br />住民に気づいてもらえます。
+              </p>
+            </div>
+
+            {/* テキストエリア */}
+            <div className="relative mb-4">
+              <textarea
+                value={welcomeText}
+                onChange={e => setWelcomeText(e.target.value.slice(0, 200))}
+                rows={3}
+                autoFocus
+                className="w-full px-4 py-3 rounded-2xl border-2 text-sm resize-none focus:outline-none leading-relaxed transition-colors"
+                style={{ borderColor: style?.accent ?? '#0ea5e9' }}
+              />
+              <span className="absolute bottom-2 right-3 text-[10px] text-stone-400">
+                {welcomeText.length}/200
+              </span>
+            </div>
+
+            {/* ボタン */}
+            <button
+              onClick={submitWelcomePost}
+              disabled={!welcomeText.trim() || postingWelcome}
+              className="w-full py-4 rounded-2xl font-extrabold text-white text-base disabled:opacity-40 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mb-3"
+              style={{ background: `linear-gradient(135deg, ${style?.accent ?? '#0ea5e9'} 0%, ${style?.accent ?? '#0ea5e9'}cc 100%)`, boxShadow: `0 6px 20px ${style?.accent ?? '#0ea5e9'}40` }}
+            >
+              {postingWelcome
+                ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <>🌱 はじめましてを投稿する</>
+              }
+            </button>
+            <button
+              onClick={() => setShowWelcome(false)}
+              className="w-full py-2.5 text-sm text-stone-400 hover:text-stone-600 transition-colors"
+            >
+              スキップ
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )
