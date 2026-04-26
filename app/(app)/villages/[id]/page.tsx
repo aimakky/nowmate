@@ -8,6 +8,7 @@ import {
   Pin, Trash2, Settings2, BookOpen, Save, X, PinOff, Flame,
 } from 'lucide-react'
 import { timeAgo } from '@/lib/utils'
+import { getOccupationBadge } from '@/lib/occupation'
 import { getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 import TrustBadge from '@/components/ui/TrustBadge'
 import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
@@ -467,9 +468,21 @@ function PostCard({
         )}
         <div className="flex items-start justify-between mb-2.5">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold text-white flex-shrink-0"
-              style={{ background: `linear-gradient(135deg, ${catColor} 0%, ${catColor}99 100%)` }}>
-              {post.profiles?.display_name?.[0] ?? '?'}
+            <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold text-white"
+                style={{ background: `linear-gradient(135deg, ${catColor} 0%, ${catColor}99 100%)` }}>
+                {post.profiles?.avatar_url
+                  ? <img src={post.profiles.avatar_url} className="w-full h-full object-cover rounded-full" alt="" />
+                  : post.profiles?.display_name?.[0] ?? '?'}
+              </div>
+              {(() => {
+                const occ = getOccupationBadge(post.profiles?.occupation)
+                return occ ? (
+                  <span className="inline-flex items-center gap-0.5 text-[7px] font-bold px-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 whitespace-nowrap leading-tight py-0">
+                    {occ.emoji}{occ.label}
+                  </span>
+                ) : null
+              })()}
             </div>
             <div>
               <div className="flex items-center gap-1.5">
@@ -718,7 +731,7 @@ export default function VillageDetailPage() {
   const fetchPosts = useCallback(async () => {
     let q = createClient()
       .from('village_posts')
-      .select('*, profiles(display_name, avatar_url), user_trust!village_posts_user_id_fkey(tier, is_shadow_banned)')
+      .select('*, profiles(display_name, avatar_url, occupation), user_trust!village_posts_user_id_fkey(tier, is_shadow_banned)')
       .eq('village_id', id).order('created_at', { ascending: false }).limit(50)
     if (postCat !== '全部') q = q.eq('category', postCat)
     const { data } = await q

@@ -5,6 +5,7 @@ import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
 import { PURPOSES, ARRIVAL_STAGES } from '@/lib/constants'
 import { getNationalityFlag } from '@/lib/utils'
+import { getOccupationBadge } from '@/lib/occupation'
 import type { Profile } from '@/types'
 
 interface UserCardProps {
@@ -16,17 +17,25 @@ interface UserCardProps {
 export default function UserCard({ profile, onLike, liked }: UserCardProps) {
   const purposes = PURPOSES.filter(p => profile.purposes.includes(p.value))
   const stage = profile.arrival_stage ? ARRIVAL_STAGES.find(s => s.value === profile.arrival_stage) : null
+  const occBadge = getOccupationBadge((profile as any).occupation)
 
   return (
     <Link href={`/profile/${profile.id}`} className="block">
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow active:scale-[0.98]">
         <div className="flex items-start gap-3">
-          <Avatar
-            src={profile.avatar_url}
-            name={profile.display_name}
-            size="lg"
-            isOnline={profile.is_online}
-          />
+          <div className="flex flex-col items-center gap-1">
+            <Avatar
+              src={profile.avatar_url}
+              name={profile.display_name}
+              size="lg"
+              isOnline={profile.is_online}
+            />
+            {occBadge && (
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 whitespace-nowrap">
+                {occBadge.emoji} {occBadge.label}
+              </span>
+            )}
+          </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="font-semibold text-gray-900 truncate">{profile.display_name}</span>

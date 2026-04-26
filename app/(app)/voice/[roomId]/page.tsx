@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag, checkSupportedLocation } from '@/lib/utils'
 import { ArrowLeft, Mic, MicOff, Radio, LogOut, Send, ChevronUp, ChevronDown } from 'lucide-react'
 import { awardPoints } from '@/lib/trust'
+import { getOccupationBadge } from '@/lib/occupation'
 
 // ─── 定数 ────────────────────────────────────────────────────
 const CAT_EMOJI: Record<string, string> = {
@@ -21,7 +22,7 @@ interface Participant {
   user_id:   string
   is_listener: boolean
   join_mode: 'speaker' | 'listener' | 'silent'
-  profiles:  { display_name: string; nationality: string; avatar_url: string | null }
+  profiles:  { display_name: string; nationality: string; avatar_url: string | null; occupation?: string | null }
 }
 
 interface FloatingReaction {
@@ -57,8 +58,10 @@ function Avatar({
 }) {
   const sz = size === 'sm' ? 'w-11 h-11 text-xl' : 'w-16 h-16 text-2xl'
   const flag = getNationalityFlag(participant.profiles?.nationality || '')
+  const occBadge = getOccupationBadge(participant.profiles?.occupation)
+
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-0.5">
       <div className={`${sz} rounded-2xl flex items-center justify-center relative transition-all ${
         isMe && !isMuted ? 'ring-2 ring-emerald-400 bg-emerald-50' : 'bg-stone-100'
       }`}>
@@ -83,6 +86,11 @@ function Avatar({
       <p className="text-[10px] text-stone-600 font-semibold text-center truncate w-14 px-0.5">
         {participant.profiles?.display_name?.split(' ')[0] ?? '?'}
       </p>
+      {occBadge && (
+        <span className="inline-flex items-center gap-0.5 text-[8px] font-bold px-1.5 py-0 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 truncate max-w-[3.5rem]">
+          {occBadge.emoji} {occBadge.label}
+        </span>
+      )}
     </div>
   )
 }
@@ -174,7 +182,7 @@ export default function VoiceRoomPage() {
     if (!roomId) return
     const { data } = await createClient()
       .from('voice_participants')
-      .select('user_id, is_listener, join_mode, profiles(display_name, nationality, avatar_url)')
+      .select('user_id, is_listener, join_mode, profiles(display_name, nationality, avatar_url, occupation)')
       .eq('room_id', roomId)
     setParticipants((data || []) as unknown as Participant[])
   }, [roomId])

@@ -8,6 +8,7 @@ import ChatBubble from '@/components/features/ChatBubble'
 import ReportModal from '@/components/features/ReportModal'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag } from '@/lib/utils'
+import { getOccupationBadge } from '@/lib/occupation'
 import type { Profile, Message } from '@/types'
 
 const ICEBREAKERS = [
@@ -219,12 +220,20 @@ export default function ChatDetailPage() {
         >
           <Avatar src={other.avatar_url} name={other.display_name} size="sm" isOnline={other.is_online} />
           <div className="text-left min-w-0">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               <span className="font-semibold text-gray-900 text-sm truncate">{other.display_name}</span>
               <span className="text-xs flex-shrink-0">{getNationalityFlag(other.nationality)}</span>
+              {(() => {
+                const occBadge = getOccupationBadge((other as any).occupation)
+                return occBadge ? (
+                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 flex-shrink-0">
+                    {occBadge.emoji} {occBadge.label}
+                  </span>
+                ) : null
+              })()}
             </div>
             <span className={`text-xs ${other.is_online ? 'text-green-500' : 'text-gray-400'}`}>
-              {other.is_online ? '● Online' : 'Offline'}
+              {other.is_online ? '● オンライン' : 'オフライン'}
             </span>
           </div>
         </button>
