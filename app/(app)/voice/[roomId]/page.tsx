@@ -130,6 +130,17 @@ export default function VoiceRoomPage() {
   const ICE_SERVERS = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    // TURN servers — モバイル・企業ネットでのNAT越え（STUNだけだと30-50%失敗）
+    { urls: 'turn:openrelay.metered.ca:80',               username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443',              username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turns:openrelay.metered.ca:443',             username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:80?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+    // カスタムTURN（本番用 — .envに設定）
+    ...(process.env.NEXT_PUBLIC_TURN_URL ? [{
+      urls:       process.env.NEXT_PUBLIC_TURN_URL,
+      username:   process.env.NEXT_PUBLIC_TURN_USERNAME ?? '',
+      credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL ?? '',
+    }] : []),
   ]
 
   // ── 初期化 ───────────────────────────────────────────────
@@ -313,10 +324,12 @@ export default function VoiceRoomPage() {
       .subscribe(async (status) => {
         if (status !== 'SUBSCRIBED') return
 
-        // 既存参加者へ offer
+        // スピーカーのみにofferを送る（旧: 全参加者 → 修正: スピーカーのみ）
+        // スピーカー: 既存スピーカーへ offer → 双方向音声
+        // リスナー:   既存スピーカーへ offer → 受信のみ（localStreamがnullなのでトラック送信なし）
         const { data: existing } = await supabase
           .from('voice_participants').select('user_id')
-          .eq('room_id', roomId).neq('user_id', userId)
+          .eq('room_id', roomId).eq('is_listener', false).neq('user_id', userId)
         for (const p of existing || []) {
           const pc = createPC(p.user_id)
           const offer = await pc.createOffer()
@@ -568,6 +581,16 @@ export default function VoiceRoomPage() {
               {participants.length}人が参加中
             </p>
             <p className="text-xs text-stone-400 text-center mb-5">どのモードで入りますか？</p>
+
+            {/* スピーカー上限警告 */}
+            {speakers.length >= 8 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2">
+                <span className="text-base flex-shrink-0">⚠️</span>
+                <p className="text-[11px] text-amber-700 leading-relaxed">
+                  スピーカーが8人以上います。接続品質が下がる場合があります。「聞いている」モードをおすすめします。
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2.5">
               {/* 話す */}
