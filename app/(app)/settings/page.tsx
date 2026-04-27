@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -74,13 +74,13 @@ export default function SettingsPage() {
   }
 
   if (loading) return (
-    <div className="flex items-center justify-center h-screen bg-[#FAFAF9]">
+    <div className="flex items-center justify-center h-screen bg-birch">
       <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
+    <div className="max-w-md mx-auto min-h-screen bg-birch">
 
       {/* ── Header ── */}
       <div className="bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex items-center gap-3 sticky top-0 z-10">

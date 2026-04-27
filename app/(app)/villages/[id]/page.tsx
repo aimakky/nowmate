@@ -33,7 +33,7 @@ function detectNgWords(text: string): string | null {
 
 // ─── Slow mode: 投稿間隔制限 ─────────────────────────────────
 const SLOW_MODE_MS  = 2 * 60 * 1000  // 2分
-const SLOW_MODE_KEY = 'samee_last_post'
+const SLOW_MODE_KEY = 'villia_last_post'
 
 function getSlowModeRemaining(): number {
   if (typeof window === 'undefined') return 0
@@ -1077,7 +1077,7 @@ export default function VillageDetailPage() {
     // ── AutoMod: NGワード検出 ──────────────────────────────────
     const ng = detectNgWords(text.trim())
     if (ng) {
-      setNgWarning(`「${ng}」という言葉はsameeでは使えません。違う表現を試してください。`)
+      setNgWarning(`「${ng}」という言葉はvilliaでは使えません。違う表現を試してください。`)
       return
     }
 
@@ -1226,7 +1226,7 @@ export default function VillageDetailPage() {
 
   // ─────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FAFAF9]">
+    <div className="min-h-screen flex items-center justify-center bg-birch">
       <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
@@ -1256,7 +1256,7 @@ export default function VillageDetailPage() {
   ]
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
+    <div className="max-w-md mx-auto min-h-screen bg-birch">
 
       {/* ══ HERO ═══════════════════════════════════════════════ */}
       <div className="relative overflow-hidden" style={{ background: style.gradient, minHeight: 200 }}>
@@ -1504,7 +1504,7 @@ export default function VillageDetailPage() {
       </div>
 
       {/* ── Tabs ── */}
-      <div className="px-4 pt-3 pb-2 sticky top-0 z-10 bg-[#FAFAF9]">
+      <div className="px-4 pt-3 pb-2 sticky top-0 z-10 bg-birch">
         <div className="flex gap-1 rounded-2xl p-1 overflow-x-auto scrollbar-none"
           style={{ background: `${style.accent}12`, border: `1px solid ${style.accent}20` }}>
           {allTabs.map(({ key, label }) => (

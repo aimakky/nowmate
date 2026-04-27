@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import Link from 'next/link'
@@ -30,7 +30,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF9] flex flex-col">
+    <div className="min-h-screen bg-birch flex flex-col">
       <div className="px-5 py-4">
         <Link href="/" className="text-sm text-stone-400 hover:text-stone-600">← 戻る</Link>
       </div>
@@ -44,7 +44,7 @@ export default function LoginPage() {
             <span className="text-white font-extrabold text-2xl">🏕️</span>
           </div>
           <h1 className="text-2xl font-extrabold text-stone-900">おかえりなさい</h1>
-          <p className="text-stone-400 text-sm mt-1">sameeにログインする</p>
+          <p className="text-stone-400 text-sm mt-1">VILLIAにログインする</p>
         </div>
 
         {/* Google */}

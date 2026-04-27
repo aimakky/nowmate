@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -135,7 +135,7 @@ export default function CreateVillagePage() {
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
+    <div className="max-w-md mx-auto min-h-screen bg-birch">
 
       {/* ── Header ── */}
       <div className="bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex items-center gap-3 sticky top-0 z-10">

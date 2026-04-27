@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -52,7 +52,7 @@ export default function QACreatePage() {
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
+    <div className="max-w-md mx-auto min-h-screen bg-birch">
 
       {/* ── Header ── */}
       <div

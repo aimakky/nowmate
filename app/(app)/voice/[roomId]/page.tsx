@@ -480,7 +480,7 @@ export default function VoiceRoomPage() {
 
   // ─────────────────────────────────────────────────────────
   if (!room) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FAFAF9]">
+    <div className="min-h-screen flex items-center justify-center bg-birch">
       <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
@@ -490,7 +490,7 @@ export default function VoiceRoomPage() {
   const isHost    = room.host_id === userId
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9] flex flex-col relative overflow-hidden">
+    <div className="max-w-md mx-auto min-h-screen bg-birch flex flex-col relative overflow-hidden">
 
       {/* ── フローティングリアクション ── */}
       {floatings.map(f => (

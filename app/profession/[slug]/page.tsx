@@ -159,12 +159,12 @@ type Params = { slug: string }
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const data = PROFESSION_DATA[params.slug]
-  if (!data) return { title: 'samee' }
+  if (!data) return { title: 'villia' }
   return {
-    title: `samee — ${data.hero}`,
+    title: `villia — ${data.hero}`,
     description: `${data.tagline} ${data.label}専用のコミュニティで、同じ職業の人間とだけ話せる。電話認証済み・民度設計済み。`,
     openGraph: {
-      title: `samee — ${data.hero}`,
+      title: `villia — ${data.hero}`,
       description: data.tagline,
       images: [{ url: '/og-image.png', width: 1200, height: 630 }],
     },
@@ -183,15 +183,15 @@ export default async function ProfessionPage({ params }: { params: Params }) {
   const profCount = Math.max(count ?? 0, 1)
 
   return (
-    <div className="min-h-screen bg-[#FAFAF9] flex flex-col max-w-[430px] mx-auto">
+    <div className="min-h-screen bg-birch flex flex-col max-w-[430px] mx-auto">
 
       {/* ── ヘッダー ── */}
-      <header className="flex items-center justify-between px-5 pt-5 pb-3 sticky top-0 bg-[#FAFAF9]/95 backdrop-blur z-10 border-b border-stone-100/60">
+      <header className="flex items-center justify-between px-5 pt-5 pb-3 sticky top-0 bg-birch/95 backdrop-blur z-10 border-b border-stone-100/60">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm shadow-brand-200">
             <span className="text-white font-black text-sm">S</span>
           </div>
-          <span className="font-extrabold text-stone-900 text-lg tracking-tight">samee</span>
+          <span className="font-extrabold text-stone-900 text-lg tracking-tight">villia</span>
         </Link>
         <Link href="/login"
           className="text-sm font-bold text-brand-500 px-4 py-1.5 rounded-xl border border-brand-200 hover:bg-brand-50 transition">
@@ -242,7 +242,7 @@ export default async function ProfessionPage({ params }: { params: Params }) {
         </div>
         <div className="mt-6 bg-brand-50 border border-brand-100 rounded-2xl px-4 py-3.5 text-center">
           <p className="text-sm font-bold text-brand-700">
-            そのすべてを、同じ職業の人間に話せる場所がsameeです。
+            そのすべてを、同じ職業の人間に話せる場所がvilliaです。
           </p>
         </div>
       </section>
@@ -341,12 +341,12 @@ export default async function ProfessionPage({ params }: { params: Params }) {
       </section>
 
       {/* ── フッター ── */}
-      <footer className="border-t border-stone-100 px-5 py-6 text-center bg-[#FAFAF9]">
+      <footer className="border-t border-stone-100 px-5 py-6 text-center bg-birch">
         <div className="flex items-center justify-center gap-2 mb-3">
           <div className="w-6 h-6 bg-brand-500 rounded-lg flex items-center justify-center">
             <span className="text-white font-black text-xs">S</span>
           </div>
-          <span className="font-bold text-stone-700">samee</span>
+          <span className="font-bold text-stone-700">villia</span>
         </div>
         <p className="text-xs text-stone-400 mb-3">あなたの職業で、本音が話せる · 20歳以上</p>
         <div className="flex justify-center gap-5 text-xs text-stone-400">
@@ -354,7 +354,7 @@ export default async function ProfessionPage({ params }: { params: Params }) {
           <Link href="/privacy" className="hover:text-stone-600 transition">プライバシー</Link>
           <Link href="/"        className="hover:text-stone-600 transition">トップへ</Link>
         </div>
-        <p className="text-xs text-stone-300 mt-3">© 2026 samee</p>
+        <p className="text-xs text-stone-300 mt-3">© 2026 villia</p>
       </footer>
     </div>
   )

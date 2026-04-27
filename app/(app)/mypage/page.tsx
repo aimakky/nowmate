@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -115,14 +115,14 @@ export default function MyPage() {
 
   if (loading || !profile) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#FAFAF9]">
+      <div className="flex items-center justify-center h-screen bg-birch">
         <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
+    <div className="max-w-md mx-auto min-h-screen bg-birch">
 
       {/* ── Profile Hero ── */}
       <div
@@ -217,14 +217,14 @@ export default function MyPage() {
         {trust && !trust.phone_verified && (
           <button
             onClick={() => setShowPhoneVerify(true)}
-            className="w-full bg-sky-50 border border-sky-200 rounded-2xl px-4 py-3.5 flex items-center gap-3 text-left active:scale-[0.99] transition-all"
+            className="w-full bg-brand-50 border border-brand-200 rounded-2xl px-4 py-3.5 flex items-center gap-3 text-left active:scale-[0.99] transition-all"
           >
             <span className="text-2xl">📱</span>
             <div className="flex-1">
-              <p className="text-sm font-bold text-sky-700">電話番号を認証する</p>
-              <p className="text-xs text-sky-500 mt-0.5">投稿・通話が解放されます · +30pt</p>
+              <p className="text-sm font-bold text-brand-700">電話番号を認証する</p>
+              <p className="text-xs text-brand-500 mt-0.5">投稿・通話が解放されます · +30pt</p>
             </div>
-            <ChevronRight size={16} className="text-sky-300" />
+            <ChevronRight size={16} className="text-brand-300" />
           </button>
         )}
 
@@ -439,17 +439,17 @@ export default function MyPage() {
           </div>
         )}
 
-        {/* ── Samee ID ── */}
-        {profile.samee_id && (
+        {/* ── VILLIA ID ── */}
+        {profile.VILLIA_id && (
           <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm">
             <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">My ID</p>
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5">
-                <span className="font-mono font-bold text-stone-800 text-base tracking-widest">#{profile.samee_id}</span>
+                <span className="font-mono font-bold text-stone-800 text-base tracking-widest">#{profile.VILLIA_id}</span>
               </div>
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(profile.samee_id!)
+                  navigator.clipboard.writeText(profile.VILLIA_id!)
                   setIdCopied(true)
                   setTimeout(() => setIdCopied(false), 2000)
                 }}

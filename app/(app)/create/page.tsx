@@ -120,18 +120,18 @@ export default function CreatePage() {
   }
 
   const phrases = tag ? QUICK_PHRASES[tag] || [] : []
-  const shareText = encodeURIComponent(`${TAG_EMOJIS[tag] || '✨'} "${content}" — Join me on Samee! 🌏 #Samee #Japan #Expats`)
-  const shareUrl = encodeURIComponent('https://sameejapan.com')
+  const shareText = encodeURIComponent(`${TAG_EMOJIS[tag] || '✨'} "${content}" — Join me on VILLIA! 🌏 #VILLIA #Japan #Expats`)
+  const shareUrl = encodeURIComponent('https://VILLIAjapan.com')
 
   // Location gate
   if (locationStatus === 'checking') return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FAFAF9]">
+    <div className="min-h-screen flex items-center justify-center bg-birch">
       <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
 
   if (locationStatus === 'outside') return (
-    <div className="min-h-screen bg-[#FAFAF9] flex flex-col max-w-md mx-auto">
+    <div className="min-h-screen bg-birch flex flex-col max-w-md mx-auto">
       <div className="flex items-center px-5 pt-6 pb-4 border-b border-stone-100 bg-white">
         <button onClick={() => router.back()} className="text-stone-500 font-semibold text-sm">Cancel</button>
       </div>
@@ -150,7 +150,7 @@ export default function CreatePage() {
   )
 
   if (locationStatus === 'denied') return (
-    <div className="min-h-screen bg-[#FAFAF9] flex flex-col max-w-md mx-auto">
+    <div className="min-h-screen bg-birch flex flex-col max-w-md mx-auto">
       <div className="flex items-center px-5 pt-6 pb-4 border-b border-stone-100 bg-white">
         <button onClick={() => router.back()} className="text-stone-500 font-semibold text-sm">Cancel</button>
       </div>
@@ -172,7 +172,7 @@ export default function CreatePage() {
   // Share card screen
   if (showShare && postedId) {
     return (
-      <div className="min-h-screen bg-[#FAFAF9] flex flex-col max-w-md mx-auto px-5 py-8">
+      <div className="min-h-screen bg-birch flex flex-col max-w-md mx-auto px-5 py-8">
         {/* Success animation */}
         <div className="flex-1 flex flex-col items-center justify-center text-center">
           <div className="w-20 h-20 bg-emerald-500 rounded-3xl flex items-center justify-center mb-5 shadow-lg shadow-emerald-200">
@@ -203,7 +203,7 @@ export default function CreatePage() {
             </a>
             <button
               onClick={() => {
-                navigator.clipboard.writeText(`https://sameejapan.com/post/${postedId}`)
+                navigator.clipboard.writeText(`https://VILLIAjapan.com/post/${postedId}`)
                   .catch(() => {})
               }}
               className="w-full py-3.5 bg-stone-100 text-stone-700 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-stone-200 active:scale-[0.98] transition-all">
@@ -223,7 +223,7 @@ export default function CreatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF9] flex flex-col max-w-md mx-auto">
+    <div className="min-h-screen bg-birch flex flex-col max-w-md mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-6 pb-4 border-b border-stone-100 bg-white">
         <button onClick={() => router.back()} className="text-stone-500 font-semibold text-sm px-1">

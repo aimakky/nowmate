@@ -29,7 +29,7 @@ export default function ProfileCompletionBanner({ profile }: Props) {
             <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="3" />
             <circle
               cx="18" cy="18" r="15.9" fill="none"
-              stroke="#0ea5e9" strokeWidth="3"
+              stroke="#4A7C59" strokeWidth="3"
               strokeDasharray={`${pct} ${100 - pct}`}
               strokeLinecap="round"
             />

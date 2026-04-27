@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp, Share2 } from 'lucide-react'
@@ -106,7 +106,7 @@ export default function MoodWeather({ villageId, villageName, userId, style, isM
 
   function handleShare() {
     const wInfo = WEATHER_MAP[classifyWeather(moodCounts)]
-    const text  = `今日の${villageName}は${wInfo.icon}${wInfo.label}！ ${wInfo.desc} #samee`
+    const text  = `今日の${villageName}は${wInfo.icon}${wInfo.label}！ ${wInfo.desc} #VILLIA`
     const url   = `https://nowmatejapan.com/villages/${villageId}`
     if (navigator.share) {
       navigator.share({ text, url }).catch(() => {})

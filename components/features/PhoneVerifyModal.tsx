@@ -89,8 +89,8 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
         {step === 'intro' && (
           <div className="p-6">
             <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 bg-sky-50 rounded-2xl flex items-center justify-center">
-                <ShieldCheck size={24} className="text-sky-500" />
+              <div className="w-12 h-12 bg-brand-50 rounded-2xl flex items-center justify-center">
+                <ShieldCheck size={24} className="text-brand-500" />
               </div>
               <button onClick={onClose} className="text-stone-400 hover:text-stone-600 p-1">
                 <X size={20} />
@@ -102,7 +102,7 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
             </h3>
             <p className="text-sm text-stone-500 leading-relaxed mb-5">
               電話番号認証で「住民」の立場になり、投稿・通話ができるようになります。<br />
-              <span className="font-bold text-sky-600">+30pt 獲得</span>
+              <span className="font-bold text-brand-600">+30pt 獲得</span>
             </p>
 
             <div className="space-y-2.5 mb-5">

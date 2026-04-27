@@ -137,7 +137,7 @@ export default function PostChatPage() {
   }
 
   if (!post) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FAFAF9]">
+    <div className="min-h-screen flex items-center justify-center bg-birch">
       <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
@@ -146,7 +146,7 @@ export default function PostChatPage() {
   const flag = post.profiles ? getNationalityFlag(post.profiles.nationality || '') : ''
 
   return (
-    <div className="max-w-md mx-auto min-h-screen flex flex-col bg-[#FAFAF9]">
+    <div className="max-w-md mx-auto min-h-screen flex flex-col bg-birch">
       {showPremium && <PremiumModal onClose={() => setShowPremium(false)} reason="join_limit" />}
       {/* Header */}
       <div className="bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex-shrink-0">

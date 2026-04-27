@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -72,8 +72,8 @@ function PostCard({
   const tier     = getTierById(post.user_trust?.tier ?? 'visitor')
 
   function shareToX() {
-    const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'samee'
-    const text = `${post.content}\n\n— ${village}より\n#samee\nnowmatejapan.com`
+    const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'VILLIA'
+    const text = `${post.content}\n\n— ${village}より\n#VILLIA\nnowmatejapan.com`
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
 
@@ -289,7 +289,7 @@ export default function TimelinePage() {
 
   // ── レンダリング ─────────────────────────────────────────────
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
+    <div className="max-w-md mx-auto min-h-screen bg-birch">
 
       {/* ── ヘッダー ── */}
       <div className="px-4 pt-12 pb-0"
@@ -331,17 +331,17 @@ export default function TimelinePage() {
         {/* 今日のお題カード（みんなタブのみ） */}
         {tab === 'all' && (
           <div className="rounded-2xl overflow-hidden shadow-sm"
-            style={{ background: 'linear-gradient(135deg, #0c4a6e 0%, #075985 100%)', border: '1px solid rgba(14,165,233,0.3)' }}>
+            style={{ background: 'linear-gradient(135deg, #1f3526 0%, #2d4d37 100%)', border: '1px solid rgba(74,124,89,0.3)' }}>
             <div className="px-4 py-2.5 flex items-center gap-2"
-              style={{ background: 'rgba(14,165,233,0.2)' }}>
-              <Sparkles size={14} className="text-sky-300" />
-              <p className="text-[10px] font-extrabold text-sky-300 uppercase tracking-widest">今日のお題</p>
+              style={{ background: 'rgba(74,124,89,0.25)' }}>
+              <Sparkles size={14} className="text-brand-300" />
+              <p className="text-[10px] font-extrabold text-brand-300 uppercase tracking-widest">今日のお題</p>
             </div>
             <div className="px-4 py-3.5">
               <p className="text-sm font-bold text-white leading-relaxed">
                 「{todayPrompt.q}」
               </p>
-              <p className="text-[10px] text-sky-300/70 mt-1">{todayPrompt.hint}</p>
+              <p className="text-[10px] text-brand-300/70 mt-1">{todayPrompt.hint}</p>
             </div>
           </div>
         )}

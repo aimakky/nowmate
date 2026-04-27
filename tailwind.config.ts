@@ -9,27 +9,32 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // villia — Forest Sage primary
         brand: {
-          50:  '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+          50:  '#f0f7f3',
+          100: '#d9ece1',
+          200: '#b3d9c4',
+          300: '#80bf9e',
+          400: '#5a9e78',
+          500: '#4A7C59',
+          600: '#3a6146',
+          700: '#2d4d37',
+          800: '#1f3526',
+          900: '#122016',
         },
+        // villia — Terracotta accent
         accent: {
-          50:  '#fff7ed',
-          100: '#ffedd5',
-          200: '#fed7aa',
-          300: '#fdba74',
-          400: '#fb923c',
-          500: '#f97316',
-          600: '#ea580c',
+          50:  '#fdf4ef',
+          100: '#fae4d3',
+          200: '#f5c7a4',
+          300: '#eda478',
+          400: '#e08554',
+          500: '#C4713A',
+          600: '#a85d2e',
+          700: '#894b25',
         },
+        // villia — Birch White background
+        birch: '#F5F0E8',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

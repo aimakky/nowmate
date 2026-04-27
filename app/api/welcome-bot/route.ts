@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 const WELCOME_MESSAGES = [
   {
     emoji: '👋',
-    content: "Welcome to Samee! I'm your Japan setup guide. Your first mission: register 住民票 at your local city hall within 14 days of arrival. Need help? Head to the Survive tab →",
+    content: "Welcome to VILLIA! I'm your Japan setup guide. Your first mission: register 住民票 at your local city hall within 14 days of arrival. Need help? Head to the Survive tab →",
   },
   {
     emoji: '🏦',

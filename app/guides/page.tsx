@@ -1,8 +1,8 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Japan Expat Guides — Survival, Friends & City Life | Samee',
+  title: 'Japan Expat Guides — Survival, Friends & City Life | VILLIA',
   description: 'Free guides for foreigners living in Japan. Covering new arrivals, making friends, language exchange, Tokyo, Osaka, Fukuoka, and more.',
   keywords: ['japan expat guide', 'foreigner japan guide', 'living in japan', 'expat japan tips', 'japan survival guide'],
 }
@@ -78,7 +78,7 @@ export default function GuidesIndex() {
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm">
             <span className="text-white font-black text-sm">N</span>
           </div>
-          <span className="font-extrabold text-gray-900 text-lg tracking-tight">Samee</span>
+          <span className="font-extrabold text-gray-900 text-lg tracking-tight">VILLIA</span>
         </Link>
       </header>
 
@@ -113,7 +113,7 @@ export default function GuidesIndex() {
       <section className="bg-brand-50 mx-5 rounded-3xl p-6 mb-10 text-center">
         <div className="text-4xl mb-3">🤝</div>
         <h2 className="font-extrabold text-gray-900 text-lg mb-2">Ready to meet people?</h2>
-        <p className="text-gray-500 text-sm mb-5 leading-relaxed">Guides are great. Real friends are better. Join Samee free.</p>
+        <p className="text-gray-500 text-sm mb-5 leading-relaxed">Guides are great. Real friends are better. Join VILLIA free.</p>
         <Link href="/signup" className="block w-full py-4 bg-brand-500 text-white rounded-2xl font-bold text-sm text-center shadow-md shadow-brand-200 active:scale-[0.98] transition-all">
           Get Started — It's Free
         </Link>

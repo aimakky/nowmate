@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 
 export default function TermsPage() {
   return (
@@ -12,7 +12,7 @@ export default function TermsPage() {
         <p className="text-sm text-gray-500 mb-6">Last updated: 2024</p>
 
         <h2 className="text-lg font-bold text-gray-800 mt-6 mb-2">1. Age Requirement</h2>
-        <p>You must be 18 years of age or older to use Samee. By creating an account, you confirm that you meet this requirement.</p>
+        <p>You must be 18 years of age or older to use VILLIA. By creating an account, you confirm that you meet this requirement.</p>
 
         <h2 className="text-lg font-bold text-gray-800 mt-6 mb-2">2. Community Rules</h2>
         <ul className="list-disc pl-5 space-y-1">
@@ -37,7 +37,7 @@ export default function TermsPage() {
         <p>We reserve the right to suspend or delete accounts that violate these Terms without prior notice.</p>
 
         <h2 className="text-lg font-bold text-gray-800 mt-6 mb-2">5. Disclaimer</h2>
-        <p>Samee is provided "as is". We are not responsible for the actions of users. Please exercise caution when meeting people from the platform in person.</p>
+        <p>VILLIA is provided "as is". We are not responsible for the actions of users. Please exercise caution when meeting people from the platform in person.</p>
 
         <h2 className="text-lg font-bold text-gray-800 mt-6 mb-2">6. Contact</h2>
         <p>For questions about these Terms, please use our <Link href="/contact" className="text-brand-500">contact form</Link>.</p>

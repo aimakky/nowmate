@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -6,22 +6,22 @@ import { createClient } from '@/lib/supabase/client'
 
 export default function InvitePage() {
   const [copied, setCopied] = useState(false)
-  const [SameeId, setSameeId] = useState<string | null>(null)
+  const [VILLIAId, setVILLIAId] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data } = await supabase.from('profiles').select('samee_id').eq('id', user.id).single()
-      if (data?.samee_id) setSameeId(data.samee_id)
+      const { data } = await supabase.from('profiles').select('VILLIA_id').eq('id', user.id).single()
+      if (data?.VILLIA_id) setVILLIAId(data.VILLIA_id)
     }
     load()
   }, [])
 
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://getsamee.com'
-  const shareUrl = SameeId ? `${baseUrl}/signup?ref=${SameeId}` : `${baseUrl}/signup`
-  const tweetText = `Surviving Japan alone is hard 🗾 I use Samee — step-by-step setup guides + connect with expats who've been there. Join free 👇`
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://getVILLIA.com'
+  const shareUrl = VILLIAId ? `${baseUrl}/signup?ref=${VILLIAId}` : `${baseUrl}/signup`
+  const tweetText = `Surviving Japan alone is hard 🗾 I use VILLIA — step-by-step setup guides + connect with expats who've been there. Join free 👇`
 
   function copy(text: string) {
     navigator.clipboard.writeText(text)
@@ -36,7 +36,7 @@ export default function InvitePage() {
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm">
             <span className="text-white font-black text-sm">N</span>
           </div>
-          <span className="font-extrabold text-gray-900 text-lg tracking-tight">Samee</span>
+          <span className="font-extrabold text-gray-900 text-lg tracking-tight">VILLIA</span>
         </Link>
       </header>
 
@@ -108,9 +108,9 @@ export default function InvitePage() {
         </div>
       </section>
 
-      {SameeId && (
+      {VILLIAId && (
         <section className="px-5 pb-6">
-          <p className="text-xs text-center text-gray-400">Your Samee ID: <span className="font-mono font-bold text-gray-600">#{SameeId}</span></p>
+          <p className="text-xs text-center text-gray-400">Your VILLIA ID: <span className="font-mono font-bold text-gray-600">#{VILLIAId}</span></p>
         </section>
       )}
 

@@ -82,7 +82,7 @@ export function TrustCard({
             </span>
           )}
           {trust.phone_verified && (
-            <span className="text-[10px] bg-sky-50 text-sky-600 border border-sky-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+            <span className="text-[10px] bg-brand-50 text-brand-600 border border-brand-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
               ✓ 電話認証済み
             </span>
           )}

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -192,7 +192,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF9] flex flex-col max-w-md mx-auto">
+    <div className="min-h-screen bg-birch flex flex-col max-w-md mx-auto">
 
       {/* ── Progress bar ── */}
       <div className="px-5 pt-8 pb-4">
@@ -224,7 +224,7 @@ export default function OnboardingPage() {
               <div className="text-5xl mb-4">🔒</div>
               <h3 className="font-extrabold text-white text-lg mb-2">ご利用は20歳以上</h3>
               <p className="text-white/60 text-xs leading-relaxed">
-                sameeは20歳以上の方のためのコミュニティです。<br />
+                VILLIAは20歳以上の方のためのコミュニティです。<br />
                 健全な場づくりのため、年齢確認をお願いしています。
               </p>
             </div>
@@ -245,7 +245,7 @@ export default function OnboardingPage() {
 
             <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3">
               <p className="text-xs text-indigo-700 leading-relaxed">
-                💡 sameeは「使うたびに、何かが増える」コミュニティです。
+                💡 VILLIAは「使うたびに、何かが増える」コミュニティです。
                 時間を消費するSNSとは逆の場所を目指しています。
               </p>
             </div>

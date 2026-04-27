@@ -1,7 +1,7 @@
-import { ImageResponse } from 'next/og'
+﻿import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const alt = 'Samee — Just landed? We\'ve got you.'
+export const alt = 'VILLIA — Just landed? We\'ve got you.'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -10,7 +10,7 @@ export default function OGImage() {
     (
       <div
         style={{
-          background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%)',
+          background: 'linear-gradient(135deg, #2d4d37 0%, #4A7C59 50%, #5a9e78 100%)',
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -37,9 +37,9 @@ export default function OGImage() {
             width: 64, height: 64, background: 'white', borderRadius: 18,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <span style={{ color: '#0ea5e9', fontWeight: 900, fontSize: 32 }}>N</span>
+            <span style={{ color: '#4A7C59', fontWeight: 900, fontSize: 32 }}>V</span>
           </div>
-          <span style={{ color: 'white', fontWeight: 900, fontSize: 48, letterSpacing: -2 }}>Samee</span>
+          <span style={{ color: 'white', fontWeight: 900, fontSize: 48, letterSpacing: -2 }}>VILLIA</span>
         </div>
 
         {/* Headline */}
@@ -57,7 +57,7 @@ export default function OGImage() {
           textAlign: 'center', maxWidth: 700, lineHeight: 1.4,
           marginBottom: 48,
         }}>
-          Making friends in Japan is hard. Samee makes it easy.
+          Making friends in Japan is hard. VILLIA makes it easy.
         </div>
 
         {/* Flags */}
@@ -79,7 +79,7 @@ export default function OGImage() {
           background: 'rgba(0,0,0,0.15)', paddingLeft: 24, paddingRight: 24,
           paddingTop: 10, paddingBottom: 10, borderRadius: 50,
         }}>
-          sameejapan.com
+          VILLIAjapan.com
         </div>
       </div>
     ),

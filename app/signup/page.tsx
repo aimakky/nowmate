@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
@@ -44,7 +44,7 @@ function SignupForm() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-[#FAFAF9] flex flex-col items-center justify-center px-6">
+      <div className="min-h-screen bg-birch flex flex-col items-center justify-center px-6">
         <div className="text-6xl mb-4">📧</div>
         <h2 className="text-2xl font-extrabold text-stone-900 mb-2">メールを確認してください</h2>
         <p className="text-stone-500 text-center text-sm leading-relaxed max-w-xs">
@@ -57,7 +57,7 @@ function SignupForm() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF9] flex flex-col">
+    <div className="min-h-screen bg-birch flex flex-col">
       <div className="px-5 py-4">
         <Link href="/" className="text-sm text-stone-400 hover:text-stone-600">← 戻る</Link>
       </div>
@@ -70,7 +70,7 @@ function SignupForm() {
           >
             <span className="text-2xl">🏕️</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-stone-900">sameeに参加する</h1>
+          <h1 className="text-2xl font-extrabold text-stone-900">VILLIAに参加する</h1>
           <p className="text-stone-400 text-sm mt-1">20歳以上の方のみご利用いただけます</p>
         </div>
 

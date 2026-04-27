@@ -1,8 +1,8 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 
-// sameeの5つの約束 — 民度設計の中核
+// VILLIAの5つの約束 — 民度設計の中核
 // 投稿前初回 + 週1リマインダーとして表示
 const RULES = [
   {
@@ -55,7 +55,7 @@ export default function CulturalCharter({ onAgree, onClose, isReminder = false }
             <span className="text-2xl">🏕️</span>
             <div>
               <p className="font-extrabold text-white text-base leading-tight">
-                {isReminder ? 'sameeの約束、覚えてますか？' : 'sameeへようこそ'}
+                {isReminder ? 'VILLIAの約束、覚えてますか？' : 'VILLIAへようこそ'}
               </p>
               <p className="text-white/50 text-xs mt-0.5">
                 {isReminder
@@ -132,8 +132,8 @@ export default function CulturalCharter({ onAgree, onClose, isReminder = false }
 }
 
 // ── ローカルストレージで「初回同意済み」「最終表示日」を管理 ──
-const STORAGE_KEY_AGREED  = 'samee_charter_agreed'
-const STORAGE_KEY_LAST    = 'samee_charter_last_shown'
+const STORAGE_KEY_AGREED  = 'VILLIA_charter_agreed'
+const STORAGE_KEY_LAST    = 'VILLIA_charter_last_shown'
 const WEEKLY_MS           = 7 * 24 * 60 * 60 * 1000
 
 export function shouldShowCharter(): 'first' | 'weekly' | null {

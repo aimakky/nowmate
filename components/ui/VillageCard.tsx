@@ -51,7 +51,7 @@ export const VILLAGE_TYPE_STYLES: Record<string, {
   '相談': {
     gradient:   'linear-gradient(135deg, #56c8e8 0%, #1a9ec8 100%)',
     accent:     '#1a9ec8',
-    badgeBg:    'bg-sky-50 text-sky-800 border-sky-200',
+    badgeBg:    'bg-brand-50 text-brand-800 border-brand-200',
     label:      '経験を還元する村',
     philosophy: '悩みを持ち込んでいい。経験から答えを出せる人が待っている。',
   },

@@ -174,7 +174,7 @@ export default function QADetailPage() {
   }
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FAFAF9]">
+    <div className="min-h-screen flex items-center justify-center bg-birch">
       <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
@@ -188,7 +188,7 @@ export default function QADetailPage() {
   const isResolved = question.status === 'resolved'
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
+    <div className="max-w-md mx-auto min-h-screen bg-birch">
 
       {/* ── Hero Header ── */}
       <div className="relative overflow-hidden" style={{ background: cs.gradient }}>

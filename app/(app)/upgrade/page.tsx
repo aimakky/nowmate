@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Zap } from 'lucide-react'
@@ -16,7 +16,7 @@ export default function UpgradePage() {
   const router = useRouter()
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
+    <div className="max-w-md mx-auto min-h-screen bg-birch">
       {/* Header */}
       <div className="bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex items-center gap-3 sticky top-0 z-10">
         <button onClick={() => router.back()} className="p-1 -ml-1 text-stone-500">
@@ -31,9 +31,9 @@ export default function UpgradePage() {
           <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-200">
             <Zap size={36} className="text-white" />
           </div>
-          <h1 className="text-2xl font-black text-stone-900 mb-2">samee プレミアム</h1>
+          <h1 className="text-2xl font-black text-stone-900 mb-2">VILLIA プレミアム</h1>
           <p className="text-stone-500 text-sm leading-relaxed">
-            sameeをもっと使いこなす。<br />制限なしで、村をつくろう。
+            VILLIAをもっと使いこなす。<br />制限なしで、村をつくろう。
           </p>
         </div>
 

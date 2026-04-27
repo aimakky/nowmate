@@ -1,12 +1,12 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'samee — 声で話せる、大人のコミュニティ',
+  title: 'VILLIA — 声で話せる、大人のコミュニティ',
   description: '電話認証済みの20歳以上だけが集まる、民度の高い通話コミュニティ。悩みを話す、ただ雑談する、夜話す。同じ気持ちの人と声で繋がれる場所。',
   openGraph: {
-    title: 'samee — 声で話せる、大人のコミュニティ',
+    title: 'VILLIA — 声で話せる、大人のコミュニティ',
     description: '民度の高い大人の通話コミュニティ。電話認証必須・信頼ティア制度で、質の高い会話が生まれる場所。',
     images: [{ url: '/og-image.png', width: 1200, height: 630 }],
   },
@@ -29,7 +29,7 @@ const VOICES = [
     name: '看護師・34歳',
   },
   {
-    text: '夜中に一人でモヤモヤしてるとき、sameeに繋いで話したら気持ちが楽になった。',
+    text: '夜中に一人でモヤモヤしてるとき、VILLIAに繋いで話したら気持ちが楽になった。',
     name: 'フリーランス・31歳',
   },
 ]
@@ -50,15 +50,15 @@ export default async function TopPage() {
   const userCount = Math.max(count ?? 0, 1)
 
   return (
-    <div className="min-h-screen bg-[#FAFAF9] flex flex-col max-w-[430px] mx-auto">
+    <div className="min-h-screen bg-birch flex flex-col max-w-[430px] mx-auto">
 
       {/* ── ヘッダー ── */}
-      <header className="flex items-center justify-between px-5 pt-5 pb-3 sticky top-0 bg-[#FAFAF9]/95 backdrop-blur z-10 border-b border-stone-100/60">
+      <header className="flex items-center justify-between px-5 pt-5 pb-3 sticky top-0 bg-birch/95 backdrop-blur z-10 border-b border-stone-100/60">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm shadow-brand-200">
             <span className="text-white font-black text-sm">S</span>
           </div>
-          <span className="font-extrabold text-stone-900 text-lg tracking-tight">samee</span>
+          <span className="font-extrabold text-stone-900 text-lg tracking-tight">VILLIA</span>
         </div>
         <Link href="/login"
           className="text-sm font-bold text-brand-500 px-4 py-1.5 rounded-xl border border-brand-200 hover:bg-brand-50 transition">
@@ -254,7 +254,7 @@ export default async function TopPage() {
           className="flex items-center gap-3 bg-white border border-stone-200 rounded-2xl px-4 py-3.5 hover:bg-stone-50 active:scale-[0.98] transition-all shadow-sm">
           <span className="text-2xl">🏢</span>
           <div className="flex-1">
-            <p className="font-bold text-stone-800 text-sm">samee for Business</p>
+            <p className="font-bold text-stone-800 text-sm">VILLIA for Business</p>
             <p className="text-xs text-stone-500">社内コミュニティ・エンゲージメント設計 →</p>
           </div>
           <span className="text-stone-400 text-sm">→</span>
@@ -262,12 +262,12 @@ export default async function TopPage() {
       </section>
 
       {/* ── フッター ── */}
-      <footer className="border-t border-stone-100 px-5 py-6 text-center bg-[#FAFAF9]">
+      <footer className="border-t border-stone-100 px-5 py-6 text-center bg-birch">
         <div className="flex items-center justify-center gap-2 mb-3">
           <div className="w-6 h-6 bg-brand-500 rounded-lg flex items-center justify-center">
             <span className="text-white font-black text-xs">S</span>
           </div>
-          <span className="font-bold text-stone-700">samee</span>
+          <span className="font-bold text-stone-700">VILLIA</span>
         </div>
         <p className="text-xs text-stone-400 mb-3">声で話せる、民度の高い大人のコミュニティ · 20歳以上</p>
         <div className="flex justify-center gap-5 text-xs text-stone-400">
@@ -275,7 +275,7 @@ export default async function TopPage() {
           <Link href="/privacy" className="hover:text-stone-600 transition">プライバシー</Link>
           <Link href="/contact" className="hover:text-stone-600 transition">お問い合わせ</Link>
         </div>
-        <p className="text-xs text-stone-300 mt-3">© 2026 samee</p>
+        <p className="text-xs text-stone-300 mt-3">© 2026 VILLIA</p>
       </footer>
     </div>
   )

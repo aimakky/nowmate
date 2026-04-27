@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createHash, randomInt } from 'crypto'
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
     }
 
     // SMS送信
-    await sendSms(phone, `【samee】認証コード: ${otp}\n有効期限10分。他人に教えないでください。`)
+    await sendSms(phone, `【VILLIA】認証コード: ${otp}\n有効期限10分。他人に教えないでください。`)
 
     return NextResponse.json({ success: true })
   } catch (e: any) {

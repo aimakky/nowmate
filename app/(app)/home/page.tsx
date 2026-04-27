@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -155,7 +155,7 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAFAF9] flex items-center justify-center">
+      <div className="min-h-screen bg-birch flex items-center justify-center">
         <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -166,7 +166,7 @@ export default function HomePage() {
   const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0)
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9] pb-28">
+    <div className="max-w-md mx-auto min-h-screen bg-birch pb-28">
 
       {/* ── ヘッダー ── */}
       <div className="px-4 pt-10 pb-5"

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -22,7 +22,7 @@ interface Room {
   host_id: string
   agenda?: string | null
   profiles: { display_name: string; nationality: string; avatar_url: string | null }
-  voice_participants: { user_id: string; is_listener: boolean }[]
+  voice_participants: { user_id: string; is_listener: boolean; profiles: { avatar_url: string | null; display_name: string } | null }[]
 }
 
 export default function VoicePage() {
@@ -50,7 +50,7 @@ export default function VoicePage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('voice_rooms')
-      .select('*, profiles(display_name, nationality, avatar_url), voice_participants(user_id, is_listener)')
+      .select('*, profiles(display_name, nationality, avatar_url), voice_participants(user_id, is_listener, profiles(avatar_url, display_name))')
       .eq('status', 'active')
       .order('created_at', { ascending: false })
     setRooms((data || []) as Room[])
@@ -105,7 +105,7 @@ export default function VoicePage() {
   )
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
+    <div className="max-w-md mx-auto min-h-screen bg-birch">
       <Header title="通話" />
 
       {/* フォロー中 / すべて タブ */}
@@ -149,54 +149,98 @@ export default function VoicePage() {
             const speakers  = room.voice_participants?.filter(p => !p.is_listener) || []
             const listeners = room.voice_participants?.filter(p =>  p.is_listener) || []
             const total     = room.voice_participants?.length || 0
+            // バナーに表示するアイコン（登壇者優先・最大6枚）
+            const bannerPeople = [
+              ...speakers,
+              ...listeners,
+            ].slice(0, 6)
+
+            const CAT_GRADIENT: Record<string, string> = {
+              '雑談': 'linear-gradient(135deg,#3730a3 0%,#6366f1 100%)',
+              '夜話': 'linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%)',
+              '相談': 'linear-gradient(135deg,#0f766e 0%,#14b8a6 100%)',
+              '悩み': 'linear-gradient(135deg,#7c3aed 0%,#a78bfa 100%)',
+              '笑い': 'linear-gradient(135deg,#b45309 0%,#f59e0b 100%)',
+              '趣味': 'linear-gradient(135deg,#be185d 0%,#ec4899 100%)',
+            }
+            const gradient = CAT_GRADIENT[room.category] ?? 'linear-gradient(135deg,#1a1a2e 0%,#16213e 100%)'
+
             return (
               <div key={room.id}
                 onClick={() => router.push(`/voice/${room.id}`)}
-                className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm cursor-pointer active:scale-[0.99] transition-all hover:shadow-md">
+                className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm cursor-pointer active:scale-[0.99] transition-all">
 
-                {/* ヘッダー */}
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{CAT_EMOJI[room.category] ?? '✨'}</span>
-                    <div>
-                      <p className="font-extrabold text-stone-900 text-sm leading-snug">{room.title}</p>
-                      <p className="text-xs text-stone-400">{room.category}</p>
-                    </div>
+                {/* ── カラーバナー（参加者アイコン入り）── */}
+                <div className="relative h-24 flex items-end px-4 pb-3"
+                  style={{ background: gradient }}>
+
+                  {/* カテゴリ絵文字 + LIVE バッジ */}
+                  <div className="absolute top-3 left-4 flex items-center gap-2">
+                    <span className="text-lg">{CAT_EMOJI[room.category] ?? '✨'}</span>
+                    <span className="text-[10px] font-bold text-white/70 uppercase tracking-wider">{room.category}</span>
                   </div>
-                  <div className="flex items-center gap-1 bg-red-50 border border-red-100 px-2 py-1 rounded-full flex-shrink-0">
-                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                    <span className="text-xs font-bold text-red-600">LIVE</span>
+                  <div className="absolute top-3 right-4 flex items-center gap-1 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full">
+                    <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse" />
+                    <span className="text-[10px] font-bold text-white">LIVE</span>
+                  </div>
+
+                  {/* 参加者アイコン（重ねて表示） */}
+                  <div className="flex items-center">
+                    {bannerPeople.map((p, i) => (
+                      <div key={p.user_id}
+                        className="w-9 h-9 rounded-full border-2 border-white/60 overflow-hidden bg-white/20 flex-shrink-0 flex items-center justify-center"
+                        style={{ marginLeft: i === 0 ? 0 : '-10px', zIndex: bannerPeople.length - i }}>
+                        {p.profiles?.avatar_url
+                          ? <img src={p.profiles.avatar_url} className="w-full h-full object-cover" alt="" />
+                          : <span className="text-base font-bold text-white">
+                              {p.profiles?.display_name?.[0]?.toUpperCase() ?? '?'}
+                            </span>
+                        }
+                      </div>
+                    ))}
+                    {total > 6 && (
+                      <div className="w-9 h-9 rounded-full border-2 border-white/60 bg-black/30 flex items-center justify-center flex-shrink-0"
+                        style={{ marginLeft: '-10px' }}>
+                        <span className="text-[10px] font-bold text-white">+{total - 6}</span>
+                      </div>
+                    )}
+                    {total === 0 && (
+                      <span className="text-xs text-white/50">まだ誰もいません</span>
+                    )}
                   </div>
                 </div>
 
-                {/* アジェンダ */}
-                {room.agenda && (
-                  <div className="flex items-start gap-1.5 bg-indigo-50 border border-indigo-100 rounded-xl px-2.5 py-2 mb-2">
-                    <span className="text-xs flex-shrink-0">📋</span>
-                    <p className="text-[11px] text-indigo-700 font-medium leading-relaxed line-clamp-2">{room.agenda}</p>
-                  </div>
-                )}
+                {/* ── カード本文 ── */}
+                <div className="px-4 pt-3 pb-3.5">
+                  <p className="font-extrabold text-stone-900 text-sm leading-snug mb-1">{room.title}</p>
 
-                {/* フッター */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-stone-500 font-medium">{room.profiles?.display_name}</span>
-                    {!room.is_open && (
-                      <span className="text-[10px] bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded-full font-semibold">フォロワー限定</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {listeners.length > 0 && (
-                      <span className="text-xs text-stone-400 flex items-center gap-1">
-                        <Radio size={10} /> {listeners.length}
+                  {room.agenda && (
+                    <p className="text-[11px] text-stone-500 leading-relaxed line-clamp-2 mb-2">{room.agenda}</p>
+                  )}
+
+                  <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-stone-500 font-medium truncate max-w-[120px]">
+                        👑 {room.profiles?.display_name}
                       </span>
-                    )}
-                    <span className="flex items-center gap-1 text-xs font-semibold text-stone-600">
-                      <Users size={12} /> {total}
-                    </span>
-                    <span className="text-xs font-bold px-3 py-1.5 bg-brand-500 text-white rounded-xl">
-                      参加 →
-                    </span>
+                      {!room.is_open && (
+                        <span className="text-[10px] bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded-full font-semibold">限定</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xs text-stone-400 flex items-center gap-1">
+                        <Mic size={10} /> {speakers.length}
+                      </span>
+                      {listeners.length > 0 && (
+                        <span className="text-xs text-stone-400 flex items-center gap-1">
+                          <Radio size={10} /> {listeners.length}
+                        </span>
+                      )}
+                      <span className="text-[11px] font-bold px-3 py-1.5 rounded-xl text-white"
+                        style={{ background: gradient }}>
+                        参加 →
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

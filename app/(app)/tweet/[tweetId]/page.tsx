@@ -77,7 +77,7 @@ export default function TweetDetailPage() {
   }
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FAFAF9]">
+    <div className="min-h-screen flex items-center justify-center bg-birch">
       <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
@@ -85,7 +85,7 @@ export default function TweetDetailPage() {
   if (!tweet) return null
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
+    <div className="max-w-md mx-auto min-h-screen bg-birch">
       {/* Header */}
       <div className="bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex items-center gap-3 sticky top-0 z-10">
         <button onClick={() => router.back()} className="p-1 -ml-1 text-stone-500 active:scale-90 transition-all">
