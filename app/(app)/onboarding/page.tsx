@@ -6,11 +6,57 @@ import { createClient } from '@/lib/supabase/client'
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 
 const STEPS = [
-  { title: '年齢確認',     emoji: '🔒', sub: '18歳以上の方のみご利用いただけます' },
-  { title: 'プロフィール', emoji: '👋', sub: '村での名前を決めましょう' },
-  { title: '職業を選ぶ',   emoji: '💼', sub: 'あなたの職業コミュニティに入ります' },
-  { title: '村を選ぶ',     emoji: '🏕️', sub: 'まず参加する村を選んでみましょう' },
-  { title: '最初の一言',   emoji: '✍️', sub: '職業村での初投稿をしてみよう' },
+  { title: '年齢確認',         emoji: '🔒', sub: '18歳以上の方のみご利用いただけます' },
+  { title: 'プロフィール',     emoji: '👋', sub: '村での名前を決めましょう' },
+  { title: '今、話したいこと', emoji: '💬', sub: '今どんなことを話したいですか？' },
+  { title: '職業を選ぶ',       emoji: '💼', sub: 'あなたの職業コミュニティに入ります' },
+  { title: '村を選ぶ',         emoji: '🏕️', sub: 'まず参加する村を選んでみましょう' },
+  { title: '最初の一言',       emoji: '✍️', sub: '村での初投稿をしてみよう' },
+]
+
+const CONCERN_OPTIONS = [
+  {
+    emoji: '😮‍💨',
+    label: '仕事がしんどい',
+    desc: '疲れた・つらい・消耗してる',
+    villageId: 'ea3f9306-030a-4e49-b678-025655ee8b79',
+    value: 'shindoi',
+  },
+  {
+    emoji: '🔍',
+    label: '転職を考えてる',
+    desc: '今の会社どうしよう…',
+    villageId: '6d9a61b0-800d-419e-bd41-6aba7a4c41a0',
+    value: 'tensyoku',
+  },
+  {
+    emoji: '👥',
+    label: '職場の人間関係',
+    desc: '上司・同僚・チームのこと',
+    villageId: '5ab27f32-1ee8-4d88-b99a-00c7ba8e9d7d',
+    value: 'ningenkankei',
+  },
+  {
+    emoji: '💭',
+    label: '将来が不安',
+    desc: 'キャリア・お金・これから',
+    villageId: '9b81f39c-6b32-4a19-bd4e-a3211d0f0c51',
+    value: 'fuan',
+  },
+  {
+    emoji: '🌙',
+    label: 'ただ聞いてほしい',
+    desc: '言葉にするだけでいい',
+    villageId: '97064a96-6646-452e-b9f2-2aa9d2ff3113',
+    value: 'kiite',
+  },
+  {
+    emoji: '✨',
+    label: 'まだわからない',
+    desc: 'とりあえず入ってみる',
+    villageId: null,
+    value: 'unknown',
+  },
 ]
 
 // ── 2段階職業選択：大カテゴリ → 詳細職種 ──────────────────────
@@ -114,6 +160,7 @@ export default function OnboardingPage() {
   const [selectedTypes,       setSelectedTypes]       = useState<string[]>([])
   const [firstPost,           setFirstPost]           = useState('')
   const [occupationVillageId, setOccupationVillageId] = useState<string | null>(null)
+  const [wantToTalk,          setWantToTalk]          = useState<typeof CONCERN_OPTIONS[0] | null>(null)
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -122,24 +169,23 @@ export default function OnboardingPage() {
     })
   }, [router])
 
-  // Step 2: カテゴリ選択済みまたはスキップ可（selectedCategoryがあるか、何も選んでない状態）
-  const step2Ready = !selectedCategory || occupation.length > 0 || true // スキップ常時可
   const canNext = [
-    ageConfirmed,
-    name.trim().length >= 2,
-    step2Ready,
-    true,
-    true,
+    ageConfirmed,            // step 0: 年齢確認
+    name.trim().length >= 2, // step 1: プロフィール
+    true,                    // step 2: 今何を話したい（スキップ可）
+    true,                    // step 3: 職業（スキップ可）
+    true,                    // step 4: 村を選ぶ
+    true,                    // step 5: 最初の一言
   ][step]
 
   async function handleNext() {
-    // Steps 0, 1, 2: just advance
+    // Steps 0, 1, 2, 3: just advance
     if (step < STEPS.length - 2) {
       setStep(s => s + 1)
       return
     }
 
-    // Step 4 (last): post first post and navigate
+    // Step 5 (last): post first post and navigate
     if (step === STEPS.length - 1) {
       if (firstPost.trim() && occupationVillageId && userId) {
         setLoading(true)
@@ -156,7 +202,7 @@ export default function OnboardingPage() {
       return
     }
 
-    // Step 3 (second to last): プロフィール作成 → 職業設定 → 村に参加
+    // Step 4 (second to last): プロフィール作成 → 職業設定 → 村に参加
     if (!userId) return
     setLoading(true)
     setError('')
@@ -283,6 +329,15 @@ export default function OnboardingPage() {
           role:       'member',
         }, { onConflict: 'village_id,user_id', ignoreDuplicates: true })
       }
+    }
+
+    // 「今何を話したい？」で選んだテーマ村に参加
+    if (wantToTalk?.villageId && userId) {
+      await supabase.from('village_members').upsert({
+        village_id: wantToTalk.villageId,
+        user_id:    userId,
+        role:       'member',
+      }, { onConflict: 'village_id,user_id', ignoreDuplicates: true })
     }
 
     // その他の村タイプから参加
@@ -439,8 +494,56 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* ─── STEP 2: 職業を選ぶ（2段階）─── */}
+        {/* ─── STEP 2: 今、話したいこと ─── */}
         {step === 2 && (
+          <div className="space-y-3 pt-4">
+            <div
+              className="rounded-2xl px-4 py-4"
+              style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', border: '1px solid rgba(99,102,241,0.3)' }}
+            >
+              <p className="text-xs font-extrabold text-indigo-300 uppercase tracking-widest mb-1.5">💬 今日ここに来た理由</p>
+              <p className="text-sm font-bold text-white leading-relaxed">
+                今、一番話したいことを選んでください
+              </p>
+              <p className="text-[11px] text-indigo-300/70 mt-1">
+                選んだテーマの村に自動で参加します。あとで変えられます。
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {CONCERN_OPTIONS.map(opt => {
+                const selected = wantToTalk?.value === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setWantToTalk(prev => prev?.value === opt.value ? null : opt)}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 text-left transition-all active:scale-[0.98]"
+                    style={selected
+                      ? { borderColor: '#6366f1', background: '#eef2ff' }
+                      : { borderColor: '#e7e5e4', background: '#fff' }
+                    }
+                  >
+                    <span className="text-2xl flex-shrink-0">{opt.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-extrabold" style={{ color: selected ? '#4f46e5' : '#1c1917' }}>
+                        {opt.label}
+                      </p>
+                      <p className="text-[11px] text-stone-400">{opt.desc}</p>
+                    </div>
+                    {selected && <span className="text-indigo-500 font-bold text-base flex-shrink-0">✓</span>}
+                  </button>
+                )
+              })}
+            </div>
+
+            <p className="text-center text-[11px] text-stone-400 pt-1">
+              スキップして後で選ぶこともできます
+            </p>
+          </div>
+        )}
+
+        {/* ─── STEP 3: 職業を選ぶ（2段階）─── */}
+        {step === 3 && (
           <div className="space-y-3 pt-4">
 
             {/* なぜ聞くか — 説明バナー */}
@@ -572,8 +675,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* ─── STEP 4: 最初の一言 ─── */}
-        {step === 4 && (
+        {/* ─── STEP 5: 最初の一言 ─── */}
+        {step === 5 && (
           <div className="space-y-4 pt-4">
             <div
               className="rounded-2xl px-4 py-4"
@@ -616,8 +719,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* ─── STEP 3: 村を選ぶ ─── */}
-        {step === 3 && (
+        {/* ─── STEP 4: 村を選ぶ ─── */}
+        {step === 4 && (
           <div className="space-y-3 pt-4">
             <p className="text-xs text-stone-500 leading-relaxed">
               好きなタイプの村をいくつでも選んでください（スキップもOK）
@@ -674,12 +777,14 @@ export default function OnboardingPage() {
             ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             : step === STEPS.length - 1
               ? (firstPost.trim() ? '投稿して始める →' : '村を探しに行く →')
-              : step === STEPS.length - 2
-                ? (occupation && occupation !== 'その他' ? `${selectedCategory?.emoji ?? '💼'} ${occupation}で次へ →` : '次へ →')
-                : '次へ →'
+              : step === 2
+                ? (wantToTalk ? `${wantToTalk.emoji} ${wantToTalk.label}で次へ →` : '次へ →')
+                : step === STEPS.length - 2
+                  ? (occupation && occupation !== 'その他' ? `${selectedCategory?.emoji ?? '💼'} ${occupation}で次へ →` : '次へ →')
+                  : '次へ →'
           }
         </button>
-        {(step === 2 || step === 3) && (
+        {(step === 2 || step === 3 || step === 4) && (
           <button
             onClick={handleNext}
             className="w-full py-2 text-xs text-stone-400 mt-1"
@@ -687,7 +792,7 @@ export default function OnboardingPage() {
             スキップして後で選ぶ
           </button>
         )}
-        {step === 4 && (
+        {step === 5 && (
           <button
             onClick={() => router.push('/villages')}
             className="w-full py-2 text-xs text-stone-400 mt-1"
