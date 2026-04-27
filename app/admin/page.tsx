@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+// ─── Types ────────────────────────────────────────────────────
 interface FeedbackRow {
   id: string
   message: string
@@ -10,239 +11,531 @@ interface FeedbackRow {
   created_at: string
 }
 
-interface Top3Item {
-  title: string
-  votes: number
-  impact: string
-  effort: string
-  description: string
-  why: string
+interface ReportRow {
+  report_id: string
+  reporter_name: string | null
+  reported_id: string
+  reported_name: string | null
+  reason: string
+  description: string | null
+  reported_at: string
+  report_count: number
+  is_shadow_banned: boolean
+  shadow_ban_until: string | null
+  tier: string
+  score: number
+}
+
+interface ReportedUser {
+  user_id: string
+  display_name: string | null
+  avatar_url: string | null
+  report_count: number
+  is_shadow_banned: boolean
+  shadow_ban_until: string | null
+  tier: string
+  score: number
+  last_active_at: string | null
+}
+
+interface FlaggedPost {
+  post_id: string
+  author_name: string | null
+  author_id: string
+  village_name: string | null
+  content: string
+  created_at: string
 }
 
 interface Analysis {
   summary: string
-  top3: Top3Item[]
+  top3: { title: string; votes: number; impact: string; effort: string; description: string; why: string }[]
   quick_wins: string[]
   insight: string
 }
 
+type Tab = 'reports' | 'users' | 'posts' | 'feedback'
+
+// ─── ヘルパー ─────────────────────────────────────────────────
+function fmt(s: string) {
+  return new Date(s).toLocaleString('ja-JP', {
+    month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+}
+
+function BanBadge({ isBanned, until }: { isBanned: boolean; until: string | null }) {
+  if (!isBanned) return <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">正常</span>
+  if (!until)    return <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200 font-bold">永久BAN</span>
+  const days = Math.ceil((new Date(until).getTime() - Date.now()) / 86400000)
+  return <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 font-bold">BAN残{days}日</span>
+}
+
+// ─── メインページ ──────────────────────────────────────────────
 export default function AdminPage() {
-  const [rows, setRows] = useState<FeedbackRow[]>([])
-  const [loading, setLoading] = useState(false)
-  const [analysis, setAnalysis] = useState<Analysis | null>(null)
-  const [analyzing, setAnalyzing] = useState(false)
+  const [authed,       setAuthed]       = useState(false)
+  const [adminSecret,  setAdminSecret]  = useState('')
+  const [tab,          setTab]          = useState<Tab>('reports')
+
+  // Feedback
+  const [feedbacks,    setFeedbacks]    = useState<FeedbackRow[]>([])
+  const [feedLoading,  setFeedLoading]  = useState(false)
+  const [analysis,     setAnalysis]     = useState<Analysis | null>(null)
+  const [analyzing,    setAnalyzing]    = useState(false)
   const [analyzeError, setAnalyzeError] = useState('')
-  const [adminSecret, setAdminSecret] = useState('')
-  const [authed, setAuthed] = useState(false)
 
-  const counts = {
-    pending: rows.filter(r => r.status === 'pending').length,
-    planned: rows.filter(r => r.status === 'planned').length,
-    implemented: rows.filter(r => r.status === 'implemented').length,
+  // Reports
+  const [reports,      setReports]      = useState<ReportRow[]>([])
+  const [repLoading,   setRepLoading]   = useState(false)
+
+  // Reported users
+  const [repUsers,     setRepUsers]     = useState<ReportedUser[]>([])
+  const [userLoading,  setUserLoading]  = useState(false)
+  const [banningId,    setBanningId]    = useState<string | null>(null)
+
+  // Flagged posts
+  const [flagged,      setFlagged]      = useState<FlaggedPost[]>([])
+  const [postLoading,  setPostLoading]  = useState(false)
+  const [deletingId,   setDeletingId]   = useState<string | null>(null)
+
+  // ── データ取得 ───────────────────────────────────────────────
+  const fetchFeedbacks = useCallback(async () => {
+    setFeedLoading(true)
+    const { data } = await createClient().from('feedback').select('*').order('created_at', { ascending: false }).limit(100)
+    setFeedbacks(data || [])
+    setFeedLoading(false)
+  }, [])
+
+  const fetchReports = useCallback(async () => {
+    setRepLoading(true)
+    const { data } = await createClient().rpc('admin_get_reports')
+    setReports((data || []) as ReportRow[])
+    setRepLoading(false)
+  }, [])
+
+  const fetchReportedUsers = useCallback(async () => {
+    setUserLoading(true)
+    const { data } = await createClient().rpc('admin_get_reported_users')
+    setRepUsers((data || []) as ReportedUser[])
+    setUserLoading(false)
+  }, [])
+
+  const fetchFlagged = useCallback(async () => {
+    setPostLoading(true)
+    const { data } = await createClient().rpc('admin_get_flagged_posts')
+    setFlagged((data || []) as FlaggedPost[])
+    setPostLoading(false)
+  }, [])
+
+  useEffect(() => {
+    if (!authed) return
+    fetchReports()
+    fetchReportedUsers()
+    fetchFlagged()
+    fetchFeedbacks()
+  }, [authed, fetchReports, fetchReportedUsers, fetchFlagged, fetchFeedbacks])
+
+  // ── アクション ───────────────────────────────────────────────
+  async function banUser(userId: string, days: number) {
+    setBanningId(userId)
+    await createClient().rpc('admin_ban_user', { p_user_id: userId, p_days: days })
+    await fetchReportedUsers()
+    setBanningId(null)
   }
 
-  async function fetchFeedback() {
-    setLoading(true)
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('feedback')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100)
-    setRows(data || [])
-    setLoading(false)
+  async function unbanUser(userId: string) {
+    setBanningId(userId)
+    await createClient().rpc('admin_unban_user', { p_user_id: userId })
+    await fetchReportedUsers()
+    setBanningId(null)
   }
 
-  useEffect(() => { if (authed) fetchFeedback() }, [authed])
+  async function deletePost(postId: string) {
+    setDeletingId(postId)
+    await createClient().rpc('admin_delete_post', { p_post_id: postId })
+    setFlagged(prev => prev.filter(p => p.post_id !== postId))
+    setDeletingId(null)
+  }
+
+  async function updateFeedbackStatus(id: string, status: string) {
+    await createClient().from('feedback').update({ status }).eq('id', id)
+    setFeedbacks(prev => prev.map(r => r.id === id ? { ...r, status } : r))
+  }
 
   async function handleAnalyze() {
-    setAnalyzing(true)
-    setAnalyzeError('')
-    const pending = rows.filter(r => r.status === 'pending').map(r => r.message)
-    if (!pending.length) { setAnalyzeError('No pending feedback to analyze.'); setAnalyzing(false); return }
-
+    setAnalyzing(true); setAnalyzeError('')
+    const pending = feedbacks.filter(r => r.status === 'pending').map(r => r.message)
+    if (!pending.length) { setAnalyzeError('Pending feedbackがありません'); setAnalyzing(false); return }
     try {
-      const res = await fetch('/api/analyze-feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res  = await fetch('/api/analyze-feedback', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminKey: adminSecret, messages: pending }),
       })
       const json = await res.json()
       if (json.error) { setAnalyzeError(json.error); setAnalyzing(false); return }
       setAnalysis(typeof json.analysis === 'string' ? JSON.parse(json.analysis) : json.analysis)
-    } catch {
-      setAnalyzeError('Analysis failed. Check ANTHROPIC_API_KEY in Vercel env.')
-    }
+    } catch { setAnalyzeError('Analysis failed') }
     setAnalyzing(false)
   }
 
-  async function updateStatus(id: string, status: string) {
-    const supabase = createClient()
-    await supabase.from('feedback').update({ status }).eq('id', id)
-    setRows(prev => prev.map(r => r.id === id ? { ...r, status } : r))
-  }
-
-  const impactColor = (v: string) =>
-    v === 'high' ? 'text-red-600 bg-red-50' : v === 'medium' ? 'text-amber-600 bg-amber-50' : 'text-gray-500 bg-gray-100'
-  const effortColor = (v: string) =>
-    v === 'small' ? 'text-green-600 bg-green-50' : v === 'medium' ? 'text-amber-600 bg-amber-50' : 'text-red-600 bg-red-50'
-
+  // ── ログイン画面 ─────────────────────────────────────────────
   if (!authed) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+      <div className="min-h-screen bg-[#0f0f1a] flex items-center justify-center px-4">
+        <div className="w-full max-w-sm bg-white/5 backdrop-blur border border-white/10 rounded-3xl p-6 shadow-2xl">
           <div className="text-center mb-6">
-            <div className="text-3xl mb-2">🔐</div>
-            <div className="font-extrabold text-gray-900 text-lg">Samee Admin</div>
-            <div className="text-xs text-gray-400 mt-1">Feedback & AI Analysis Dashboard</div>
+            <div className="text-4xl mb-2">🛡️</div>
+            <div className="font-extrabold text-white text-xl">samee 運営管理</div>
+            <div className="text-xs text-white/40 mt-1">Moderation Dashboard</div>
           </div>
           <input
             type="password"
             value={adminSecret}
             onChange={e => setAdminSecret(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && adminSecret && setAuthed(true)}
-            placeholder="Admin secret key"
+            placeholder="管理者パスワード"
             autoFocus
-            className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 mb-3"
+            className="w-full px-4 py-3 rounded-2xl bg-white/10 text-white placeholder-white/30 border border-white/20 text-sm focus:outline-none focus:border-brand-400 mb-3"
           />
           <button
             onClick={() => adminSecret && setAuthed(true)}
-            className="w-full py-3 bg-brand-500 text-white rounded-2xl font-bold text-sm hover:bg-brand-600 transition"
+            className="w-full py-3 rounded-2xl font-bold text-sm text-white transition-all active:scale-95"
+            style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)' }}
           >
-            Enter →
+            ログイン →
           </button>
         </div>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+  const reportCount = reports.length
+  const bannedCount = repUsers.filter(u => u.is_shadow_banned).length
+  const pendingRepUsers = repUsers.filter(u => !u.is_shadow_banned && u.report_count >= 3).length
+  const feedPending = feedbacks.filter(r => r.status === 'pending').length
 
-        {/* Header */}
+  const TABS: { id: Tab; label: string; badge?: number }[] = [
+    { id: 'reports', label: '🚨 通報一覧',   badge: reportCount },
+    { id: 'users',   label: '🛡️ ユーザー管理', badge: pendingRepUsers || undefined },
+    { id: 'posts',   label: '🔍 投稿監視',   badge: flagged.length || undefined },
+    { id: 'feedback',label: '💡 フィードバック', badge: feedPending || undefined },
+  ]
+
+  return (
+    <div className="min-h-screen bg-[#0f0f1a] text-white">
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+
+        {/* ヘッダー */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold text-gray-900">Samee Admin</h1>
-            <p className="text-sm text-gray-400">{rows.length} total feedbacks</p>
+            <h1 className="text-xl font-extrabold text-white">🛡️ samee 運営管理</h1>
+            <p className="text-xs text-white/40 mt-0.5">Moderation Dashboard</p>
           </div>
-          <button
-            onClick={handleAnalyze}
-            disabled={analyzing || counts.pending === 0}
-            className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 text-white rounded-2xl font-semibold text-sm hover:bg-brand-600 disabled:opacity-50 transition"
-          >
-            {analyzing ? '⏳ Analyzing...' : `🤖 Analyze ${counts.pending} pending`}
-          </button>
+          <div className="flex gap-3 text-center">
+            <div>
+              <div className="text-lg font-black text-red-400">{reportCount}</div>
+              <div className="text-[10px] text-white/40">通報</div>
+            </div>
+            <div>
+              <div className="text-lg font-black text-orange-400">{bannedCount}</div>
+              <div className="text-[10px] text-white/40">BAN中</div>
+            </div>
+            <div>
+              <div className="text-lg font-black text-amber-400">{flagged.length}</div>
+              <div className="text-[10px] text-white/40">要確認</div>
+            </div>
+          </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'Pending',     value: counts.pending,     color: 'text-amber-600 bg-amber-50 border-amber-100' },
-            { label: 'Planned',     value: counts.planned,     color: 'text-blue-600 bg-blue-50 border-blue-100' },
-            { label: 'Implemented', value: counts.implemented, color: 'text-green-600 bg-green-50 border-green-100' },
-          ].map(s => (
-            <div key={s.label} className={`rounded-2xl border p-4 text-center ${s.color}`}>
-              <div className="text-2xl font-black">{s.value}</div>
-              <div className="text-xs font-semibold mt-0.5">{s.label}</div>
-            </div>
+        {/* タブ */}
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                tab === t.id
+                  ? 'bg-brand-500 text-white'
+                  : 'bg-white/10 text-white/60 hover:bg-white/15'
+              }`}
+            >
+              {t.label}
+              {t.badge ? (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                  tab === t.id ? 'bg-white/20 text-white' : 'bg-red-500 text-white'
+                }`}>{t.badge}</span>
+              ) : null}
+            </button>
           ))}
         </div>
 
-        {/* Error */}
-        {analyzeError && (
-          <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-sm text-red-600">{analyzeError}</div>
-        )}
-
-        {/* Claude Analysis */}
-        {analysis && (
-          <div className="bg-white border border-brand-100 rounded-2xl p-5 space-y-4 shadow-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🤖</span>
-              <span className="font-extrabold text-gray-900">Claude Analysis</span>
-            </div>
-            <p className="text-sm text-gray-600 bg-gray-50 rounded-xl px-4 py-3">{analysis.summary}</p>
-
-            <div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Top 3 to Implement</p>
-              <div className="space-y-3">
-                {analysis.top3?.map((item, i) => (
-                  <div key={i} className="border border-gray-100 rounded-xl p-4">
-                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                      <span className="font-bold text-sm text-gray-900">#{i+1} {item.title}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${impactColor(item.impact)}`}>{item.impact} impact</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${effortColor(item.effort)}`}>{item.effort} effort</span>
-                      <span className="ml-auto text-xs text-gray-400">{item.votes} people</span>
+        {/* ── 通報一覧タブ ─────────────────────────────────────── */}
+        {tab === 'reports' && (
+          <div className="space-y-2">
+            {repLoading ? (
+              <LoadingRows />
+            ) : reports.length === 0 ? (
+              <EmptyState emoji="🎉" text="通報はまだありません" />
+            ) : (
+              reports.map(r => (
+                <div key={r.report_id} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-white">{r.reported_name ?? '不明'}</span>
+                        <BanBadge isBanned={r.is_shadow_banned} until={r.shadow_ban_until} />
+                        <span className="text-[10px] text-white/40">通報{r.report_count}件</span>
+                      </div>
+                      <p className="text-xs text-red-400 font-bold mt-0.5">{r.reason}</p>
+                      {r.description && (
+                        <p className="text-xs text-white/50 mt-1 leading-relaxed">{r.description}</p>
+                      )}
                     </div>
-                    <p className="text-xs text-gray-600 mb-1">{item.description}</p>
-                    <p className="text-xs text-brand-500 italic">{item.why}</p>
+                    <span className="text-[10px] text-white/30 flex-shrink-0">{fmt(r.reported_at)}</span>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {analysis.quick_wins?.length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Quick Wins</p>
-                <ul className="space-y-1">
-                  {analysis.quick_wins.map((w, i) => (
-                    <li key={i} className="text-xs text-gray-600 flex items-start gap-1.5">
-                      <span className="text-green-500 mt-0.5">✓</span> {w}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {analysis.insight && (
-              <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
-                <p className="text-xs font-bold text-amber-700 mb-1">💡 Key Insight</p>
-                <p className="text-xs text-amber-700">{analysis.insight}</p>
-              </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] text-white/30">通報者: {r.reporter_name ?? '匿名'}</p>
+                    {!r.is_shadow_banned && (
+                      <div className="flex gap-1.5">
+                        {[7, 30, 0].map(d => (
+                          <button key={d} onClick={() => banUser(r.reported_id, d)}
+                            className="text-[10px] px-2 py-1 rounded-lg bg-red-900/50 text-red-300 border border-red-800 font-bold hover:bg-red-800/70 transition active:scale-95">
+                            {d === 0 ? '永久BAN' : `${d}日BAN`}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
             )}
           </div>
         )}
 
-        {/* Feedback List */}
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">All Feedback</p>
-          {loading ? (
-            <div className="text-center py-10 text-gray-400 text-sm">Loading...</div>
-          ) : rows.length === 0 ? (
-            <div className="text-center py-10 text-gray-400 text-sm">
-              No feedback yet — the 💡 button is live in the app
-            </div>
-          ) : (
-            rows.map(row => (
-              <div key={row.id} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-800 leading-relaxed">{row.message}</p>
-                    <p className="text-xs text-gray-400 mt-1.5">
-                      {new Date(row.created_at).toLocaleString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </p>
+        {/* ── ユーザー管理タブ ──────────────────────────────────── */}
+        {tab === 'users' && (
+          <div className="space-y-2">
+            {userLoading ? (
+              <LoadingRows />
+            ) : repUsers.length === 0 ? (
+              <EmptyState emoji="✅" text="通報されたユーザーはいません" />
+            ) : (
+              repUsers.map(u => (
+                <div key={u.user_id}
+                  className={`border rounded-2xl p-4 ${
+                    u.is_shadow_banned
+                      ? 'bg-red-950/30 border-red-900/50'
+                      : u.report_count >= 3
+                        ? 'bg-orange-950/30 border-orange-900/50'
+                        : 'bg-white/5 border-white/10'
+                  }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    {/* アバター */}
+                    <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-base font-bold text-white/60 flex-shrink-0">
+                      {u.display_name?.[0] ?? '?'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-white truncate">{u.display_name ?? '不明'}</span>
+                        <BanBadge isBanned={u.is_shadow_banned} until={u.shadow_ban_until} />
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-[10px] text-white/40">{u.tier} · {u.score}pt</span>
+                        <span className={`text-[10px] font-bold ${u.report_count >= 5 ? 'text-red-400' : u.report_count >= 3 ? 'text-orange-400' : 'text-white/40'}`}>
+                          🚨 通報{u.report_count}件
+                        </span>
+                        {u.last_active_at && (
+                          <span className="text-[10px] text-white/30">{fmt(u.last_active_at)}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <select
-                    value={row.status}
-                    onChange={e => updateStatus(row.id, e.target.value)}
-                    className={`text-xs font-semibold px-2.5 py-1.5 rounded-xl border-0 cursor-pointer focus:outline-none ${
-                      row.status === 'implemented' ? 'bg-green-50 text-green-700' :
-                      row.status === 'planned'     ? 'bg-blue-50 text-blue-700' :
-                      row.status === 'rejected'    ? 'bg-red-50 text-red-500' :
-                                                     'bg-amber-50 text-amber-700'
-                    }`}
-                  >
-                    <option value="pending">⏳ Pending</option>
-                    <option value="planned">📋 Planned</option>
-                    <option value="implemented">✅ Implemented</option>
-                    <option value="rejected">✕ Rejected</option>
-                  </select>
+
+                  {/* アクションボタン */}
+                  <div className="flex gap-2 flex-wrap">
+                    {u.is_shadow_banned ? (
+                      <button
+                        onClick={() => unbanUser(u.user_id)}
+                        disabled={banningId === u.user_id}
+                        className="flex-1 py-2 rounded-xl text-xs font-bold bg-emerald-900/50 text-emerald-300 border border-emerald-800 disabled:opacity-40 active:scale-95 transition-all"
+                      >
+                        {banningId === u.user_id ? '処理中...' : '✓ BAN解除'}
+                      </button>
+                    ) : (
+                      <>
+                        {[7, 30, 0].map(d => (
+                          <button key={d}
+                            onClick={() => banUser(u.user_id, d)}
+                            disabled={banningId === u.user_id}
+                            className="flex-1 py-2 rounded-xl text-xs font-bold bg-red-950/50 text-red-300 border border-red-900 disabled:opacity-40 active:scale-95 transition-all"
+                          >
+                            {banningId === u.user_id ? '...' : d === 0 ? '永久BAN' : `${d}日BAN`}
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
                 </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* ── 投稿監視タブ ──────────────────────────────────────── */}
+        {tab === 'posts' && (
+          <div className="space-y-2">
+            {postLoading ? (
+              <LoadingRows />
+            ) : flagged.length === 0 ? (
+              <EmptyState emoji="🧹" text="AutoModフラグ付き投稿はありません" />
+            ) : (
+              flagged.map(p => (
+                <div key={p.post_id} className="bg-white/5 border border-amber-900/40 rounded-2xl p-4">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-amber-300">{p.author_name ?? '不明'}</span>
+                        <span className="text-[10px] text-white/40">📍 {p.village_name ?? '不明村'}</span>
+                      </div>
+                      <p className="text-xs text-white/70 mt-1 leading-relaxed whitespace-pre-wrap">{p.content}</p>
+                    </div>
+                    <span className="text-[10px] text-white/30 flex-shrink-0">{fmt(p.created_at)}</span>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => deletePost(p.post_id)}
+                      disabled={deletingId === p.post_id}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold bg-red-950/50 text-red-300 border border-red-900 disabled:opacity-40 active:scale-95 transition-all"
+                    >
+                      {deletingId === p.post_id ? '削除中...' : '🗑️ 投稿を削除'}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await createClient().from('village_posts').update({ automod_flagged: false }).eq('id', p.post_id)
+                        setFlagged(prev => prev.filter(x => x.post_id !== p.post_id))
+                      }}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold bg-white/10 text-white/60 border border-white/10 active:scale-95 transition-all"
+                    >
+                      ✓ 問題なし
+                    </button>
+                    <button
+                      onClick={() => banUser(p.author_id, 7)}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold bg-orange-950/50 text-orange-300 border border-orange-900 active:scale-95 transition-all"
+                    >
+                      7日BAN
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* ── フィードバックタブ ─────────────────────────────────── */}
+        {tab === 'feedback' && (
+          <div className="space-y-4">
+            {/* AI分析ボタン */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-white/60">
+                Pending: <span className="text-amber-400 font-bold">{feedPending}件</span>
+              </p>
+              <button
+                onClick={handleAnalyze}
+                disabled={analyzing || feedPending === 0}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold disabled:opacity-40 active:scale-95 transition-all"
+                style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)' }}
+              >
+                {analyzing ? '⏳ 分析中...' : `🤖 AI分析 (${feedPending}件)`}
+              </button>
+            </div>
+
+            {analyzeError && (
+              <div className="bg-red-950/40 border border-red-900/50 rounded-2xl p-3 text-xs text-red-400">{analyzeError}</div>
+            )}
+
+            {analysis && (
+              <div className="bg-white/5 border border-brand-900/50 rounded-2xl p-5 space-y-4">
+                <p className="text-xs font-bold text-brand-400 uppercase tracking-wider">🤖 Claude分析結果</p>
+                <p className="text-sm text-white/70 bg-white/5 rounded-xl px-4 py-3">{analysis.summary}</p>
+                <div className="space-y-2">
+                  {analysis.top3?.map((item, i) => (
+                    <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-3">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="font-bold text-sm text-white">#{i+1} {item.title}</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                          item.impact === 'high' ? 'bg-red-900/50 text-red-300' :
+                          item.impact === 'medium' ? 'bg-amber-900/50 text-amber-300' :
+                          'bg-white/10 text-white/50'
+                        }`}>{item.impact}</span>
+                      </div>
+                      <p className="text-xs text-white/50">{item.description}</p>
+                    </div>
+                  ))}
+                </div>
+                {analysis.insight && (
+                  <div className="bg-amber-950/30 border border-amber-900/40 rounded-xl p-3">
+                    <p className="text-xs font-bold text-amber-400 mb-1">💡 Key Insight</p>
+                    <p className="text-xs text-amber-300/80">{analysis.insight}</p>
+                  </div>
+                )}
               </div>
-            ))
-          )}
-        </div>
+            )}
+
+            {feedLoading ? <LoadingRows /> : feedbacks.length === 0 ? (
+              <EmptyState emoji="💭" text="フィードバックはまだありません" />
+            ) : (
+              feedbacks.map(row => (
+                <div key={row.id} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <p className="text-sm text-white/80 leading-relaxed">{row.message}</p>
+                      <p className="text-[10px] text-white/30 mt-1.5">{fmt(row.created_at)}</p>
+                    </div>
+                    <select
+                      value={row.status}
+                      onChange={e => updateFeedbackStatus(row.id, e.target.value)}
+                      className={`text-[10px] font-bold px-2 py-1.5 rounded-xl border-0 cursor-pointer focus:outline-none ${
+                        row.status === 'implemented' ? 'bg-emerald-900/50 text-emerald-300' :
+                        row.status === 'planned'     ? 'bg-blue-900/50 text-blue-300' :
+                        row.status === 'rejected'    ? 'bg-red-900/50 text-red-300' :
+                                                       'bg-amber-900/50 text-amber-300'
+                      }`}
+                    >
+                      <option value="pending">⏳ Pending</option>
+                      <option value="planned">📋 Planned</option>
+                      <option value="implemented">✅ Done</option>
+                      <option value="rejected">✕ Reject</option>
+                    </select>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
       </div>
+    </div>
+  )
+}
+
+// ─── 小コンポーネント ─────────────────────────────────────────
+function LoadingRows() {
+  return (
+    <div className="space-y-2">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-4 animate-pulse">
+          <div className="h-3 bg-white/10 rounded w-1/3 mb-2" />
+          <div className="h-3 bg-white/5 rounded w-2/3" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function EmptyState({ emoji, text }: { emoji: string; text: string }) {
+  return (
+    <div className="text-center py-16">
+      <div className="text-4xl mb-3">{emoji}</div>
+      <p className="text-sm text-white/40 font-medium">{text}</p>
     </div>
   )
 }
