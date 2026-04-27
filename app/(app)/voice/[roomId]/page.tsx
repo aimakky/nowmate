@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, checkSupportedLocation } from '@/lib/utils'
+import { getNationalityFlag } from '@/lib/utils'
 import { ArrowLeft, Mic, MicOff, Radio, LogOut, Send, ChevronUp, ChevronDown } from 'lucide-react'
 import { awardPoints } from '@/lib/trust'
 import { getOccupationBadge } from '@/lib/occupation'
@@ -111,7 +111,7 @@ export default function VoiceRoomPage() {
   const [isMuted,        setIsMuted]        = useState(false)
   const [isListener,     setIsListener]     = useState(false)
   const [micError,       setMicError]       = useState(false)
-  const [locationStatus, setLocationStatus] = useState<'checking'|'supported'|'outside'|'denied'>('checking')
+  const MAX_SPEAKERS = 4
 
   // ── ウェルカムシステム ────────────────────────────────────
   const [welcomeEvent,   setWelcomeEvent]   = useState<WelcomeEvent | null>(null)
@@ -165,7 +165,6 @@ export default function VoiceRoomPage() {
           }
         })
     })
-    checkSupportedLocation().then(s => setLocationStatus(s))
   }, [])
 
   // ── ルーム取得 ───────────────────────────────────────────
@@ -412,40 +411,9 @@ export default function VoiceRoomPage() {
   }
 
   // ─────────────────────────────────────────────────────────
-  if (!room || locationStatus === 'checking') return (
+  if (!room) return (
     <div className="min-h-screen flex items-center justify-center bg-[#FAFAF9]">
       <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
-
-  if (locationStatus === 'outside') return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9] flex flex-col">
-      <div className="bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex items-center gap-3">
-        <button onClick={() => router.back()} className="p-1 -ml-1 text-stone-500"><ArrowLeft size={20} /></button>
-        <p className="font-extrabold text-stone-900">Voice Room</p>
-      </div>
-      <div className="flex flex-col items-center justify-center flex-1 px-8 text-center">
-        <div className="text-6xl mb-5">🇯🇵</div>
-        <h2 className="font-extrabold text-stone-900 text-xl mb-3">Available in 9 countries</h2>
-        <p className="text-sm text-stone-500 leading-relaxed">Voice rooms are available in Japan, Korea, Vietnam, Brazil, Philippines, USA, Germany, China & Australia.</p>
-      </div>
-    </div>
-  )
-
-  if (locationStatus === 'denied') return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9] flex flex-col">
-      <div className="bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex items-center gap-3">
-        <button onClick={() => router.back()} className="p-1 -ml-1 text-stone-500"><ArrowLeft size={20} /></button>
-        <p className="font-extrabold text-stone-900">Voice Room</p>
-      </div>
-      <div className="flex flex-col items-center justify-center flex-1 px-8 text-center">
-        <div className="text-6xl mb-5">📍</div>
-        <h2 className="font-extrabold text-stone-900 text-xl mb-3">Location required</h2>
-        <button onClick={() => checkSupportedLocation().then(s => setLocationStatus(s))}
-          className="px-6 py-3 bg-brand-500 text-white rounded-2xl text-sm font-bold active:scale-95 transition-all">
-          Try again
-        </button>
-      </div>
     </div>
   )
 
@@ -590,25 +558,31 @@ export default function VoiceRoomPage() {
             </p>
             <p className="text-xs text-stone-400 text-center mb-5">どのモードで入りますか？</p>
 
-            {/* スピーカー上限警告 */}
-            {speakers.length >= 8 && (
+            {/* スピーカー上限（4名） */}
+            {speakers.length >= MAX_SPEAKERS && (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2">
-                <span className="text-base flex-shrink-0">⚠️</span>
+                <span className="text-base flex-shrink-0">🔒</span>
                 <p className="text-[11px] text-amber-700 leading-relaxed">
-                  スピーカーが8人以上います。接続品質が下がる場合があります。「聞いている」モードをおすすめします。
+                  話す人が{MAX_SPEAKERS}人に達しました（上限）。「聞いている」モードで参加できます。
                 </p>
               </div>
             )}
 
             <div className="space-y-2.5">
               {/* 話す */}
-              <button onClick={() => joinRoom('speaker')} disabled={joining}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 active:scale-[0.98] transition-all text-left"
-                style={{ borderColor: '#6366f1', background: '#eef2ff' }}>
+              <button
+                onClick={() => joinRoom('speaker')}
+                disabled={joining || speakers.length >= MAX_SPEAKERS}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 active:scale-[0.98] transition-all text-left disabled:opacity-40"
+                style={speakers.length >= MAX_SPEAKERS
+                  ? { borderColor: '#e7e5e4', background: '#f5f5f4' }
+                  : { borderColor: '#6366f1', background: '#eef2ff' }}>
                 <span className="text-2xl flex-shrink-0">🎙️</span>
                 <div>
-                  <p className="font-extrabold text-indigo-700 text-sm">話す</p>
-                  <p className="text-[10px] text-indigo-400">マイクをオンにして参加</p>
+                  <p className="font-extrabold text-sm" style={{ color: speakers.length >= MAX_SPEAKERS ? '#a8a29e' : '#4338ca' }}>
+                    話す {speakers.length >= MAX_SPEAKERS ? `（上限${MAX_SPEAKERS}名）` : `（残り${MAX_SPEAKERS - speakers.length}枠）`}
+                  </p>
+                  <p className="text-[10px] text-stone-400">マイクをオンにして参加</p>
                 </div>
                 {joining && <span className="ml-auto w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />}
               </button>

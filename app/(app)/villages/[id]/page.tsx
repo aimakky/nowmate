@@ -1689,7 +1689,9 @@ export default function VillageDetailPage() {
             <span className="text-2xl mt-0.5">🎙️</span>
             <div>
               <p className="text-sm font-bold" style={{ color: style.accent }}>村の通話広場</p>
-              <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">住民と声で話せます。聴くだけでも参加OKです。</p>
+              <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
+                住民と声で話せます。最大4名まで同時に話せます。聴くだけでも参加OKです。
+              </p>
             </div>
           </div>
           {isMember && (
