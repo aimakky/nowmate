@@ -17,6 +17,7 @@ export default function TrustBadge({
   isPremium?: boolean
 }) {
   const tier = tierId ? getTierById(tierId) : getTierFromScore(score ?? 0)
+  if (tier.id === 'visitor') return null   // visitor は他ユーザーに見せない
   const isPillar = tier.id === 'pillar'
 
   const sizeClass = {
