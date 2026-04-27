@@ -1033,6 +1033,8 @@ export default function VillageDetailPage() {
     } else {
       await supabase.from('village_members').insert({ village_id: id, user_id: userId })
       setIsMember(true)
+      // Tier2+既存メンバーに入村通知を送る
+      await supabase.rpc('notify_new_village_member', { p_village_id: id, p_new_user_id: userId })
       // はじめまして投稿モーダルを表示
       if (tier.canPost) {
         const { data: prof } = await supabase.from('profiles').select('display_name').eq('id', userId).single()

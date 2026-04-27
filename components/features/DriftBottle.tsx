@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import React from 'react'
 import { Send, X, ChevronDown, ChevronUp, Share2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
@@ -64,17 +65,14 @@ function BottleOpeningTheater({
     setTimeout(() => setPhase('reading'), 700)
   }
 
-  async function handleShare() {
-    const text =
-      `🍶 漂流瓶が届きました\n\n「${bottle.message}」\n\n` +
-      `📍 ${sv ? `${sv.icon}${sv.name}` : 'どこかの村'} → ${villageName}\n` +
-      `⏱ ${days}日間の旅\n\n#samee`
+  async function handleShare(replyText?: string | React.MouseEvent) {
+    if (typeof replyText !== 'string') replyText = undefined
+    const shareText = replyText
+      ? `🍶 漂流瓶に答えました\n\n「${replyText}」\n\n#samee #漂流瓶`
+      : `🍶 漂流瓶が届きました\n\n「${bottle.message}」\n\n📍 ${sv ? `${sv.icon}${sv.name}` : 'どこかの村'} → ${villageName}\n⏱ ${days}日間の旅\n\n#samee`
     const url = `https://nowmatejapan.com/villages/${villageId}`
-    if (navigator.share) {
-      await navigator.share({ title: '🍶 漂流瓶が届きました', text, url }).catch(() => {})
-    } else {
-      await navigator.clipboard.writeText(`${text}\n${url}`)
-    }
+    const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText + '\n' + url)}`
+    window.open(xUrl, '_blank', 'noopener,noreferrer')
     setShared(true)
     setTimeout(() => setShared(false), 2000)
   }

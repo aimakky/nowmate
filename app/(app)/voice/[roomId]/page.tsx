@@ -21,6 +21,8 @@ interface Participant {
   user_id:     string
   is_listener: boolean
   join_mode:   'speaker' | 'listener' | 'silent'
+  raised_hand: boolean
+  role:        'host' | 'speaker' | 'listener'
   profiles:    { display_name: string; nationality: string; avatar_url: string | null }
   user_trust?: { tier: string } | null
 }
@@ -112,7 +114,12 @@ export default function VoiceRoomPage() {
   const [isListener,     setIsListener]     = useState(false)
   const [micError,       setMicError]       = useState(false)
   const [myTier,         setMyTier]         = useState<string>('visitor')
-  const MAX_SPEAKERS = 4
+  const MAX_SPEAKERS = 8  // 広場トークは最大8名まで登壇可能
+
+  // ── 広場トーク: 挙手・昇格 ───────────────────────────────
+  const [isRaisingHand,  setIsRaisingHand]  = useState(false)
+  const [promoted,       setPromoted]       = useState(false)  // リスナー→登壇者に昇格された
+  const [promotionBanner,setPromotionBanner]= useState(false)
 
   // ── ウェルカムシステム ────────────────────────────────────
   const [welcomeEvent,   setWelcomeEvent]   = useState<WelcomeEvent | null>(null)
@@ -186,10 +193,40 @@ export default function VoiceRoomPage() {
     if (!roomId) return
     const { data } = await createClient()
       .from('voice_participants')
-      .select('user_id, is_listener, join_mode, profiles(display_name, nationality, avatar_url), user_trust(tier)')
+      .select('user_id, is_listener, join_mode, raised_hand, role, profiles(display_name, nationality, avatar_url), user_trust(tier)')
       .eq('room_id', roomId)
     setParticipants((data || []) as unknown as Participant[])
   }, [roomId])
+
+  // ── 自分の昇格を検知してマイク取得・WebRTC開始 ───────────
+  useEffect(() => {
+    if (!joined || !userId || !isListener) return
+    const myParticipant = participants.find(p => p.user_id === userId)
+    if (!myParticipant) return
+    if (!myParticipant.is_listener && isListener) {
+      // 昇格された！
+      setIsListener(false)
+      setIsRaisingHand(false)
+      setPromotionBanner(true)
+      setTimeout(() => setPromotionBanner(false), 4000)
+      // マイク取得してWebRTC開始
+      ;(async () => {
+        try {
+          localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+          // 既存スピーカーにofferを送る
+          const { data: existing } = await createClient()
+            .from('voice_participants').select('user_id')
+            .eq('room_id', roomId).eq('is_listener', false).neq('user_id', userId)
+          for (const p of existing || []) {
+            const pc = createPC(p.user_id)
+            const offer = await pc.createOffer()
+            await pc.setLocalDescription(offer)
+            channelRef.current?.send({ type: 'broadcast', event: 'offer', payload: { to: p.user_id, from: userId, sdp: offer } })
+          }
+        } catch { setMicError(true) }
+      })()
+    }
+  }, [participants, isListener, joined, userId, roomId])
 
   useEffect(() => {
     fetchParticipants()
@@ -374,6 +411,32 @@ export default function VoiceRoomPage() {
     router.push('/voice')
   }
 
+  // ── 手を挙げる / 下げる ──────────────────────────────────
+  async function toggleRaiseHand() {
+    if (!userId || !roomId || !isListener) return
+    const next = !isRaisingHand
+    setIsRaisingHand(next)
+    await createClient().from('voice_participants')
+      .update({ raised_hand: next })
+      .eq('room_id', roomId).eq('user_id', userId)
+  }
+
+  // ── リスナーを登壇者に昇格（ホストのみ）─────────────────
+  async function promoteToSpeaker(targetUserId: string) {
+    if (!isHost || !roomId) return
+    await createClient().from('voice_participants')
+      .update({ is_listener: false, raised_hand: false, role: 'speaker', join_mode: 'speaker' })
+      .eq('room_id', roomId).eq('user_id', targetUserId)
+  }
+
+  // ── 登壇者をリスナーに降格（ホストのみ）─────────────────
+  async function demoteToListener(targetUserId: string) {
+    if (!isHost || !roomId || targetUserId === userId) return
+    await createClient().from('voice_participants')
+      .update({ is_listener: true, role: 'listener', join_mode: 'listener' })
+      .eq('room_id', roomId).eq('user_id', targetUserId)
+  }
+
   function toggleMute() {
     localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = isMuted })
     setIsMuted(m => !m)
@@ -515,40 +578,105 @@ export default function VoiceRoomPage() {
           </div>
         )}
 
-        {/* ── スピーカー ── */}
-        {speakers.length > 0 && (
-          <div className="mb-5">
-            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Mic size={11} /> 話している ({speakers.length})
+        {/* ── 昇格バナー ── */}
+        {promotionBanner && (
+          <div className="mb-4 bg-indigo-50 border border-indigo-200 rounded-2xl px-4 py-3 flex items-center gap-3 animate-pulse-slow">
+            <span className="text-2xl">🎙️</span>
+            <div>
+              <p className="text-sm font-extrabold text-indigo-700">登壇を許可されました！</p>
+              <p className="text-xs text-indigo-500 mt-0.5">マイクがオンになりました。話してみましょう。</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── ステージ（登壇者）── */}
+        <div className="mb-4 rounded-3xl overflow-hidden"
+          style={{ background: 'linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%)', border: '1px solid rgba(100,140,255,0.2)' }}>
+          <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            <p className="text-[10px] font-bold text-white/60 uppercase tracking-wider">
+              🎙️ ステージ — {speakers.length}人登壇中
             </p>
-            <div className="grid grid-cols-5 gap-2">
-              {speakers.map(p => (
-                <Avatar key={p.user_id}
-                  participant={p}
-                  isMe={p.user_id === userId}
-                  isMuted={p.user_id === userId && isMuted}
-                  isHost={p.user_id === room.host_id}
-                  size="sm"
-                />
+          </div>
+          {speakers.length === 0 ? (
+            <div className="px-4 pb-4 pt-2 text-center">
+              <p className="text-xs text-white/30">まだ誰も登壇していません</p>
+            </div>
+          ) : (
+            <div className="px-4 pb-4 pt-2">
+              <div className="grid grid-cols-4 gap-3">
+                {speakers.map(p => (
+                  <div key={p.user_id} className="flex flex-col items-center gap-1">
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center relative ${
+                      p.user_id === userId && !isMuted ? 'ring-2 ring-emerald-400' : ''
+                    }`} style={{ background: 'rgba(255,255,255,0.1)' }}>
+                      {p.profiles?.avatar_url
+                        ? <img src={p.profiles.avatar_url} className="w-full h-full object-cover rounded-2xl" alt="" />
+                        : <span className="text-2xl">{getNationalityFlag(p.profiles?.nationality || '')}</span>
+                      }
+                      {p.user_id === room.host_id && (
+                        <span className="absolute -top-1.5 -right-1 text-sm">👑</span>
+                      )}
+                      {p.user_id === userId && isMuted && (
+                        <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                          <MicOff size={9} className="text-white" />
+                        </span>
+                      )}
+                      {/* ホスト: 降格ボタン */}
+                      {isHost && p.user_id !== userId && (
+                        <button onClick={() => demoteToListener(p.user_id)}
+                          className="absolute -top-1 -left-1 w-5 h-5 bg-stone-700 rounded-full flex items-center justify-center text-[9px] text-white/70 hover:bg-red-700 transition-all"
+                          title="リスナーに戻す">✕</button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-white/80 font-semibold text-center truncate w-14 px-0.5">
+                      {p.profiles?.display_name?.split(' ')[0] ?? '?'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── ホスト: 挙手者リスト ── */}
+        {isHost && participants.filter(p => p.raised_hand).length > 0 && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-3">
+            <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-2.5">
+              ✋ 登壇リクエスト ({participants.filter(p => p.raised_hand).length})
+            </p>
+            <div className="space-y-2">
+              {participants.filter(p => p.raised_hand).map(p => (
+                <div key={p.user_id} className="flex items-center gap-2">
+                  <span className="text-sm">{getNationalityFlag(p.profiles?.nationality || '')}</span>
+                  <span className="text-xs font-bold text-stone-700 flex-1 truncate">
+                    {p.profiles?.display_name ?? '?'}
+                  </span>
+                  <button onClick={() => promoteToSpeaker(p.user_id)}
+                    className="text-[10px] font-bold px-3 py-1.5 rounded-xl bg-indigo-500 text-white active:scale-95 transition-all">
+                    登壇を許可
+                  </button>
+                </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* ── リスナー ── */}
+        {/* ── 観客席 ── */}
         {listeners.length > 0 && (
-          <div className="mb-5">
-            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Radio size={11} /> 聞いている ({listeners.length})
+          <div className="mb-4">
+            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Radio size={11} /> 観客席 ({listeners.length})
             </p>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="flex flex-wrap gap-2">
               {listeners.map(p => (
-                <Avatar key={p.user_id}
-                  participant={p}
-                  isMe={p.user_id === userId}
-                  isHost={p.user_id === room.host_id}
-                  size="sm"
-                />
+                <div key={p.user_id} className="flex items-center gap-1.5 bg-white border border-stone-100 rounded-full px-2.5 py-1 shadow-sm">
+                  <span className="text-xs">{getNationalityFlag(p.profiles?.nationality || '')}</span>
+                  <span className="text-[10px] font-medium text-stone-600 max-w-[60px] truncate">
+                    {p.join_mode === 'silent' ? 'こっそり' : (p.profiles?.display_name?.split(' ')[0] ?? '?')}
+                  </span>
+                  {p.raised_hand && <span className="text-xs">✋</span>}
+                </div>
               ))}
             </div>
           </div>
@@ -561,6 +689,7 @@ export default function VoiceRoomPage() {
             <p className="font-bold text-stone-800 text-sm text-center mb-0.5">
               {participants.length}人が参加中
             </p>
+            <p className="text-xs text-stone-400 text-center mb-1">広場トーク</p>
             <p className="text-xs text-stone-400 text-center mb-5">どのモードで入りますか？</p>
 
             {/* 見習いはスピーカー不可（Discourse TL0サンドボックス）*/}
@@ -599,24 +728,24 @@ export default function VoiceRoomPage() {
                 <div>
                   <p className="font-extrabold text-sm" style={{ color: speakers.length >= MAX_SPEAKERS || myTier === 'visitor' ? '#a8a29e' : '#4338ca' }}>
                     {myTier === 'visitor'
-                      ? '話す（住民以上で解放）'
+                      ? '登壇する（住民以上で解放）'
                       : speakers.length >= MAX_SPEAKERS
-                        ? `話す（上限${MAX_SPEAKERS}名）`
-                        : `話す（残り${MAX_SPEAKERS - speakers.length}枠）`}
+                        ? `登壇する（上限${MAX_SPEAKERS}名）`
+                        : `登壇する（残り${MAX_SPEAKERS - speakers.length}枠）`}
                   </p>
-                  <p className="text-[10px] text-stone-400">マイクをオンにして参加</p>
+                  <p className="text-[10px] text-stone-400">マイクをオンにしてステージへ</p>
                 </div>
                 {joining && <span className="ml-auto w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />}
               </button>
 
-              {/* 聞いている */}
+              {/* 観客として参加 */}
               <button onClick={() => joinRoom('listener')} disabled={joining}
                 className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 active:scale-[0.98] transition-all text-left"
                 style={{ borderColor: '#10b981', background: '#f0fdf4' }}>
                 <span className="text-2xl flex-shrink-0">👂</span>
                 <div>
-                  <p className="font-extrabold text-emerald-700 text-sm">聞いています</p>
-                  <p className="text-[10px] text-emerald-400">名前が表示される。リアクションOK</p>
+                  <p className="font-extrabold text-emerald-700 text-sm">観客として参加</p>
+                  <p className="text-[10px] text-emerald-400">✋ 手を挙げて登壇リクエスト可能</p>
                 </div>
               </button>
 
@@ -720,12 +849,25 @@ export default function VoiceRoomPage() {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* 登壇者: ミュートボタン */}
               {!isListener && (
                 <button onClick={toggleMute}
                   className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90 ${
                     isMuted ? 'bg-red-100 text-red-500' : 'bg-emerald-100 text-emerald-600'
                   }`}>
                   {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
+                </button>
+              )}
+              {/* 観客: 手を挙げるボタン */}
+              {isListener && joined && (
+                <button onClick={toggleRaiseHand}
+                  className={`flex items-center gap-2 px-4 h-12 rounded-2xl font-bold text-sm transition-all active:scale-95 ${
+                    isRaisingHand
+                      ? 'bg-amber-500 text-white shadow-md shadow-amber-200'
+                      : 'bg-amber-50 text-amber-600 border border-amber-200'
+                  }`}>
+                  <span>✋</span>
+                  <span className="text-xs">{isRaisingHand ? '手を下げる' : '登壇リクエスト'}</span>
                 </button>
               )}
               <button onClick={leaveRoom}
