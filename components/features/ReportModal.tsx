@@ -2,9 +2,16 @@
 
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import Button from '@/components/ui/Button'
-import { REPORT_REASONS } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
+
+const REPORT_REASONS = [
+  '誹謗中傷・人格攻撃',
+  '勧誘・営業・スパム',
+  '連絡先・個人情報の要求',
+  '差別的・不適切な発言',
+  '嫌がらせ・ストーキング',
+  'その他',
+]
 
 interface ReportModalProps {
   reportedId: string
@@ -13,10 +20,10 @@ interface ReportModalProps {
 }
 
 export default function ReportModal({ reportedId, reportedName, onClose }: ReportModalProps) {
-  const [reason, setReason] = useState('')
+  const [reason,      setReason]      = useState('')
   const [description, setDescription] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [done, setDone] = useState(false)
+  const [loading,     setLoading]     = useState(false)
+  const [done,        setDone]        = useState(false)
 
   async function handleSubmit() {
     if (!reason) return
@@ -24,62 +31,90 @@ export default function ReportModal({ reportedId, reportedName, onClose }: Repor
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
+      // 通報レコード挿入
       await supabase.from('reports').insert({
         reporter_id: user.id,
         reported_id: reportedId,
         reason,
         description: description || null,
       })
+      // user_trust の report_count をインクリメント（自動shadow ban トリガーが発火）
+      await supabase.rpc('increment_report_count', { p_user_id: reportedId })
     }
     setLoading(false)
     setDone(true)
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white w-full max-w-md rounded-t-3xl p-6 animate-slide-up">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white w-full max-w-md rounded-t-3xl p-5 pb-8 shadow-2xl">
+
+        {/* ヘッダー */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900">Report User</h2>
-          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-gray-100">
-            <X size={20} />
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🚨</span>
+            <h2 className="text-base font-extrabold text-stone-900">通報する</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-stone-100 transition">
+            <X size={18} className="text-stone-500" />
           </button>
         </div>
 
         {done ? (
           <div className="text-center py-8">
-            <div className="text-4xl mb-3">✅</div>
-            <p className="font-semibold text-gray-800">Report submitted</p>
-            <p className="text-sm text-gray-500 mt-1">Thank you. We'll review this report.</p>
-            <Button className="mt-5 w-full" onClick={onClose}>Close</Button>
+            <div className="text-5xl mb-3">✅</div>
+            <p className="font-extrabold text-stone-800 text-base">通報を受け付けました</p>
+            <p className="text-sm text-stone-500 mt-2 leading-relaxed">
+              運営チームが確認し、対応します。<br />
+              sameeをより良い場所にするための報告、ありがとうございます。
+            </p>
+            <button
+              onClick={onClose}
+              className="mt-5 w-full py-3 rounded-2xl bg-stone-100 text-stone-700 font-bold text-sm active:scale-95 transition-all"
+            >
+              閉じる
+            </button>
           </div>
         ) : (
           <>
-            <p className="text-sm text-gray-500 mb-4">Report <strong>{reportedName}</strong> for inappropriate behavior.</p>
+            <p className="text-sm text-stone-500 mb-4">
+              <strong className="text-stone-800">{reportedName}</strong> さんを通報する理由を選んでください。
+            </p>
+
             <div className="space-y-2 mb-4">
               {REPORT_REASONS.map(r => (
                 <button
                   key={r}
                   onClick={() => setReason(r)}
-                  className={`w-full text-left px-4 py-3 rounded-2xl text-sm border transition ${
+                  className={`w-full text-left px-4 py-3 rounded-2xl text-sm border transition-all ${
                     reason === r
-                      ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium'
-                      : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                      ? 'border-red-400 bg-red-50 text-red-700 font-bold'
+                      : 'border-stone-200 text-stone-700 hover:bg-stone-50'
                   }`}
                 >
                   {r}
                 </button>
               ))}
             </div>
+
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="Optional: add more details..."
+              placeholder="詳細（任意）"
               rows={2}
-              className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-400 mb-4"
+              className="w-full px-4 py-3 rounded-2xl border border-stone-200 text-sm resize-none focus:outline-none mb-4"
             />
-            <Button fullWidth loading={loading} disabled={!reason} onClick={handleSubmit} variant="danger">
-              Submit Report
-            </Button>
+
+            <button
+              onClick={handleSubmit}
+              disabled={!reason || loading}
+              className="w-full py-3.5 rounded-2xl text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-all"
+              style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' }}
+            >
+              {loading
+                ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                : '通報を送信する'}
+            </button>
           </>
         )}
       </div>

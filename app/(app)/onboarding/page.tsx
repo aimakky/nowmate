@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
+import CulturalCharter, { markCharterShown } from '@/components/features/CulturalCharter'
 
 const STEPS = [
   { title: '年齢確認',         emoji: '🔒', sub: '20歳以上の方のみご利用いただけます' },
@@ -80,6 +81,7 @@ export default function OnboardingPage() {
   const [selectedTypes, setSelectedTypes] = useState<string[]>([])
   const [firstPost,    setFirstPost]    = useState('')
   const [wantToTalk,   setWantToTalk]   = useState<typeof CONCERN_OPTIONS[0] | null>(null)
+  const [showCharter,  setShowCharter]  = useState(false)
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -185,7 +187,8 @@ export default function OnboardingPage() {
     await supabase.rpc('initialize_user_missions', { p_user_id: userId })
 
     setLoading(false)
-    setStep(s => s + 1)
+    // Charterを表示してから次のステップへ
+    setShowCharter(true)
   }
 
   return (
@@ -470,6 +473,24 @@ export default function OnboardingPage() {
           </button>
         )}
       </div>
+
+      {/* ── Cultural Charter（オンボーディング初回） ── */}
+      {showCharter && (
+        <CulturalCharter
+          isReminder={false}
+          onAgree={() => {
+            markCharterShown()
+            setShowCharter(false)
+            setStep(s => s + 1)
+          }}
+          onClose={() => {
+            // 閉じても次に進む（強制はしない）
+            markCharterShown()
+            setShowCharter(false)
+            setStep(s => s + 1)
+          }}
+        />
+      )}
     </div>
   )
 }

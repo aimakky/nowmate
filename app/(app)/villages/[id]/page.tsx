@@ -15,6 +15,37 @@ import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
 import MoodWeather from '@/components/features/MoodWeather'
 import DriftBottle from '@/components/features/DriftBottle'
 import { getUserTrust, getTierById, awardPoints } from '@/lib/trust'
+import CulturalCharter, { shouldShowCharter, markCharterShown } from '@/components/features/CulturalCharter'
+
+// ─── AutoMod: NGワードリスト ─────────────────────────────────
+const NG_WORDS = [
+  '死ね', 'しね', '殺す', 'ころす', 'キモい', 'きもい', 'うざい', 'ウザい',
+  'バカ', 'ばか', 'アホ', 'あほ', 'クズ', 'くず', 'ゴミ', 'ごみ',
+  '消えろ', 'きえろ', 'カス', 'かす', 'ブス', 'ぶす',
+  'LINE教えて', 'line教えて', '連絡先教えて', 'インスタ教えて',
+  '副業', '稼げる', '儲かる', 'ビジネス紹介', 'MLM', 'ネットワーク',
+]
+
+function detectNgWords(text: string): string | null {
+  const found = NG_WORDS.find(w => text.includes(w))
+  return found ?? null
+}
+
+// ─── Slow mode: 投稿間隔制限 ─────────────────────────────────
+const SLOW_MODE_MS  = 2 * 60 * 1000  // 2分
+const SLOW_MODE_KEY = 'samee_last_post'
+
+function getSlowModeRemaining(): number {
+  if (typeof window === 'undefined') return 0
+  const last = Number(localStorage.getItem(SLOW_MODE_KEY) ?? '0')
+  const elapsed = Date.now() - last
+  return Math.max(0, SLOW_MODE_MS - elapsed)
+}
+
+function markPosted() {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(SLOW_MODE_KEY, String(Date.now()))
+}
 
 // ─── Constants ────────────────────────────────────────────────
 const POST_CATEGORIES = ['全部', '雑談', '相談', '仕事', '趣味', '今日のひとこと', '初参加あいさつ', '今日のお題']
@@ -645,6 +676,14 @@ export default function VillageDetailPage() {
   const [showPhoneVerify, setShowPhoneVerify] = useState(false)
   const [resolvePost,     setResolvePost]     = useState<any>(null)
 
+  // ── 民度設計 ─────────────────────────────────────────────────
+  const [showCharter,      setShowCharter]      = useState(false)
+  const [charterMode,      setCharterMode]      = useState<'first' | 'weekly'>('first')
+  const [pendingPostText,  setPendingPostText]  = useState('')  // charter同意後に投稿するテキスト
+  const [slowModeLeft,     setSlowModeLeft]     = useState(0)   // 残り秒数
+  const [ngWarning,        setNgWarning]        = useState('')  // AutoMod警告メッセージ
+  const [profileIncomplete,setProfileIncomplete]= useState(false)
+
   // ── 廃村システム ─────────────────────────────────────────────
   const [daysLeft,      setDaysLeft]      = useState<number | null>(null)
   const [isAbandoned,   setIsAbandoned]   = useState(false)
@@ -1028,18 +1067,56 @@ export default function VillageDetailPage() {
     await fetchPosts()
   }
 
-  async function submitPost() {
-    if (!userId || !newPost.trim() || posting) return
+  async function submitPost(overrideText?: string) {
+    const text = overrideText ?? newPost
+    if (!userId || !text.trim() || posting) return
     if (!tier.canPost) { setShowPhoneVerify(true); return }
+
+    // ── AutoMod: NGワード検出 ──────────────────────────────────
+    const ng = detectNgWords(text.trim())
+    if (ng) {
+      setNgWarning(`「${ng}」という言葉はsameeでは使えません。違う表現を試してください。`)
+      return
+    }
+
+    // ── Slow mode: 投稿間隔チェック ────────────────────────────
+    const remaining = getSlowModeRemaining()
+    if (remaining > 0) {
+      const secs = Math.ceil(remaining / 1000)
+      setSlowModeLeft(secs)
+      const t = setInterval(() => {
+        setSlowModeLeft(prev => {
+          if (prev <= 1) { clearInterval(t); return 0 }
+          return prev - 1
+        })
+      }, 1000)
+      return
+    }
+
+    // ── Cultural Charter: 初回 or 週1表示 ─────────────────────
+    const charterStatus = shouldShowCharter()
+    if (charterStatus) {
+      setPendingPostText(text.trim())
+      setCharterMode(charterStatus)
+      setShowCharter(true)
+      return
+    }
+
+    // ── 実際の投稿処理 ────────────────────────────────────────
     setPosting(true)
     const supabase = createClient()
     const deadlineAt = newPostDeadline
       ? new Date(Date.now() + newPostDeadline * 3600000).toISOString()
       : null
     await supabase.from('village_posts').insert({
-      village_id: id, user_id: userId, content: newPost.trim(), category: newPostCat,
+      village_id: id, user_id: userId, content: text.trim(), category: newPostCat,
       ...(deadlineAt ? { deadline_at: deadlineAt } : {}),
     })
+    // slow mode タイムスタンプ更新
+    markPosted()
+    // DB側のlast_post_atも更新
+    await supabase.rpc('update_last_post_at', { p_user_id: userId })
+
     if (newPostCat === '初参加あいさつ') await awardPoints('welcomed_new_member', id)
     // 廃村だった場合は復興
     if (isAbandoned) {
@@ -1049,7 +1126,16 @@ export default function VillageDetailPage() {
       setShowRevival(true)
       setTimeout(() => setShowRevival(false), 5000)
     }
-    setNewPost(''); setNewPostDeadline(null); await fetchPosts(); setPosting(false)
+    setNewPost(''); setNgWarning(''); setNewPostDeadline(null); await fetchPosts(); setPosting(false)
+  }
+
+  // charter同意後に呼ばれる
+  async function handleCharterAgree() {
+    markCharterShown()
+    setShowCharter(false)
+    const text = pendingPostText
+    setPendingPostText('')
+    await submitPost(text)
   }
 
   async function answerPrompt(text: string) {
@@ -1524,15 +1610,33 @@ export default function VillageDetailPage() {
                   ))}
                 </div>
                 <div className="flex gap-2 items-end">
-                  <textarea value={newPost} onChange={e => setNewPost(e.target.value)}
+                  <textarea value={newPost} onChange={e => { setNewPost(e.target.value); setNgWarning('') }}
                     placeholder="考えを出す…" rows={2} maxLength={300}
                     className="flex-1 px-3 py-2.5 rounded-2xl border border-stone-200 text-sm resize-none focus:outline-none" />
-                  <button onClick={submitPost} disabled={!newPost.trim() || posting}
+                  <button onClick={() => submitPost()} disabled={!newPost.trim() || posting || slowModeLeft > 0}
                     className="w-11 h-11 rounded-2xl flex items-center justify-center disabled:opacity-40 active:scale-90 transition-all flex-shrink-0"
                     style={{ background: style.accent, boxShadow: `0 4px 12px ${style.accent}50` }}>
                     {posting ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Send size={15} className="text-white" />}
                   </button>
                 </div>
+
+                {/* AutoMod警告 */}
+                {ngWarning && (
+                  <div className="mt-2 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                    <span className="text-red-500 text-sm flex-shrink-0">⚠️</span>
+                    <p className="text-xs text-red-600 leading-relaxed">{ngWarning}</p>
+                  </div>
+                )}
+
+                {/* Slow mode カウントダウン */}
+                {slowModeLeft > 0 && (
+                  <div className="mt-2 flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                    <span className="text-amber-500 text-sm">⏳</span>
+                    <p className="text-xs text-amber-700 font-medium">
+                      次の投稿まで {slowModeLeft}秒 お待ちください
+                    </p>
+                  </div>
+                )}
 
                 {/* 締め切り設定 */}
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -2261,6 +2365,15 @@ export default function VillageDetailPage() {
       {resolvePost && (
         <ResolveModal post={resolvePost} members={members} userId={userId!}
           onClose={() => setResolvePost(null)} onResolved={() => fetchPosts()} />
+      )}
+
+      {/* ── Cultural Charter モーダル ── */}
+      {showCharter && (
+        <CulturalCharter
+          isReminder={charterMode === 'weekly'}
+          onAgree={handleCharterAgree}
+          onClose={() => { setShowCharter(false); setPendingPostText('') }}
+        />
       )}
 
       {/* ── はじめまして投稿モーダル ── */}
