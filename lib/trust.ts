@@ -1,5 +1,39 @@
 import { createClient } from './supabase/client'
 
+// ─── 多次元ティア要件（Discourse TL設計を移植）────────────────
+// Discourse: 投稿数×活動日数×もらったいいね×通話参加 の全条件を満たして初めて昇格
+export const TIER_REQUIREMENTS: Record<string, {
+  posts:             number
+  days:              number
+  reactionsReceived: number
+  voiceSessions:     number
+  score:             number
+  hint:              string   // ユーザーに見せる一言説明
+}> = {
+  resident: { posts: 1,  days: 1,  reactionsReceived: 0,  voiceSessions: 0, score: 30,  hint: '電話認証 + 初投稿' },
+  regular:  { posts: 5,  days: 3,  reactionsReceived: 3,  voiceSessions: 0, score: 100, hint: '5回投稿 · 3日活動 · いいね3' },
+  trusted:  { posts: 20, days: 10, reactionsReceived: 10, voiceSessions: 2, score: 300, hint: '20回投稿 · 10日活動 · 通話2回' },
+  pillar:   { posts: 80, days: 45, reactionsReceived: 30, voiceSessions: 5, score: 600, hint: '長期の継続的な貢献' },
+}
+
+// ─── ユーザーの活動統計型 ─────────────────────────────────────
+export type TierProgress = {
+  posts:             number
+  days_active:       number
+  reactions_received:number
+  voice_sessions:    number
+  score:             number
+  tier:              string
+}
+
+// ─── DBからティア進捗取得 ─────────────────────────────────────
+export async function fetchTierProgress(userId: string): Promise<TierProgress | null> {
+  const { data, error } = await createClient()
+    .rpc('get_user_tier_progress', { p_user_id: userId })
+  if (error || !data) return null
+  return data as TierProgress
+}
+
 // ─── Tier 定義 ────────────────────────────────────────────────
 export const TRUST_TIERS = [
   {

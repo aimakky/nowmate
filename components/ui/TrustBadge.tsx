@@ -1,6 +1,6 @@
 'use client'
 
-import { getTierById, getTierFromScore, getNextTier, getProgressToNext } from '@/lib/trust'
+import { getTierById, getTierFromScore, getNextTier, getProgressToNext, TIER_REQUIREMENTS, type TierProgress } from '@/lib/trust'
 
 // ─── コンパクトバッジ（一覧・カードに使う）──────────────────
 export default function TrustBadge({
@@ -42,9 +42,10 @@ export default function TrustBadge({
   )
 }
 
-// ─── フルカード（マイページで使う）──────────────────────────
+// ─── フルカード（マイページで使う・Discourse式多次元進捗）────
 export function TrustCard({
   trust,
+  progress,
   isPremium = false,
 }: {
   trust: {
@@ -53,12 +54,19 @@ export function TrustCard({
     total_helped: number
     phone_verified: boolean
   }
+  progress?: TierProgress | null   // fetchTierProgress() の結果を渡す
   isPremium?: boolean
 }) {
   const tier     = getTierById(trust.tier)
   const next     = getNextTier(trust.tier)
-  const progress = getProgressToNext(trust.score)
   const isPillar = tier.id === 'pillar'
+  const req      = next ? TIER_REQUIREMENTS[next.id] : null
+
+  // 各軸の達成率（0〜100%）
+  function pct(current: number, required: number) {
+    if (required === 0) return 100
+    return Math.min(100, Math.round((current / required) * 100))
+  }
 
   return (
     <div className={`bg-white border rounded-2xl p-4 shadow-sm transition-all ${
@@ -88,28 +96,62 @@ export function TrustCard({
           {tier.icon}
         </div>
         <div>
-          <p className="font-extrabold text-stone-900 text-base">{tier.label}
+          <p className="font-extrabold text-stone-900 text-base">
+            {tier.label}
             {isPillar && <span className="ml-1.5 text-xs text-amber-500 font-bold">最高位</span>}
           </p>
           <p className="text-xs text-stone-400 leading-snug">{tier.desc}</p>
         </div>
       </div>
 
-      {/* Progress to next tier */}
-      {next && (
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-1.5">
-            <p className="text-[10px] text-stone-400 font-semibold">
-              次の立場まで：{next.icon} {next.label}
+      {/* ── Discourse式 多次元進捗バー ── */}
+      {next && req && progress && (
+        <div className="mb-4 bg-stone-50 border border-stone-100 rounded-2xl px-4 py-3.5 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-extrabold text-stone-500 uppercase tracking-wider">
+              次の立場へ：{next.icon} {next.label}
             </p>
-            <p className="text-[10px] text-stone-400">あと{progress.pointsNeeded}pt</p>
+            <span className="text-[10px] text-stone-400">{req.hint}</span>
           </div>
-          <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-brand-400 rounded-full transition-all duration-500"
-              style={{ width: `${progress.pct}%` }}
-            />
-          </div>
+
+          {[
+            { icon: '📝', label: '投稿数',    current: progress.posts,              required: req.posts,             unit: '回' },
+            { icon: '📅', label: '活動日数',  current: progress.days_active,        required: req.days,              unit: '日' },
+            { icon: '❤️', label: 'いいね',    current: progress.reactions_received, required: req.reactionsReceived, unit: '' },
+            ...(req.voiceSessions > 0
+              ? [{ icon: '🎙️', label: '通話参加', current: progress.voice_sessions, required: req.voiceSessions, unit: '回' }]
+              : []),
+          ].map(({ icon, label, current, required }) => {
+            const p = pct(current, required)
+            const done = current >= required
+            return (
+              <div key={label}>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm">{icon}</span>
+                    <span className="text-[11px] font-semibold text-stone-600">{label}</span>
+                  </div>
+                  <span className={`text-[11px] font-extrabold ${done ? 'text-emerald-600' : 'text-stone-500'}`}>
+                    {done ? '✓ 達成' : `${current} / ${required}`}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-stone-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${done ? 'bg-emerald-400' : 'bg-brand-400'}`}
+                    style={{ width: `${p}%` }}
+                  />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* 最高位 or progres未ロード時：スコアバー */}
+      {isPillar && (
+        <div className="mb-4 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 text-center">
+          <p className="text-xs font-bold text-amber-700">✨ 最高位に到達しました</p>
+          <p className="text-[10px] text-amber-500 mt-0.5">全機能が解放されています</p>
         </div>
       )}
 
@@ -133,11 +175,11 @@ export function TrustCard({
       {/* What you can do */}
       <div className="mt-3 space-y-1.5">
         {[
-          { ok: tier.canPost,         label: '投稿できる' },
-          { ok: tier.canSpeak,        label: '通話で話せる' },
-          { ok: tier.canConsult,      label: '相談投稿できる' },
-          { ok: tier.canCreateRoom,   label: '通話部屋を作れる' },
-          { ok: tier.canCreateVillage,label: '村を作れる' },
+          { ok: tier.canPost,          label: '投稿できる' },
+          { ok: tier.canSpeak,         label: '通話で話せる' },
+          { ok: tier.canConsult,       label: '相談投稿できる' },
+          { ok: tier.canCreateRoom,    label: '通話部屋を作れる' },
+          { ok: tier.canCreateVillage, label: '村を作れる' },
         ].map(({ ok, label }) => (
           <div key={label} className="flex items-center gap-2">
             <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 ${

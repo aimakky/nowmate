@@ -5,12 +5,11 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag } from '@/lib/utils'
 import { ArrowLeft, Mic, MicOff, Radio, LogOut, Send, ChevronUp, ChevronDown } from 'lucide-react'
-import { awardPoints } from '@/lib/trust'
-import { getOccupationBadge } from '@/lib/occupation'
+import { awardPoints, getTierById } from '@/lib/trust'
 
 // ─── 定数 ────────────────────────────────────────────────────
 const CAT_EMOJI: Record<string, string> = {
-  '雑談': '💬', '飲み': '🍻', '相談': '🤝', '作業': '💻', 'Language': '🗣️', 'Other': '✨'
+  '雑談': '💬', '夜話': '🌙', '相談': '🤝', '悩み': '💭', '笑い': '😂', '趣味': '🎵', 'Other': '✨'
 }
 
 const REACTION_EMOJIS = ['👋', '👏', '😂', '❤️', '🔥', '🤔']
@@ -19,10 +18,11 @@ const REACTION_EMOJIS = ['👋', '👏', '😂', '❤️', '🔥', '🤔']
 const WELCOME_TIMEOUT = 15
 
 interface Participant {
-  user_id:   string
+  user_id:     string
   is_listener: boolean
-  join_mode: 'speaker' | 'listener' | 'silent'
-  profiles:  { display_name: string; nationality: string; avatar_url: string | null; occupation?: string | null }
+  join_mode:   'speaker' | 'listener' | 'silent'
+  profiles:    { display_name: string; nationality: string; avatar_url: string | null }
+  user_trust?: { tier: string } | null
 }
 
 interface FloatingReaction {
@@ -58,7 +58,8 @@ function Avatar({
 }) {
   const sz = size === 'sm' ? 'w-11 h-11 text-xl' : 'w-16 h-16 text-2xl'
   const flag = getNationalityFlag(participant.profiles?.nationality || '')
-  const occBadge = getOccupationBadge(participant.profiles?.occupation)
+  const tierId = participant.user_trust?.tier ?? 'visitor'
+  const tier = getTierById(tierId)
 
   return (
     <div className="flex flex-col items-center gap-0.5">
@@ -86,11 +87,10 @@ function Avatar({
       <p className="text-[10px] text-stone-600 font-semibold text-center truncate w-14 px-0.5">
         {participant.profiles?.display_name?.split(' ')[0] ?? '?'}
       </p>
-      {occBadge && (
-        <span className="inline-flex items-center gap-0.5 text-[8px] font-bold px-1.5 py-0 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 truncate max-w-[3.5rem]">
-          {occBadge.emoji} {occBadge.label}
-        </span>
-      )}
+      {/* 信頼ティアバッジ（Discourse式：発言者の質を可視化）*/}
+      <span className={`inline-flex items-center gap-0.5 text-[8px] font-bold px-1.5 py-0 rounded-full border truncate max-w-[3.5rem] ${tier.color}`}>
+        {tier.icon} {tier.label}
+      </span>
     </div>
   )
 }
@@ -111,6 +111,7 @@ export default function VoiceRoomPage() {
   const [isMuted,        setIsMuted]        = useState(false)
   const [isListener,     setIsListener]     = useState(false)
   const [micError,       setMicError]       = useState(false)
+  const [myTier,         setMyTier]         = useState<string>('visitor')
   const MAX_SPEAKERS = 4
 
   // ── ウェルカムシステム ────────────────────────────────────
@@ -157,13 +158,17 @@ export default function VoiceRoomPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
       setUserId(user.id)
-      supabase.from('profiles').select('display_name, nationality').eq('id', user.id).single()
-        .then(({ data }) => {
-          if (data) {
-            setMyName(data.display_name ?? '')
-            setMyFlag(getNationalityFlag(data.nationality ?? ''))
-          }
-        })
+      // プロフィール + 信頼ティアを同時取得
+      Promise.all([
+        supabase.from('profiles').select('display_name, nationality').eq('id', user.id).single(),
+        supabase.from('user_trust').select('tier').eq('user_id', user.id).maybeSingle(),
+      ]).then(([{ data: p }, { data: t }]) => {
+        if (p) {
+          setMyName(p.display_name ?? '')
+          setMyFlag(getNationalityFlag(p.nationality ?? ''))
+        }
+        if (t?.tier) setMyTier(t.tier)
+      })
     })
   }, [])
 
@@ -181,7 +186,7 @@ export default function VoiceRoomPage() {
     if (!roomId) return
     const { data } = await createClient()
       .from('voice_participants')
-      .select('user_id, is_listener, join_mode, profiles(display_name, nationality, avatar_url, occupation)')
+      .select('user_id, is_listener, join_mode, profiles(display_name, nationality, avatar_url), user_trust(tier)')
       .eq('room_id', roomId)
     setParticipants((data || []) as unknown as Participant[])
   }, [roomId])
@@ -558,6 +563,19 @@ export default function VoiceRoomPage() {
             </p>
             <p className="text-xs text-stone-400 text-center mb-5">どのモードで入りますか？</p>
 
+            {/* 見習いはスピーカー不可（Discourse TL0サンドボックス）*/}
+            {myTier === 'visitor' && (
+              <div className="bg-indigo-50 border border-indigo-200 rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2">
+                <span className="text-base flex-shrink-0">🪴</span>
+                <div>
+                  <p className="text-[11px] text-indigo-700 font-bold">見習いは聴くだけ参加できます</p>
+                  <p className="text-[10px] text-indigo-500 mt-0.5">
+                    電話認証 + 初投稿で「住民」に昇格すると話せるようになります
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* スピーカー上限（4名） */}
             {speakers.length >= MAX_SPEAKERS && (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2">
@@ -572,15 +590,19 @@ export default function VoiceRoomPage() {
               {/* 話す */}
               <button
                 onClick={() => joinRoom('speaker')}
-                disabled={joining || speakers.length >= MAX_SPEAKERS}
+                disabled={joining || speakers.length >= MAX_SPEAKERS || myTier === 'visitor'}
                 className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 active:scale-[0.98] transition-all text-left disabled:opacity-40"
-                style={speakers.length >= MAX_SPEAKERS
+                style={speakers.length >= MAX_SPEAKERS || myTier === 'visitor'
                   ? { borderColor: '#e7e5e4', background: '#f5f5f4' }
                   : { borderColor: '#6366f1', background: '#eef2ff' }}>
                 <span className="text-2xl flex-shrink-0">🎙️</span>
                 <div>
-                  <p className="font-extrabold text-sm" style={{ color: speakers.length >= MAX_SPEAKERS ? '#a8a29e' : '#4338ca' }}>
-                    話す {speakers.length >= MAX_SPEAKERS ? `（上限${MAX_SPEAKERS}名）` : `（残り${MAX_SPEAKERS - speakers.length}枠）`}
+                  <p className="font-extrabold text-sm" style={{ color: speakers.length >= MAX_SPEAKERS || myTier === 'visitor' ? '#a8a29e' : '#4338ca' }}>
+                    {myTier === 'visitor'
+                      ? '話す（住民以上で解放）'
+                      : speakers.length >= MAX_SPEAKERS
+                        ? `話す（上限${MAX_SPEAKERS}名）`
+                        : `話す（残り${MAX_SPEAKERS - speakers.length}枠）`}
                   </p>
                   <p className="text-[10px] text-stone-400">マイクをオンにして参加</p>
                 </div>
