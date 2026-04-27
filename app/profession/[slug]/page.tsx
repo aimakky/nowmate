@@ -223,7 +223,7 @@ export default async function ProfessionPage({ params }: { params: Params }) {
           className="w-full py-4 bg-white text-brand-600 rounded-2xl font-extrabold text-base text-center shadow-lg active:scale-[0.98] transition-all mb-3">
           {data.label}村に無料で入る →
         </Link>
-        <p className="text-xs text-white/40">30秒で登録 · 完全無料 · 18歳以上</p>
+        <p className="text-xs text-white/40">30秒で登録 · 完全無料 · 20歳以上</p>
       </section>
 
       {/* ── あるある ── */}
@@ -319,7 +319,7 @@ export default async function ProfessionPage({ params }: { params: Params }) {
             className="w-full py-4 bg-white text-brand-600 rounded-2xl font-extrabold text-base text-center active:scale-[0.98] transition-all block mb-3 shadow-lg">
             無料で始める →
           </Link>
-          <p className="text-xs text-white/30">30秒で登録 · 永久無料 · 18歳以上</p>
+          <p className="text-xs text-white/30">30秒で登録 · 永久無料 · 20歳以上</p>
         </div>
       </section>
 
@@ -348,7 +348,7 @@ export default async function ProfessionPage({ params }: { params: Params }) {
           </div>
           <span className="font-bold text-stone-700">samee</span>
         </div>
-        <p className="text-xs text-stone-400 mb-3">あなたの職業で、本音が話せる · 18歳以上</p>
+        <p className="text-xs text-stone-400 mb-3">あなたの職業で、本音が話せる · 20歳以上</p>
         <div className="flex justify-center gap-5 text-xs text-stone-400">
           <Link href="/terms"   className="hover:text-stone-600 transition">利用規約</Link>
           <Link href="/privacy" className="hover:text-stone-600 transition">プライバシー</Link>

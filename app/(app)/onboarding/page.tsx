@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 
 const STEPS = [
-  { title: '年齢確認',         emoji: '🔒', sub: '18歳以上の方のみご利用いただけます' },
+  { title: '年齢確認',         emoji: '🔒', sub: '20歳以上の方のみご利用いただけます' },
   { title: 'プロフィール',     emoji: '👋', sub: '村での名前を決めましょう' },
   { title: '今、話したいこと', emoji: '💬', sub: '今どんなことを話したいですか？' },
   { title: '職業を選ぶ',       emoji: '💼', sub: 'あなたの職業コミュニティに入ります' },
@@ -407,9 +407,9 @@ export default function OnboardingPage() {
               style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%)' }}
             >
               <div className="text-5xl mb-4">🔒</div>
-              <h3 className="font-extrabold text-white text-lg mb-2">ご利用は18歳以上</h3>
+              <h3 className="font-extrabold text-white text-lg mb-2">ご利用は20歳以上</h3>
               <p className="text-white/60 text-xs leading-relaxed">
-                sameeは18歳以上の方のためのコミュニティです。<br />
+                sameeは20歳以上の方のためのコミュニティです。<br />
                 健全な村づくりのため、年齢確認をお願いしています。
               </p>
             </div>
@@ -447,7 +447,7 @@ export default function OnboardingPage() {
                 {ageConfirmed && <span className="text-white text-[11px] font-bold">✓</span>}
               </div>
               <span className="text-sm text-stone-700 font-medium leading-relaxed">
-                私は<span className="font-extrabold text-indigo-600">18歳以上</span>であることを確認しました。
+                私は<span className="font-extrabold text-indigo-600">20歳以上</span>であることを確認しました。
                 利用規約とプライバシーポリシーに同意します。
               </span>
             </button>

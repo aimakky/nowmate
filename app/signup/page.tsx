@@ -71,7 +71,7 @@ function SignupForm() {
             <span className="text-2xl">🏕️</span>
           </div>
           <h1 className="text-2xl font-extrabold text-stone-900">sameeに参加する</h1>
-          <p className="text-stone-400 text-sm mt-1">18歳以上の方のみご利用いただけます</p>
+          <p className="text-stone-400 text-sm mt-1">20歳以上の方のみご利用いただけます</p>
         </div>
 
         {/* Google */}
@@ -125,7 +125,7 @@ function SignupForm() {
             <span className="text-xs text-stone-500 leading-relaxed">
               <Link href="/terms" className="text-indigo-500 font-semibold">利用規約</Link>・
               <Link href="/privacy" className="text-indigo-500 font-semibold">プライバシーポリシー</Link>
-              に同意します。18歳以上であることを確認しました。
+              に同意します。20歳以上であることを確認しました。
             </span>
           </label>
 

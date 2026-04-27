@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
   title: 'samee — 職場では言えないことを、話せる場所。',
-  description: '仕事を持つ日本人が、職場の外では言えないことを話せるコミュニティ。仕事に誇りがなくても、転職を考えていても、ただしんどくても。電話認証済みの大人だけが集まる場所。',
+  description: '仕事を持つ日本人が、職場の外では言えないことを話せるコミュニティ。仕事に誇りがなくても、転職を考えていても、ただしんどくても。電話認証済みの20歳以上だけが集まる場所。',
   openGraph: {
     title: 'samee — 職場では言えないことを、話せる場所。',
     description: '働く日本人が、仕事の本音を話せる唯一の場所。',
@@ -124,7 +124,7 @@ export default async function TopPage() {
           className="w-full py-3 border-2 border-stone-200 text-stone-600 rounded-2xl font-semibold text-sm text-center hover:bg-stone-50 active:scale-[0.98] transition-all">
           すでにアカウントがある
         </Link>
-        <p className="text-xs text-stone-400 mt-3">無料 · クレジットカード不要 · 18歳以上</p>
+        <p className="text-xs text-stone-400 mt-3">無料 · クレジットカード不要 · 20歳以上</p>
       </section>
 
       {/* ── 悩みテーマ村 ── */}
@@ -286,7 +286,7 @@ export default async function TopPage() {
             className="w-full py-4 bg-white text-brand-600 rounded-2xl font-extrabold text-base text-center active:scale-[0.98] transition-all block mb-3 shadow-lg">
             今夜、話しに行く →
           </Link>
-          <p className="text-xs text-white/30">30秒で登録 · 永久無料 · 18歳以上</p>
+          <p className="text-xs text-white/30">30秒で登録 · 永久無料 · 20歳以上</p>
         </div>
       </section>
 
@@ -311,7 +311,7 @@ export default async function TopPage() {
           </div>
           <span className="font-bold text-stone-700">samee</span>
         </div>
-        <p className="text-xs text-stone-400 mb-3">職場では言えないことを、話せる場所 · 18歳以上</p>
+        <p className="text-xs text-stone-400 mb-3">職場では言えないことを、話せる場所 · 20歳以上</p>
         <div className="flex justify-center gap-5 text-xs text-stone-400">
           <Link href="/terms"   className="hover:text-stone-600 transition">利用規約</Link>
           <Link href="/privacy" className="hover:text-stone-600 transition">プライバシー</Link>
