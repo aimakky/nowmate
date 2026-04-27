@@ -3,82 +3,39 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, ChevronRight } from 'lucide-react'
+import { Plus, Search, ChevronRight, Mic } from 'lucide-react'
 import VillageCard, { type Village, getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES, getFireStatus } from '@/components/ui/VillageCard'
 import VillageOnboarding from '@/components/features/VillageOnboarding'
 import TonightInput from '@/components/features/TonightInput'
 import Link from 'next/link'
 
-// ── カテゴリ定義（精神年齢フィルター設計済み） ────────────────
+// ── カテゴリ定義（職業なし）────────────────────────────────────
 const CATEGORIES = [
-  {
-    id:      'all',
-    emoji:   '🏕️',
-    label:   'すべて',
-    labelEn: 'All',
-    desc:    null,
-  },
-  {
-    id:      'start',
-    emoji:   '🌱',
-    label:   'はじまりの人へ',
-    labelEn: 'New Chapter',
-    desc:    '転職・引越・新生活・一人暮らし',
-  },
-  {
-    id:      'work',
-    emoji:   '💼',
-    label:   '仕事のリアル',
-    labelEn: 'Work & Career',
-    desc:    '社会人・副業・キャリア・職場の悩み',
-  },
-  {
-    id:      'think',
-    emoji:   '🧠',
-    label:   '考えを深めたい',
-    labelEn: 'Think Deeper',
-    desc:    '読書・思考整理・自己分析・議論',
-  },
-  {
-    id:      'help',
-    emoji:   '🤝',
-    label:   '誰かの役に立てる',
-    labelEn: 'Be Helpful',
-    desc:    '相談に乗る・経験をシェアする',
-  },
-  {
-    id:      'life',
-    emoji:   '🌍',
-    label:   '地に足つけて生きる',
-    labelEn: 'Everyday Life',
-    desc:    'お金・健康・人間関係・暮らし',
-  },
-  {
-    id:      'tonight',
-    emoji:   '🌙',
-    label:   '今日を終わらせたい',
-    labelEn: 'End of Day',
-    desc:    '仕事後・ゆるい雑談・ただ聞いてほしい',
-  },
+  { id: 'all',     emoji: '🏕️', label: 'すべて',      desc: null },
+  { id: 'tonight', emoji: '🌙', label: '夜話・雑談',   desc: 'ゆるく話したい · 今日を終わらせたい' },
+  { id: 'help',    emoji: '🤝', label: '悩み相談',     desc: '誰かに聞いてほしい · 相談に乗れる' },
+  { id: 'think',   emoji: '🧠', label: '考えを深める', desc: '読書・思考整理・議論' },
+  { id: 'life',    emoji: '🌍', label: '暮らし・趣味', desc: 'お金・健康・人間関係・趣味全般' },
+  { id: 'start',   emoji: '🌱', label: 'はじまり',     desc: '転職・引越・新生活・一人暮らし' },
 ]
 
-// ── サブフィルター定義 ─────────────────────────────────────────
+// ── サブフィルター ─────────────────────────────────────────────
 const SUB_FILTERS = [
-  { id: 'popular', label: 'にぎやか',  emoji: '🔥' },
-  { id: 'safe',    label: '安心',      emoji: '🕊️' },
-  { id: 'new',     label: '新着',      emoji: '✨' },
-  { id: 'member',  label: '参加中',    emoji: '🏠' },
+  { id: 'popular', label: 'にぎやか', emoji: '🔥' },
+  { id: 'safe',    label: '安心',     emoji: '🕊️' },
+  { id: 'new',     label: '新着',     emoji: '✨' },
+  { id: 'member',  label: '参加中',   emoji: '🏠' },
 ]
 
-// おすすめレーン（全件表示時のみ）
+// おすすめレーン
 const LANES = [
   { id: 'hot',     emoji: '🔥', label: '今週活発な村',    orderBy: 'post_count_7d'          as const, ascending: false },
   { id: 'welcome', emoji: '🌱', label: '新しい仲間を歓迎', orderBy: 'welcome_reply_count_7d' as const, ascending: false },
   { id: 'new',     emoji: '✨', label: '新しくできた村',   orderBy: 'created_at'             as const, ascending: false },
 ]
 
-function SmallVillageCard({ village, isMember, onJoin }: {
-  village: Village; isMember: boolean; onJoin: () => void
+function SmallVillageCard({ village, isMember, isLive, onJoin }: {
+  village: Village; isMember: boolean; isLive: boolean; onJoin: () => void
 }) {
   const router = useRouter()
   const style  = VILLAGE_TYPE_STYLES[village.type] ?? VILLAGE_TYPE_STYLES['雑談']
@@ -92,11 +49,17 @@ function SmallVillageCard({ village, isMember, onJoin }: {
         <span className="text-3xl" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))' }}>
           {village.icon}
         </span>
-        {/* 焚き火バッジ */}
-        <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 bg-black/30 backdrop-blur-sm rounded-full px-1.5 py-0.5">
-          <span className={`text-[10px] ${fire.animate ? 'animate-pulse' : ''}`}>{fire.emoji}</span>
-          <span className="text-[8px] font-bold text-white/90">{fire.label}</span>
-        </div>
+        {isLive ? (
+          <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 bg-red-500 rounded-full px-1.5 py-0.5">
+            <Mic size={8} className="text-white animate-pulse" />
+            <span className="text-[9px] font-extrabold text-white">LIVE</span>
+          </div>
+        ) : (
+          <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 bg-black/30 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+            <span className={`text-[10px] ${fire.animate ? 'animate-pulse' : ''}`}>{fire.emoji}</span>
+            <span className="text-[8px] font-bold text-white/90">{fire.label}</span>
+          </div>
+        )}
       </div>
       <div className="p-2.5">
         <p className="font-bold text-stone-900 text-xs truncate leading-snug">{village.name}</p>
@@ -117,17 +80,17 @@ function SmallVillageCard({ village, isMember, onJoin }: {
 
 export default function VillagesPage() {
   const router = useRouter()
-  const [villages,      setVillages]      = useState<Village[]>([])
-  const [laneData,      setLaneData]      = useState<Record<string, Village[]>>({})
-  const [loading,       setLoading]       = useState(true)
-  const [category,      setCategory]      = useState('all')
-  const [subFilter,     setSubFilter]     = useState<string | null>(null)
-  const [search,        setSearch]        = useState('')
-  const [userId,        setUserId]        = useState<string | null>(null)
-  const [memberIds,     setMemberIds]     = useState<Set<string>>(new Set())
-  const [myVillages,    setMyVillages]    = useState<Village[]>([])
-  const [unreadCounts,  setUnreadCounts]  = useState<Record<string, number>>({})
-  const [jobVillages,   setJobVillages]   = useState<Village[]>([])
+  const [villages,     setVillages]     = useState<Village[]>([])
+  const [laneData,     setLaneData]     = useState<Record<string, Village[]>>({})
+  const [loading,      setLoading]      = useState(true)
+  const [category,     setCategory]     = useState('all')
+  const [subFilter,    setSubFilter]    = useState<string | null>(null)
+  const [search,       setSearch]       = useState('')
+  const [userId,       setUserId]       = useState<string | null>(null)
+  const [memberIds,    setMemberIds]    = useState<Set<string>>(new Set())
+  const [myVillages,   setMyVillages]   = useState<Village[]>([])
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({})
+  const [liveVillageIds, setLiveVillageIds] = useState<Set<string>>(new Set())
 
   const weeklyEvent = getCurrentWeeklyEvent()
 
@@ -135,6 +98,18 @@ export default function VillagesPage() {
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id)
     })
+  }, [])
+
+  // ライブ中の通話部屋がある村を取得
+  const fetchLiveVillages = useCallback(async () => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('voice_rooms')
+      .select('village_id')
+      .is('ended_at', null)
+      .not('village_id', 'is', null)
+    const ids = new Set<string>((data || []).map((r: any) => r.village_id).filter(Boolean))
+    setLiveVillageIds(ids)
   }, [])
 
   const fetchLanes = useCallback(async () => {
@@ -154,10 +129,8 @@ export default function VillagesPage() {
     const supabase = createClient()
     let q = supabase.from('villages').select('*').eq('is_public', true)
 
-    // カテゴリフィルター
     if (category !== 'all') q = q.eq('category', category)
 
-    // サブフィルター
     if (subFilter === 'popular') q = q.order('post_count_7d',   { ascending: false })
     else if (subFilter === 'safe')   q = q.order('report_count_7d', { ascending: true }).order('member_count', { ascending: false })
     else if (subFilter === 'new')    q = q.order('created_at',      { ascending: false })
@@ -179,11 +152,7 @@ export default function VillagesPage() {
     setMyVillages(joined)
     setMemberIds(new Set(joined.map(v => v.id)))
 
-    // 職業限定村を優先表示
-    const jobV = joined.filter((v: any) => v.job_locked)
-    setJobVillages(jobV)
-
-    // 未読件数計算（lastVisit_villages基準）
+    // 未読件数
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const lastVisit = localStorage.getItem('lastVisit_villages') || since24h
     const counts: Record<string, number> = {}
@@ -199,16 +168,16 @@ export default function VillagesPage() {
     setUnreadCounts(counts)
   }, [userId])
 
-  useEffect(() => { fetchVillages() },    [fetchVillages])
-  useEffect(() => { fetchMemberships() }, [fetchMemberships])
+  useEffect(() => { fetchVillages() },     [fetchVillages])
+  useEffect(() => { fetchMemberships() },  [fetchMemberships])
+  useEffect(() => { fetchLiveVillages() }, [fetchLiveVillages])
   useEffect(() => { if (category === 'all' && !subFilter) fetchLanes() }, [fetchLanes, category, subFilter])
 
   async function handleJoin(villageId: string) {
     if (!userId) { router.push('/login'); return }
     const supabase = createClient()
     if (memberIds.has(villageId)) {
-      await supabase.from('village_members').delete()
-        .eq('village_id', villageId).eq('user_id', userId)
+      await supabase.from('village_members').delete().eq('village_id', villageId).eq('user_id', userId)
       setMemberIds(prev => { const n = new Set(prev); n.delete(villageId); return n })
     } else {
       await supabase.from('village_members').insert({ village_id: villageId, user_id: userId })
@@ -216,7 +185,6 @@ export default function VillagesPage() {
     }
   }
 
-  // 表示する村リスト（サブフィルター: 参加中 + 検索）
   const displayed = villages.filter(v => {
     if (subFilter === 'member') return memberIds.has(v.id)
     if (search) {
@@ -261,7 +229,7 @@ export default function VillagesPage() {
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
             <h1 className="font-extrabold text-white text-2xl leading-tight mb-0.5">村を探す</h1>
-            <p className="text-xs text-white/50">自分に合う場所で、何かを増やそう</p>
+            <p className="text-xs text-white/50">自分に合う場所で、誰かとつながろう</p>
           </div>
           <button
             onClick={() => router.push('/villages/create')}
@@ -284,7 +252,7 @@ export default function VillagesPage() {
           />
         </div>
 
-        {/* ── カテゴリタブ（横スクロール）── */}
+        {/* カテゴリタブ */}
         <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 px-4 pb-1">
           {CATEGORIES.map(cat => {
             const active = category === cat.id
@@ -306,7 +274,7 @@ export default function VillagesPage() {
         </div>
       </div>
 
-      {/* ── カテゴリ説明 + サブフィルター ── */}
+      {/* ── サブフィルター ── */}
       <div className="bg-white border-b border-stone-100 shadow-sm">
         {activeCat?.desc && category !== 'all' && (
           <div className="px-4 pt-3 pb-1">
@@ -361,57 +329,6 @@ export default function VillagesPage() {
       {/* ── Content ── */}
       <div className="pb-32">
 
-        {/* ══ 職業限定村（参加中かつ全表示時）══ */}
-        {showLanes && jobVillages.length > 0 && (
-          <div className="pt-4 px-4">
-            <div className="flex items-center gap-2 mb-2.5">
-              <span className="text-base">💼</span>
-              <p className="text-xs font-extrabold text-stone-800">あなたの職業村</p>
-            </div>
-            <div className="space-y-2">
-              {jobVillages.map((v: any) => {
-                const unread = unreadCounts[v.id] ?? 0
-                const fire   = getFireStatus(v.last_post_at ?? null)
-                return (
-                  <button key={v.id}
-                    onClick={() => router.push(`/villages/${v.id}`)}
-                    className="w-full flex items-center gap-3 bg-white border border-indigo-100 rounded-2xl px-4 py-3.5 shadow-sm active:scale-[0.99] transition-all text-left"
-                    style={{ background: 'linear-gradient(135deg, #eef2ff 0%, #ffffff 100%)' }}
-                  >
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                      style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' }}>
-                      {v.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-extrabold text-stone-900 truncate">{v.name}</p>
-                        {unread > 0 && (
-                          <span className="flex-shrink-0 w-5 h-5 bg-brand-500 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white">
-                            {unread > 9 ? '9+' : unread}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-[10px] text-indigo-500 font-bold">
-                          {v.job_type}限定 · 👥 {v.member_count}人
-                        </p>
-                        <span
-                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5"
-                          style={{ background: fire.bgColor, color: fire.textColor }}
-                        >
-                          <span className={fire.animate ? 'animate-pulse' : ''}>{fire.emoji}</span>
-                          {fire.label}
-                        </span>
-                      </div>
-                    </div>
-                    <span className="text-stone-300 text-sm flex-shrink-0">›</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
         {/* ══ おすすめレーン（all・サブフィルターなし・非検索時）══ */}
         {showLanes && (
           <div className="pt-4 space-y-5">
@@ -437,6 +354,7 @@ export default function VillagesPage() {
                       <SmallVillageCard
                         key={v.id} village={v}
                         isMember={memberIds.has(v.id)}
+                        isLive={liveVillageIds.has(v.id)}
                         onJoin={() => handleJoin(v.id)}
                       />
                     ))}
@@ -459,7 +377,7 @@ export default function VillagesPage() {
             <span className="text-2xl">{activeCat?.emoji}</span>
             <div>
               <p className="text-sm font-extrabold text-stone-800">{activeCat?.label}</p>
-              <p className="text-[10px] text-stone-400">{activeCat?.labelEn}</p>
+              {activeCat?.desc && <p className="text-[10px] text-stone-400">{activeCat.desc}</p>}
             </div>
           </div>
         )}
@@ -503,13 +421,26 @@ export default function VillagesPage() {
                   <div className="flex items-center gap-2 mb-2.5">
                     <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest">おすすめ · Featured</span>
                     <div className="flex-1 h-px bg-stone-100" />
+                    {liveVillageIds.has(featured.id) && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-red-500">
+                        <Mic size={10} className="animate-pulse" /> LIVE
+                      </span>
+                    )}
                   </div>
-                  <VillageCard
-                    village={featured}
-                    isMember={memberIds.has(featured.id)}
-                    onJoin={() => handleJoin(featured.id)}
-                    featured={true}
-                  />
+                  <div className="relative">
+                    <VillageCard
+                      village={featured}
+                      isMember={memberIds.has(featured.id)}
+                      onJoin={() => handleJoin(featured.id)}
+                      featured={true}
+                    />
+                    {liveVillageIds.has(featured.id) && (
+                      <div className="absolute top-3 right-3 flex items-center gap-1 bg-red-500 rounded-full px-2 py-0.5 shadow-lg">
+                        <Mic size={9} className="text-white animate-pulse" />
+                        <span className="text-[10px] font-extrabold text-white">LIVE</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -518,11 +449,11 @@ export default function VillagesPage() {
                   {!search && (
                     <div className="flex items-center gap-2 mb-2.5">
                       <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest">
-                        {subFilter === 'popular' ? '今週活発 · Most Active'   :
-                         subFilter === 'safe'    ? '安心の村 · Safe Spaces'   :
-                         subFilter === 'new'     ? '新着 · New Villages'      :
-                         subFilter === 'member'  ? '参加中 · Joined'          :
-                         category !== 'all'      ? `${activeCat?.label}の村`  :
+                        {subFilter === 'popular' ? '今週活発 · Most Active'  :
+                         subFilter === 'safe'    ? '安心の村 · Safe Spaces'  :
+                         subFilter === 'new'     ? '新着 · New Villages'     :
+                         subFilter === 'member'  ? '参加中 · Joined'         :
+                         category !== 'all'      ? `${activeCat?.label}の村` :
                          'その他の村 · More'}
                       </span>
                       <div className="flex-1 h-px bg-stone-100" />
@@ -530,11 +461,19 @@ export default function VillagesPage() {
                   )}
                   <div className="space-y-3">
                     {(search ? displayed : rest).map(v => (
-                      <VillageCard
-                        key={v.id} village={v}
-                        isMember={memberIds.has(v.id)}
-                        onJoin={() => handleJoin(v.id)}
-                      />
+                      <div key={v.id} className="relative">
+                        <VillageCard
+                          village={v}
+                          isMember={memberIds.has(v.id)}
+                          onJoin={() => handleJoin(v.id)}
+                        />
+                        {liveVillageIds.has(v.id) && (
+                          <div className="absolute top-3 right-3 flex items-center gap-1 bg-red-500 rounded-full px-2 py-0.5 shadow-lg">
+                            <Mic size={9} className="text-white animate-pulse" />
+                            <span className="text-[10px] font-extrabold text-white">LIVE</span>
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </>

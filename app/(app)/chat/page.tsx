@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Avatar from '@/components/ui/Avatar'
+import TrustBadge from '@/components/ui/TrustBadge'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
-import { getOccupationBadge } from '@/lib/occupation'
 import { MessageCircle } from 'lucide-react'
 
 interface DirectChat {
@@ -16,16 +16,16 @@ interface DirectChat {
     display_name: string
     avatar_url: string | null
     is_online: boolean
-    occupation?: string | null
+    trust_tier?: string | null
   }
   lastMessage: { content: string; created_at: string; sender_id: string } | null
 }
 
 export default function ChatListPage() {
   const router = useRouter()
-  const [directs,  setDirects]  = useState<DirectChat[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [userId,   setUserId]   = useState<string | null>(null)
+  const [directs, setDirects] = useState<DirectChat[]>([])
+  const [loading, setLoading] = useState(true)
+  const [userId,  setUserId]  = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -35,7 +35,6 @@ export default function ChatListPage() {
         if (!user) { router.push('/login'); return }
         setUserId(user.id)
 
-        // マッチ一覧取得
         const { data: matchData, error: matchErr } = await supabase
           .from('matches')
           .select('id, user1_id, user2_id')
@@ -52,11 +51,15 @@ export default function ChatListPage() {
         )
         const matchIds = matchData.map((m: any) => m.id)
 
-        const [{ data: profileData }, { data: msgData }] = await Promise.all([
+        const [{ data: profileData }, { data: trustData }, { data: msgData }] = await Promise.all([
           supabase
             .from('profiles')
-            .select('id, display_name, avatar_url, is_online, occupation')
+            .select('id, display_name, avatar_url, is_online')
             .in('id', otherIds),
+          supabase
+            .from('user_trust')
+            .select('user_id, tier')
+            .in('user_id', otherIds),
           supabase
             .from('messages')
             .select('match_id, content, created_at, sender_id')
@@ -64,8 +67,9 @@ export default function ChatListPage() {
             .order('created_at', { ascending: false }),
         ])
 
-        const profileMap = new Map((profileData || []).map((p: any) => [p.id, p]))
-        const lastMsgMap = new Map<string, any>()
+        const profileMap  = new Map((profileData || []).map((p: any) => [p.id, p]))
+        const trustMap    = new Map((trustData   || []).map((t: any) => [t.user_id, t.tier]))
+        const lastMsgMap  = new Map<string, any>()
         ;(msgData || []).forEach((msg: any) => {
           if (!lastMsgMap.has(msg.match_id)) lastMsgMap.set(msg.match_id, msg)
         })
@@ -75,7 +79,11 @@ export default function ChatListPage() {
             const otherId = m.user1_id === user.id ? m.user2_id : m.user1_id
             const other   = profileMap.get(otherId)
             if (!other) return null
-            return { matchId: m.id, other, lastMessage: lastMsgMap.get(m.id) ?? null }
+            return {
+              matchId: m.id,
+              other: { ...other, trust_tier: trustMap.get(otherId) ?? null },
+              lastMessage: lastMsgMap.get(m.id) ?? null,
+            }
           })
           .filter(Boolean) as DirectChat[]
 
@@ -102,7 +110,7 @@ export default function ChatListPage() {
       <div className="px-4 pt-12 pb-4"
         style={{ background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)' }}>
         <h1 className="font-extrabold text-white text-2xl">チャット</h1>
-        <p className="text-xs text-white/50 mt-0.5">マッチした相手とのメッセージ</p>
+        <p className="text-xs text-white/50 mt-0.5">ダイレクトメッセージ</p>
       </div>
 
       <div className="px-4 pt-4 pb-28">
@@ -125,7 +133,7 @@ export default function ChatListPage() {
             </div>
             <p className="font-extrabold text-stone-700 text-base">まだチャットがありません</p>
             <p className="text-sm text-stone-400 mt-1.5 leading-relaxed max-w-[220px]">
-              他のユーザーとマッチするとここに表示されます
+              村で話した人とDMができます
             </p>
             <button onClick={() => router.push('/villages')}
               className="mt-5 px-6 py-3 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-md shadow-brand-200 active:scale-95 transition-all">
@@ -135,8 +143,7 @@ export default function ChatListPage() {
         ) : (
           <div className="space-y-2">
             {directs.map(c => {
-              const occBadge = getOccupationBadge(c.other.occupation)
-              const isMine   = c.lastMessage?.sender_id === userId
+              const isMine = c.lastMessage?.sender_id === userId
               return (
                 <Link key={c.matchId} href={`/chat/${c.matchId}`}>
                   <div className="bg-white border border-stone-100 rounded-2xl p-4 flex items-center gap-3 active:bg-stone-50 transition-all shadow-sm">
@@ -154,10 +161,8 @@ export default function ChatListPage() {
                           <span className="font-bold text-stone-900 text-sm truncate">
                             {c.other.display_name}
                           </span>
-                          {occBadge && (
-                            <span className="flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 whitespace-nowrap">
-                              {occBadge.emoji} {occBadge.label}
-                            </span>
+                          {c.other.trust_tier && (
+                            <TrustBadge tierId={c.other.trust_tier} size="xs" showLabel={false} />
                           )}
                         </div>
                         {c.lastMessage && (

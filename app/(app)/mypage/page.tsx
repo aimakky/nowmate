@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { TrustCard, TrustHowToCard } from '@/components/ui/TrustBadge'
 import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
-import { getUserTrust } from '@/lib/trust'
+import { getUserTrust, fetchTierProgress, type TierProgress } from '@/lib/trust'
 import { getTitleName, TITLE_LEVEL_STYLE } from '@/lib/qa'
 import { Settings, LogOut, ChevronRight, Crown, Users } from 'lucide-react'
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
@@ -20,7 +20,7 @@ export default function MyPage() {
   const [trust,          setTrust]          = useState<any>(null)
   const [villageCount,   setVillageCount]   = useState(0)
   const [postCount,      setPostCount]      = useState(0)
-  const [tweetCount,     setTweetCount]     = useState(0)
+  const [tierProgress,   setTierProgress]   = useState<TierProgress | null>(null)
   const [qaTitles,       setQaTitles]       = useState<any[]>([])
   const [hostedVillages, setHostedVillages] = useState<any[]>([])
   const [joinedVillages, setJoinedVillages] = useState<any[]>([])
@@ -41,9 +41,9 @@ export default function MyPage() {
       const [
         { data: p },
         trustData,
+        tierProgressData,
         { count: vc },
         { count: pc },
-        { count: tc },
         qaTitlesRes,
         hostedRes,
         joinedRes,
@@ -53,9 +53,9 @@ export default function MyPage() {
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         getUserTrust(user.id),
+        fetchTierProgress(user.id),
         supabase.from('village_members').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('village_posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('tweets').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('qa_titles').select('*').eq('user_id', user.id).order('awarded_at', { ascending: false }),
         supabase.from('village_members')
           .select('villages(id, name, icon, type, member_count, post_count_7d, description)')
@@ -77,9 +77,9 @@ export default function MyPage() {
       if (!p) { router.push('/onboarding'); return }
       setProfile(p)
       setTrust(trustData)
+      setTierProgress(tierProgressData)
       setVillageCount(vc ?? 0)
       setPostCount(pc ?? 0)
-      setTweetCount(tc ?? 0)
       setQaTitles((qaTitlesRes as any)?.data ?? [])
       setHostedVillages(((hostedRes as any)?.data ?? []).map((r: any) => r.villages).filter(Boolean))
       setJoinedVillages(((joinedRes as any)?.data ?? []).map((r: any) => r.villages).filter(Boolean))
@@ -168,13 +168,12 @@ export default function MyPage() {
 
         {/* Activity stats */}
         <div
-          className="mt-4 grid grid-cols-5 gap-1.5 rounded-2xl px-3 py-3"
+          className="mt-4 grid grid-cols-4 gap-1.5 rounded-2xl px-3 py-3"
           style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
         >
           {[
             { value: villageCount,   label: '参加村' },
-            { value: postCount,      label: '考えを出した' },
-            { value: tweetCount,     label: '議題参加' },
+            { value: postCount,      label: '投稿' },
             { value: followingCount, label: '学んでる' },
             { value: followersCount, label: '学ばれてる' },
           ].map(s => (
@@ -194,7 +193,7 @@ export default function MyPage() {
         {/* ── 成長ポートフォリオ ── */}
         <GrowthPortfolio
           postCount={postCount}
-          tweetCount={tweetCount}
+          tweetCount={0}
           followingCount={followingCount}
           villageCount={villageCount}
           displayName={profile?.display_name}
@@ -209,6 +208,7 @@ export default function MyPage() {
               total_helped:   trust.total_helped,
               phone_verified: trust.phone_verified,
             }}
+            progress={tierProgress}
             isPremium={!!profile?.is_premium}
           />
         )}

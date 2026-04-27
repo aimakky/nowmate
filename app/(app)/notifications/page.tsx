@@ -8,7 +8,7 @@ import Avatar from '@/components/ui/Avatar'
 
 type Notif = {
   id: string
-  type: 'like' | 'reply' | 'follow' | 'comment' | 'bottle_reply' | 'new_member_post'
+  type: 'like' | 'reply' | 'follow' | 'comment' | 'bottle_reply' | 'new_member_post' | 'voice_room_started'
   actor_id: string | null
   target_id: string | null
   target_type: string | null
@@ -18,34 +18,33 @@ type Notif = {
   actor: { display_name: string; avatar_url: string | null } | null
 }
 
-const TYPE_CONFIG: Record<string, { emoji: string; label: string; urgent?: boolean }> = {
-  like:            { emoji: '💡', label: 'あなたの考えに共感しました',       urgent: true  },
-  reply:           { emoji: '💬', label: 'あなたの考えに返しました',          urgent: true  },
-  follow:          { emoji: '📖', label: 'あなたから学ぶことにしました',      urgent: true  },
-  new_member_post: { emoji: '🌱', label: '村に初投稿しました — 返してみよう', urgent: true  },
-  comment:         { emoji: '🏕️', label: '村の議題にコメントしました',        urgent: false },
-  bottle_reply:    { emoji: '🍶', label: '相談に返信しました',                urgent: false },
+const TYPE_CONFIG: Record<string, { emoji: string; label: string; section: 'reaction' | 'voice' | 'other' }> = {
+  like:               { emoji: '💡', label: 'あなたの考えに共感しました',       section: 'reaction' },
+  reply:              { emoji: '💬', label: 'あなたの考えに返しました',          section: 'reaction' },
+  follow:             { emoji: '📖', label: 'あなたから学ぶことにしました',      section: 'reaction' },
+  new_member_post:    { emoji: '🌱', label: '村に初投稿しました — 返してみよう', section: 'reaction' },
+  voice_room_started: { emoji: '🎙️', label: '通話を始めました',                 section: 'voice'    },
+  comment:            { emoji: '🏕️', label: '村の議題にコメントしました',        section: 'other'    },
+  bottle_reply:       { emoji: '🍶', label: '相談に返信しました',                section: 'other'    },
 }
 
 export default function NotificationsPage() {
   const router = useRouter()
   const [notifs,  setNotifs]  = useState<Notif[]>([])
   const [loading, setLoading] = useState(true)
-  const [userId,  setUserId]  = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
-    setUserId(user.id)
 
     const { data } = await supabase
       .from('notifications')
       .select('*, actor:actor_id(display_name, avatar_url)')
       .eq('user_id', user.id)
-      .order('priority', { ascending: false })   // high → normal
+      .order('priority', { ascending: false })
       .order('created_at', { ascending: false })
-      .limit(60)
+      .limit(80)
 
     setNotifs((data || []) as Notif[])
     setLoading(false)
@@ -69,15 +68,46 @@ export default function NotificationsPage() {
       router.push(`/villages/${n.target_id}`)
     } else if (n.type === 'new_member_post' && n.target_id) {
       router.push(`/villages/${n.target_id}`)
+    } else if (n.type === 'voice_room_started' && n.target_id) {
+      router.push(`/voice/${n.target_id}`)
     } else if (n.type === 'bottle_reply') {
       router.push('/mypage')
     }
   }
 
-  // high priority と normal priority に分離
-  const highNotifs   = notifs.filter(n => n.priority === 'high' || TYPE_CONFIG[n.type]?.urgent)
-  const normalNotifs = notifs.filter(n => n.priority !== 'high' && !TYPE_CONFIG[n.type]?.urgent)
-  const unreadHigh   = highNotifs.filter(n => !n.is_read).length
+  const reactionNotifs = notifs.filter(n => TYPE_CONFIG[n.type]?.section === 'reaction')
+  const voiceNotifs    = notifs.filter(n => TYPE_CONFIG[n.type]?.section === 'voice')
+  const otherNotifs    = notifs.filter(n => TYPE_CONFIG[n.type]?.section === 'other' || !TYPE_CONFIG[n.type])
+  const unreadCount    = notifs.filter(n => !n.is_read).length
+
+  function NotifRow({ n, tint }: { n: Notif; tint?: string }) {
+    const cfg   = TYPE_CONFIG[n.type] ?? { emoji: '🔔', label: '通知', section: 'other' as const }
+    const actor = n.actor as any
+    return (
+      <button
+        onClick={() => handleTap(n)}
+        className={`w-full flex items-start gap-3 px-4 py-3.5 text-left transition-colors active:bg-stone-50 ${
+          !n.is_read && tint ? tint : (!n.is_read ? 'bg-brand-50/30' : '')
+        }`}
+      >
+        <div className="relative flex-shrink-0">
+          <Avatar src={actor?.avatar_url} name={actor?.display_name ?? '?'} size="sm" />
+          <span className="absolute -bottom-1 -right-1 text-sm leading-none">{cfg.emoji}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-stone-800 leading-snug">
+            <span className="font-bold">{actor?.display_name ?? '誰か'}</span>
+            {' '}
+            <span className="text-stone-600">{cfg.label}</span>
+          </p>
+          <p className="text-xs text-stone-400 mt-0.5">{timeAgo(n.created_at)}</p>
+        </div>
+        {!n.is_read && (
+          <span className="w-2 h-2 bg-brand-500 rounded-full flex-shrink-0 mt-1.5" />
+        )}
+      </button>
+    )
+  }
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
@@ -85,11 +115,10 @@ export default function NotificationsPage() {
       {/* ── ヘッダー ── */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-stone-100 px-4 pt-4 pb-3">
         <div className="flex items-center justify-between">
-          <h1 className="font-extrabold text-stone-900 text-lg">今日の収穫</h1>
-          {unreadHigh > 0 && (
-            <span className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
-              style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca' }}>
-              🔴 {unreadHigh}件の返信・反応
+          <h1 className="font-extrabold text-stone-900 text-lg">通知</h1>
+          {unreadCount > 0 && (
+            <span className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-50 text-red-500 border border-red-100">
+              🔴 {unreadCount}件未読
             </span>
           )}
         </div>
@@ -110,7 +139,7 @@ export default function NotificationsPage() {
       ) : notifs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-32 px-8 text-center">
           <div className="text-6xl mb-4">🔔</div>
-          <p className="font-bold text-stone-700 text-base mb-1">今日の収穫はまだありません</p>
+          <p className="font-bold text-stone-700 text-base mb-1">通知はまだありません</p>
           <p className="text-sm text-stone-400 leading-relaxed">
             村に投稿・返信・共感をすると、ここに届きます
           </p>
@@ -118,89 +147,49 @@ export default function NotificationsPage() {
       ) : (
         <div className="pb-28">
 
-          {/* ── 🔴 即時通知（返信・いいね・フォロー・新規参加者） ── */}
-          {highNotifs.length > 0 && (
+          {/* ── 返信・反応 ── */}
+          {reactionNotifs.length > 0 && (
             <div>
               <div className="px-4 pt-5 pb-2 flex items-center gap-2">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                 <span className="text-[11px] font-bold text-red-500 uppercase tracking-wider">
-                  返信・反応 — すぐ確認
+                  返信・反応
                 </span>
               </div>
-
-              <div className="mx-4 rounded-2xl overflow-hidden border border-red-100 shadow-sm"
-                style={{ background: '#fff' }}>
-                {highNotifs.map((n, i) => {
-                  const cfg   = TYPE_CONFIG[n.type] ?? { emoji: '🔔', label: '通知' }
-                  const actor = n.actor as any
-                  return (
-                    <button
-                      key={n.id}
-                      onClick={() => handleTap(n)}
-                      className={`w-full flex items-start gap-3 px-4 py-3.5 text-left transition-colors active:bg-red-50
-                        ${i < highNotifs.length - 1 ? 'border-b border-red-50' : ''}
-                        ${!n.is_read ? 'bg-red-50/40' : 'hover:bg-stone-50'}
-                      `}
-                    >
-                      <div className="relative flex-shrink-0">
-                        <Avatar src={actor?.avatar_url} name={actor?.display_name ?? '?'} size="sm" />
-                        <span className="absolute -bottom-1 -right-1 text-sm leading-none">{cfg.emoji}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-stone-800 leading-snug">
-                          <span className="font-bold">{actor?.display_name ?? '誰か'}</span>
-                          {' '}
-                          <span className="text-stone-600">{cfg.label}</span>
-                        </p>
-                        <p className="text-xs text-stone-400 mt-0.5">{timeAgo(n.created_at)}</p>
-                      </div>
-                      {!n.is_read && (
-                        <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0 mt-1.5" />
-                      )}
-                    </button>
-                  )
-                })}
+              <div className="mx-4 rounded-2xl overflow-hidden border border-red-100 shadow-sm divide-y divide-red-50">
+                {reactionNotifs.map(n => (
+                  <NotifRow key={n.id} n={n} tint="bg-red-50/40" />
+                ))}
               </div>
             </div>
           )}
 
-          {/* ── 📋 まとめ通知（コメント・村イベント等） ── */}
-          {normalNotifs.length > 0 && (
+          {/* ── 通話 ── */}
+          {voiceNotifs.length > 0 && (
+            <div>
+              <div className="px-4 pt-5 pb-2 flex items-center gap-2">
+                <span className="text-[11px] font-bold text-violet-500 uppercase tracking-wider">🎙️ 通話</span>
+              </div>
+              <div className="mx-4 rounded-2xl overflow-hidden border border-violet-100 shadow-sm divide-y divide-violet-50 bg-white">
+                {voiceNotifs.map(n => (
+                  <NotifRow key={n.id} n={n} tint="bg-violet-50/40" />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── その他 ── */}
+          {otherNotifs.length > 0 && (
             <div>
               <div className="px-4 pt-5 pb-2">
                 <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wider">
-                  その他の収穫
+                  その他
                 </span>
               </div>
-
               <div className="bg-white border-y border-stone-100 divide-y divide-stone-50">
-                {normalNotifs.map(n => {
-                  const cfg   = TYPE_CONFIG[n.type] ?? { emoji: '🔔', label: '通知' }
-                  const actor = n.actor as any
-                  return (
-                    <button
-                      key={n.id}
-                      onClick={() => handleTap(n)}
-                      className="w-full flex items-start gap-3 px-4 py-3.5 hover:bg-stone-50 active:bg-stone-100 transition-colors text-left"
-                    >
-                      <div className="relative flex-shrink-0">
-                        <Avatar src={actor?.avatar_url} name={actor?.display_name ?? '?'} size="sm" />
-                        <span className="absolute -bottom-1 -right-1 text-sm leading-none">{cfg.emoji}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-stone-800 leading-snug">
-                          <span className="font-bold">{actor?.display_name ?? '誰か'}</span>
-                          {' '}
-                          <span className="text-stone-500">{cfg.label}</span>
-                        </p>
-                        <p className="text-xs text-stone-400 mt-0.5">{timeAgo(n.created_at)}</p>
-                      </div>
-                      {!n.is_read && (
-                        <span className="w-2 h-2 bg-brand-500 rounded-full flex-shrink-0 mt-1.5" />
-                      )}
-                    </button>
-                  )
-                })}
+                {otherNotifs.map(n => (
+                  <NotifRow key={n.id} n={n} />
+                ))}
               </div>
             </div>
           )}
