@@ -3,69 +3,61 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'samee — 職場では言えないことを、話せる場所。',
-  description: '仕事を持つ日本人が、職場の外では言えないことを話せるコミュニティ。仕事に誇りがなくても、転職を考えていても、ただしんどくても。電話認証済みの20歳以上だけが集まる場所。',
+  title: 'samee — 転職するか、しないか。同じ経験をした人に聞ける場所。',
+  description: '求人紹介なし・エージェントなし。転職を迷っている人が、同じ経験をした人の本音に触れられるキャリア相談コミュニティ。電話認証済みの20歳以上だけが集まる場所。',
   openGraph: {
-    title: 'samee — 職場では言えないことを、話せる場所。',
-    description: '働く日本人が、仕事の本音を話せる唯一の場所。',
+    title: 'samee — 転職するか、しないか。同じ経験をした人に聞ける場所。',
+    description: '求人紹介しない。転職を迷う人のための、本音のキャリア相談コミュニティ。',
     images: [{ url: '/og-image.png', width: 1200, height: 630 }],
   },
 }
 
-const THEME_POSTS = [
+const SAMPLE_POSTS = [
   {
-    village: '😮‍💨 仕事がしんどい村',
-    text: '有給申請したら「なんで？」って聞かれた。理由を言わなきゃいけないの、普通なの？',
-    reactions: 34, replies: 12,
+    village: '🔍 転職を考えてる村',
+    text: '今の会社7年目。年収も悪くない。でも毎朝起きるのがしんどい。これって転職する理由になりますか？',
+    reactions: 58, replies: 24,
   },
   {
     village: '🔍 転職を考えてる村',
-    text: '今の会社5年目。転職したい気持ちはあるけど、踏み出せない。みんなどうやって決断したんだろう。',
-    reactions: 27, replies: 18,
+    text: '転職して3ヶ月。正直に言うと、前の会社のほうが楽だった部分もある。でも後悔はしてない。',
+    reactions: 71, replies: 31,
   },
   {
     village: '👥 職場の人間関係村',
-    text: '上司と合わなすぎる。でも仕事自体は嫌いじゃない。この状況どうすればいいんだろう。',
-    reactions: 41, replies: 9,
+    text: '上司が原因で転職考えてる。でも上司って次の職場にも絶対いるよなって思うと踏み出せない。',
+    reactions: 43, replies: 19,
   },
   {
-    village: '🌙 ただ聞いてほしい村',
-    text: '今日仕事でミスした。誰かに言いたかっただけ。',
-    reactions: 89, replies: 31,
+    village: '💭 将来が不安村',
+    text: '30代で転職するのって、実際どうなんだろう。同世代で転職経験ある人の話が聞きたい。',
+    reactions: 36, replies: 22,
   },
-]
-
-const THEME_VILLAGES = [
-  { emoji: '😮‍💨', label: '仕事がしんどい',   desc: '疲れた、しんどいをそのまま言える' },
-  { emoji: '🔍', label: '転職を考えてる',     desc: '転職リアルを語り合う' },
-  { emoji: '👥', label: '職場の人間関係',     desc: '上司・同僚・職場の空気' },
-  { emoji: '💭', label: '将来が不安',         desc: 'キャリア・お金・老後まで' },
-  { emoji: '🌙', label: 'ただ聞いてほしい',   desc: '言葉にするだけでいい夜に' },
 ]
 
 const VOICES = [
   {
-    text: '転職しようか迷ってることを、職場の人にも友達にも言えなかった。ここで初めて正直に話せた気がする。',
-    name: '会社員・29歳',
+    text: 'エージェントに相談したら転職を勧められるのがわかってて、相談できなかった。sameeで初めて「転職しないほうがいいかも」って言ってもらえた。',
+    name: '営業・32歳',
     tag: '転職を考えてる村',
   },
   {
-    text: 'しんどいって言うと「頑張れ」って返ってくるのが嫌だった。ここは「そうだよね」って返してくれる。',
-    name: '看護師・31歳',
-    tag: '仕事がしんどい村',
+    text: '転職した経験者として話せる場所があるのが嬉しい。求人を送りつけてくる系のサービスとは全然違う。',
+    name: 'エンジニア・36歳',
+    tag: '転職を考えてる村',
   },
   {
-    text: '上司の愚痴を友達に話すと引かれる気がして言えなかった。同じ立場の人がいるだけで救われた。',
-    name: '営業・34歳',
-    tag: '職場の人間関係村',
+    text: '「転職したい」じゃなくて「今のままでいいのか不安」という気持ちをそのまま話せた。ここだけ。',
+    name: '看護師・28歳',
+    tag: '将来が不安村',
   },
 ]
 
 const TRUST_POINTS = [
-  { emoji: '📱', title: '電話認証が必須',            desc: '本物の人間だけが入れる。捨てアカウントが存在できない設計。' },
-  { emoji: '🔒', title: '職場・本名は一切不要',       desc: '職種だけ選べばOK。会社名も本名も出さない。匿名だから本音が出る。' },
-  { emoji: '🏅', title: '信頼ティア制度',             desc: '活動するほど信頼度が上がる。「この人は本物だ」がわかる。' },
-  { emoji: '🔕', title: 'マウント・説教は設計で消す', desc: '荒らしには信頼ティアが機能しない。自然淘汰される仕組み。' },
+  { emoji: '🚫', title: '求人紹介は一切しない',         desc: '転職させることで稼ぐサービスではない。だから「転職しないほうがいい」も言える。' },
+  { emoji: '📱', title: '電話認証が必須',               desc: '本物の人間だけが入れる。捨てアカウントが存在できない設計。' },
+  { emoji: '🔒', title: '会社名・本名は不要',            desc: '職種だけ選べばOK。職場にバレる心配なく本音が話せる。' },
+  { emoji: '🏅', title: '転職経験者が「先輩」になる',   desc: '活動実績が信頼ティアに反映。経験者の言葉に重みがつく仕組み。' },
 ]
 
 export default async function TopPage() {
@@ -102,23 +94,25 @@ export default async function TopPage() {
           <span className="text-xs font-bold text-stone-700">{userCount.toLocaleString()}人が利用中</span>
         </div>
 
-        <h1 className="text-[2.1rem] font-black text-stone-900 leading-[1.15] mb-5 tracking-tight">
-          職場では言えないことを、<br />
-          <span className="text-brand-500">話せる場所。</span>
+        {/* 差別化バッジ */}
+        <div className="inline-flex items-center gap-1.5 bg-rose-50 border border-rose-200 rounded-full px-3 py-1 mb-5">
+          <span className="text-xs font-extrabold text-rose-600">🚫 求人紹介なし · エージェントなし</span>
+        </div>
+
+        <h1 className="text-[2rem] font-black text-stone-900 leading-[1.2] mb-5 tracking-tight">
+          転職するか、しないか。<br />
+          <span className="text-brand-500">その答えは、同じ経験を<br />した人だけが知っている。</span>
         </h1>
 
-        <p className="text-stone-500 text-[15px] leading-relaxed mb-2 max-w-[300px]">
-          仕事に誇りがなくてもいい。<br />
-          転職を考えていてもいい。<br />
-          ただしんどくてもいい。
-        </p>
-        <p className="text-stone-700 font-bold text-[15px] leading-relaxed mb-7 max-w-[300px]">
-          働く日本人の、本音の居場所。
+        <p className="text-stone-500 text-[14px] leading-relaxed mb-7 max-w-[300px]">
+          エージェントは転職を勧める。<br />
+          友達は心配する。職場には言えない。<br /><br />
+          <span className="font-bold text-stone-700">本音で話せる人が、ここにいる。</span>
         </p>
 
         <Link href="/signup"
           className="w-full py-4 bg-brand-500 text-white rounded-2xl font-extrabold text-base text-center shadow-lg shadow-brand-200 hover:bg-brand-600 active:scale-[0.98] transition-all mb-3">
-          無料で始める — 30秒で登録 →
+          無料で相談してみる — 30秒で登録 →
         </Link>
         <Link href="/login"
           className="w-full py-3 border-2 border-stone-200 text-stone-600 rounded-2xl font-semibold text-sm text-center hover:bg-stone-50 active:scale-[0.98] transition-all">
@@ -127,40 +121,54 @@ export default async function TopPage() {
         <p className="text-xs text-stone-400 mt-3">無料 · クレジットカード不要 · 20歳以上</p>
       </section>
 
-      {/* ── 悩みテーマ村 ── */}
-      <section className="px-4 pb-10">
-        <div className="flex items-center gap-2 mb-4 px-1">
-          <span className="text-sm">🔥</span>
-          <p className="text-xs font-bold text-stone-500 uppercase tracking-widest">話せる村、あります</p>
-        </div>
-        <div className="space-y-2">
-          {THEME_VILLAGES.map((v, i) => (
-            <Link key={i} href="/signup"
-              className="bg-white border border-stone-100 rounded-2xl px-4 py-3.5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] flex items-center gap-3">
-              <span className="text-2xl flex-shrink-0">{v.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-extrabold text-stone-800">{v.label}</p>
-                <p className="text-[11px] text-stone-400">{v.desc}</p>
+      {/* ── 他のサービスとの違い ── */}
+      <section className="px-5 pb-10">
+        <p className="text-xs font-bold text-stone-400 uppercase tracking-widest text-center mb-5">他のサービスとの違い</p>
+        <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
+          <div className="grid grid-cols-3 border-b border-stone-100">
+            <div className="px-3 py-2.5 text-center" />
+            <div className="px-3 py-2.5 text-center border-l border-stone-100">
+              <p className="text-[10px] font-bold text-stone-400">他の転職サービス</p>
+            </div>
+            <div className="px-3 py-2.5 text-center border-l border-stone-100"
+              style={{ background: 'rgba(99,102,241,0.05)' }}>
+              <p className="text-[10px] font-extrabold text-brand-500">samee</p>
+            </div>
+          </div>
+          {[
+            { label: '求人紹介', others: '❌ ある（収益源）', samee: '✅ 一切なし' },
+            { label: '話せる相手', others: 'エージェント', samee: '同じ立場の人' },
+            { label: '「辞めないほうがいい」', others: '言えない', samee: '✅ 言える' },
+            { label: '本音', others: '建前が混ざる', samee: '✅ 本音だけ' },
+            { label: '料金', others: '企業が払う', samee: '✅ 無料' },
+          ].map((row, i) => (
+            <div key={i} className="grid grid-cols-3 border-b border-stone-50 last:border-0">
+              <div className="px-3 py-2.5">
+                <p className="text-[11px] font-bold text-stone-600">{row.label}</p>
               </div>
-              <span className="text-brand-500 text-sm font-bold flex-shrink-0">入る →</span>
-            </Link>
+              <div className="px-3 py-2.5 border-l border-stone-100 flex items-center justify-center">
+                <p className="text-[10px] text-stone-400 text-center leading-tight">{row.others}</p>
+              </div>
+              <div className="px-3 py-2.5 border-l border-stone-100 flex items-center justify-center"
+                style={{ background: 'rgba(99,102,241,0.04)' }}>
+                <p className="text-[10px] font-bold text-brand-600 text-center leading-tight">{row.samee}</p>
+              </div>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* ── 今夜の声 ── */}
+      {/* ── 今起きていること ── */}
       <section className="bg-stone-50 px-4 py-8">
         <div className="flex items-center gap-2 mb-4 px-1">
           <span className="w-2 h-2 bg-brand-500 rounded-full animate-pulse" />
-          <p className="text-xs font-bold text-stone-500 uppercase tracking-widest">今夜、村で起きていること</p>
+          <p className="text-xs font-bold text-stone-500 uppercase tracking-widest">今、村で起きていること</p>
         </div>
         <div className="space-y-2.5">
-          {THEME_POSTS.map((p, i) => (
+          {SAMPLE_POSTS.map((p, i) => (
             <Link key={i} href="/signup"
               className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm flex flex-col gap-2.5 hover:shadow-md transition-all active:scale-[0.99] block">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-brand-50 text-brand-600 border border-brand-100">{p.village}</span>
-              </div>
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-brand-50 text-brand-600 border border-brand-100 self-start">{p.village}</span>
               <p className="text-sm text-stone-800 leading-relaxed font-medium">「{p.text}」</p>
               <div className="flex items-center gap-3 text-xs text-stone-400">
                 <span>💬 {p.replies}件の返し</span>
@@ -175,26 +183,28 @@ export default async function TopPage() {
       {/* ── なぜsameeか ── */}
       <section className="px-5 py-10">
         <p className="text-xs font-bold text-stone-400 uppercase tracking-widest text-center mb-2">なぜsameeか</p>
-        <h2 className="text-2xl font-extrabold text-center text-stone-900 mb-2">「誰にも言えない」に、場所がある</h2>
+        <h2 className="text-2xl font-extrabold text-center text-stone-900 mb-2">転職の答えは、<br />経験者にしかわからない</h2>
         <p className="text-center text-stone-500 text-sm mb-8 leading-relaxed">
-          友達には引かれる。職場の人には言えない。<br />Xには書きたくない。
+          エージェントは転職させたい。<br />
+          会社は辞めさせたくない。<br />
+          どちらも「あなたのため」には動いていない。
         </p>
         <div className="space-y-4">
           {[
             {
-              emoji: '🙊',
-              title: '職場の人には絶対言えないこと',
-              desc: '同僚への不満、上司への怒り、会社を辞めたい気持ち。sameeには職場の人はいない。だから言える。',
+              emoji: '🔍',
+              title: '転職した人の本音が聞ける',
+              desc: '「後悔してる？」「年収は上がった？」「前の会社が懐かしい？」。転職経験者が本音で答えてくれる。',
             },
             {
-              emoji: '😮‍💨',
-              title: '友達には「重い」こと',
-              desc: '仕事の悩みを友達に話すのって気を遣う。sameeのユーザーは同じ立場の働く大人。「重い」がない。',
+              emoji: '🤝',
+              title: '同じ職業・同じ悩みの人がいる',
+              desc: '看護師が看護師に、エンジニアがエンジニアに聞く。業界の事情を説明しなくていい楽さがある。',
             },
             {
-              emoji: '📵',
-              title: 'Xやインスタには出せないこと',
-              desc: '鍵垢でも怖い。でも誰かに言いたい。電話認証済みの閉じた場所だから、本音が出せる。',
+              emoji: '🚫',
+              title: '「転職しろ」とは誰も言わない',
+              desc: 'sameeには求人も、スカウトも、エージェントもいない。転職しないという選択肢を、対等に話せる。',
             },
           ].map((f, i) => (
             <div key={i} className="flex items-start gap-4 bg-white border border-stone-100 rounded-2xl px-4 py-4 shadow-sm">
@@ -210,14 +220,14 @@ export default async function TopPage() {
         </div>
         <Link href="/signup"
           className="mt-8 w-full py-4 bg-brand-500 text-white rounded-2xl font-extrabold text-base text-center shadow-md shadow-brand-200 hover:bg-brand-600 active:scale-[0.98] transition-all block">
-          今夜、話しに行く →
+          転職経験者に聞いてみる →
         </Link>
       </section>
 
       {/* ── みんなの声 ── */}
       <section className="bg-stone-50 px-5 py-10">
         <p className="text-xs font-bold text-stone-400 uppercase tracking-widest text-center mb-2">みんなの声</p>
-        <h2 className="text-xl font-extrabold text-center text-stone-900 mb-6">「ここで初めて正直に話せた」</h2>
+        <h2 className="text-xl font-extrabold text-center text-stone-900 mb-6">「転職しないほうがいい、と言ってもらえた」</h2>
         <div className="space-y-3">
           {VOICES.map((v, i) => (
             <div key={i} className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm">
@@ -234,7 +244,7 @@ export default async function TopPage() {
       {/* ── 安心の設計 ── */}
       <section className="bg-stone-900 px-5 py-10">
         <p className="text-xs font-bold text-stone-400 uppercase tracking-widest text-center mb-2">なぜ安心なのか</p>
-        <h2 className="text-xl font-extrabold text-center text-white mb-7">民度は、設計で決まる</h2>
+        <h2 className="text-xl font-extrabold text-center text-white mb-7">信頼は、設計で決まる</h2>
         <div className="space-y-3">
           {TRUST_POINTS.map((t, i) => (
             <div key={i} className="flex items-start gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5">
@@ -248,22 +258,22 @@ export default async function TopPage() {
         </div>
         <Link href="/signup"
           className="mt-8 w-full py-4 bg-brand-500 text-white rounded-2xl font-extrabold text-base text-center shadow-lg active:scale-[0.98] transition-all block">
-          今夜、来てみる →
+          無料で相談してみる →
         </Link>
       </section>
 
       {/* ── こんな人に ── */}
       <section className="px-5 py-10">
         <p className="text-xs font-bold text-stone-400 uppercase tracking-widest text-center mb-2">こんな人に</p>
-        <h2 className="text-xl font-extrabold text-center text-stone-900 mb-6">あなたの居場所が、ある</h2>
+        <h2 className="text-xl font-extrabold text-center text-stone-900 mb-6">あなたの話し相手が、ここにいる</h2>
         <div className="space-y-2.5">
           {[
-            { emoji: '😮‍💨', text: '仕事がしんどいけど、誰にも言えない' },
-            { emoji: '🔍', text: '転職を考えているが、相談できる人がいない' },
-            { emoji: '👥', text: '職場の人間関係に悩んでいる' },
-            { emoji: '💭', text: 'キャリアや将来が不安で眠れない夜がある' },
-            { emoji: '🌙', text: 'ただ聞いてもらいたい、それだけの夜がある' },
-            { emoji: '📵', text: 'XやSNSには書けないことを、どこかで言いたい' },
+            { emoji: '🔍', text: '転職しようか迷っているが、誰にも相談できない' },
+            { emoji: '😮‍💨', text: '毎朝しんどいけど、辞めていいのかわからない' },
+            { emoji: '💰', text: '年収を上げたいが、転職リスクが怖い' },
+            { emoji: '👥', text: '上司が原因で悩んでいる。次も同じ状況になる？' },
+            { emoji: '🔄', text: '転職経験者として、迷っている人の話を聞きたい' },
+            { emoji: '💭', text: '転職した・しなかった、正直な話を聞かせてほしい' },
           ].map((item, i) => (
             <div key={i} className="flex items-center gap-3 bg-white border border-stone-100 rounded-2xl px-4 py-3 shadow-sm">
               <span className="text-lg flex-shrink-0">{item.emoji}</span>
@@ -277,14 +287,14 @@ export default async function TopPage() {
       <section className="px-5 pb-12">
         <div className="rounded-3xl p-8 text-center"
           style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #4f46e5 100%)' }}>
-          <p className="text-white/60 text-sm mb-2">今夜から始められます</p>
+          <p className="text-white/60 text-sm mb-2">求人なし · エージェントなし · 本音だけ</p>
           <h2 className="text-2xl font-extrabold text-white mb-2">
-            職場では言えないことを、<br />話せる場所。
+            転職するか、しないか。<br />同じ経験をした人に聞こう。
           </h2>
-          <p className="text-white/50 text-xs mb-6">電話認証済みの大人だけが集まる、本音の居場所</p>
+          <p className="text-white/50 text-xs mb-6">電話認証済みの20歳以上だけが集まるキャリア相談コミュニティ</p>
           <Link href="/signup"
             className="w-full py-4 bg-white text-brand-600 rounded-2xl font-extrabold text-base text-center active:scale-[0.98] transition-all block mb-3 shadow-lg">
-            今夜、話しに行く →
+            無料で相談してみる →
           </Link>
           <p className="text-xs text-white/30">30秒で登録 · 永久無料 · 20歳以上</p>
         </div>
@@ -297,7 +307,7 @@ export default async function TopPage() {
           <span className="text-2xl">🏢</span>
           <div className="flex-1">
             <p className="font-bold text-stone-800 text-sm">samee for Business</p>
-            <p className="text-xs text-stone-500">社員コミュニティ・ウェルビーイング設計 →</p>
+            <p className="text-xs text-stone-500">離職防止・社員エンゲージメント設計 →</p>
           </div>
           <span className="text-stone-400 text-sm">→</span>
         </Link>
@@ -311,7 +321,7 @@ export default async function TopPage() {
           </div>
           <span className="font-bold text-stone-700">samee</span>
         </div>
-        <p className="text-xs text-stone-400 mb-3">職場では言えないことを、話せる場所 · 20歳以上</p>
+        <p className="text-xs text-stone-400 mb-3">求人紹介しない、転職を迷う人のキャリア相談コミュニティ · 20歳以上</p>
         <div className="flex justify-center gap-5 text-xs text-stone-400">
           <Link href="/terms"   className="hover:text-stone-600 transition">利用規約</Link>
           <Link href="/privacy" className="hover:text-stone-600 transition">プライバシー</Link>
