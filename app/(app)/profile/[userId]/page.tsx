@@ -8,7 +8,7 @@ import { timeAgo } from '@/lib/utils'
 import { ArrowLeft, Heart, ChevronRight } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
-import { getOccupationBadge } from '@/lib/occupation'
+import { getOccupationBadge, getBigCategory } from '@/lib/occupation'
 import Link from 'next/link'
 
 interface VillagePost {
@@ -132,8 +132,17 @@ if (loading) return (
                 <TrustBadge tierId={trustTier} size="md" isPremium={isPremium} />
               </div>
             )}
-            <p className="text-xs text-stone-400 mb-2">{profile.arrival_stage || 'Samee member'}</p>
-            {profile.bio && <p className="text-sm text-stone-600 leading-relaxed">{profile.bio}</p>}
+            {/* 大カテゴリ表示（デフォルト）*/}
+            {profile.occupation && (() => {
+              const cat = getBigCategory(profile.occupation)
+              return cat ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full mb-1.5"
+                  style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', color: '#4f46e5' }}>
+                  {cat.emoji} {cat.label}
+                </span>
+              ) : null
+            })()}
+            {profile.bio && <p className="text-sm text-stone-600 leading-relaxed mt-1">{profile.bio}</p>}
           </div>
         </div>
 

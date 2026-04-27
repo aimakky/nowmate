@@ -13,37 +13,80 @@ const STEPS = [
   { title: '最初の一言',   emoji: '✍️', sub: '職業村での初投稿をしてみよう' },
 ]
 
-const OCCUPATION_LIST = [
-  { emoji: '🏥', label: '看護師・助産師',    value: '看護師' },
-  { emoji: '👨‍⚕️', label: '医師',             value: '医師' },
-  { emoji: '💊', label: '薬剤師',             value: '薬剤師' },
-  { emoji: '🦷', label: '歯科関係',           value: '歯科' },
-  { emoji: '🏥', label: '介護・福祉',         value: '介護士' },
-  { emoji: '📚', label: '教師・講師',         value: '教師' },
-  { emoji: '💻', label: 'エンジニア・開発',   value: 'エンジニア' },
-  { emoji: '🎨', label: 'デザイナー',         value: 'デザイナー' },
-  { emoji: '📊', label: '営業・販売',         value: '営業' },
-  { emoji: '💰', label: '経理・財務',         value: '経理' },
-  { emoji: '📣', label: 'マーケティング・PR', value: 'マーケター' },
-  { emoji: '⚖️', label: '法律・司法',         value: '法律職' },
-  { emoji: '🏛️', label: '公務員',             value: '公務員' },
-  { emoji: '👮', label: '警察・消防・自衛隊', value: '警察消防' },
-  { emoji: '🏗️', label: '建築・土木',         value: '建築士' },
-  { emoji: '✈️', label: '航空・交通',         value: '航空交通' },
-  { emoji: '🍳', label: '飲食・調理',         value: '飲食' },
-  { emoji: '🛒', label: 'サービス・接客',     value: 'サービス業' },
-  { emoji: '🎬', label: 'クリエイター・メディア', value: 'クリエイター' },
-  { emoji: '🌾', label: '農業・林業・漁業',   value: '農林水産' },
-  { emoji: '🏭', label: '製造・工場',         value: '製造業' },
-  { emoji: '📦', label: '物流・運輸',         value: '物流' },
-  { emoji: '🏠', label: '不動産',             value: '不動産' },
-  { emoji: '💼', label: 'コンサルタント',     value: 'コンサル' },
-  { emoji: '🏦', label: '金融・保険',         value: '金融' },
-  { emoji: '👤', label: '人事・採用',         value: '人事' },
-  { emoji: '🎓', label: '研究・学術',         value: '研究者' },
-  { emoji: '🚀', label: '起業家・経営者',     value: '経営者' },
-  { emoji: '🔄', label: '転職・求職中',       value: '転職活動中' },
-  { emoji: '❓', label: 'その他・書きたくない', value: 'その他' },
+// ── 2段階職業選択：大カテゴリ → 詳細職種 ──────────────────────
+const OCCUPATION_CATEGORIES = [
+  {
+    emoji: '🏥', label: '医療・福祉系', value: '医療・福祉系',
+    desc: '看護師・医師・薬剤師・介護士など',
+    jobs: [
+      { emoji: '🏥', label: '看護師・助産師', value: '看護師' },
+      { emoji: '👨‍⚕️', label: '医師',           value: '医師' },
+      { emoji: '💊', label: '薬剤師',           value: '薬剤師' },
+      { emoji: '🦷', label: '歯科関係',         value: '歯科' },
+      { emoji: '🤲', label: '介護・福祉',       value: '介護士' },
+    ],
+  },
+  {
+    emoji: '📚', label: '教育・研究系', value: '教育・研究系',
+    desc: '教師・講師・研究者など',
+    jobs: [
+      { emoji: '📚', label: '教師・講師', value: '教師' },
+      { emoji: '🔬', label: '研究・学術', value: '研究者' },
+    ],
+  },
+  {
+    emoji: '💻', label: 'IT・クリエイター系', value: 'IT・クリエイター系',
+    desc: 'エンジニア・デザイナー・クリエイターなど',
+    jobs: [
+      { emoji: '💻', label: 'エンジニア・開発',         value: 'エンジニア' },
+      { emoji: '🎨', label: 'デザイナー',               value: 'デザイナー' },
+      { emoji: '🎬', label: 'クリエイター・メディア',   value: 'クリエイター' },
+      { emoji: '📣', label: 'マーケティング・PR',       value: 'マーケター' },
+    ],
+  },
+  {
+    emoji: '💼', label: 'ビジネス・オフィス系', value: 'ビジネス・オフィス系',
+    desc: '営業・経理・人事・法律・金融など',
+    jobs: [
+      { emoji: '📊', label: '営業・販売',   value: '営業' },
+      { emoji: '💰', label: '経理・財務',   value: '経理' },
+      { emoji: '⚖️', label: '法律・司法',   value: '法律職' },
+      { emoji: '💼', label: 'コンサルタント', value: 'コンサル' },
+      { emoji: '🏦', label: '金融・保険',   value: '金融' },
+      { emoji: '👤', label: '人事・採用',   value: '人事' },
+    ],
+  },
+  {
+    emoji: '🏛️', label: '公共・インフラ系', value: '公共・インフラ系',
+    desc: '公務員・警察消防・建築・物流など',
+    jobs: [
+      { emoji: '🏛️', label: '公務員',           value: '公務員' },
+      { emoji: '👮', label: '警察・消防・自衛隊', value: '警察消防' },
+      { emoji: '🏗️', label: '建築・土木',         value: '建築士' },
+      { emoji: '✈️', label: '航空・交通',          value: '航空交通' },
+      { emoji: '📦', label: '物流・運輸',          value: '物流' },
+    ],
+  },
+  {
+    emoji: '🛒', label: 'サービス・現場系', value: 'サービス・現場系',
+    desc: '飲食・接客・製造・農業など',
+    jobs: [
+      { emoji: '🍳', label: '飲食・調理',     value: '飲食' },
+      { emoji: '🛒', label: 'サービス・接客', value: 'サービス業' },
+      { emoji: '🌾', label: '農業・林業・漁業', value: '農林水産' },
+      { emoji: '🏭', label: '製造・工場',     value: '製造業' },
+      { emoji: '🏠', label: '不動産',         value: '不動産' },
+    ],
+  },
+  {
+    emoji: '🌀', label: 'その他・フリー', value: 'その他',
+    desc: '経営者・転職中・言いたくないなど',
+    jobs: [
+      { emoji: '🚀', label: '起業家・経営者',       value: '経営者' },
+      { emoji: '🔄', label: '転職・求職中',          value: '転職活動中' },
+      { emoji: '❓', label: 'その他・書きたくない',  value: 'その他' },
+    ],
+  },
 ]
 
 const VILLAGE_TYPES = [
@@ -66,9 +109,10 @@ export default function OnboardingPage() {
   const [ageConfirmed,       setAgeConfirmed]       = useState(false)
   const [name,               setName]               = useState('')
   const [bio,                setBio]                = useState('')
-  const [occupation,         setOccupation]         = useState('')
-  const [selectedTypes,      setSelectedTypes]      = useState<string[]>([])
-  const [firstPost,          setFirstPost]          = useState('')
+  const [occupation,          setOccupation]          = useState('')
+  const [selectedCategory,    setSelectedCategory]    = useState<typeof OCCUPATION_CATEGORIES[0] | null>(null)
+  const [selectedTypes,       setSelectedTypes]       = useState<string[]>([])
+  const [firstPost,           setFirstPost]           = useState('')
   const [occupationVillageId, setOccupationVillageId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -78,12 +122,14 @@ export default function OnboardingPage() {
     })
   }, [router])
 
+  // Step 2: カテゴリ選択済みまたはスキップ可（selectedCategoryがあるか、何も選んでない状態）
+  const step2Ready = !selectedCategory || occupation.length > 0 || true // スキップ常時可
   const canNext = [
     ageConfirmed,
     name.trim().length >= 2,
-    true, // 職業は任意
-    true, // 村選択は任意
-    true, // 最初の一言は任意（スキップ可）
+    step2Ready,
+    true,
+    true,
   ][step]
 
   async function handleNext() {
@@ -393,47 +439,135 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* ─── STEP 2: 職業を選ぶ ─── */}
+        {/* ─── STEP 2: 職業を選ぶ（2段階）─── */}
         {step === 2 && (
           <div className="space-y-3 pt-4">
-            <div
-              className="rounded-2xl px-4 py-3 mb-2"
-              style={{ background: 'linear-gradient(135deg, #ede9fe 0%, #e0e7ff 100%)', border: '1px solid #c7d2fe' }}
-            >
-              <p className="text-xs font-bold text-indigo-700 mb-0.5">💼 職業別コミュニティに入れます</p>
-              <p className="text-[11px] text-indigo-600 leading-relaxed">
-                選んだ職業の村が自動で表示されます。あとから変更できます。
-                スキップも可能です（設定で後から選べます）。
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {OCCUPATION_LIST.map(occ => {
-                const selected = occupation === occ.value
-                return (
-                  <button
-                    key={occ.value}
-                    onClick={() => setOccupation(prev => prev === occ.value ? '' : occ.value)}
-                    className="flex items-center gap-2.5 p-3 rounded-2xl border-2 text-left transition-all active:scale-95"
-                    style={selected
-                      ? { borderColor: '#6366f1', background: '#eef2ff' }
-                      : { borderColor: '#e7e5e4', background: '#fff' }
-                    }
-                  >
-                    <span className="text-xl flex-shrink-0">{occ.emoji}</span>
-                    <p className="text-xs font-bold leading-snug" style={{ color: selected ? '#4f46e5' : '#44403c' }}>
-                      {occ.label}
-                    </p>
-                  </button>
-                )
-              })}
-            </div>
-            {occupation && (
-              <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 flex items-center gap-2">
-                <span className="text-green-500 font-bold text-lg">✓</span>
-                <p className="text-xs text-green-700 font-bold">
-                  「{OCCUPATION_LIST.find(o => o.value === occupation)?.label}」を選択しました。+10pt獲得！
-                </p>
+
+            {/* なぜ聞くか — 説明バナー */}
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', border: '1px solid rgba(99,102,241,0.3)' }}>
+              <div className="px-4 py-3.5">
+                <p className="text-xs font-extrabold text-indigo-300 mb-2">💼 なぜ職業を聞くのか</p>
+                <div className="space-y-1.5">
+                  {[
+                    '同じ職業の人だけが集まる村に自動で入れます',
+                    '職業があなたの「盾」。書きやすくなります',
+                    'プロフィールには大まかなジャンルしか出ません',
+                  ].map(t => (
+                    <div key={t} className="flex items-start gap-2">
+                      <span className="text-indigo-400 font-bold text-xs mt-0.5">✓</span>
+                      <p className="text-[11px] text-indigo-200 leading-relaxed">{t}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
+            </div>
+
+            {/* Stage 1: 大カテゴリ選択 */}
+            {!selectedCategory && (
+              <>
+                <p className="text-[11px] text-stone-500 font-medium px-1">
+                  まず大まかなジャンルを選んでください（詳細はその後）
+                </p>
+                <div className="grid grid-cols-1 gap-2">
+                  {OCCUPATION_CATEGORIES.map(cat => (
+                    <button
+                      key={cat.value}
+                      onClick={() => setSelectedCategory(cat)}
+                      className="flex items-center gap-3 p-3.5 rounded-2xl border-2 text-left transition-all active:scale-[0.98]"
+                      style={{ borderColor: '#e7e5e4', background: '#fff' }}
+                    >
+                      <span className="text-2xl flex-shrink-0">{cat.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-stone-900">{cat.label}</p>
+                        <p className="text-[10px] text-stone-400 mt-0.5">{cat.desc}</p>
+                      </div>
+                      <span className="text-stone-300 text-base flex-shrink-0">›</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Stage 2: 詳細職種選択 */}
+            {selectedCategory && (
+              <>
+                <button
+                  onClick={() => { setSelectedCategory(null); setOccupation('') }}
+                  className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 px-1"
+                >
+                  ← {selectedCategory.label}を変える
+                </button>
+
+                <div
+                  className="rounded-2xl px-4 py-3 flex items-center gap-3"
+                  style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}
+                >
+                  <span className="text-2xl">{selectedCategory.emoji}</span>
+                  <div>
+                    <p className="text-sm font-extrabold text-indigo-800">{selectedCategory.label}</p>
+                    <p className="text-[10px] text-indigo-500">詳細を選ぶか、このジャンルのままでもOK</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedCategory.jobs.map(job => {
+                    const selected = occupation === job.value
+                    return (
+                      <button
+                        key={job.value}
+                        onClick={() => setOccupation(prev => prev === job.value ? '' : job.value)}
+                        className="flex items-center gap-2.5 p-3 rounded-2xl border-2 text-left transition-all active:scale-95"
+                        style={selected
+                          ? { borderColor: '#6366f1', background: '#eef2ff' }
+                          : { borderColor: '#e7e5e4', background: '#fff' }
+                        }
+                      >
+                        <span className="text-xl flex-shrink-0">{job.emoji}</span>
+                        <p className="text-xs font-bold leading-snug"
+                          style={{ color: selected ? '#4f46e5' : '#44403c' }}>
+                          {job.label}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* カテゴリのみで登録 */}
+                <button
+                  onClick={() => setOccupation(
+                    prev => prev === selectedCategory.value ? '' : selectedCategory.value
+                  )}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all active:scale-[0.98]"
+                  style={occupation === selectedCategory.value
+                    ? { borderColor: '#6366f1', background: '#eef2ff' }
+                    : { borderColor: '#e7e5e4', background: '#f9f9f8' }
+                  }
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{selectedCategory.emoji}</span>
+                    <div className="text-left">
+                      <p className="text-xs font-bold"
+                        style={{ color: occupation === selectedCategory.value ? '#4f46e5' : '#78716c' }}>
+                        「{selectedCategory.label}」のままでいい
+                      </p>
+                      <p className="text-[10px] text-stone-400">詳細は言わなくてOK</p>
+                    </div>
+                  </div>
+                  {occupation === selectedCategory.value && (
+                    <span className="text-indigo-500 font-bold text-sm">✓</span>
+                  )}
+                </button>
+
+                {occupation && occupation !== selectedCategory.value && (
+                  <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 flex items-center gap-2">
+                    <span className="text-green-500 font-bold text-lg">✓</span>
+                    <p className="text-xs text-green-700 font-bold">
+                      「{selectedCategory.jobs.find(j => j.value === occupation)?.label ?? occupation}」を選択 +10pt！
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -541,7 +675,7 @@ export default function OnboardingPage() {
             : step === STEPS.length - 1
               ? (firstPost.trim() ? '投稿して始める →' : '村を探しに行く →')
               : step === STEPS.length - 2
-                ? (occupation && occupation !== 'その他' ? `${occupation}村に入って次へ →` : '次へ →')
+                ? (occupation && occupation !== 'その他' ? `${selectedCategory?.emoji ?? '💼'} ${occupation}で次へ →` : '次へ →')
                 : '次へ →'
           }
         </button>
