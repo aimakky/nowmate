@@ -1,16 +1,15 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, checkSupportedLocation } from '@/lib/utils'
-import { Mic, Users, Plus, Radio } from 'lucide-react'
+import { Mic, Users, Radio } from 'lucide-react'
 import Header from '@/components/layout/Header'
 
-const CATEGORIES = ['雑談', '飲み', '相談', '作業', 'Language', 'Other']
+const CATEGORIES = ['雑談', '夜話', '相談', '悩み', '笑い', '趣味']
 
 const CAT_EMOJI: Record<string, string> = {
-  '雑談': '💬', '飲み': '🍻', '相談': '🤝', '作業': '💻', 'Language': '🗣️', 'Other': '✨'
+  '雑談': '💬', '夜話': '🌙', '相談': '🤝', '悩み': '💭', '笑い': '😂', '趣味': '🎵'
 }
 
 interface Room {
@@ -23,7 +22,7 @@ interface Room {
   host_id: string
   agenda?: string | null
   profiles: { display_name: string; nationality: string; avatar_url: string | null }
-  voice_participants: { user_id: string; is_listener: boolean; profiles: { nationality: string } }[]
+  voice_participants: { user_id: string; is_listener: boolean }[]
 }
 
 export default function VoicePage() {
@@ -39,13 +38,11 @@ export default function VoicePage() {
   const [newIsOpen,  setNewIsOpen]  = useState(true)
   const [newAgenda,  setNewAgenda]  = useState('')
   const [creating,   setCreating]   = useState(false)
-  const [locationStatus, setLocationStatus] = useState<'checking' | 'supported' | 'outside' | 'denied'>('checking')
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id)
     })
-    checkSupportedLocation().then(status => setLocationStatus(status))
   }, [])
 
   const fetchRooms = useCallback(async () => {
@@ -53,7 +50,7 @@ export default function VoicePage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('voice_rooms')
-      .select('*, profiles(display_name, nationality, avatar_url), voice_participants(user_id, is_listener, profiles(nationality))')
+      .select('*, profiles(display_name, nationality, avatar_url), voice_participants(user_id, is_listener)')
       .eq('status', 'active')
       .order('created_at', { ascending: false })
     setRooms((data || []) as Room[])
@@ -73,7 +70,6 @@ export default function VoicePage() {
   useEffect(() => { fetchRooms() }, [fetchRooms])
   useEffect(() => { fetchFollowing() }, [fetchFollowing])
 
-  // Realtime: update participant counts
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase.channel('voice_rooms_updates')
@@ -108,77 +104,29 @@ export default function VoicePage() {
     tab === 'open' ? r.is_open : followingIds.has(r.host_id) || r.host_id === userId
   )
 
-  // Location gate
-  if (locationStatus === 'outside') {
-    return (
-      <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
-        <Header title="Voice" />
-        <div className="flex flex-col items-center justify-center min-h-[75vh] px-8 text-center">
-          <div className="text-6xl mb-5">🇯🇵</div>
-          <h2 className="font-extrabold text-stone-900 text-xl mb-3">Available in 9 countries</h2>
-          <p className="text-sm text-stone-500 leading-relaxed mb-6">
-            Voice rooms are exclusively for people physically in Japan.{'\n'}
-            Come back when you're here! 🗾
-          </p>
-          <div className="bg-stone-50 border border-stone-100 rounded-2xl px-5 py-4 text-xs text-stone-400">
-            📍 Your location is outside a supported country
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (locationStatus === 'denied') {
-    return (
-      <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
-        <Header title="Voice" />
-        <div className="flex flex-col items-center justify-center min-h-[75vh] px-8 text-center">
-          <div className="text-6xl mb-5">📍</div>
-          <h2 className="font-extrabold text-stone-900 text-xl mb-3">Location required</h2>
-          <p className="text-sm text-stone-500 leading-relaxed mb-6">
-            Voice rooms are only available in supported countries. Please enable location access to continue.
-          </p>
-          <button
-            onClick={() => checkSupportedLocation().then(s => setLocationStatus(s))}
-            className="px-6 py-3 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-md shadow-brand-200 active:scale-95 transition-all">
-            Try again
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
-      <Header title="Voice" />
-      {locationStatus === 'checking' && (
-        <div className="px-4 pt-3">
-          <div className="bg-brand-50 border border-brand-100 rounded-2xl px-4 py-2.5 flex items-center gap-2.5">
-            <span className="w-3.5 h-3.5 border-2 border-brand-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-            <span className="text-xs font-semibold text-brand-700">Checking your location…</span>
-          </div>
-        </div>
-      )}
+      <Header title="通話" />
 
-      {/* Follow / Open tabs */}
+      {/* フォロー中 / すべて タブ */}
       <div className="px-4 pt-3 pb-2">
         <div className="flex gap-1 bg-stone-100 rounded-xl p-1">
           <button onClick={() => setTab('follow')}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
               tab === 'follow' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500'
             }`}>
-            👥 Follow
+            👥 フォロー中
           </button>
           <button onClick={() => setTab('open')}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
               tab === 'open' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500'
             }`}>
-            🌏 Open
+            🎙️ すべての通話
           </button>
         </div>
       </div>
 
-      {/* Room list */}
+      {/* ルーム一覧 */}
       <div className="px-4 pb-28 space-y-3 pt-2">
         {loading ? (
           [...Array(3)].map((_, i) => (
@@ -188,25 +136,25 @@ export default function VoicePage() {
           <div className="text-center py-16">
             <div className="text-5xl mb-3">🎙️</div>
             <p className="font-bold text-stone-700">
-              {tab === 'follow' ? 'No rooms from people you follow' : 'No voice rooms right now'}
+              {tab === 'follow' ? 'フォロー中の人の通話はまだありません' : '今は通話ルームがありません'}
             </p>
-            <p className="text-sm text-stone-400 mt-1.5 mb-5">Be the first to start a room!</p>
+            <p className="text-sm text-stone-400 mt-1.5 mb-5">最初のルームを開いてみましょう！</p>
             <button onClick={() => setShowCreate(true)}
               className="px-5 py-2.5 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-sm">
-              🎙️ Start a room
+              🎙️ 通話を始める
             </button>
           </div>
         ) : (
           displayed.map(room => {
-            const speakers = room.voice_participants?.filter(p => !p.is_listener) || []
-            const listeners = room.voice_participants?.filter(p => p.is_listener) || []
-            const total = room.voice_participants?.length || 0
-            const hostFlag = getNationalityFlag(room.profiles?.nationality || '')
+            const speakers  = room.voice_participants?.filter(p => !p.is_listener) || []
+            const listeners = room.voice_participants?.filter(p =>  p.is_listener) || []
+            const total     = room.voice_participants?.length || 0
             return (
               <div key={room.id}
-                onClick={() => locationStatus === 'supported' && router.push(`/voice/${room.id}`)}
+                onClick={() => router.push(`/voice/${room.id}`)}
                 className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm cursor-pointer active:scale-[0.99] transition-all hover:shadow-md">
-                {/* Header */}
+
+                {/* ヘッダー */}
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{CAT_EMOJI[room.category] ?? '✨'}</span>
@@ -229,28 +177,12 @@ export default function VoicePage() {
                   </div>
                 )}
 
-                {/* Speaker flags */}
-                {speakers.length > 0 && (
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <Mic size={12} className="text-stone-400" />
-                    <div className="flex gap-1">
-                      {speakers.slice(0, 6).map((p, i) => (
-                        <span key={i} className="text-lg">
-                          {getNationalityFlag((p as any).profiles?.nationality || '')}
-                        </span>
-                      ))}
-                    </div>
-                    {speakers.length > 6 && <span className="text-xs text-stone-400">+{speakers.length - 6}</span>}
-                  </div>
-                )}
-
-                {/* Footer */}
+                {/* フッター */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-base">{hostFlag}</span>
                     <span className="text-xs text-stone-500 font-medium">{room.profiles?.display_name}</span>
                     {!room.is_open && (
-                      <span className="text-[10px] bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded-full font-semibold">Followers only</span>
+                      <span className="text-[10px] bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded-full font-semibold">フォロワー限定</span>
                     )}
                   </div>
                   <div className="flex items-center gap-3">
@@ -263,7 +195,7 @@ export default function VoicePage() {
                       <Users size={12} /> {total}
                     </span>
                     <span className="text-xs font-bold px-3 py-1.5 bg-brand-500 text-white rounded-xl">
-                      Join →
+                      参加 →
                     </span>
                   </div>
                 </div>
@@ -273,14 +205,14 @@ export default function VoicePage() {
         )}
       </div>
 
-      {/* Floating create button */}
+      {/* フローティングボタン */}
       <button
         onClick={() => setShowCreate(true)}
         className="fixed bottom-24 right-5 w-14 h-14 bg-brand-500 rounded-2xl flex items-center justify-center shadow-xl shadow-brand-200 hover:bg-brand-600 active:scale-90 transition-all z-30">
         <Mic size={22} className="text-white" />
       </button>
 
-      {/* Create Room Modal */}
+      {/* ルーム作成モーダル */}
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowCreate(false)} />
@@ -290,7 +222,7 @@ export default function VoicePage() {
             <input
               value={newTitle}
               onChange={e => setNewTitle(e.target.value)}
-              placeholder="通話タイトル… 例：仕事終わり雑談・副業の相談"
+              placeholder="タイトル… 例：今日しんどかった話・趣味の話"
               className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm focus:outline-none focus:border-brand-400 mb-3"
               autoFocus
             />
@@ -301,7 +233,7 @@ export default function VoicePage() {
             <textarea
               value={newAgenda}
               onChange={e => setNewAgenda(e.target.value.slice(0, 120))}
-              placeholder="例：副業を始めたいが何から着手すべきか話し合いたい"
+              placeholder="例：最近モヤモヤしてること、誰かと話し合いたい"
               rows={2}
               className="w-full px-4 py-2.5 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-brand-400 mb-4"
             />
