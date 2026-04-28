@@ -440,7 +440,7 @@ export default function MyPage() {
                   className="mt-5 px-5 py-2.5 rounded-full text-sm font-bold text-white active:scale-95 transition-all"
                   style={{ background: 'linear-gradient(135deg,#1c1917,#3c3836)' }}
                 >
-                  最初のツイートをする
+                  最初の投稿をする
                 </button>
               </div>
             ) : (
