@@ -8,7 +8,9 @@ import { TrustCard, TrustHowToCard } from '@/components/ui/TrustBadge'
 import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
 import { getUserTrust, fetchTierProgress, type TierProgress } from '@/lib/trust'
 import { getTitleName, TITLE_LEVEL_STYLE } from '@/lib/qa'
-import { Settings, LogOut, ChevronRight, Crown, Users } from 'lucide-react'
+import { Settings, LogOut, ChevronRight, Crown, Users, MessageSquare } from 'lucide-react'
+import { getCategoryStyle } from '@/lib/qa'
+import { timeAgo } from '@/lib/utils'
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 import MissionsCard from '@/components/features/MissionsCard'
 import GrowthPortfolio from '@/components/features/GrowthPortfolio'
@@ -37,6 +39,7 @@ export default function MyPage() {
   const [loading,        setLoading]        = useState(true)
   const [showPhoneVerify,setShowPhoneVerify]= useState(false)
   const [idCopied,       setIdCopied]       = useState(false)
+  const [myAnswers,      setMyAnswers]      = useState<any[]>([])
 
   useEffect(() => {
     async function load() {
@@ -79,6 +82,18 @@ export default function MyPage() {
         supabase.from('user_follows').select('following_id, profiles:following_id(id,display_name,avatar_url,bio)').eq('follower_id', user.id),
         supabase.from('user_follows').select('follower_id, profiles:follower_id(id,display_name,avatar_url,bio)').eq('following_id', user.id),
       ])
+
+      // 自分の回答履歴（全件・匿名/実名両方表示）
+      const { data: answersData } = await supabase
+        .from('qa_answers')
+        .select('id, content, is_anonymous, created_at, qa_questions(id, title, category)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(30)
+      setMyAnswers((answersData || []).map((a: any) => ({
+        ...a,
+        qa_questions: Array.isArray(a.qa_questions) ? a.qa_questions[0] ?? null : a.qa_questions,
+      })))
 
       if (!p) { router.push('/onboarding'); return }
       setProfile(p)
@@ -531,6 +546,60 @@ export default function MyPage() {
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* ── 私の回答履歴 ── */}
+        {myAnswers.length > 0 && (
+          <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 py-3 border-b border-stone-50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageSquare size={14} className="text-indigo-500" />
+                <p className="text-xs font-bold text-stone-700">私の回答履歴</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="text-[10px] text-stone-400">{myAnswers.length}件</p>
+                <ChevronRight
+                  size={12}
+                  className="text-stone-300 cursor-pointer"
+                  onClick={() => router.push('/settings')}
+                />
+              </div>
+            </div>
+            <div className="divide-y divide-stone-50">
+              {myAnswers.slice(0, 5).map((a: any) => {
+                const q = a.qa_questions
+                const cs = q ? getCategoryStyle(q.category) : getCategoryStyle('なんでも相談')
+                return (
+                  <div key={a.id} className="px-4 py-3">
+                    {/* 質問タイトル */}
+                    {q && (
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                          style={{ background: cs.bg, color: cs.color, border: `1px solid ${cs.border}` }}>
+                          {cs.emoji} {q.category}
+                        </span>
+                        <p className="text-[11px] font-bold text-stone-500 truncate flex-1">{q.title}</p>
+                        {a.is_anonymous && (
+                          <span className="text-[9px] text-stone-300 flex-shrink-0">🕵️ 匿名</span>
+                        )}
+                      </div>
+                    )}
+                    {/* 回答本文 */}
+                    <p className="text-xs text-stone-700 leading-relaxed line-clamp-2">{a.content}</p>
+                    <p className="text-[10px] text-stone-300 mt-1">{timeAgo(a.created_at)}</p>
+                  </div>
+                )
+              })}
+            </div>
+            {myAnswers.length > 5 && (
+              <div className="px-4 py-3 border-t border-stone-50 text-center">
+                <p className="text-[11px] text-indigo-500 font-bold">
+                  残り{myAnswers.length - 5}件 — プロフィールで全件表示
+                </p>
+              </div>
+            )}
           </div>
         )}
 

@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag } from '@/lib/utils'
-import { timeAgo } from '@/lib/utils'
-import { ArrowLeft, Heart, ChevronRight } from 'lucide-react'
+import { getNationalityFlag, timeAgo } from '@/lib/utils'
+import { ArrowLeft, Heart, ChevronRight, MessageSquare } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
 import Link from 'next/link'
+import { getCategoryStyle } from '@/lib/qa'
 
 interface VillagePost {
   id: string
@@ -18,6 +18,13 @@ interface VillagePost {
   village_id: string
   reaction_count: number
   villages: { id: string; name: string; icon: string } | null
+}
+
+interface QAAnswerWithQ {
+  id: string
+  content: string
+  created_at: string
+  qa_questions: { id: string; title: string; category: string } | null
 }
 
 export default function UserProfilePage() {
@@ -34,6 +41,9 @@ export default function UserProfilePage() {
   const [loading, setLoading] = useState(true)
   const [trustTier, setTrustTier] = useState<string | null>(null)
   const [isPremium, setIsPremium] = useState(false)
+  const [activeTab, setActiveTab] = useState<'posts' | 'answers'>('posts')
+  const [answers, setAnswers] = useState<QAAnswerWithQ[]>([])
+  const [showAnswersTab, setShowAnswersTab] = useState(true)
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -45,20 +55,27 @@ export default function UserProfilePage() {
     if (!userId) return
     async function load() {
       const supabase = createClient()
-      const [{ data: p }, { data: posts }, { count: totalPosts }, { count: followers }, { count: following }, { data: trust }, { data: premSub }] = await Promise.all([
+      const [{ data: p }, { data: posts }, { count: totalPosts }, { count: followers }, { count: following }, { data: trust }, { data: premSub }, { data: answersData }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
         supabase.from('village_posts')
           .select('id, content, category, created_at, village_id, reaction_count, villages(id, name, icon)')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
-          .limit(3),
+          .limit(5),
         supabase.from('village_posts').select('*', { count: 'exact', head: true }).eq('user_id', userId),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', userId),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId),
         supabase.from('user_trust').select('tier').eq('user_id', userId).maybeSingle(),
         supabase.from('premium_subscriptions').select('id').eq('user_id', userId).eq('status', 'active').gt('expires_at', new Date().toISOString()).maybeSingle(),
+        supabase.from('qa_answers')
+          .select('id, content, created_at, qa_questions(id, title, category)')
+          .eq('user_id', userId)
+          .eq('is_anonymous', false)
+          .order('created_at', { ascending: false })
+          .limit(20),
       ])
       setProfile(p)
+      setShowAnswersTab(p?.show_answers !== false)
       const normalized = (posts || []).map((post: any) => ({
         ...post,
         villages: Array.isArray(post.villages) ? post.villages[0] ?? null : post.villages,
@@ -69,6 +86,11 @@ export default function UserProfilePage() {
       setFollowingCount(following ?? 0)
       if (trust?.tier) setTrustTier(trust.tier)
       setIsPremium(!!premSub)
+      const normalizedAnswers = (answersData || []).map((a: any) => ({
+        ...a,
+        qa_questions: Array.isArray(a.qa_questions) ? a.qa_questions[0] ?? null : a.qa_questions,
+      })) as QAAnswerWithQ[]
+      setAnswers(normalizedAnswers)
       setLoading(false)
     }
     load()
@@ -169,51 +191,128 @@ if (loading) return (
         )}
       </div>
 
-      {/* 最近の村投稿 */}
-      <div className="px-4 pt-4 pb-28 space-y-3">
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-xs font-extrabold text-stone-500 uppercase tracking-wider">最近の投稿</p>
-          {postCount > 3 && (
-            <span className="text-[10px] text-stone-400">{postCount}件中3件を表示</span>
+      {/* ── タブ ── */}
+      <div className="flex border-b border-stone-100 bg-white sticky top-[57px] z-10">
+        <button
+          onClick={() => setActiveTab('posts')}
+          className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-bold relative transition-colors"
+          style={{ color: activeTab === 'posts' ? '#1c1917' : '#a8a29e' }}
+        >
+          ✍️ 投稿
+          {activeTab === 'posts' && (
+            <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-stone-900" />
           )}
-        </div>
+        </button>
+        {showAnswersTab && (
+          <button
+            onClick={() => setActiveTab('answers')}
+            className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-bold relative transition-colors"
+            style={{ color: activeTab === 'answers' ? '#1c1917' : '#a8a29e' }}
+          >
+            💬 回答
+            {answers.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold"
+                style={{ background: activeTab === 'answers' ? '#1c1917' : '#f5f5f4', color: activeTab === 'answers' ? '#fff' : '#a8a29e' }}>
+                {answers.length}
+              </span>
+            )}
+            {activeTab === 'answers' && (
+              <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-stone-900" />
+            )}
+          </button>
+        )}
+      </div>
 
-        {recentPosts.length === 0 ? (
-          <div className="bg-white border border-stone-100 rounded-2xl p-8 text-center">
-            <p className="text-3xl mb-2">✍️</p>
-            <p className="text-sm font-bold text-stone-500">まだ投稿がありません</p>
-          </div>
-        ) : (
-          recentPosts.map(post => {
-            return (
-              <div key={post.id} className="bg-white border border-stone-100 rounded-2xl shadow-sm overflow-hidden">
-                <div className="px-4 pt-3.5 pb-2.5">
-                  <p className="text-sm text-stone-800 leading-relaxed">{post.content}</p>
-                </div>
-                <div className="flex items-center justify-between px-4 py-2.5 border-t border-stone-50">
-                  {post.villages ? (
-                    <Link href={`/villages/${post.village_id}`}
-                      className="flex items-center gap-1.5 active:opacity-70 transition-opacity">
-                      <span className="text-sm">{post.villages.icon}</span>
-                      <span className="text-[11px] font-bold text-stone-500 truncate max-w-[160px]">
-                        {post.villages.name}
-                      </span>
-                      <ChevronRight size={11} className="text-stone-300 flex-shrink-0" />
-                    </Link>
-                  ) : <span />}
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-stone-400">{timeAgo(post.created_at)}</span>
-                    {post.reaction_count > 0 && (
-                      <div className="flex items-center gap-1 text-rose-400">
-                        <Heart size={12} fill="#f43f5e" strokeWidth={0} />
-                        <span className="text-[11px] font-bold">{post.reaction_count}</span>
-                      </div>
-                    )}
+      {/* ── コンテンツ ── */}
+      <div className="px-4 pt-4 pb-28 space-y-3">
+
+        {/* 投稿タブ */}
+        {activeTab === 'posts' && (
+          <>
+            {postCount > 5 && (
+              <p className="text-[10px] text-stone-400 text-right">{postCount}件中5件を表示</p>
+            )}
+            {recentPosts.length === 0 ? (
+              <div className="bg-white border border-stone-100 rounded-2xl p-8 text-center">
+                <p className="text-3xl mb-2">✍️</p>
+                <p className="text-sm font-bold text-stone-500">まだ投稿がありません</p>
+              </div>
+            ) : (
+              recentPosts.map(post => (
+                <div key={post.id} className="bg-white border border-stone-100 rounded-2xl shadow-sm overflow-hidden">
+                  <div className="px-4 pt-3.5 pb-2.5">
+                    <p className="text-sm text-stone-800 leading-relaxed">{post.content}</p>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-2.5 border-t border-stone-50">
+                    {post.villages ? (
+                      <Link href={`/villages/${post.village_id}`}
+                        className="flex items-center gap-1.5 active:opacity-70 transition-opacity">
+                        <span className="text-sm">{post.villages.icon}</span>
+                        <span className="text-[11px] font-bold text-stone-500 truncate max-w-[160px]">
+                          {post.villages.name}
+                        </span>
+                        <ChevronRight size={11} className="text-stone-300 flex-shrink-0" />
+                      </Link>
+                    ) : <span />}
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] text-stone-400">{timeAgo(post.created_at)}</span>
+                      {post.reaction_count > 0 && (
+                        <div className="flex items-center gap-1 text-rose-400">
+                          <Heart size={12} fill="#f43f5e" strokeWidth={0} />
+                          <span className="text-[11px] font-bold">{post.reaction_count}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
+              ))
+            )}
+          </>
+        )}
+
+        {/* 回答タブ */}
+        {activeTab === 'answers' && showAnswersTab && (
+          <>
+            {answers.length === 0 ? (
+              <div className="bg-white border border-stone-100 rounded-2xl p-8 text-center">
+                <p className="text-3xl mb-2">💬</p>
+                <p className="text-sm font-bold text-stone-500">まだ実名の回答がありません</p>
+                <p className="text-xs text-stone-400 mt-1">実名で回答すると、ここに蓄積されます</p>
               </div>
-            )
-          })
+            ) : (
+              answers.map(a => {
+                const q = a.qa_questions
+                const cs = q ? getCategoryStyle(q.category) : getCategoryStyle('なんでも相談')
+                return (
+                  <div key={a.id} className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
+                    {/* 質問への参照 */}
+                    {q && (
+                      <Link href={`/qa/${q.id}`}
+                        className="flex items-center gap-2.5 px-4 py-2.5 border-b border-stone-50 active:bg-stone-50 transition-colors"
+                        style={{ background: cs.bg }}>
+                        <span
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                          style={{ background: cs.border, color: cs.color }}>
+                          {cs.emoji} {q.category}
+                        </span>
+                        <p className="text-xs font-bold text-stone-700 truncate flex-1">{q.title}</p>
+                        <ChevronRight size={11} className="text-stone-300 flex-shrink-0" />
+                      </Link>
+                    )}
+                    {/* 回答本文 */}
+                    <div className="px-4 py-3">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <MessageSquare size={11} className="text-stone-300" />
+                        <span className="text-[10px] font-bold text-stone-400">この人の回答</span>
+                        <span className="text-[10px] text-stone-300 ml-auto">{timeAgo(a.created_at)}</span>
+                      </div>
+                      <p className="text-sm text-stone-800 leading-relaxed">{a.content}</p>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </>
         )}
       </div>
     </div>

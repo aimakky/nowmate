@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Camera, Check, Trash2 } from 'lucide-react'
+import { ArrowLeft, Camera, Check, Trash2, Eye, EyeOff } from 'lucide-react'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -17,6 +17,8 @@ export default function SettingsPage() {
   const [avatarPreview,  setAvatarPreview]  = useState<string | null>(null)
   const [deleteConfirm,  setDeleteConfirm]  = useState(false)
   const [deleting,       setDeleting]       = useState(false)
+  const [showAnswers,    setShowAnswers]    = useState(true)
+  const [savingAnswers,  setSavingAnswers]  = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -29,6 +31,7 @@ export default function SettingsPage() {
       setName(p.display_name ?? '')
       setBio(p.bio ?? '')
       setAvatarPreview(p.avatar_url)
+      setShowAnswers(p.show_answers !== false)
       setLoading(false)
     }
     load()
@@ -161,6 +164,54 @@ export default function SettingsPage() {
               : '変更を保存する'
           }
         </button>
+
+        {/* ── プライバシー設定 ── */}
+        <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
+          <div className="px-4 py-3 border-b border-stone-50">
+            <p className="text-xs font-bold text-stone-500 uppercase tracking-wider">プライバシー設定</p>
+          </div>
+          <div
+            className="flex items-center justify-between px-4 py-4 cursor-pointer active:bg-stone-50 transition-colors"
+            onClick={async () => {
+              const next = !showAnswers
+              setShowAnswers(next)
+              setSavingAnswers(true)
+              const supabase = createClient()
+              await supabase.from('profiles').update({ show_answers: next }).eq('id', profile.id)
+              setSavingAnswers(false)
+            }}
+          >
+            <div className="flex items-center gap-3">
+              {showAnswers
+                ? <Eye size={18} className="text-indigo-500 flex-shrink-0" />
+                : <EyeOff size={18} className="text-stone-400 flex-shrink-0" />
+              }
+              <div>
+                <p className="text-sm font-bold text-stone-800">回答履歴を公開する</p>
+                <p className="text-[11px] text-stone-400 mt-0.5">
+                  {showAnswers
+                    ? '他の人があなたの回答をプロフィールで見られます'
+                    : '自分以外には回答タブが表示されません'
+                  }
+                </p>
+              </div>
+            </div>
+            <div
+              className="w-11 h-6 rounded-full flex-shrink-0 transition-all relative"
+              style={{ background: showAnswers ? '#6366f1' : '#d6d3d1' }}
+            >
+              {savingAnswers
+                ? <span className="absolute inset-0 flex items-center justify-center">
+                    <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </span>
+                : <div
+                    className="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow-sm"
+                    style={{ left: showAnswers ? '22px' : '2px' }}
+                  />
+              }
+            </div>
+          </div>
+        </div>
 
         {/* ── アカウント削除 ── */}
         <div className="border-t border-stone-100 pt-4">
