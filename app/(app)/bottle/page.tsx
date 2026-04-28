@@ -126,10 +126,10 @@ export default function BottlePage() {
         <div className="flex items-start justify-between gap-3 mb-4 relative">
           <div>
             <p className="text-blue-300/70 text-[10px] font-bold tracking-widest mb-0.5 uppercase">
-              {tab === 'qa' ? 'Community Q&A' : 'Drift Bottle'}
+              {tab === 'qa' ? '質問村' : 'Drift Bottle'}
             </p>
             <h1 className="font-extrabold text-white text-2xl leading-tight">
-              {tab === 'qa' ? '💬 相談広場' : '🌊 漂流瓶'}
+              {tab === 'qa' ? '💬 質問村' : '🌊 漂流瓶'}
             </h1>
             <p className="text-blue-200/60 text-[11px] mt-0.5">
               {tab === 'qa'
@@ -156,7 +156,7 @@ export default function BottlePage() {
         {/* ── タブ切り替え ── */}
         <div className="flex relative">
           {([
-            { id: 'qa',     icon: '💬', label: 'Q&A・相談' },
+            { id: 'qa',     icon: '💬', label: '質問村' },
             { id: 'bottle', icon: '🌊', label: '漂流瓶' },
           ] as { id: 'qa' | 'bottle'; icon: string; label: string }[]).map(t => (
             <button
