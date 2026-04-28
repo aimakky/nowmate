@@ -8,7 +8,7 @@ import { TrustCard } from '@/components/ui/TrustBadge'
 import TrustBadge from '@/components/ui/TrustBadge'
 import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
 import { getUserTrust, fetchTierProgress, type TierProgress } from '@/lib/trust'
-import { Settings, LogOut, ChevronRight, Crown, Users, Copy, Check, Pencil, X } from 'lucide-react'
+import { Settings, LogOut, ChevronRight, Crown, Users, Copy, Check, Pencil, X, Eye, EyeOff } from 'lucide-react'
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
@@ -163,6 +163,8 @@ export default function MyPage() {
   const [showPhoneVerify,setShowPhoneVerify]= useState(false)
   const [showCompose,    setShowCompose]    = useState(false)
   const [idCopied,       setIdCopied]       = useState(false)
+  const [showIndustry,   setShowIndustry]   = useState(true)
+  const [savingIndustry, setSavingIndustry] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -218,6 +220,7 @@ export default function MyPage() {
 
       if (!p) { router.push('/onboarding'); return }
       setProfile(p)
+      setShowIndustry(p.show_industry !== false)
       setTrust(trustData)
       setTierProgress(tierProgressData)
       setVillageCount(vc ?? 0)
@@ -258,6 +261,15 @@ export default function MyPage() {
   async function handleLogout() {
     await createClient().auth.signOut()
     router.push('/')
+  }
+
+  async function toggleIndustryVisibility() {
+    if (savingIndustry || !userId) return
+    const next = !showIndustry
+    setShowIndustry(next)
+    setSavingIndustry(true)
+    await createClient().from('profiles').update({ show_industry: next }).eq('id', userId)
+    setSavingIndustry(false)
   }
 
   if (loading || !profile) {
@@ -337,12 +349,31 @@ export default function MyPage() {
           <p className="text-sm text-stone-700 mt-2 leading-relaxed">{profile.bio}</p>
         )}
 
-        <div className="flex flex-wrap gap-2 mt-2.5">
+        <div className="flex flex-wrap items-center gap-2 mt-2.5">
           {industryInfo && (
-            <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full"
-              style={{ background: `${industryInfo.color}15`, color: industryInfo.color }}>
-              {industryInfo.emoji} {industryInfo.id}
-            </span>
+            <div className="flex items-center gap-1.5">
+              {showIndustry ? (
+                <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full"
+                  style={{ background: `${industryInfo.color}15`, color: industryInfo.color }}>
+                  {industryInfo.emoji} {industryInfo.id}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-stone-100 text-stone-400">
+                  {industryInfo.emoji} 非公開
+                </span>
+              )}
+              <button
+                onClick={toggleIndustryVisibility}
+                disabled={savingIndustry}
+                className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-stone-100 active:bg-stone-200 transition-colors disabled:opacity-40"
+                title={showIndustry ? '職業を非表示にする' : '職業を公開する'}
+              >
+                {showIndustry
+                  ? <Eye size={13} className="text-stone-400" />
+                  : <EyeOff size={13} className="text-stone-400" />
+                }
+              </button>
+            </div>
           )}
           {profile.created_at && (
             <span className="text-xs text-stone-400">
