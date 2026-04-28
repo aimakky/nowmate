@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -771,7 +771,7 @@ export default function MyPage() {
           </div>
         )}
 
-        {/* ── VILLIA ID ── */}
+        {/* ── 自由村 ID ── */}
         {profile.VILLIA_id && (
           <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm">
             <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">My ID</p>

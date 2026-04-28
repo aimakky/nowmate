@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { X } from 'lucide-react'
@@ -78,7 +78,7 @@ export default function ReportModal({ reportedId, reportedName, onClose }: Repor
             <p className="font-extrabold text-stone-800 text-base">通報を受け付けました</p>
             <p className="text-sm text-stone-500 mt-2 leading-relaxed">
               運営チームが確認し、対応します。<br />
-              VILLIAをより良い場所にするための報告、ありがとうございます。
+              自由村をより良い場所にするための報告、ありがとうございます。
             </p>
             <button
               onClick={onClose}

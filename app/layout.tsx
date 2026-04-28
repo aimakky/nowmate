@@ -1,26 +1,26 @@
-﻿import type { Metadata, Viewport } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import GoogleAnalytics from '@/components/analytics/GoogleAnalytics'
 
 export const metadata: Metadata = {
-  title: { default: 'VILLIA — Just landed in Japan? We\'ve got you.', template: '%s | VILLIA' },
+  title: { default: '自由村 — Just landed in Japan? We\'ve got you.', template: '%s | 自由村' },
   description: 'The foreigner-only community in Japan. Connect with expats who get it — survival tips, real friendships, and help when you need it. Free forever.',
   keywords: ['foreigners in japan', 'expat japan', 'expat friends japan', 'expat community japan', 'friends japan', 'language exchange japan', 'international community japan', 'just landed japan', 'new to japan', 'living in japan foreigner', 'expat survival japan'],
-  authors: [{ name: 'VILLIA' }],
-  creator: 'VILLIA',
-  metadataBase: new URL('https://VILLIAjapan.com'),
+  authors: [{ name: '自由村' }],
+  creator: '自由村',
+  metadataBase: new URL('https://自由村japan.com'),
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://VILLIAjapan.com',
-    siteName: 'VILLIA',
-    title: 'VILLIA — Connect with foreigners in Japan',
+    url: 'https://自由村japan.com',
+    siteName: '自由村',
+    title: '自由村 — Connect with foreigners in Japan',
     description: 'Find your people. Right here in Japan.',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'VILLIA' }],
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: '自由村' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'VILLIA — Connect with foreigners in Japan',
+    title: '自由村 — Connect with foreigners in Japan',
     description: 'Find your people. Right here in Japan.',
     images: ['/og-image.png'],
   },
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'VILLIA',
+    title: '自由村',
   },
   formatDetection: { telephone: false },
   other: { 'mobile-web-app-capable': 'yes' },

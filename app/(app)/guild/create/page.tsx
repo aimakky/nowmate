@@ -75,7 +75,7 @@ export default function GuildCreatePage() {
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#111827' }}>
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#f5f3ff' }}>
 
       {/* ヘッダー */}
       <div className="sticky top-0 z-10 px-4 py-4 flex items-center gap-3"
@@ -95,7 +95,7 @@ export default function GuildCreatePage() {
 
         {/* 業界選択 */}
         <div>
-          <p className="text-xs font-bold text-white/50 uppercase tracking-wider mb-3">
+          <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">
             あなたの業界 <span className="text-rose-400">*</span>
           </p>
           <div className="grid grid-cols-2 gap-2">
@@ -104,13 +104,13 @@ export default function GuildCreatePage() {
                 onClick={() => setIndustry(i.id)}
                 className="flex items-center gap-2.5 p-3 rounded-2xl border-2 text-left transition-all active:scale-95"
                 style={industry === i.id
-                  ? { borderColor: i.color, background: `${i.color}20` }
-                  : { borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)' }
+                  ? { borderColor: i.color, background: `${i.color}15` }
+                  : { borderColor: '#e0e7ff', background: '#fff' }
                 }
               >
                 <span className="text-lg flex-shrink-0">{i.emoji}</span>
                 <p className="text-xs font-bold leading-tight"
-                  style={{ color: industry === i.id ? i.color : 'rgba(255,255,255,0.6)' }}>
+                  style={{ color: industry === i.id ? i.color : '#78716c' }}>
                   {i.id}
                 </p>
               </button>
@@ -120,7 +120,7 @@ export default function GuildCreatePage() {
 
         {/* トピックタグ */}
         <div>
-          <p className="text-xs font-bold text-white/50 uppercase tracking-wider mb-3">
+          <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">
             トピック <span className="text-rose-400">*</span>
           </p>
           <div className="flex flex-wrap gap-2">
@@ -130,7 +130,7 @@ export default function GuildCreatePage() {
                 className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold transition-all active:scale-95 border"
                 style={topicTag === t.id
                   ? { background: ind ? ind.color : '#6366f1', color: '#fff', borderColor: 'transparent' }
-                  : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)', borderColor: 'rgba(255,255,255,0.12)' }
+                  : { background: '#fff', color: '#78716c', borderColor: '#e0e7ff' }
                 }
               >{t.emoji} {t.id}</button>
             ))}
@@ -139,7 +139,7 @@ export default function GuildCreatePage() {
 
         {/* 本文 */}
         <div>
-          <p className="text-xs font-bold text-white/50 uppercase tracking-wider mb-2">
+          <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
             内容 <span className="text-rose-400">*</span>
           </p>
           <textarea
@@ -148,19 +148,19 @@ export default function GuildCreatePage() {
             placeholder="本音で話してください。業界名と信頼ティアしか表示されません。"
             maxLength={500}
             rows={6}
-            className="w-full px-4 py-3 rounded-2xl text-sm resize-none focus:outline-none leading-relaxed"
-            style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.95)', caretColor: '#6366f1' }}
+            className="w-full px-4 py-3 rounded-2xl text-sm resize-none focus:outline-none leading-relaxed text-stone-800 placeholder-stone-300 bg-white"
+            style={{ border: '1px solid #e0e7ff', caretColor: '#6366f1' }}
           />
           <div className="flex justify-between mt-1">
-            <p className="text-[10px] text-white/50">10〜500文字</p>
-            <p className="text-[10px]" style={{ color: content.length > 450 ? '#f87171' : 'rgba(255,255,255,0.3)' }}>{content.length}/500</p>
+            <p className="text-[10px] text-stone-400">10〜500文字</p>
+            <p className="text-[10px]" style={{ color: content.length > 450 ? '#f87171' : '#c4b5fd' }}>{content.length}/500</p>
           </div>
         </div>
 
         {/* 画像 */}
         <div>
-          <p className="text-xs font-bold text-white/50 uppercase tracking-wider mb-2">
-            画像 <span className="text-white/20 normal-case font-normal">（任意・5MBまで）</span>
+          <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+            画像 <span className="text-stone-300 normal-case font-normal">（任意・5MBまで）</span>
           </p>
           {imagePrev ? (
             <div className="relative">
@@ -174,16 +174,16 @@ export default function GuildCreatePage() {
           ) : (
             <button
               onClick={() => fileRef.current?.click()}
-              className="w-full flex items-center gap-3 p-4 rounded-2xl transition-colors"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px dashed rgba(255,255,255,0.15)' }}
+              className="w-full flex items-center gap-3 p-4 rounded-2xl transition-colors bg-white"
+              style={{ border: '1px dashed #c4b5fd' }}
             >
               <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: ind ? `${ind.color}25` : 'rgba(99,102,241,0.2)' }}>
+                style={{ background: ind ? `${ind.color}18` : '#ede9fe' }}>
                 <ImagePlus size={18} style={{ color: ind?.color ?? '#6366f1' }} />
               </div>
               <div className="text-left">
-                <p className="text-sm font-bold text-white/40">画像を追加</p>
-                <p className="text-[10px] text-white/20">JPG / PNG / WebP</p>
+                <p className="text-sm font-bold text-stone-400">画像を追加</p>
+                <p className="text-[10px] text-stone-300">JPG / PNG / WebP</p>
               </div>
             </button>
           )}
@@ -192,9 +192,9 @@ export default function GuildCreatePage() {
         </div>
 
         {/* 注意 */}
-        <div className="rounded-2xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
-          <p className="text-xs text-white/55 leading-relaxed">
-            🔒 <span className="font-bold text-white/50">匿名ルール</span><br />
+        <div className="rounded-2xl px-4 py-3 bg-white" style={{ border: '1px solid #e0e7ff' }}>
+          <p className="text-xs text-stone-500 leading-relaxed">
+            🔒 <span className="font-bold text-stone-600">匿名ルール</span><br />
             · 表示されるのは業界名と信頼ティアのみ<br />
             · 個人・会社を特定できる情報は書かないでください<br />
             · 通報3件でシャドーBANされます

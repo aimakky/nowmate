@@ -3,10 +3,10 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'VILLIA — 知らない誰かに、助けてもらえるSNS',
+  title: '自由村 — 知らない誰かに、助けてもらえるSNS',
   description: '匿名で悩みや質問を流すと、民度の高い大人たちが答えてくれる。電話認証必須・Trust Tier制度で民度を設計した、日本唯一の大人コミュニティ。',
   openGraph: {
-    title: 'VILLIA — 知らない誰かに、助けてもらえるSNS',
+    title: '自由村 — 知らない誰かに、助けてもらえるSNS',
     description: '匿名で質問を流すと、誰かが答えてくれる。民度の高い大人のコミュニティ。',
     images: [{ url: '/og-image.png', width: 1200, height: 630 }],
   },
@@ -29,7 +29,7 @@ export default async function TopPage() {
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm shadow-brand-200">
             <span className="text-white font-black text-sm">V</span>
           </div>
-          <span className="font-extrabold text-stone-900 text-lg tracking-tight">VILLIA</span>
+          <span className="font-extrabold text-stone-900 text-lg tracking-tight">自由村</span>
         </div>
         <Link href="/login"
           className="text-sm font-bold text-brand-500 px-4 py-1.5 rounded-xl border border-brand-200 hover:bg-brand-50 transition">
@@ -139,7 +139,7 @@ export default async function TopPage() {
 
           <div className="px-4 pb-5 text-center">
             <p className="text-[11px] text-blue-300/50">
-              匿名で流した質問に、民度の高い住民が本気で答える。<br />それがVILLIAの漂流瓶。
+              匿名で流した質問に、民度の高い住民が本気で答える。<br />それが自由村の漂流瓶。
             </p>
           </div>
         </div>
@@ -147,7 +147,7 @@ export default async function TopPage() {
 
       {/* ── 3つの体験 ── */}
       <section className="px-5 pb-10">
-        <p className="text-xs font-bold text-stone-400 uppercase tracking-widest text-center mb-5">VILLIAでできること</p>
+        <p className="text-xs font-bold text-stone-400 uppercase tracking-widest text-center mb-5">自由村でできること</p>
         <div className="space-y-3">
           {[
             {
@@ -291,7 +291,7 @@ export default async function TopPage() {
           className="flex items-center gap-3 bg-white border border-stone-200 rounded-2xl px-4 py-3.5 hover:bg-stone-50 active:scale-[0.98] transition-all shadow-sm">
           <span className="text-2xl">🏢</span>
           <div className="flex-1">
-            <p className="font-bold text-stone-800 text-sm">VILLIA for Business</p>
+            <p className="font-bold text-stone-800 text-sm">自由村 for Business</p>
             <p className="text-xs text-stone-500">社内コミュニティ・エンゲージメント設計 →</p>
           </div>
           <span className="text-stone-400 text-sm">→</span>
@@ -304,7 +304,7 @@ export default async function TopPage() {
           <div className="w-6 h-6 bg-brand-500 rounded-lg flex items-center justify-center">
             <span className="text-white font-black text-xs">V</span>
           </div>
-          <span className="font-bold text-stone-700">VILLIA</span>
+          <span className="font-bold text-stone-700">自由村</span>
         </div>
         <p className="text-xs text-stone-400 mb-3">知らない誰かに、助けてもらえるSNS · 18歳以上</p>
         <div className="flex justify-center gap-5 text-xs text-stone-400">
@@ -313,7 +313,7 @@ export default async function TopPage() {
           <Link href="/safety"  className="hover:text-stone-600 transition">Safety Center</Link>
           <Link href="/contact" className="hover:text-stone-600 transition">お問い合わせ</Link>
         </div>
-        <p className="text-xs text-stone-300 mt-3">© 2026 VILLIA</p>
+        <p className="text-xs text-stone-300 mt-3">© 2026 自由村</p>
       </footer>
     </div>
   )

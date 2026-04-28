@@ -1,9 +1,9 @@
-﻿import { NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: Request) {
-  const { inviteeId, inviterVILLIAId } = await req.json()
-  if (!inviteeId || !inviterVILLIAId) {
+  const { inviteeId, inviter自由村Id } = await req.json()
+  if (!inviteeId || !inviter自由村Id) {
     return NextResponse.json({ error: 'Missing params' }, { status: 400 })
   }
 
@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   const { data: inviter } = await supabase
     .from('profiles')
     .select('id, premium_until')
-    .eq('VILLIA_id', inviterVILLIAId)
+    .eq('VILLIA_id', inviter自由村Id)
     .single()
 
   if (!inviter) return NextResponse.json({ error: 'Inviter not found' }, { status: 404 })
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
   // Record invite
   await supabase.from('invites').insert({
-    inviter_VILLIA_id: inviterVILLIAId,
+    inviter_VILLIA_id: inviter自由村Id,
     invitee_id: inviteeId,
     rewarded: true,
   })
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
   await Promise.all([
     supabase.from('profiles')
-      .update({ premium_until: premiumUntil, invited_by: inviterVILLIAId })
+      .update({ premium_until: premiumUntil, invited_by: inviter自由村Id })
       .eq('id', inviteeId),
     supabase.from('profiles')
       .update({

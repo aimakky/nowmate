@@ -7,13 +7,11 @@ import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-// Twitter/X方式: 村|TL|[🌊FAB]|通知|チャット  マイページはヘッダー左上
-const LEFT_ITEMS = [
-  { href: '/timeline',  label: 'TL',          icon: Layers  },
-  { href: '/villages',  label: '村',          icon: Compass },
-]
-const RIGHT_ITEMS = [
-  { href: '/notifications', label: '通知', icon: Bell        },
+const NAV_ITEMS = [
+  { href: '/timeline',      label: 'TL',      icon: Layers         },
+  { href: '/villages',      label: '自由村',  icon: Compass        },
+  { href: '/guild',         label: '仕事村',  icon: null           },
+  { href: '/notifications', label: '通知',    icon: Bell           },
   { href: '/chat',          label: 'チャット', icon: MessageCircle },
 ]
 
@@ -75,46 +73,20 @@ export default function BottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-stone-100 safe-area-pb">
       <div className="max-w-[430px] mx-auto flex items-center h-16">
 
-        {/* 左2つ */}
-        {LEFT_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + '/')
-          return (
-            <Link key={href} href={href}
-              className={cn('flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-colors',
-                active ? 'text-stone-900' : 'text-stone-400')}>
-              <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
-              <span className={cn('text-[9px] font-bold tracking-wide mt-0.5',
-                active ? 'text-stone-900' : 'text-stone-400')}>{label}</span>
-              {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-stone-900 rounded-full" />}
-            </Link>
-          )
-        })}
-
-        {/* 中央：仕事村 FABボタン */}
-        <div className="flex-1 flex flex-col items-center justify-center relative">
-          <Link href="/guild"
-            className="flex flex-col items-center justify-center w-14 h-14 rounded-full -mt-5 shadow-lg active:scale-90 transition-all relative"
-            style={{
-              background: (pathname === '/guild' || pathname.startsWith('/guild/'))
-                ? 'linear-gradient(135deg,#3730a3 0%,#312e81 100%)'
-                : 'linear-gradient(135deg,#6366f1 0%,#4f46e5 100%)',
-              boxShadow: '0 4px 16px rgba(99,102,241,0.5)',
-            }}>
-            <span className="text-2xl leading-none">⚔️</span>
-            <span className="text-[8px] font-extrabold text-white/90 mt-0.5 leading-none">仕事村</span>
-          </Link>
-        </div>
-
-        {/* 右2つ */}
-        {RIGHT_ITEMS.map(({ href, label, icon: Icon }) => {
+        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           const badge  = badges[href] ?? 0
+          const isGuild = href === '/guild'
+
           return (
             <Link key={href} href={href}
               className={cn('flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-colors',
                 active ? 'text-stone-900' : 'text-stone-400')}>
               <div className="relative">
-                <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
+                {isGuild
+                  ? <span className="text-xl leading-none">⚔️</span>
+                  : Icon && <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
+                }
                 {badge > 0 && (
                   <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 bg-brand-500 rounded-full flex items-center justify-center px-1">
                     <span className="text-[9px] font-extrabold text-white leading-none">{badge > 99 ? '99+' : badge}</span>
@@ -127,6 +99,7 @@ export default function BottomNav() {
             </Link>
           )
         })}
+
       </div>
     </nav>
   )

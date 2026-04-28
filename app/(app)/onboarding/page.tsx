@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 import CultureCards, { markCultureAgreed } from '@/components/features/CultureCards'
+import { INDUSTRIES } from '@/lib/guild'
 
 // ── ステップ定義（5枚カードは step 1.5 として挿入）──
 const STEPS = [
@@ -46,6 +47,7 @@ export default function OnboardingPage() {
   const [selectedTypes,  setSelectedTypes]  = useState<string[]>([])
   const [firstPost,      setFirstPost]      = useState('')
   const [wantToTalk,     setWantToTalk]     = useState<typeof CONCERN_OPTIONS[0] | null>(null)
+  const [industry,       setIndustry]       = useState('')
   // 5枚カード表示フラグ（step 1 → 2 の間に挿入）
   const [showCultureCards, setShowCultureCards] = useState(false)
 
@@ -93,7 +95,7 @@ export default function OnboardingPage() {
         })
         setLoading(false)
       }
-      router.push('/villages')
+      router.push(industry ? '/guild' : '/villages')
       return
     }
 
@@ -107,6 +109,7 @@ export default function OnboardingPage() {
       id:                userId,
       display_name:      name.trim(),
       bio:               bio.trim() || null,
+      industry:          industry || null,
       age:               18,
       gender:            'other',
       nationality:       'JP',
@@ -172,6 +175,7 @@ export default function OnboardingPage() {
       id:                userId,
       display_name:      name.trim(),
       bio:               bio.trim() || null,
+      industry:          industry || null,
       age:               18,
       gender:            'other',
       nationality:       'JP',
@@ -221,7 +225,7 @@ export default function OnboardingPage() {
               <div className="text-5xl mb-4">🔒</div>
               <h3 className="font-extrabold text-white text-lg mb-2">ご利用は18歳以上</h3>
               <p className="text-white/60 text-xs leading-relaxed">
-                VILLIAは18歳以上の方のためのコミュニティです。<br />
+                自由村は18歳以上の方のためのコミュニティです。<br />
                 健全な場づくりのため、年齢確認をお願いしています。
               </p>
             </div>
@@ -243,7 +247,7 @@ export default function OnboardingPage() {
 
             <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3">
               <p className="text-xs text-indigo-700 leading-relaxed">
-                💡 VILLIAは「知らない誰かに助けてもらえる」コミュニティです。
+                💡 自由村は「知らない誰かに助けてもらえる」コミュニティです。
                 時間を消費するだけのSNSとは逆の場所を目指しています。
               </p>
             </div>
@@ -295,6 +299,32 @@ export default function OnboardingPage() {
               <p className="text-right text-[10px] text-stone-400 mt-1">{bio.length}/150</p>
             </div>
 
+            {/* 業界選択（任意） */}
+            <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">
+                仕事の業界 <span className="text-stone-300 normal-case font-normal">（任意・後で変更可）</span>
+              </label>
+              <p className="text-[11px] text-indigo-500 mb-2 font-medium">⚔️ 選ぶと匿名仕事村に入れます</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {INDUSTRIES.map(ind => (
+                  <button key={ind.id}
+                    onClick={() => setIndustry(prev => prev === ind.id ? '' : ind.id)}
+                    className="flex items-center gap-2 p-2.5 rounded-xl border-2 text-left transition-all active:scale-95"
+                    style={industry === ind.id
+                      ? { borderColor: ind.color, background: `${ind.color}15` }
+                      : { borderColor: '#e7e5e4', background: '#fff' }
+                    }
+                  >
+                    <span className="text-sm flex-shrink-0">{ind.emoji}</span>
+                    <p className="text-[10px] font-bold leading-tight truncate"
+                      style={{ color: industry === ind.id ? ind.color : '#78716c' }}>
+                      {ind.id}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3">
               <p className="text-xs text-indigo-600 leading-relaxed">
                 💡 ニックネームは村の住民に表示されます。本名でなくてOKです。
@@ -304,7 +334,7 @@ export default function OnboardingPage() {
             {/* 次へ後に文化カードが出ることを予告 */}
             <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
               <p className="text-xs text-amber-700 leading-relaxed">
-                📖 次のステップで「VILLIAの文化」を5枚のカードで紹介します（1分以内）
+                📖 次のステップで「自由村の文化」を5枚のカードで紹介します（1分以内）
               </p>
             </div>
           </div>
@@ -438,7 +468,7 @@ export default function OnboardingPage() {
           </button>
         )}
         {step === 4 && (
-          <button onClick={() => router.push('/villages')} className="w-full py-2 text-xs text-stone-400 mt-1">
+          <button onClick={() => router.push(industry ? '/guild' : '/villages')} className="w-full py-2 text-xs text-stone-400 mt-1">
             スキップして後で投稿する
           </button>
         )}

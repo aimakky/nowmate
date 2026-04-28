@@ -1,16 +1,17 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, ChevronRight, Mic } from 'lucide-react'
 import VillageCard, { type Village, getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES, getFireStatus, COMM_STYLE_CONFIG } from '@/components/ui/VillageCard'
 import VillageOnboarding from '@/components/features/VillageOnboarding'
 import TonightInput from '@/components/features/TonightInput'
 
-// ── カテゴリ定義（職業なし）────────────────────────────────────
+// ── カテゴリ定義 ────────────────────────────────────────────────
 const CATEGORIES = [
   { id: 'all',     emoji: '🏕️', label: 'すべて',      desc: null },
+  { id: '仕事',    emoji: '⚔️', label: '仕事村',      desc: '業界・職種別の同業コミュニティ' },
   { id: 'tonight', emoji: '🌙', label: '夜話・雑談',   desc: 'ゆるく話したい · 今日を終わらせたい' },
   { id: 'help',    emoji: '🤝', label: '悩み相談',     desc: '誰かに聞いてほしい · 相談に乗れる' },
   { id: 'think',   emoji: '🧠', label: '考えを深める', desc: '読書・思考整理・議論' },
@@ -93,11 +94,12 @@ function SmallVillageCard({ village, isMember, isLive, onJoin }: {
 }
 
 export default function VillagesPage() {
-  const router = useRouter()
+  const router       = useRouter()
+  const searchParams = useSearchParams()
   const [villages,     setVillages]     = useState<Village[]>([])
   const [laneData,     setLaneData]     = useState<Record<string, Village[]>>({})
   const [loading,      setLoading]      = useState(true)
-  const [category,     setCategory]     = useState('all')
+  const [category,     setCategory]     = useState(() => searchParams.get('category') ?? 'all')
   const [subFilter,    setSubFilter]    = useState<string | null>(null)
   const [search,       setSearch]       = useState('')
   const [userId,       setUserId]       = useState<string | null>(null)
