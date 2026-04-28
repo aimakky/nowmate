@@ -30,6 +30,10 @@ export default function MyPage() {
   const [followingPosts, setFollowingPosts] = useState<any[]>([])
   const [followingCount, setFollowingCount] = useState(0)
   const [followersCount, setFollowersCount] = useState(0)
+  const [followingUsers, setFollowingUsers] = useState<any[]>([])
+  const [followerUsers,  setFollowerUsers]  = useState<any[]>([])
+  const [followingIds,   setFollowingIds]   = useState<Set<string>>(new Set())
+  const [followTab,      setFollowTab]      = useState<'following' | 'followers'>('following')
   const [loading,        setLoading]        = useState(true)
   const [showPhoneVerify,setShowPhoneVerify]= useState(false)
   const [idCopied,       setIdCopied]       = useState(false)
@@ -72,8 +76,8 @@ export default function MyPage() {
           .eq('sender_user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(10),
-        supabase.from('user_follows').select('following_id').eq('follower_id', user.id),
-        supabase.from('user_follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', user.id),
+        supabase.from('user_follows').select('following_id, profiles:following_id(id,display_name,avatar_url,bio)').eq('follower_id', user.id),
+        supabase.from('user_follows').select('follower_id, profiles:follower_id(id,display_name,avatar_url,bio)').eq('following_id', user.id),
       ])
 
       if (!p) { router.push('/onboarding'); return }
@@ -88,18 +92,34 @@ export default function MyPage() {
       setMyBottles((bottlesRes as any)?.data ?? [])
 
       // フォロー
-      const followingIds: string[] = ((followsRes as any)?.data ?? []).map((r: any) => r.following_id)
-      setFollowingCount(followingIds.length)
-      setFollowersCount((followersRes as any)?.count ?? 0)
+      const followingRaw: any[] = (followsRes as any)?.data ?? []
+      const followingIdArr: string[] = followingRaw.map((r: any) => r.following_id)
+      const followingIdSet = new Set(followingIdArr)
+      setFollowingIds(followingIdSet)
+      setFollowingCount(followingIdArr.length)
+
+      const fUsers = followingRaw.map((r: any) => {
+        const p = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
+        return p
+      }).filter(Boolean)
+      setFollowingUsers(fUsers)
+
+      const followerRaw: any[] = (followersRes as any)?.data ?? []
+      setFollowersCount(followerRaw.length)
+      const fwUsers = followerRaw.map((r: any) => {
+        const p = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
+        return p
+      }).filter(Boolean)
+      setFollowerUsers(fwUsers)
 
       // フォロー中ユーザーの最新投稿
-      if (followingIds.length > 0) {
+      if (followingIdArr.length > 0) {
         const { data: fPosts } = await supabase
           .from('village_posts')
           .select(`id, content, created_at, user_id,
             profiles:user_id(display_name, avatar_url),
             villages:village_id(id, name, icon)`)
-          .in('user_id', followingIds)
+          .in('user_id', followingIdArr)
           .order('created_at', { ascending: false })
           .limit(10)
         setFollowingPosts(fPosts ?? [])
@@ -109,6 +129,25 @@ export default function MyPage() {
     }
     load()
   }, [router])
+
+  async function handleUnfollow(targetId: string) {
+    const supabase = createClient()
+    await supabase.from('user_follows').delete()
+      .eq('follower_id', profile.id).eq('following_id', targetId)
+    setFollowingUsers(prev => prev.filter(u => u.id !== targetId))
+    setFollowingIds(prev => { const n = new Set(prev); n.delete(targetId); return n })
+    setFollowingCount(prev => prev - 1)
+  }
+
+  async function handleFollowBack(targetId: string) {
+    const supabase = createClient()
+    await supabase.from('user_follows').insert({ follower_id: profile.id, following_id: targetId })
+    const { data: p } = await supabase.from('profiles')
+      .select('id,display_name,avatar_url,bio').eq('id', targetId).single()
+    if (p) setFollowingUsers(prev => [...prev, p])
+    setFollowingIds(prev => new Set([...prev, targetId]))
+    setFollowingCount(prev => prev + 1)
+  }
 
   async function handleLogout() {
     await createClient().auth.signOut()
@@ -221,6 +260,106 @@ export default function MyPage() {
 
         {/* ── 7日間ミッション ── */}
         <MissionsCard userId={profile.id} />
+
+        {/* ── フォロー・フォロワー ── */}
+        {(followingCount > 0 || followersCount > 0) && (
+          <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
+            {/* タブ */}
+            <div className="flex">
+              {([
+                { id: 'following', label: 'フォロー中', count: followingCount },
+                { id: 'followers', label: 'フォロワー', count: followersCount },
+              ] as const).map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setFollowTab(tab.id)}
+                  className="flex-1 py-3 flex items-center justify-center gap-1.5 text-xs font-bold transition-colors relative"
+                  style={{ color: followTab === tab.id ? '#1c1917' : '#a8a29e' }}
+                >
+                  <span>{tab.label}</span>
+                  <span
+                    className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold"
+                    style={{
+                      background: followTab === tab.id ? '#1c1917' : '#f5f5f4',
+                      color:      followTab === tab.id ? '#fff'    : '#a8a29e',
+                    }}
+                  >
+                    {tab.count}
+                  </span>
+                  {followTab === tab.id && (
+                    <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-stone-900" />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* リスト */}
+            <div className="divide-y divide-stone-50">
+              {followTab === 'following' ? (
+                followingUsers.length === 0 ? (
+                  <div className="py-10 text-center">
+                    <p className="text-2xl mb-2">👥</p>
+                    <p className="text-xs text-stone-400">まだ誰もフォローしていません</p>
+                  </div>
+                ) : followingUsers.map((u: any) => (
+                  <div key={u.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-lg overflow-hidden flex-shrink-0 border border-stone-100">
+                      {u.avatar_url
+                        ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+                        : <span>🙂</span>
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-stone-900 truncate">{u.display_name}</p>
+                      {u.bio && <p className="text-[10px] text-stone-400 truncate mt-0.5">{u.bio}</p>}
+                    </div>
+                    <button
+                      onClick={() => handleUnfollow(u.id)}
+                      className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-xl border border-stone-200 text-stone-500 active:scale-95 transition-all"
+                    >
+                      フォロー中
+                    </button>
+                  </div>
+                ))
+              ) : (
+                followerUsers.length === 0 ? (
+                  <div className="py-10 text-center">
+                    <p className="text-2xl mb-2">🌱</p>
+                    <p className="text-xs text-stone-400">まだフォロワーがいません</p>
+                  </div>
+                ) : followerUsers.map((u: any) => {
+                  const isFollowing = followingIds.has(u.id)
+                  return (
+                    <div key={u.id} className="flex items-center gap-3 px-4 py-3">
+                      <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-lg overflow-hidden flex-shrink-0 border border-stone-100">
+                        {u.avatar_url
+                          ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+                          : <span>🙂</span>
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-stone-900 truncate">{u.display_name}</p>
+                        {u.bio && <p className="text-[10px] text-stone-400 truncate mt-0.5">{u.bio}</p>}
+                      </div>
+                      {isFollowing ? (
+                        <span className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-xl bg-stone-100 text-stone-400">
+                          相互
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleFollowBack(u.id)}
+                          className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-xl bg-stone-900 text-white active:scale-95 transition-all"
+                        >
+                          フォローする
+                        </button>
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── 成長ポートフォリオ ── */}
         <GrowthPortfolio

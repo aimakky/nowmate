@@ -4,10 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, ChevronRight, Mic } from 'lucide-react'
-import VillageCard, { type Village, getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES, getFireStatus } from '@/components/ui/VillageCard'
+import VillageCard, { type Village, getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES, getFireStatus, COMM_STYLE_CONFIG } from '@/components/ui/VillageCard'
 import VillageOnboarding from '@/components/features/VillageOnboarding'
 import TonightInput from '@/components/features/TonightInput'
-import Link from 'next/link'
 
 // ── カテゴリ定義（職業なし）────────────────────────────────────
 const CATEGORIES = [
@@ -37,14 +36,19 @@ const LANES = [
 function SmallVillageCard({ village, isMember, isLive, onJoin }: {
   village: Village; isMember: boolean; isLive: boolean; onJoin: () => void
 }) {
-  const router = useRouter()
-  const style  = VILLAGE_TYPE_STYLES[village.type] ?? VILLAGE_TYPE_STYLES['雑談']
-  const fire   = getFireStatus(village.last_post_at ?? null)
+  const router    = useRouter()
+  const style     = VILLAGE_TYPE_STYLES[village.type] ?? VILLAGE_TYPE_STYLES['雑談']
+  const fire      = getFireStatus(village.last_post_at ?? null)
+  const commCfg   = village.comm_style ? (COMM_STYLE_CONFIG[village.comm_style] ?? null) : null
   return (
     <div
       className="flex-shrink-0 w-44 rounded-2xl overflow-hidden shadow-sm cursor-pointer active:scale-[0.97] transition-all bg-white border border-stone-100"
       onClick={() => router.push(`/villages/${village.id}`)}
     >
+      {/* コミュスタイル カラーバー */}
+      {commCfg && (
+        <div className="h-[3px] w-full" style={{ background: commCfg.topBar }} />
+      )}
       <div className="h-16 flex items-center justify-center relative" style={{ background: style.gradient }}>
         <span className="text-3xl" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))' }}>
           {village.icon}
@@ -62,7 +66,17 @@ function SmallVillageCard({ village, isMember, isLive, onJoin }: {
         )}
       </div>
       <div className="p-2.5">
-        <p className="font-bold text-stone-900 text-xs truncate leading-snug">{village.name}</p>
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <p className="font-bold text-stone-900 text-xs truncate leading-snug flex-1">{village.name}</p>
+          {commCfg && (
+            <span
+              className="flex-shrink-0 flex items-center gap-0.5 text-[8px] font-extrabold px-1.5 py-0.5 rounded-full"
+              style={{ background: commCfg.badgeBg, color: commCfg.badgeText }}
+            >
+              {commCfg.icon}
+            </span>
+          )}
+        </div>
         <p className="text-[10px] text-stone-400 mt-0.5 line-clamp-2 leading-relaxed">{village.description}</p>
         <div className="flex items-center justify-between mt-2">
           <span className="text-[9px] text-stone-400">👥 {village.member_count}</span>
@@ -88,9 +102,9 @@ export default function VillagesPage() {
   const [search,       setSearch]       = useState('')
   const [userId,       setUserId]       = useState<string | null>(null)
   const [memberIds,    setMemberIds]    = useState<Set<string>>(new Set())
-  const [myVillages,   setMyVillages]   = useState<Village[]>([])
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({})
   const [liveVillageIds, setLiveVillageIds] = useState<Set<string>>(new Set())
+  const [commStyle,     setCommStyle]     = useState<'all' | 'text' | 'voice'>('all')
 
   const weeklyEvent = getCurrentWeeklyEvent()
 
@@ -116,13 +130,14 @@ export default function VillagesPage() {
     const supabase = createClient()
     const results: Record<string, Village[]> = {}
     await Promise.all(LANES.map(async lane => {
-      const { data } = await supabase
-        .from('villages').select('*').eq('is_public', true)
-        .order(lane.orderBy, { ascending: lane.ascending }).limit(8)
+      let q = supabase.from('villages').select('*').eq('is_public', true)
+      if (commStyle === 'text')  q = q.in('comm_style', ['text',  'both'])
+      if (commStyle === 'voice') q = q.in('comm_style', ['voice', 'both'])
+      const { data } = await q.order(lane.orderBy, { ascending: lane.ascending }).limit(8)
       results[lane.id] = (data ?? []) as Village[]
     }))
     setLaneData(results)
-  }, [])
+  }, [commStyle])
 
   const fetchVillages = useCallback(async () => {
     setLoading(true)
@@ -130,6 +145,8 @@ export default function VillagesPage() {
     let q = supabase.from('villages').select('*').eq('is_public', true)
 
     if (category !== 'all') q = q.eq('category', category)
+    if (commStyle === 'text')  q = q.in('comm_style', ['text',  'both'])
+    if (commStyle === 'voice') q = q.in('comm_style', ['voice', 'both'])
 
     if (subFilter === 'popular') q = q.order('post_count_7d',   { ascending: false })
     else if (subFilter === 'safe')   q = q.order('report_count_7d', { ascending: true }).order('member_count', { ascending: false })
@@ -139,7 +156,7 @@ export default function VillagesPage() {
     const { data } = await q.limit(40)
     setVillages((data || []) as Village[])
     setLoading(false)
-  }, [category, subFilter])
+  }, [category, subFilter, commStyle])
 
   const fetchMemberships = useCallback(async () => {
     if (!userId) return
@@ -149,7 +166,6 @@ export default function VillagesPage() {
       .select('village_id, villages(*)')
       .eq('user_id', userId)
     const joined = (data || []).map((m: any) => m.villages).filter(Boolean) as Village[]
-    setMyVillages(joined)
     setMemberIds(new Set(joined.map(v => v.id)))
 
     // 未読件数
@@ -171,7 +187,7 @@ export default function VillagesPage() {
   useEffect(() => { fetchVillages() },     [fetchVillages])
   useEffect(() => { fetchMemberships() },  [fetchMemberships])
   useEffect(() => { fetchLiveVillages() }, [fetchLiveVillages])
-  useEffect(() => { if (category === 'all' && !subFilter) fetchLanes() }, [fetchLanes, category, subFilter])
+  useEffect(() => { if (category === 'all' && !subFilter) fetchLanes() }, [fetchLanes, category, subFilter, commStyle])
 
   async function handleJoin(villageId: string) {
     if (!userId) { router.push('/login'); return }
@@ -250,6 +266,25 @@ export default function VillagesPage() {
             className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-sm focus:outline-none text-white placeholder-white/30"
             style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)' }}
           />
+        </div>
+
+        {/* コミュスタイルフィルター */}
+        <div className="flex gap-2 mb-3">
+          {([
+            { id: 'all',   icon: '🔀', label: 'すべて' },
+            { id: 'text',  icon: '📝', label: 'チャット村' },
+            { id: 'voice', icon: '🎙️', label: '通話村' },
+          ] as { id: 'all' | 'text' | 'voice'; icon: string; label: string }[]).map(opt => (
+            <button key={opt.id} onClick={() => setCommStyle(opt.id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold transition-all active:scale-95 flex-shrink-0"
+              style={commStyle === opt.id
+                ? { background: 'rgba(255,255,255,0.95)', color: '#1c1917' }
+                : { background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.15)' }
+              }>
+              <span>{opt.icon}</span>
+              <span>{opt.label}</span>
+            </button>
+          ))}
         </div>
 
         {/* カテゴリタブ */}
@@ -398,12 +433,19 @@ export default function VillagesPage() {
             </div>
           ) : displayed.length === 0 ? (
             <div className="text-center py-20">
-              <div className="text-6xl mb-4">{subFilter === 'member' ? '🏠' : activeCat?.emoji ?? '🏕️'}</div>
+              <div className="text-6xl mb-4">
+                {subFilter === 'member' ? '🏠' : commStyle === 'text' ? '💬' : commStyle === 'voice' ? '🎙️' : activeCat?.emoji ?? '🏕️'}
+              </div>
               <p className="font-extrabold text-stone-800 text-base mb-1">
-                {subFilter === 'member' ? 'まだ村に参加していません' : 'この村はまだありません'}
+                {subFilter === 'member'  ? 'まだ村に参加していません' :
+                 commStyle === 'text'    ? 'チャット村がまだありません' :
+                 commStyle === 'voice'   ? '通話村がまだありません' :
+                 'この村はまだありません'}
               </p>
               <p className="text-sm text-stone-400 mb-6">
-                {subFilter === 'member' ? '気に入った村に参加しよう' : '最初の村を作ってみましょう'}
+                {subFilter === 'member'  ? '気に入った村に参加しよう' :
+                 commStyle !== 'all'     ? '最初に村を作ってみましょう' :
+                 '最初の村を作ってみましょう'}
               </p>
               {subFilter !== 'member' && (
                 <button

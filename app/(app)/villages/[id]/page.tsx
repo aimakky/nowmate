@@ -12,6 +12,7 @@ import { getOccupationBadge } from '@/lib/occupation'
 import { getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES, getFireStatus } from '@/components/ui/VillageCard'
 import TrustBadge from '@/components/ui/TrustBadge'
 import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
+import VerificationGate, { type GateType } from '@/components/features/VerificationGate'
 import MoodWeather from '@/components/features/MoodWeather'
 import DriftBottle from '@/components/features/DriftBottle'
 import { getUserTrust, getTierById, awardPoints } from '@/lib/trust'
@@ -664,6 +665,8 @@ export default function VillageDetailPage() {
   const [kickingUser,     setKickingUser]     = useState<string | null>(null)
 
   const [showPhoneVerify,   setShowPhoneVerify]   = useState(false)
+  const [verifGateType,     setVerifGateType]     = useState<GateType>('post')
+  const [showVerifGate,     setShowVerifGate]     = useState(false)
   const [resolvePost,       setResolvePost]       = useState<any>(null)
   const [showFirstPrompt,   setShowFirstPrompt]   = useState(false)
   const [userVillagePosts,  setUserVillagePosts]  = useState(0) // ユーザーのこの村での投稿数
@@ -1089,7 +1092,7 @@ export default function VillageDetailPage() {
   async function submitPost(overrideText?: string) {
     const text = overrideText ?? newPost
     if (!userId || !text.trim() || posting) return
-    if (!tier.canPost) { setShowPhoneVerify(true); return }
+    if (!tier.canPost) { setVerifGateType('post'); setShowVerifGate(true); return }
 
     // ── AutoMod: NGワード検出 ──────────────────────────────────
     const ng = detectNgWords(text.trim())
@@ -1159,7 +1162,7 @@ export default function VillageDetailPage() {
 
   async function answerPrompt(text: string) {
     if (!userId || !todayPrompt) return
-    if (!tier.canPost) { setShowPhoneVerify(true); return }
+    if (!tier.canPost) { setVerifGateType('post'); setShowVerifGate(true); return }
     const supabase = createClient()
     await supabase.from('village_posts').insert({
       village_id: id, user_id: userId, content: text, category: '今日のお題',
@@ -1179,7 +1182,7 @@ export default function VillageDetailPage() {
 
   async function toggleLike(postId: string) {
     if (!userId) return
-    if (!tier.canPost) { setShowPhoneVerify(true); return }
+    if (!tier.canPost) { setVerifGateType('post'); setShowVerifGate(true); return }
     const supabase = createClient()
     if (likedPosts.has(postId)) {
       await supabase.from('village_reactions').delete().eq('post_id', postId).eq('user_id', userId)
@@ -1194,7 +1197,8 @@ export default function VillageDetailPage() {
 
   async function createVoiceRoom() {
     if (!userId || !village) return
-    if (!tier.canCreateRoom) { setShowPhoneVerify(true); return }
+    if (!tier.canPost) { setVerifGateType('voice_create'); setShowVerifGate(true); return }
+    if (!tier.canCreateRoom) { setVerifGateType('voice_create'); setShowVerifGate(true); return }
     // 録音禁止同意モーダルを先に表示
     setShowVoiceWarning(true)
   }
@@ -1222,6 +1226,7 @@ export default function VillageDetailPage() {
   }
 
   function joinVoiceRoom(roomId: string) {
+    if (!tier.canPost) { setVerifGateType('voice_join'); setShowVerifGate(true); return }
     setPendingVoiceRoomId(roomId)
     setShowVoiceWarning(true)
   }
@@ -2542,6 +2547,16 @@ export default function VillageDetailPage() {
       {showPhoneVerify && (
         <PhoneVerifyModal onClose={() => setShowPhoneVerify(false)}
           onVerified={async () => { const t = await getUserTrust(userId!); setUserTrust(t) }} />
+      )}
+
+      {showVerifGate && (
+        <VerificationGate
+          type={verifGateType}
+          villageCommStyle={village?.comm_style}
+          villageName={village?.name}
+          onClose={() => setShowVerifGate(false)}
+          onVerify={() => { setShowVerifGate(false); setShowPhoneVerify(true) }}
+        />
       )}
 
       {/* ── ボイスルーム録音禁止同意モーダル ── */}

@@ -177,6 +177,37 @@ export function getFireStatus(lastPostAt: string | null): {
   return               { emoji: '💤', label: '眠れる村',    bgColor: 'rgba(148,163,184,0.1)',  textColor: '#94a3b8', animate: false }
 }
 
+// ─── コミュスタイル設定 ──────────────────────────────────────
+export const COMM_STYLE_CONFIG: Record<string, {
+  icon:       string
+  label:      string
+  topBar:     string   // CSS gradient for the top accent bar
+  badgeBg:    string
+  badgeText:  string
+}> = {
+  text: {
+    icon:      '💬',
+    label:     'チャット村',
+    topBar:    'linear-gradient(90deg, #22d3ee 0%, #06b6d4 100%)',
+    badgeBg:   '#06b6d4',
+    badgeText: '#fff',
+  },
+  voice: {
+    icon:      '🎙️',
+    label:     '通話村',
+    topBar:    'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
+    badgeBg:   '#3b82f6',
+    badgeText: '#fff',
+  },
+  both: {
+    icon:      '🔀',
+    label:     '両方OK',
+    topBar:    'linear-gradient(90deg, #22d3ee 0%, #3b82f6 100%)',
+    badgeBg:   '#60a5fa',
+    badgeText: '#fff',
+  },
+}
+
 // ─── Main Card ───────────────────────────────────────────────
 export default function VillageCard({
   village,
@@ -199,6 +230,7 @@ export default function VillageCard({
   const safetyScore  = village.report_count_7d === 0 ? 5 : village.report_count_7d < 2 ? 3 : 1
   const welcomeScore = Math.min(5, Math.floor(village.welcome_reply_count_7d / 2) + 1)
   const fire         = getFireStatus(village.last_post_at ?? null)
+  const commCfg      = village.comm_style ? (COMM_STYLE_CONFIG[village.comm_style] ?? null) : null
 
   return (
     <div
@@ -206,6 +238,11 @@ export default function VillageCard({
       className="bg-white rounded-3xl overflow-hidden shadow-md active:scale-[0.985] hover:shadow-xl transition-all duration-200 cursor-pointer border border-white"
       style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05)' }}
     >
+      {/* ── コミュスタイル カラーバー ── */}
+      {commCfg && (
+        <div className="h-[3px] w-full" style={{ background: commCfg.topBar }} />
+      )}
+
       {/* ── Gradient Banner ── */}
       <div
         className="relative flex items-center justify-center"
@@ -247,10 +284,13 @@ export default function VillageCard({
         </div>
 
         {/* コミュニケーションスタイルバッジ — top left second row */}
-        {village.comm_style && village.comm_style !== 'both' && (
-          <div className="absolute top-8 left-2.5 flex items-center gap-1 bg-black/20 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20">
-            {village.comm_style === 'text' ? '📝' : '🎙️'}
-            {village.comm_style === 'text' ? ' テキスト中心' : ' 通話中心'}
+        {commCfg && (
+          <div
+            className="absolute top-8 left-2.5 flex items-center gap-1 text-[10px] font-extrabold px-2.5 py-1 rounded-full shadow-lg"
+            style={{ background: commCfg.badgeBg, color: commCfg.badgeText }}
+          >
+            <span>{commCfg.icon}</span>
+            <span>{commCfg.label}</span>
           </div>
         )}
 
