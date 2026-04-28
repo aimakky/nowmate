@@ -341,23 +341,42 @@ export default function BottlePage() {
       {tab === 'bottle' && (
         <div className="px-4 pt-4 pb-32 space-y-4">
 
-          {/* 使い方3ステップ */}
-          <div className="flex gap-2">
-            {[
-              { icon: '🔒', text: '匿名で送る' },
-              { icon: '🤲', text: '誰かが拾う' },
-              { icon: '💬', text: '返事が届く' },
-            ].map((s, i) => (
-              <div
-                key={i}
-                className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-2xl"
-                style={{ background: 'rgba(29,78,216,0.08)', border: '1px solid rgba(29,78,216,0.12)' }}
-              >
-                <span className="text-xl">{s.icon}</span>
-                <span className="text-[9px] font-bold text-blue-700">{s.text}</span>
-              </div>
-            ))}
+          {/* キャッチコピー */}
+          <div
+            className="rounded-2xl px-4 py-4 text-center space-y-1"
+            style={{ background: 'linear-gradient(135deg, rgba(12,20,69,0.06) 0%, rgba(29,78,216,0.06) 100%)', border: '1px solid rgba(29,78,216,0.1)' }}
+          >
+            <p className="text-lg font-extrabold text-stone-800">今の気持ちを、流してみよう</p>
+            <p className="text-xs text-stone-400 leading-relaxed">
+              答えは求めなくていい。<br />ただ、誰かに受け止めてほしいとき。
+            </p>
+            <div className="flex items-center justify-center gap-4 pt-2">
+              {[
+                { icon: '🔒', text: '完全匿名' },
+                { icon: '🌊', text: 'どこかへ届く' },
+                { icon: '🤲', text: '誰かが拾う' },
+              ].map((s, i) => (
+                <div key={i} className="flex items-center gap-1">
+                  <span className="text-sm">{s.icon}</span>
+                  <span className="text-[10px] font-bold text-stone-500">{s.text}</span>
+                </div>
+              ))}
+            </div>
           </div>
+
+          {/* 質問村への誘導 */}
+          <button
+            onClick={() => setTab('qa')}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl active:scale-[0.99] transition-all"
+            style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.12)' }}
+          >
+            <span className="text-xl">💬</span>
+            <div className="flex-1 text-left">
+              <p className="text-xs font-bold text-blue-700">答えが欲しいなら → 質問村</p>
+              <p className="text-[10px] text-blue-400">カテゴリ別に経験者が回答してくれます</p>
+            </div>
+            <span className="text-blue-300 text-xs">→</span>
+          </button>
 
           {/* 村に参加していない場合 */}
           {villages.length === 0 && (

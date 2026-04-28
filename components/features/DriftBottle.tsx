@@ -784,15 +784,16 @@ export default function DriftBottle({ villageId, villageName, userId, style, isM
 }
 
 // ─── 送るモーダル ─────────────────────────────────────────────
+// 漂流瓶 = 感情を流す体験。質問したい場合は質問村へ。
 function SendModal({ villageId, userId, onClose, onSent }:
   { villageId: string; userId: string; onClose: () => void; onSent: () => void }) {
-  const [mode,       setMode]       = useState<'consult' | 'question'>('consult')
   const [message,    setMessage]    = useState('')
   const [sending,    setSending]    = useState(false)
   const [sent,       setSent]       = useState(false)
   const [showCrisis, setShowCrisis] = useState(false)
   const sendCount    = getBottleSendCount()
   const limitReached = sendCount >= BOTTLE_DAILY_LIMIT
+  const MAX_CHARS    = 140
 
   async function handleSend() {
     if (!message.trim() || limitReached) return
@@ -806,13 +807,13 @@ function SendModal({ villageId, userId, onClose, onSent }:
       p_village_id:  villageId,
       p_user_id:     userId,
       p_message:     message.trim(),
-      p_is_question: mode === 'question',
+      p_is_question: false,
     })
     setSending(false)
     if (!error) {
       incrementBottleSendCount()
       setSent(true)
-      setTimeout(onSent, 1800)
+      setTimeout(onSent, 2200)
     }
   }
 
@@ -829,96 +830,98 @@ function SendModal({ villageId, userId, onClose, onSent }:
 
       <div className="relative w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
         style={{ background:'linear-gradient(180deg,#0c1445 0%,#0a2540 100%)', border:'1px solid rgba(100,140,255,0.25)' }}>
+
         {sent ? (
-          <div className="p-8 text-center">
-            <div className="text-5xl mb-3 animate-bounce">{mode === 'question' ? '❓' : '🍶'}</div>
-            <h3 className="font-extrabold text-white text-base mb-1">
-              {mode === 'question' ? '質問を流しました！' : '瓶を流しました！'}
-            </h3>
-            <p className="text-xs text-blue-300/70 leading-relaxed">
-              {mode === 'question'
-                ? 'どこかの村の誰かが答えてくれるかも。'
-                : 'どこかの村に届くかもしれません。'}
-            </p>
+          /* ── 送信後演出 ── */
+          <div className="p-10 text-center">
+            <style>{`
+              @keyframes floatAway {
+                0%   { transform: translateY(0) scale(1); opacity: 1 }
+                60%  { transform: translateY(-30px) scale(1.2); opacity: 1 }
+                100% { transform: translateY(-60px) scale(0.6); opacity: 0 }
+              }
+              @keyframes waveRise {
+                0%   { transform: translateY(20px); opacity: 0 }
+                100% { transform: translateY(0);    opacity: 1 }
+              }
+              .float-away { animation: floatAway 1.2s ease-in forwards }
+              .wave-rise  { animation: waveRise  .8s ease-out .4s both }
+            `}</style>
+            <div className="float-away text-6xl mb-2">🌊</div>
+            <div className="wave-rise">
+              <h3 className="font-extrabold text-white text-lg mb-2">流れていきました</h3>
+              <p className="text-xs text-blue-300/60 leading-relaxed">
+                どこかの村の誰かに、<br />あなたの気持ちが届きますように。
+              </p>
+            </div>
           </div>
         ) : (
           <>
             {/* ヘッダー */}
             <div className="px-5 pt-5 pb-4 border-b border-white/10">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-2xl">{mode === 'question' ? '❓' : '🍶'}</span>
-                <div className="flex-1">
-                  <h3 className="font-extrabold text-white text-sm">海に流す</h3>
-                  <p className="text-[10px] text-blue-300/60 mt-0.5">ランダムな村に届きます · 匿名</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+                  style={{ background:'rgba(59,130,246,0.15)', border:'1px solid rgba(59,130,246,0.25)' }}>
+                  🍶
                 </div>
-                <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/10 active:scale-90">
+                <div className="flex-1">
+                  <h3 className="font-extrabold text-white text-sm">気持ちを海に流す</h3>
+                  <p className="text-[10px] text-blue-300/50 mt-0.5">匿名 · どこかの村に届く · 誰かが拾う</p>
+                </div>
+                <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/10 active:scale-90 transition-all">
                   <X size={15} className="text-blue-200/60" />
                 </button>
               </div>
 
-              {/* モード切替 */}
-              <div className="flex gap-2">
-                {([
-                  { key: 'consult',  icon: '🗣️', label: '相談',  sub: '1人に届く' },
-                  { key: 'question', icon: '❓', label: '質問',  sub: 'みんなが回答' },
-                ] as const).map(m => (
-                  <button key={m.key} onClick={() => setMode(m.key)}
-                    className="flex-1 flex flex-col items-center py-2.5 rounded-xl transition-all active:scale-95"
-                    style={mode === m.key
-                      ? { background:'rgba(100,140,255,0.25)', border:'2px solid rgba(100,160,255,0.5)' }
-                      : { background:'rgba(255,255,255,0.05)', border:'2px solid transparent' }}>
-                    <span className="text-lg leading-none">{m.icon}</span>
-                    <span className="text-xs font-extrabold text-white mt-1">{m.label}</span>
-                    <span className="text-[9px] text-blue-300/50 mt-0.5">{m.sub}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* モード説明 */}
-              <div className="mt-3 px-3 py-2 rounded-xl"
+              {/* 質問村へのヒント */}
+              <div className="mt-3 px-3 py-2 rounded-xl flex items-center gap-2"
                 style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
-                <p className="text-[10px] text-blue-300/60 leading-relaxed">
-                  {mode === 'consult'
-                    ? '🗣️ 相談モード：気持ちやひとことを流します。届いた村の誰か1人が拾って返事をくれます。'
-                    : '❓ 質問モードは複数人が回答できます。悩みや疑問をコミュニティ全体で解決。ベストアンサーも選べます。'}
+                <span className="text-base flex-shrink-0">💬</span>
+                <p className="text-[10px] text-blue-300/50 leading-relaxed">
+                  答えを求めるなら<strong className="text-blue-300/80">質問村</strong>へ。
+                  漂流瓶は「受け止めてほしい気持ち」を流す場所です。
                 </p>
               </div>
             </div>
 
             <div className="p-5 space-y-4">
               {limitReached ? (
-                <div className="rounded-2xl px-4 py-3 text-center"
+                <div className="rounded-2xl px-4 py-4 text-center"
                   style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)' }}>
+                  <p className="text-2xl mb-2">🌙</p>
                   <p className="text-xs font-bold text-white/60">今日の送信上限（{BOTTLE_DAILY_LIMIT}通）に達しました</p>
                   <p className="text-[10px] text-white/30 mt-1">明日また流せます</p>
                 </div>
               ) : (
                 <>
                   <div>
-                    <textarea value={message} onChange={e => setMessage(e.target.value)}
-                      placeholder={mode === 'question'
-                        ? '聞きたいことを書く…\n例：仕事のストレスを減らすには？'
-                        : '誰かに届けたい言葉を…\n日常のひとこと、悩み、感謝など何でも。'}
-                      rows={5} maxLength={300}
-                      className="w-full px-4 py-3 rounded-2xl border text-sm resize-none focus:outline-none text-white leading-relaxed"
-                      style={{ background:'rgba(255,255,255,0.07)', borderColor:'rgba(100,140,255,0.25)', caretColor:'#93c5fd' }} />
-                    <div className="flex items-center justify-between mt-1">
-                      <p className="text-[10px] text-blue-400/30">今日あと{BOTTLE_DAILY_LIMIT - sendCount}通流せます</p>
-                      <p className="text-[10px] text-blue-400/40">{message.length}/300</p>
+                    <textarea
+                      value={message}
+                      onChange={e => setMessage(e.target.value.slice(0, MAX_CHARS))}
+                      placeholder={'今の気持ちを、ひとことだけ…\n\n例）今日もなんとか生きた\n　　誰かに話したいことがある\n　　ありがとうって言いたかった'}
+                      rows={6}
+                      className="w-full px-4 py-3 rounded-2xl border text-sm resize-none focus:outline-none text-white leading-relaxed placeholder-blue-400/25"
+                      style={{ background:'rgba(255,255,255,0.07)', borderColor:'rgba(100,140,255,0.25)', caretColor:'#93c5fd' }}
+                    />
+                    <div className="flex items-center justify-between mt-1.5 px-1">
+                      <p className="text-[10px] text-blue-400/30">今日あと{BOTTLE_DAILY_LIMIT - sendCount}回流せます</p>
+                      <p className={`text-[10px] font-bold transition-colors ${message.length > MAX_CHARS * 0.9 ? 'text-amber-400/70' : 'text-blue-400/30'}`}>
+                        {message.length}/{MAX_CHARS}
+                      </p>
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={onClose}
-                      className="flex-1 py-3 rounded-2xl border text-sm font-bold"
-                      style={{ borderColor:'rgba(100,140,255,0.25)', color:'#60a5fa', background:'transparent' }}>
-                      キャンセル
+                      className="flex-1 py-3 rounded-2xl border text-sm font-bold transition-all"
+                      style={{ borderColor:'rgba(100,140,255,0.2)', color:'rgba(148,163,184,0.7)', background:'transparent' }}>
+                      やめる
                     </button>
                     <button onClick={handleSend} disabled={!message.trim() || sending}
-                      className="flex-1 py-3 rounded-2xl text-white text-sm font-bold disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-2"
-                      style={{ background:'linear-gradient(135deg,#3b82f6 0%,#1d4ed8 100%)', boxShadow:'0 4px 15px rgba(59,130,246,0.4)' }}>
+                      className="flex-[2] py-3 rounded-2xl text-white text-sm font-extrabold disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-2"
+                      style={{ background:'linear-gradient(135deg,#1d4ed8 0%,#2563eb 50%,#3b82f6 100%)', boxShadow:'0 6px 20px rgba(29,78,216,0.5)' }}>
                       {sending
                         ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        : <><span>{mode === 'question' ? '❓' : '🌊'}</span><span>流す</span></>}
+                        : <><span className="text-lg">🌊</span><span>流す</span></>}
                     </button>
                   </div>
                 </>
