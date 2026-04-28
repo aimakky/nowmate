@@ -6,8 +6,9 @@ import { createClient } from '@/lib/supabase/client'
 import { getTierById } from '@/lib/trust'
 import { timeAgo } from '@/lib/utils'
 import { detectNgWords } from '@/lib/moderation'
-import { Heart, RefreshCw, ChevronRight, Users, Globe, Home, Share2, Sparkles, HelpCircle, Send, CheckCircle } from 'lucide-react'
+import { Heart, RefreshCw, ChevronRight, Users, Globe, Home, Share2, Sparkles, HelpCircle, Send, CheckCircle, X, Plus } from 'lucide-react'
 import Link from 'next/link'
+import { detectCrisisKeywords, getBottleSendCount, incrementBottleSendCount, BOTTLE_DAILY_LIMIT } from '@/lib/moderation'
 
 // ── 型定義 ──────────────────────────────────────────────────────
 type Tab = 'myvillage' | 'all' | 'following'
@@ -313,6 +314,315 @@ function buildFeed(posts: TPost[], qaBottles: QABottle[]): FeedItem[] {
   return feed
 }
 
+// ── 投稿カテゴリ ───────────────────────────────────────────────
+const POST_CATEGORIES = [
+  { id: '今日のひとこと', emoji: '✨' },
+  { id: '雑談',           emoji: '💬' },
+  { id: '悩み',           emoji: '😔' },
+  { id: '相談',           emoji: '🤝' },
+  { id: '夜話',           emoji: '🌙' },
+  { id: '笑い',           emoji: '😂' },
+  { id: '趣味',           emoji: '🎨' },
+]
+
+// ── 投稿＆漂流瓶モーダル ──────────────────────────────────────
+function ComposeModal({
+  userId, myVillageIds, onClose, onPosted,
+}: {
+  userId: string
+  myVillageIds: string[]
+  onClose: () => void
+  onPosted: () => void
+}) {
+  const [mode,        setMode]        = useState<'post' | 'bottle'>('post')
+  const [text,        setText]        = useState('')
+  const [category,    setCategory]    = useState('今日のひとこと')
+  const [villageId,   setVillageId]   = useState<string>('')
+  const [villages,    setVillages]    = useState<{ id: string; name: string; icon: string }[]>([])
+  const [sending,     setSending]     = useState(false)
+  const [sent,        setSent]        = useState(false)
+  const [showCrisis,  setShowCrisis]  = useState(false)
+  const [errMsg,      setErrMsg]      = useState('')
+
+  const bottleSendCount = getBottleSendCount()
+  const bottleLimitHit  = bottleSendCount >= BOTTLE_DAILY_LIMIT
+  const MAX_POST   = 300
+  const MAX_BOTTLE = 140
+
+  // 参加している村を取得
+  useEffect(() => {
+    if (myVillageIds.length === 0) return
+    createClient()
+      .from('villages')
+      .select('id, name, icon')
+      .in('id', myVillageIds)
+      .then(({ data }) => {
+        const vs = (data || []) as { id: string; name: string; icon: string }[]
+        setVillages(vs)
+        if (vs.length > 0) setVillageId(vs[0].id)
+      })
+  }, [myVillageIds])
+
+  // スクロール防止
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
+  async function handlePost() {
+    if (!text.trim() || !villageId || sending) return
+    const ng = detectNgWords(text)
+    if (ng) { setErrMsg(`「${ng}」は使えません`); return }
+    setSending(true)
+    const { error } = await createClient().from('village_posts').insert({
+      village_id: villageId,
+      user_id:    userId,
+      content:    text.trim(),
+      category,
+    })
+    setSending(false)
+    if (!error) { setSent(true); setTimeout(onPosted, 1200) }
+  }
+
+  async function handleBottle() {
+    if (!text.trim() || !villageId || bottleLimitHit || sending) return
+    const ng = detectNgWords(text)
+    if (ng) { setErrMsg(`「${ng}」は使えません`); return }
+    if (detectCrisisKeywords(text)) { setShowCrisis(true); return }
+    await doSendBottle()
+  }
+
+  async function doSendBottle() {
+    setSending(true)
+    const { error } = await createClient().rpc('send_drift_bottle', {
+      p_village_id:  villageId,
+      p_user_id:     userId,
+      p_message:     text.trim(),
+      p_is_question: false,
+    })
+    setSending(false)
+    if (!error) { incrementBottleSendCount(); setSent(true); setTimeout(onPosted, 1800) }
+  }
+
+  const isPost   = mode === 'post'
+  const maxChars = isPost ? MAX_POST : MAX_BOTTLE
+
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col justify-end">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+
+      {/* 危機モーダル */}
+      {showCrisis && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center px-5">
+          <div className="absolute inset-0 bg-black/70" />
+          <div className="relative w-full max-w-sm rounded-3xl p-6 text-center space-y-4"
+            style={{ background: 'linear-gradient(180deg,#1a1a2e,#0f1629)', border: '1px solid rgba(255,255,255,0.12)' }}>
+            <div className="text-4xl">🤝</div>
+            <p className="font-extrabold text-white text-base">あなたの気持ち、大切に受け取りました</p>
+            <p className="text-xs text-white/60 leading-relaxed">
+              専門の相談窓口もあります。<br />
+              <a href="tel:0120-279-338" className="text-blue-300 font-bold">よりそいホットライン 0120-279-338</a>
+            </p>
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => { setShowCrisis(false); onClose() }}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold border"
+                style={{ borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.5)' }}>閉じる</button>
+              <button onClick={() => { setShowCrisis(false); doSendBottle() }}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white"
+                style={{ background: 'rgba(100,140,255,0.25)', border: '1px solid rgba(100,140,255,0.3)' }}>このまま流す</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div
+        className="relative rounded-t-3xl w-full max-w-md mx-auto overflow-hidden"
+        style={{ background: '#fff' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* カラーバー */}
+        <div className="h-1 w-full" style={{
+          background: isPost
+            ? 'linear-gradient(90deg,#6366f1,#4f46e5)'
+            : 'linear-gradient(90deg,#1d4ed8,#3b82f6)',
+        }} />
+
+        {/* ヘッダー */}
+        <div className="px-5 pt-4 pb-3 border-b border-stone-100">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-extrabold text-stone-400 uppercase tracking-widest">
+              {isPost ? '投稿する' : '気持ちを流す'}
+            </p>
+            <button onClick={onClose}
+              className="w-7 h-7 rounded-full bg-stone-100 flex items-center justify-center active:scale-90 transition-all">
+              <X size={13} className="text-stone-500" />
+            </button>
+          </div>
+
+          {/* モード切り替え */}
+          <div className="flex gap-2">
+            {([
+              { id: 'post',   icon: '✏️', label: '村に投稿',   sub: '村のみんなに届く' },
+              { id: 'bottle', icon: '🌊', label: '漂流瓶で流す', sub: '匿名・どこかへ' },
+            ] as const).map(m => (
+              <button key={m.id} onClick={() => { setMode(m.id); setText(''); setErrMsg('') }}
+                className="flex-1 flex flex-col items-center py-2.5 rounded-2xl text-center transition-all active:scale-95"
+                style={mode === m.id
+                  ? { background: m.id === 'post' ? '#eef2ff' : '#eff6ff', border: `2px solid ${m.id === 'post' ? '#6366f1' : '#3b82f6'}` }
+                  : { background: '#fafaf9', border: '2px solid #e7e5e4' }
+                }
+              >
+                <span className="text-base leading-none">{m.icon}</span>
+                <span className="text-[11px] font-extrabold mt-1 leading-tight"
+                  style={{ color: mode === m.id ? (m.id === 'post' ? '#4f46e5' : '#1d4ed8') : '#78716c' }}>
+                  {m.label}
+                </span>
+                <span className="text-[9px] mt-0.5" style={{ color: mode === m.id ? (m.id === 'post' ? '#818cf8' : '#60a5fa') : '#a8a29e' }}>
+                  {m.sub}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="px-5 py-4 space-y-3">
+
+          {/* 送信済み */}
+          {sent && (
+            <div className="py-6 text-center space-y-2">
+              <div className="text-4xl">{isPost ? '✅' : '🌊'}</div>
+              <p className="font-extrabold text-stone-800">
+                {isPost ? '投稿しました！' : '流れていきました'}
+              </p>
+              <p className="text-xs text-stone-400">
+                {isPost ? '村のタイムラインに反映されます' : 'どこかの村に届きますように'}
+              </p>
+            </div>
+          )}
+
+          {!sent && (
+            <>
+              {/* 村選択 */}
+              {villages.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">
+                    {isPost ? '投稿する村' : '流す村（出発点）'}
+                  </p>
+                  <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+                    {villages.map(v => (
+                      <button key={v.id} onClick={() => setVillageId(v.id)}
+                        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold border transition-all active:scale-95"
+                        style={villageId === v.id
+                          ? { background: isPost ? '#4f46e5' : '#1d4ed8', color: '#fff', borderColor: 'transparent' }
+                          : { background: '#fafaf9', color: '#57534e', borderColor: '#e7e5e4' }
+                        }
+                      >
+                        <span>{v.icon}</span>
+                        <span className="truncate max-w-[80px]">{v.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {villages.length === 0 && (
+                <div className="py-4 text-center">
+                  <p className="text-sm font-bold text-stone-500">まず村に参加しましょう</p>
+                </div>
+              )}
+
+              {/* カテゴリ（投稿のみ） */}
+              {isPost && (
+                <div>
+                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">カテゴリ</p>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {POST_CATEGORIES.map(c => (
+                      <button key={c.id} onClick={() => setCategory(c.id)}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all active:scale-95"
+                        style={category === c.id
+                          ? { background: '#4f46e5', color: '#fff', borderColor: 'transparent' }
+                          : { background: '#fafaf9', color: '#78716c', borderColor: '#e7e5e4' }
+                        }
+                      >
+                        {c.emoji} {c.id}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* テキスト入力 */}
+              {isPost ? (
+                <textarea
+                  value={text}
+                  onChange={e => { setText(e.target.value.slice(0, MAX_POST)); setErrMsg('') }}
+                  placeholder="村のみんなに伝えたいことを…"
+                  rows={4}
+                  autoFocus
+                  className="w-full px-4 py-3 rounded-2xl border-2 text-sm resize-none focus:outline-none leading-relaxed"
+                  style={{ borderColor: '#e7e5e4', background: '#fafaf9', caretColor: '#6366f1' }}
+                />
+              ) : (
+                <>
+                  {bottleLimitHit ? (
+                    <div className="py-4 text-center">
+                      <p className="text-sm font-bold text-stone-500">今日の送信上限（{BOTTLE_DAILY_LIMIT}通）に達しました</p>
+                      <p className="text-xs text-stone-400 mt-1">明日また流せます</p>
+                    </div>
+                  ) : (
+                    <textarea
+                      value={text}
+                      onChange={e => { setText(e.target.value.slice(0, MAX_BOTTLE)); setErrMsg('') }}
+                      placeholder={'今の気持ちをひとことだけ…\n\n答えを求めなくていい。\nただ、誰かに受け止めてほしいとき。'}
+                      rows={4}
+                      autoFocus
+                      className="w-full px-4 py-3 rounded-2xl border-2 text-sm resize-none focus:outline-none leading-relaxed"
+                      style={{ borderColor: '#bfdbfe', background: '#f0f9ff', caretColor: '#1d4ed8' }}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* 字数 + エラー */}
+              <div className="flex items-center justify-between px-1">
+                {errMsg
+                  ? <p className="text-[10px] text-red-500 font-bold">⚠️ {errMsg}</p>
+                  : <span />
+                }
+                <p className={`text-[10px] font-bold ${text.length > maxChars * 0.9 ? 'text-amber-500' : 'text-stone-300'}`}>
+                  {text.length}/{maxChars}
+                </p>
+              </div>
+
+              {/* 送信ボタン */}
+              <button
+                onClick={isPost ? handlePost : handleBottle}
+                disabled={!text.trim() || sending || !villageId || (mode === 'bottle' && bottleLimitHit)}
+                className="w-full py-3.5 rounded-2xl text-white text-sm font-extrabold disabled:opacity-40 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                style={{
+                  background: isPost
+                    ? 'linear-gradient(135deg,#6366f1,#4f46e5)'
+                    : 'linear-gradient(135deg,#1d4ed8,#3b82f6)',
+                  boxShadow: isPost
+                    ? '0 6px 20px rgba(99,102,241,0.4)'
+                    : '0 6px 20px rgba(29,78,216,0.4)',
+                }}
+              >
+                {sending
+                  ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : isPost
+                    ? <><Send size={14} /> 投稿する</>
+                    : <><span className="text-base">🌊</span> 流す</>
+                }
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── メインページ ───────────────────────────────────────────────
 export default function TimelinePage() {
   const router = useRouter()
@@ -328,6 +638,7 @@ export default function TimelinePage() {
   const [myVillageIds, setMyVillageIds] = useState<string[]>([])
   const [followingIds, setFollowingIds] = useState<string[]>([])
   const [likedIds,     setLikedIds]     = useState<Set<string>>(new Set())
+  const [showCompose,  setShowCompose]  = useState(false)
 
   const offsetRef   = useRef(0)
   const todayPrompt = DAILY_PROMPTS[new Date().getDay()]
@@ -649,6 +960,32 @@ export default function TimelinePage() {
           </button>
         )}
       </div>
+
+      {/* ── FAB ── */}
+      <button
+        onClick={() => setShowCompose(true)}
+        className="fixed bottom-24 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
+        style={{
+          background: 'linear-gradient(135deg,#6366f1 0%,#4f46e5 100%)',
+          boxShadow: '0 8px 24px rgba(99,102,241,0.45)',
+        }}
+      >
+        <Plus size={24} className="text-white" strokeWidth={2.5} />
+      </button>
+
+      {/* ── 投稿モーダル ── */}
+      {showCompose && userId && (
+        <ComposeModal
+          userId={userId}
+          myVillageIds={myVillageIds}
+          onClose={() => setShowCompose(false)}
+          onPosted={() => {
+            setShowCompose(false)
+            fetchPosts(true)
+            if (tab === 'myvillage') fetchQA(userId, myVillageIds)
+          }}
+        />
+      )}
     </div>
   )
 }
