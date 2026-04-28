@@ -298,7 +298,7 @@ export default function BottlePage() {
 
           {/* Q&A サブタブ */}
           <div className="bg-white border-b border-stone-100 shadow-sm">
-            <div className="flex px-4 pt-3 gap-2">
+            <div className="flex items-center px-4 pt-3 gap-2">
               {([
                 { id: 'open',     icon: '🔍', label: '回答受付中' },
                 { id: 'resolved', icon: '✅', label: '解決済み'   },
@@ -316,6 +316,14 @@ export default function BottlePage() {
                   <span>{m.label}</span>
                 </button>
               ))}
+              {/* 質問するボタン — FABより確実なタップ領域 */}
+              <button
+                onClick={() => router.push('/qa/create')}
+                className="flex items-center gap-1 px-3 py-2.5 rounded-2xl text-xs font-extrabold text-white flex-shrink-0 active:scale-95 transition-all"
+                style={{ background: 'linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%)' }}
+              >
+                <Plus size={12} /> 質問する
+              </button>
             </div>
 
             {/* カテゴリフィルター */}
@@ -428,11 +436,12 @@ export default function BottlePage() {
             </div>
           )}
 
-          {/* FAB（質問する） */}
+          {/* FAB（質問する） — z-50でBottomNav(z-40)より前面、bottom安全距離確保 */}
           <button
             onClick={() => router.push('/qa/create')}
-            className="fixed bottom-24 right-5 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
+            className="fixed right-5 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl active:scale-90 transition-all z-50"
             style={{
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
               background: 'linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%)',
               boxShadow: '0 8px 24px rgba(29,78,216,0.4)',
             }}
