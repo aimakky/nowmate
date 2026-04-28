@@ -695,6 +695,10 @@ export default function VillageDetailPage() {
   const [todayCount,     setTodayCount]     = useState(0)
   const [lastPostDays,   setLastPostDays]   = useState<number | null>(null)
 
+  // ── ボイスルーム録音禁止同意 ─────────────────────────────────
+  const [showVoiceWarning, setShowVoiceWarning] = useState(false)
+  const [pendingVoiceRoomId, setPendingVoiceRoomId] = useState<string | null>(null) // 参加予定の既存ルームID
+
   // ── 村外交システム ────────────────────────────────────────────
   const [diplomacyIn,    setDiplomacyIn]    = useState<any[]>([])
   const [diplomacyOut,   setDiplomacyOut]   = useState<any[]>([])
@@ -1177,6 +1181,20 @@ export default function VillageDetailPage() {
   async function createVoiceRoom() {
     if (!userId || !village) return
     if (!tier.canCreateRoom) { setShowPhoneVerify(true); return }
+    // 録音禁止同意モーダルを先に表示
+    setShowVoiceWarning(true)
+  }
+
+  async function createVoiceRoomConfirmed() {
+    setShowVoiceWarning(false)
+    if (pendingVoiceRoomId) {
+      // 既存ルームへの参加
+      router.push(`/voice/${pendingVoiceRoomId}`)
+      setPendingVoiceRoomId(null)
+      return
+    }
+    // 新規ルーム作成
+    if (!userId || !village) return
     const supabase = createClient()
     const { data } = await supabase.from('voice_rooms').insert({
       host_id: userId, title: VOICE_ROOM_NAMES[village.type] ?? '🌿 村の広場',
@@ -1187,6 +1205,11 @@ export default function VillageDetailPage() {
       await awardPoints('voice_participated', data.id)
       router.push(`/voice/${data.id}`)
     }
+  }
+
+  function joinVoiceRoom(roomId: string) {
+    setPendingVoiceRoomId(roomId)
+    setShowVoiceWarning(true)
   }
 
   // ── Admin ─────────────────────────────────────────────────
@@ -1837,7 +1860,7 @@ export default function VillageDetailPage() {
             </div>
           ) : (
             voiceRooms.map(room => (
-              <div key={room.id} onClick={() => router.push(`/voice/${room.id}`)}
+              <div key={room.id} onClick={() => joinVoiceRoom(room.id)}
                 className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm cursor-pointer active:scale-[0.99] hover:shadow-md transition-all">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
@@ -2382,6 +2405,50 @@ export default function VillageDetailPage() {
       {showPhoneVerify && (
         <PhoneVerifyModal onClose={() => setShowPhoneVerify(false)}
           onVerified={async () => { const t = await getUserTrust(userId!); setUserTrust(t) }} />
+      )}
+
+      {/* ── ボイスルーム録音禁止同意モーダル ── */}
+      {showVoiceWarning && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm px-4 pb-6">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl">
+            <div className="text-center mb-5">
+              <p className="text-4xl mb-2">🎙️</p>
+              <h3 className="text-base font-extrabold text-stone-900 mb-1">ボイスルームに参加する前に</h3>
+              <p className="text-xs text-stone-500 leading-relaxed">
+                以下のルールへの同意が必要です
+              </p>
+            </div>
+            <div className="space-y-2.5 mb-5">
+              {[
+                { icon: '🚫', text: '会話の無断録音・録画は禁止です' },
+                { icon: '🚫', text: 'スクリーンショットの外部拡散は禁止です' },
+                { icon: '✅', text: '参加記録（入退室時刻）は運営が保持します' },
+                { icon: '✅', text: '問題のある発言は通報してください' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-2.5 px-3 py-2.5 bg-stone-50 rounded-xl">
+                  <span className="text-base flex-shrink-0">{item.icon}</span>
+                  <p className="text-xs text-stone-700 leading-relaxed">{item.text}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowVoiceWarning(false); setPendingVoiceRoomId(null) }}
+                className="flex-1 py-3 rounded-2xl border border-stone-200 text-sm font-bold text-stone-500">
+                戻る
+              </button>
+              <button
+                onClick={createVoiceRoomConfirmed}
+                className="flex-1 py-3 rounded-2xl text-sm font-bold text-white"
+                style={{ background: 'linear-gradient(135deg,#22c55e 0%,#16a34a 100%)' }}>
+                同意して参加
+              </button>
+            </div>
+            <p className="text-center text-[10px] text-stone-400 mt-3">
+              <a href="/safety" className="underline">安全への取り組みを見る</a>　|　<a href="/terms" className="underline">利用規約</a>
+            </p>
+          </div>
+        </div>
       )}
       {resolvePost && (
         <ResolveModal post={resolvePost} members={members} userId={userId!}
