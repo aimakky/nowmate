@@ -114,7 +114,7 @@ export default function GuildPostPage() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#0f0f1a' }}>
-      <span className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <span className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
   if (!post) return null
@@ -123,7 +123,7 @@ export default function GuildPostPage() {
   const topic = getTopicTag(post.topic_tag)
 
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#111827' }}>
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0f0f1a' }}>
 
       {/* ヘッダー */}
       <div className="relative overflow-hidden" style={{ background: ind.gradient }}>
@@ -222,7 +222,7 @@ export default function GuildPostPage() {
             <div className="flex items-center gap-2 mb-2">
               <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: ind.gradient }} />
               <p className="text-xs font-bold text-white/55">コメントを追加</p>
-              <span className="text-[10px] text-white/35 ml-auto">業界バッジで表示</span>
+              <span className="text-[10px] text-white/35 ml-auto">ジャンルバッジで表示</span>
             </div>
             <div className="flex gap-2 items-end">
               <textarea

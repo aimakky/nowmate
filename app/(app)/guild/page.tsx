@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, MessageCircle, Eye, Briefcase } from 'lucide-react'
+import { Plus, MessageCircle, Eye, Gamepad2 } from 'lucide-react'
 import { INDUSTRIES, TOPIC_TAGS, REACTIONS, getIndustry, getTopicTag, getTotalReactions } from '@/lib/guild'
 import { timeAgo } from '@/lib/utils'
 import { getUserTrust } from '@/lib/trust'
@@ -24,16 +24,14 @@ type Post = {
 
 export default function GuildPage() {
   const router = useRouter()
-  const [posts,        setPosts]        = useState<Post[]>([])
-  const [loading,      setLoading]      = useState(true)
-  const [userId,       setUserId]       = useState<string | null>(null)
-  const [myIndustry,   setMyIndustry]   = useState<string | null>(null)
-  const [canPost,      setCanPost]      = useState(false)
-  const [feedMode,     setFeedMode]     = useState<'all' | 'mine'>('all')
-  const [topicFilter,  setTopicFilter]  = useState<string>('all')
-  const [reacting,     setReacting]     = useState<string | null>(null)
-  const [jobVillages,  setJobVillages]  = useState<any[]>([])
-  const [joinedIds,    setJoinedIds]    = useState<Set<string>>(new Set())
+  const [posts,       setPosts]       = useState<Post[]>([])
+  const [loading,     setLoading]     = useState(true)
+  const [userId,      setUserId]      = useState<string | null>(null)
+  const [myGenre,     setMyGenre]     = useState<string | null>(null)
+  const [canPost,     setCanPost]     = useState(false)
+  const [feedMode,    setFeedMode]    = useState<'all' | 'mine'>('all')
+  const [topicFilter, setTopicFilter] = useState<string>('all')
+  const [reacting,    setReacting]    = useState<string | null>(null)
 
   useEffect(() => {
     async function init() {
@@ -45,20 +43,8 @@ export default function GuildPage() {
         supabase.from('profiles').select('industry').eq('id', user.id).single(),
         getUserTrust(user.id),
       ])
-      const industry = p?.industry ?? null
-      setMyIndustry(industry)
+      setMyGenre(p?.industry ?? null)
       setCanPost(trust?.tier !== 'visitor')
-
-      // 職業別村を取得（自分の業界 or 全業界）
-      let vq = supabase.from('villages').select('*').eq('category', '仕事').eq('is_public', true)
-      if (industry) vq = vq.eq('job_type', industry)
-      const { data: vData } = await vq.order('member_count', { ascending: false }).limit(10)
-      setJobVillages(vData ?? [])
-
-      // 参加中の村
-      const { data: memData } = await supabase
-        .from('village_members').select('village_id').eq('user_id', user.id)
-      setJoinedIds(new Set((memData ?? []).map((m: any) => m.village_id)))
     }
     init()
   }, [router])
@@ -75,12 +61,11 @@ export default function GuildPage() {
       .order('created_at', { ascending: false })
       .limit(40)
 
-    if (feedMode === 'mine' && myIndustry) q = q.eq('industry', myIndustry)
+    if (feedMode === 'mine' && myGenre) q = q.eq('industry', myGenre)
     if (topicFilter !== 'all') q = q.eq('topic_tag', topicFilter)
 
     const { data: postsData } = await q
 
-    // 自分のリアクション取得
     if (postsData && postsData.length > 0) {
       const ids = postsData.map((p: any) => p.id)
       const { data: myReactions } = await supabase
@@ -99,7 +84,7 @@ export default function GuildPage() {
       setPosts([])
     }
     setLoading(false)
-  }, [userId, feedMode, topicFilter, myIndustry])
+  }, [userId, feedMode, topicFilter, myGenre])
 
   useEffect(() => { fetchPosts() }, [fetchPosts])
 
@@ -111,7 +96,6 @@ export default function GuildPage() {
     const current = post?.myReaction
 
     if (current === reactionId) {
-      // 取り消し
       await supabase.from('guild_reactions').delete()
         .eq('post_id', postId).eq('user_id', userId)
       setPosts(prev => prev.map(p => {
@@ -121,7 +105,6 @@ export default function GuildPage() {
         return { ...p, myReaction: null, reaction_counts: counts }
       }))
     } else {
-      // 新規 or 変更
       await supabase.from('guild_reactions').upsert(
         { post_id: postId, user_id: userId, reaction_type: reactionId },
         { onConflict: 'post_id,user_id' }
@@ -137,37 +120,37 @@ export default function GuildPage() {
     setReacting(null)
   }
 
-  const ind = myIndustry ? getIndustry(myIndustry) : null
+  const genreInfo = myGenre ? getIndustry(myGenre) : null
 
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#f5f3ff' }}>
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0f0f1a' }}>
 
       {/* ── ヘッダー ── */}
       <div className="sticky top-0 z-10 px-4 pt-12 pb-0"
-        style={{ background: 'linear-gradient(160deg, #111827 0%, #1e1b4b 60%, #1e1b4b 100%)' }}>
+        style={{ background: 'linear-gradient(160deg, #0f0f1a 0%, #1a1035 60%, #1a1035 100%)' }}>
 
         {/* 星背景 */}
-        <div className="absolute inset-0 opacity-30 pointer-events-none"
-          style={{ backgroundImage: `radial-gradient(1px 1px at 15% 25%, white, transparent), radial-gradient(1px 1px at 65% 12%, white, transparent), radial-gradient(1.5px 1.5px at 82% 58%, white, transparent), radial-gradient(1px 1px at 38% 72%, white, transparent), radial-gradient(1px 1px at 92% 30%, white, transparent)` }} />
+        <div className="absolute inset-0 opacity-40 pointer-events-none"
+          style={{ backgroundImage: `radial-gradient(1px 1px at 10% 20%, #a78bfa, transparent), radial-gradient(1.5px 1.5px at 70% 15%, #818cf8, transparent), radial-gradient(1px 1px at 85% 60%, #c4b5fd, transparent), radial-gradient(1px 1px at 35% 75%, #a78bfa, transparent), radial-gradient(1.5px 1.5px at 50% 40%, white, transparent), radial-gradient(1px 1px at 92% 35%, white, transparent)` }} />
 
         <div className="relative">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-indigo-300/70 text-[10px] font-bold tracking-widest uppercase mb-0.5">匿名仕事村</p>
+              <p className="text-purple-400/60 text-[10px] font-bold tracking-widest uppercase mb-0.5">GAME GUILD</p>
               <h1 className="font-extrabold text-white text-2xl leading-tight flex items-center gap-2">
-                  <Briefcase size={22} className="text-indigo-300" />
-                  匿名仕事村
-                </h1>
-              <p className="text-indigo-200/60 text-[11px] mt-0.5">仕事の本音が集まる場所</p>
+                <span className="text-2xl">🎮</span>
+                ゲームギルド
+              </h1>
+              <p className="text-purple-300/50 text-[11px] mt-0.5">ゲーマーが集まる匿名の広場</p>
             </div>
             <button
               onClick={() => canPost ? router.push('/guild/create') : router.push('/mypage')}
               className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-extrabold text-white flex-shrink-0 active:scale-95 transition-all"
               style={{
                 background: canPost
-                  ? (ind ? ind.gradient : 'linear-gradient(135deg,#6366f1,#4f46e5)')
-                  : 'rgba(255,255,255,0.12)',
-                border: canPost ? 'none' : '1px solid rgba(255,255,255,0.2)',
+                  ? (genreInfo ? genreInfo.gradient : 'linear-gradient(135deg,#8b5cf6,#6d28d9)')
+                  : 'rgba(255,255,255,0.10)',
+                border: canPost ? 'none' : '1px solid rgba(255,255,255,0.15)',
               }}
             >
               {canPost ? <><Plus size={13} /> 投稿する</> : '🔒 認証して投稿'}
@@ -177,8 +160,8 @@ export default function GuildPage() {
           {/* フィードモード */}
           <div className="flex gap-2 mb-3">
             {([
-              { id: 'all',  label: '全業界' },
-              { id: 'mine', label: `${ind?.emoji ?? '🏷️'} 自分の業界`, disabled: !myIndustry },
+              { id: 'all',  label: '全ジャンル' },
+              { id: 'mine', label: `${genreInfo?.emoji ?? '🎮'} マイジャンル`, disabled: !myGenre },
             ] as { id: string; label: string; disabled?: boolean }[]).map(m => (
               <button key={m.id}
                 onClick={() => !m.disabled && setFeedMode(m.id as 'all' | 'mine')}
@@ -186,7 +169,7 @@ export default function GuildPage() {
                 className="px-3 py-1.5 rounded-full text-xs font-bold transition-all disabled:opacity-30"
                 style={feedMode === m.id
                   ? { background: '#fff', color: '#0f172a' }
-                  : { background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.15)' }
+                  : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.50)', border: '1px solid rgba(255,255,255,0.12)' }
                 }
               >{m.label}</button>
             ))}
@@ -199,7 +182,7 @@ export default function GuildPage() {
               className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all"
               style={topicFilter === 'all'
                 ? { background: '#fff', color: '#0f172a' }
-                : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.12)' }
+                : { background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.10)' }
               }
             >すべて</button>
             {TOPIC_TAGS.map(t => (
@@ -208,7 +191,7 @@ export default function GuildPage() {
                 className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all"
                 style={topicFilter === t.id
                   ? { background: '#fff', color: '#0f172a' }
-                  : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.12)' }
+                  : { background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.10)' }
                 }
               >{t.emoji} {t.id}</button>
             ))}
@@ -216,76 +199,35 @@ export default function GuildPage() {
         </div>
       </div>
 
-      {/* ── 業界未設定バナー ── */}
-      {!myIndustry && (
+      {/* ── ジャンル未設定バナー ── */}
+      {!myGenre && (
         <div
           onClick={() => router.push('/settings')}
           className="mx-4 mt-4 flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer active:scale-[0.99] transition-all"
-          style={{ background: '#ede9fe', border: '1px solid #c4b5fd' }}
+          style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.35)' }}
         >
-          <Briefcase size={18} className="text-indigo-500 flex-shrink-0" />
+          <span className="text-xl flex-shrink-0">🎮</span>
           <div className="flex-1">
-            <p className="text-xs font-bold text-indigo-700">業界を設定すると仕事村に参加できます</p>
-            <p className="text-[10px] text-indigo-400 mt-0.5">設定 → 業界を選択してください</p>
+            <p className="text-xs font-bold text-purple-300">ゲームジャンルを設定してギルドに参加しよう</p>
+            <p className="text-[10px] text-purple-400/70 mt-0.5">設定 → ジャンルを選択してください</p>
           </div>
-          <span className="text-indigo-400 text-xs">›</span>
+          <span className="text-purple-400/70 text-xs">›</span>
         </div>
       )}
 
-      {/* ── 未認証バナー（業界設定済みだが電話未認証） ── */}
-      {myIndustry && !canPost && (
+      {/* ── 未認証バナー ── */}
+      {myGenre && !canPost && (
         <div
           onClick={() => router.push('/mypage')}
           className="mx-4 mt-3 flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer active:scale-[0.99] transition-all"
-          style={{ background: '#fef9c3', border: '1px solid #fde047' }}
+          style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.30)' }}
         >
           <span className="text-xl">📱</span>
           <div className="flex-1">
-            <p className="text-xs font-bold text-amber-700">電話認証すると仕事村に投稿できます</p>
-            <p className="text-[10px] text-amber-500 mt-0.5">マイページ → 電話番号認証</p>
+            <p className="text-xs font-bold text-amber-400">電話認証するとギルドに投稿できます</p>
+            <p className="text-[10px] text-amber-500/70 mt-0.5">マイページ → 電話番号認証</p>
           </div>
-          <span className="text-amber-400 text-xs">›</span>
-        </div>
-      )}
-
-      {/* ── 職業別の村 ── */}
-      {jobVillages.length > 0 && (
-        <div className="pt-4 pb-1">
-          <div className="flex items-center justify-between px-4 mb-2.5">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm">🏘️</span>
-              <p className="text-xs font-extrabold text-stone-700">
-                {myIndustry ? `${myIndustry}の村` : '職業別の村'}
-              </p>
-            </div>
-            <button
-              onClick={() => router.push('/villages?category=仕事')}
-              className="text-[10px] text-indigo-500 font-bold"
-            >すべて見る →</button>
-          </div>
-          <div className="flex gap-2.5 overflow-x-auto scrollbar-none px-4">
-            {jobVillages.map((v: any) => {
-              const joined = joinedIds.has(v.id)
-              return (
-                <button
-                  key={v.id}
-                  onClick={() => router.push(`/villages/${v.id}`)}
-                  className="flex-shrink-0 flex flex-col items-center gap-1.5 p-3 rounded-2xl active:scale-95 transition-all min-w-[80px]"
-                  style={{ background: '#fff', border: joined ? '1.5px solid #818cf8' : '1px solid #e0e7ff' }}
-                >
-                  <span className="text-2xl">{v.icon}</span>
-                  <p className="text-[10px] font-bold text-stone-700 text-center leading-tight line-clamp-2">{v.name}</p>
-                  <span
-                    className="text-[9px] font-bold px-2 py-0.5 rounded-full"
-                    style={joined
-                      ? { background: '#ede9fe', color: '#6366f1' }
-                      : { background: '#f5f3ff', color: '#a5b4fc' }
-                    }
-                  >{joined ? '参加中' : `👥 ${v.member_count}`}</span>
-                </button>
-              )
-            })}
-          </div>
+          <span className="text-amber-400/60 text-xs">›</span>
         </div>
       )}
 
@@ -293,24 +235,26 @@ export default function GuildPage() {
       <div className="px-4 pt-4 pb-32 space-y-3">
         {loading ? (
           [...Array(4)].map((_, i) => (
-            <div key={i} className="rounded-3xl p-4 animate-pulse bg-white border border-stone-100">
-              <div className="h-3 rounded-full w-1/3 mb-3 bg-stone-100" />
-              <div className="h-4 rounded-full w-full mb-2 bg-stone-100" />
-              <div className="h-3 rounded-full w-2/3 bg-stone-100" />
+            <div key={i} className="rounded-3xl p-4 animate-pulse"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="h-3 rounded-full w-1/3 mb-3" style={{ background: 'rgba(255,255,255,0.08)' }} />
+              <div className="h-4 rounded-full w-full mb-2" style={{ background: 'rgba(255,255,255,0.08)' }} />
+              <div className="h-3 rounded-full w-2/3" style={{ background: 'rgba(255,255,255,0.08)' }} />
             </div>
           ))
         ) : posts.length === 0 ? (
           <div className="text-center py-20">
-            <div className="flex items-center justify-center w-20 h-20 rounded-3xl bg-indigo-50 mx-auto mb-4">
-              <Briefcase size={36} className="text-indigo-300" />
+            <div className="w-20 h-20 rounded-3xl mx-auto mb-4 flex items-center justify-center text-4xl"
+              style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.25)' }}>
+              🎮
             </div>
-            <p className="font-extrabold text-stone-800 text-base mb-1.5">まだ投稿がありません</p>
-            <p className="text-sm text-indigo-400 mb-6">最初の投稿をしてみましょう</p>
+            <p className="font-extrabold text-white text-base mb-1.5">まだ投稿がありません</p>
+            <p className="text-sm text-purple-400/70 mb-6">最初のプレイヤーになろう</p>
             {canPost && (
               <button
                 onClick={() => router.push('/guild/create')}
-                className="px-6 py-3 rounded-2xl text-sm font-bold text-white"
-                style={{ background: 'linear-gradient(135deg,#6366f1 0%,#4f46e5 100%)' }}
+                className="px-6 py-3 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
+                style={{ background: 'linear-gradient(135deg,#8b5cf6 0%,#6d28d9 100%)', boxShadow: '0 8px 24px rgba(139,92,246,0.4)' }}
               >✏️ 投稿する</button>
             )}
           </div>
@@ -321,8 +265,8 @@ export default function GuildPage() {
             const total    = getTotalReactions(post.reaction_counts)
             return (
               <div key={post.id}
-                className="rounded-3xl overflow-hidden cursor-pointer active:scale-[0.99] transition-all bg-white"
-                style={{ border: '1px solid #e0e7ff', boxShadow: '0 1px 4px rgba(99,102,241,0.06)' }}
+                className="rounded-3xl overflow-hidden cursor-pointer active:scale-[0.99] transition-all"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 1px 8px rgba(0,0,0,0.3)' }}
               >
                 {/* カラーバー */}
                 <div className="h-[3px]" style={{ background: industry.gradient }} />
@@ -331,30 +275,30 @@ export default function GuildPage() {
                   {/* バッジ行 */}
                   <div className="flex items-center gap-2 mb-2.5 flex-wrap">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background: `${industry.color}28`, color: industry.color, border: `1px solid ${industry.color}50` }}>
+                      style={{ background: `${industry.color}25`, color: industry.color, border: `1px solid ${industry.color}45` }}>
                       {industry.emoji} {post.industry}
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background: '#f5f3ff', color: '#6366f1', border: '1px solid #e0e7ff' }}>
+                      style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.25)' }}>
                       {topic.emoji} #{post.topic_tag}
                     </span>
                   </div>
 
                   {/* 本文 */}
-                  <p className="text-sm text-stone-800 leading-relaxed line-clamp-4 mb-3 whitespace-pre-wrap">
+                  <p className="text-sm text-stone-200 leading-relaxed line-clamp-4 mb-3 whitespace-pre-wrap">
                     {post.content}
                   </p>
 
                   {/* 画像 */}
                   {post.image_url && (
-                    <img src={post.image_url} alt="" className="w-full rounded-2xl object-cover max-h-48 mb-3 border border-white/15" />
+                    <img src={post.image_url} alt="" className="w-full rounded-2xl object-cover max-h-48 mb-3 border border-white/10" />
                   )}
 
                   {/* フッター */}
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-stone-400">{timeAgo(post.created_at)}</span>
-                    <div className="flex items-center gap-3 text-[10px] text-stone-400">
-                      {total > 0 && <span>💬 {total}</span>}
+                    <span className="text-[10px] text-stone-500">{timeAgo(post.created_at)}</span>
+                    <div className="flex items-center gap-3 text-[10px] text-stone-500">
+                      {total > 0 && <span>🎮 {total}</span>}
                       {post.comment_count > 0 && (
                         <span className="flex items-center gap-1">
                           <MessageCircle size={11} /> {post.comment_count}
@@ -366,19 +310,20 @@ export default function GuildPage() {
                 </div>
 
                 {/* リアクションバー */}
-                <div className="flex items-center gap-1 px-4 pb-3 border-t border-stone-100 pt-2">
+                <div className="flex items-center gap-1 px-4 pb-3 pt-2"
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
                   {REACTIONS.map(r => {
-                    const count   = post.reaction_counts?.[r.id] ?? 0
-                    const isMe    = post.myReaction === r.id
-                    const isMine  = post.user_id === userId
+                    const count  = post.reaction_counts?.[r.id] ?? 0
+                    const isMe   = post.myReaction === r.id
+                    const isMine = post.user_id === userId
                     return (
                       <button key={r.id}
                         onClick={e => { e.stopPropagation(); if (!isMine) handleReaction(post.id, r.id) }}
                         disabled={!!reacting || isMine}
                         className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95 disabled:opacity-40"
                         style={isMe
-                          ? { background: `${getIndustry(post.industry).color}18`, color: getIndustry(post.industry).color, border: `1px solid ${getIndustry(post.industry).color}40` }
-                          : { background: '#f5f3ff', color: '#a5b4fc', border: '1px solid #e0e7ff' }
+                          ? { background: `${industry.color}25`, color: industry.color, border: `1px solid ${industry.color}45` }
+                          : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.10)' }
                         }
                       >
                         <span>{r.emoji}</span>
@@ -400,8 +345,8 @@ export default function GuildPage() {
           className="fixed right-5 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl active:scale-90 transition-all z-50"
           style={{
             bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
-            background: 'linear-gradient(135deg,#6366f1 0%,#4f46e5 100%)',
-            boxShadow: '0 8px 24px rgba(99,102,241,0.45)',
+            background: 'linear-gradient(135deg,#8b5cf6 0%,#6d28d9 100%)',
+            boxShadow: '0 8px 24px rgba(139,92,246,0.5)',
           }}
         >
           <Plus size={22} className="text-white" />
