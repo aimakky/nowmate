@@ -279,9 +279,8 @@ export default function VillagesPage() {
         {/* コミュスタイルフィルター */}
         <div className="flex gap-2 mb-3">
           {([
-            { id: 'all',   icon: '🏕️', label: 'すべて',    activeBg: 'rgba(255,255,255,0.95)', activeColor: '#1c1917' },
-            { id: 'text',  icon: '💬',  label: 'チャット村', activeBg: '#3b82f6',                activeColor: '#fff'    },
-            { id: 'voice', icon: '🎙️', label: '通話村',     activeBg: '#f97316',                activeColor: '#fff'    },
+            { id: 'all',   icon: '🏕️', label: 'すべて', activeBg: 'rgba(255,255,255,0.95)', activeColor: '#1c1917' },
+            { id: 'voice', icon: '🎙️', label: '通話村', activeBg: '#f97316',                activeColor: '#fff'    },
           ] as { id: 'all' | 'text' | 'voice'; icon: string; label: string; activeBg: string; activeColor: string }[]).map(opt => (
             <button key={opt.id} onClick={() => setCommStyle(opt.id)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold transition-all active:scale-95 flex-shrink-0"
@@ -478,7 +477,6 @@ export default function VillagesPage() {
               </div>
               <p className="font-extrabold text-stone-800 text-base mb-1">
                 {subFilter === 'member'  ? 'まだ村に参加していません' :
-                 commStyle === 'text'    ? 'チャット村がまだありません' :
                  commStyle === 'voice'   ? '通話村がまだありません' :
                  'この村はまだありません'}
               </p>
