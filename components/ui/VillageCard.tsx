@@ -24,6 +24,7 @@ export interface Village {
   category?: string
   job_locked?: boolean
   job_type?: string | null
+  comm_style?: string
 }
 
 // ─── 村タイプごとのスタイル ───────────────────────────────────
@@ -244,6 +245,14 @@ export default function VillageCard({
           <span className={fire.animate ? 'animate-pulse' : ''}>{fire.emoji}</span>
           <span>{fire.label}</span>
         </div>
+
+        {/* コミュニケーションスタイルバッジ — top left second row */}
+        {village.comm_style && village.comm_style !== 'both' && (
+          <div className="absolute top-8 left-2.5 flex items-center gap-1 bg-black/20 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20">
+            {village.comm_style === 'text' ? '📝' : '🎙️'}
+            {village.comm_style === 'text' ? ' テキスト中心' : ' 通話中心'}
+          </div>
+        )}
 
         {/* 職業限定バッジ / season_title — second row right */}
         {(village.job_locked && village.job_type) ? (
