@@ -24,6 +24,44 @@ interface ReportRow {
   shadow_ban_until: string | null
   tier: string
   score: number
+  priority_score?: number   // 自動計算優先度（高いほど要対応）
+}
+
+// ─── 優先度スコア計算 ─────────────────────────────────────────
+// 理由の重み付け
+const REASON_WEIGHT: Record<string, number> = {
+  '誹謗中傷・人格攻撃':     30,
+  '嫌がらせ・ストーキング':  30,
+  '連絡先・個人情報の要求':  25,
+  '差別的・不適切な発言':    20,
+  '勧誘・営業・スパム':      15,
+  'その他':                  5,
+}
+
+function calcPriority(row: ReportRow): number {
+  const reasonPts  = REASON_WEIGHT[row.reason] ?? 5
+  const countPts   = Math.min(row.report_count * 10, 50)   // 通報数（最大50pt）
+  const tierPts    = row.tier === 'visitor' ? 10 : 0        // 新規ユーザーはリスク高
+  const descPts    = row.description ? 5 : 0               // 詳細記載あり
+  return reasonPts + countPts + tierPts + descPts
+}
+
+function PriorityBadge({ score }: { score: number }) {
+  if (score >= 60) return (
+    <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-300 font-extrabold animate-pulse">
+      🚨 緊急
+    </span>
+  )
+  if (score >= 35) return (
+    <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 font-bold">
+      ⚠️ 要確認
+    </span>
+  )
+  return (
+    <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 border border-stone-200 font-medium">
+      通常
+    </span>
+  )
 }
 
 interface ReportedUser {
@@ -276,37 +314,45 @@ export default function AdminPage() {
             ) : reports.length === 0 ? (
               <EmptyState emoji="🎉" text="通報はまだありません" />
             ) : (
-              reports.map(r => (
-                <div key={r.report_id} className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-white">{r.reported_name ?? '不明'}</span>
-                        <BanBadge isBanned={r.is_shadow_banned} until={r.shadow_ban_until} />
-                        <span className="text-[10px] text-white/40">通報{r.report_count}件</span>
+              [...reports]
+                .sort((a, b) => calcPriority(b) - calcPriority(a))  // 優先度降順
+                .map(r => {
+                  const priority = calcPriority(r)
+                  return (
+                    <div key={r.report_id}
+                      className="bg-white/5 border rounded-2xl p-4 transition-all"
+                      style={{ borderColor: priority >= 60 ? 'rgba(239,68,68,0.4)' : priority >= 35 ? 'rgba(249,115,22,0.3)' : 'rgba(255,255,255,0.1)' }}>
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <PriorityBadge score={priority} />
+                            <span className="font-bold text-sm text-white">{r.reported_name ?? '不明'}</span>
+                            <BanBadge isBanned={r.is_shadow_banned} until={r.shadow_ban_until} />
+                            <span className="text-[10px] text-white/40">通報{r.report_count}件</span>
+                          </div>
+                          <p className="text-xs text-red-400 font-bold mt-0.5">{r.reason}</p>
+                          {r.description && (
+                            <p className="text-xs text-white/50 mt-1 leading-relaxed">{r.description}</p>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-white/30 flex-shrink-0">{fmt(r.reported_at)}</span>
                       </div>
-                      <p className="text-xs text-red-400 font-bold mt-0.5">{r.reason}</p>
-                      {r.description && (
-                        <p className="text-xs text-white/50 mt-1 leading-relaxed">{r.description}</p>
-                      )}
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] text-white/30">通報者: {r.reporter_name ?? '匿名'} · 優先度スコア: {priority}pt</p>
+                        {!r.is_shadow_banned && (
+                          <div className="flex gap-1.5">
+                            {[7, 30, 0].map(d => (
+                              <button key={d} onClick={() => banUser(r.reported_id, d)}
+                                className="text-[10px] px-2 py-1 rounded-lg bg-red-900/50 text-red-300 border border-red-800 font-bold hover:bg-red-800/70 transition active:scale-95">
+                                {d === 0 ? '永久BAN' : `${d}日BAN`}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-[10px] text-white/30 flex-shrink-0">{fmt(r.reported_at)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] text-white/30">通報者: {r.reporter_name ?? '匿名'}</p>
-                    {!r.is_shadow_banned && (
-                      <div className="flex gap-1.5">
-                        {[7, 30, 0].map(d => (
-                          <button key={d} onClick={() => banUser(r.reported_id, d)}
-                            className="text-[10px] px-2 py-1 rounded-lg bg-red-900/50 text-red-300 border border-red-800 font-bold hover:bg-red-800/70 transition active:scale-95">
-                            {d === 0 ? '永久BAN' : `${d}日BAN`}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
+                  )
+                })
             )}
           </div>
         )}

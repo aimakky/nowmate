@@ -31,15 +31,27 @@ export default function ReportModal({ reportedId, reportedName, onClose }: Repor
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      // 通報レコード挿入
-      await supabase.from('reports').insert({
-        reporter_id: user.id,
-        reported_id: reportedId,
-        reason,
-        description: description || null,
-      })
-      // user_trust の report_count をインクリメント（自動shadow ban トリガーが発火）
-      await supabase.rpc('increment_report_count', { p_user_id: reportedId })
+      // ── 重複通報チェック（集団通報対策）──────────────────────
+      // 同一reporter_idが同一reported_idに既に通報済みの場合はスキップ
+      const { data: existing } = await supabase
+        .from('reports')
+        .select('id')
+        .eq('reporter_id', user.id)
+        .eq('reported_id', reportedId)
+        .limit(1)
+
+      if (!existing || existing.length === 0) {
+        // 初回通報のみ有効
+        await supabase.from('reports').insert({
+          reporter_id:  user.id,
+          reported_id:  reportedId,
+          reason,
+          description:  description || null,
+        })
+        // report_countインクリメント（shadow banトリガー発火）
+        await supabase.rpc('increment_report_count', { p_user_id: reportedId })
+      }
+      // 重複の場合も「受け付けました」表示（ユーザーには知らせない）
     }
     setLoading(false)
     setDone(true)

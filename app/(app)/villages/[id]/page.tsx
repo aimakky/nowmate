@@ -27,8 +27,25 @@ const NG_WORDS = [
   '副業', '稼げる', '儲かる', 'ビジネス紹介', 'MLM', 'ネットワーク',
 ]
 
+// ─── テキスト正規化（表記ゆれ対策）──────────────────────────
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    // 全角→半角
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    // スペース・空白・記号を除去
+    .replace(/[\s　 ​‌‍﻿・。、！？!?　]/g, '')
+    // 数字→読み替え（4ne → しね 等）
+    .replace(/4/g, 'し').replace(/9/g, 'く').replace(/0/g, 'お')
+    // よくある置き換え表記
+    .replace(/ｼﾇ|ｼﾈ/g, 'しね')
+    // カタカナ→ひらがな
+    .replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60))
+}
+
 function detectNgWords(text: string): string | null {
-  const found = NG_WORDS.find(w => text.includes(w))
+  const normalized = normalizeText(text)
+  const found = NG_WORDS.find(w => normalized.includes(normalizeText(w)))
   return found ?? null
 }
 
@@ -1644,6 +1661,13 @@ export default function VillageDetailPage() {
                     {posting ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Send size={15} className="text-white" />}
                   </button>
                 </div>
+
+                {/* スクショ抑止の一文 */}
+                {newPost.trim().length > 10 && (
+                  <p className="mt-1.5 text-[9px] text-stone-300 text-right">
+                    🔒 この村の投稿は外部に拡散しないでください
+                  </p>
+                )}
 
                 {/* AutoMod警告 */}
                 {ngWarning && (
