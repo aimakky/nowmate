@@ -21,7 +21,6 @@ export default function BottomNav() {
   const pathname   = usePathname()
   const [notifCount,  setNotifCount]  = useState(0)
   const [chatCount,   setChatCount]   = useState(0)
-  const [bottleCount, setBottleCount] = useState(0)
 
   useEffect(() => {
     async function fetchBadges() {
@@ -55,21 +54,7 @@ export default function BottomNav() {
           setChatCount(mc ?? 0)
         }
 
-        // 拾える漂流瓶数
-        const { data: myVillages } = await supabase
-          .from('village_members')
-          .select('village_id')
-          .eq('user_id', user.id)
-        if (myVillages && myVillages.length > 0) {
-          const vIds = myVillages.map((v: any) => v.village_id)
-          const { count: bc } = await supabase
-            .from('drift_bottles')
-            .select('*', { count: 'exact', head: true })
-            .in('village_id', vIds)
-            .neq('sender_id', user.id)
-            .is('deleted_at', null)
-          setBottleCount(bc ?? 0)
-        }
+
       } catch {
         // silent
       }
@@ -85,7 +70,6 @@ export default function BottomNav() {
   }, [pathname])
 
   const badges: Record<string, number> = { '/notifications': notifCount }
-  const bottleActive = pathname === '/bottle' || pathname.startsWith('/bottle/')
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-stone-100 safe-area-pb">
@@ -106,25 +90,18 @@ export default function BottomNav() {
           )
         })}
 
-        {/* 中央：Q&A FABボタン */}
+        {/* 中央：ギルド FABボタン */}
         <div className="flex-1 flex flex-col items-center justify-center relative">
-          <Link href="/bottle"
+          <Link href="/guild"
             className="flex flex-col items-center justify-center w-14 h-14 rounded-full -mt-5 shadow-lg active:scale-90 transition-all relative"
             style={{
-              background: bottleActive
-                ? 'linear-gradient(135deg,#0c1445 0%,#1a3a6b 100%)'
-                : 'linear-gradient(135deg,#1e40af 0%,#1d4ed8 100%)',
-              boxShadow: '0 4px 16px rgba(29,78,216,0.45)',
+              background: (pathname === '/guild' || pathname.startsWith('/guild/'))
+                ? 'linear-gradient(135deg,#3730a3 0%,#312e81 100%)'
+                : 'linear-gradient(135deg,#6366f1 0%,#4f46e5 100%)',
+              boxShadow: '0 4px 16px rgba(99,102,241,0.5)',
             }}>
-            <span className="text-2xl leading-none">💬</span>
-            <span className="text-[8px] font-extrabold text-white/90 mt-0.5 leading-none">Q＆A村</span>
-            {bottleCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center px-1 border-2 border-white">
-                <span className="text-[9px] font-extrabold text-white leading-none">
-                  {bottleCount > 99 ? '99+' : bottleCount}
-                </span>
-              </span>
-            )}
+            <span className="text-2xl leading-none">⚔️</span>
+            <span className="text-[8px] font-extrabold text-white/90 mt-0.5 leading-none">ギルド</span>
           </Link>
         </div>
 

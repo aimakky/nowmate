@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Camera, Check, Trash2, Eye, EyeOff } from 'lucide-react'
+import { INDUSTRIES } from '@/lib/guild'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -19,6 +20,8 @@ export default function SettingsPage() {
   const [deleting,       setDeleting]       = useState(false)
   const [showAnswers,    setShowAnswers]    = useState(true)
   const [savingAnswers,  setSavingAnswers]  = useState(false)
+  const [industry,       setIndustry]       = useState('')
+  const [savingIndustry, setSavingIndustry] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -32,6 +35,7 @@ export default function SettingsPage() {
       setBio(p.bio ?? '')
       setAvatarPreview(p.avatar_url)
       setShowAnswers(p.show_answers !== false)
+      setIndustry(p.industry ?? '')
       setLoading(false)
     }
     load()
@@ -58,6 +62,7 @@ export default function SettingsPage() {
       display_name: name.trim(),
       bio: bio.trim() || null,
       avatar_url,
+      industry: industry || null,
       updated_at: new Date().toISOString(),
     }).eq('id', profile.id)
 
@@ -148,6 +153,40 @@ export default function SettingsPage() {
             className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 bg-white leading-relaxed"
           />
           <p className="text-right text-[10px] text-stone-400 mt-1">{bio.length}/200</p>
+        </div>
+
+        {/* ── ギルド業界 ── */}
+        <div>
+          <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+            ギルド業界 <span className="text-[10px] text-stone-400 normal-case font-normal">（ギルドで表示される業界）</span>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {INDUSTRIES.map(ind => (
+              <button
+                key={ind.id}
+                onClick={() => setIndustry(ind.id)}
+                className="flex items-center gap-2 p-2.5 rounded-2xl border-2 text-left transition-all active:scale-95"
+                style={industry === ind.id
+                  ? { borderColor: ind.color, background: `${ind.color}15` }
+                  : { borderColor: '#e7e5e4', background: '#fff' }
+                }
+              >
+                <span className="text-base flex-shrink-0">{ind.emoji}</span>
+                <p className="text-[11px] font-bold leading-tight"
+                  style={{ color: industry === ind.id ? ind.color : '#78716c' }}>
+                  {ind.id}
+                </p>
+              </button>
+            ))}
+          </div>
+          {industry && (
+            <button
+              onClick={() => setIndustry('')}
+              className="mt-2 text-[11px] text-stone-400 underline"
+            >
+              クリア
+            </button>
+          )}
         </div>
 
         {/* ── 保存ボタン ── */}
