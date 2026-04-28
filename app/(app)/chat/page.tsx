@@ -7,7 +7,7 @@ import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
-import { Edit2, Plus } from 'lucide-react'
+import { Edit2 } from 'lucide-react'
 
 interface DirectChat {
   matchId: string
@@ -252,14 +252,6 @@ export default function ChatListPage() {
         </div>
       </div>
 
-      {/* FAB */}
-      <button
-        onClick={() => router.push('/villages')}
-        className="fixed bottom-24 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-brand-200 active:scale-90 transition-all z-20"
-        style={{ background: 'linear-gradient(135deg, #ec4899 0%, #d946ef 100%)' }}
-      >
-        <Plus size={24} className="text-white" strokeWidth={2.5} />
-      </button>
     </div>
   )
 }
