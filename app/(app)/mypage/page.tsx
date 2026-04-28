@@ -185,6 +185,24 @@ export default function MyPage() {
             </div>
           ))}
         </div>
+
+        {/* 人助けカウント */}
+        {(profile.helped_count ?? 0) > 0 && (
+          <div className="mt-3 flex items-center gap-3 px-4 py-3 rounded-2xl"
+            style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}>
+            <span className="text-2xl">🤝</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-extrabold text-emerald-300">
+                {profile.helped_count}人を助けた
+              </p>
+              <p className="text-[10px] text-emerald-400/60 mt-0.5">漂流瓶の質問に回答した回数</p>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <p className="text-xl font-black text-emerald-300">{profile.helped_count}</p>
+              <p className="text-[9px] text-emerald-400/40">人助け</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="px-4 pt-4 pb-32 space-y-4">
