@@ -27,7 +27,7 @@ function TweetComposeSheet({
   avatarUrl: string | null
   displayName: string
   onClose: () => void
-  onPosted: () => void
+  onPosted: () => Promise<void>
 }) {
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
@@ -50,7 +50,8 @@ function TweetComposeSheet({
     setSending(false)
     if (!error) {
       setSent(true)
-      setTimeout(() => { onPosted(); onClose() }, 800)
+      await onPosted()   // リロード完了を待つ
+      onClose()
     }
   }
 
@@ -662,8 +663,8 @@ export default function MyPage() {
           avatarUrl={profile.avatar_url}
           displayName={profile.display_name}
           onClose={() => setShowCompose(false)}
-          onPosted={() => {
-            if (userId) loadTweets(userId)
+          onPosted={async () => {
+            if (userId) await loadTweets(userId)
             setActiveTab('tweets')
           }}
         />

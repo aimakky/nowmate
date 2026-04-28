@@ -330,7 +330,7 @@ function TweetComposeSheet({
   avatarUrl: string | null
   displayName: string
   onClose: () => void
-  onPosted: () => void
+  onPosted: () => Promise<void>
 }) {
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
@@ -347,7 +347,11 @@ function TweetComposeSheet({
     setSending(true)
     const { error } = await createClient().from('tweets').insert({ user_id: userId, content: text.trim() })
     setSending(false)
-    if (!error) { setSent(true); setTimeout(() => { onPosted(); onClose() }, 800) }
+    if (!error) {
+      setSent(true)
+      await onPosted()   // リロード完了を待ってからクローズ
+      onClose()
+    }
   }
 
   const remaining = MAX - text.length
@@ -1146,9 +1150,8 @@ export default function TimelinePage() {
           avatarUrl={userProfile.avatar_url}
           displayName={userProfile.display_name}
           onClose={() => setShowTweetCompose(false)}
-          onPosted={() => {
-            setShowTweetCompose(false)
-            fetchTweets()
+          onPosted={async () => {
+            await fetchTweets()
           }}
         />
       )}
