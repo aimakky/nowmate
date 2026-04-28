@@ -635,7 +635,7 @@ export default function VillageDetailPage() {
   const [diary,       setDiary]       = useState<any[]>([])
   const [pinnedPost,  setPinnedPost]  = useState<any>(null)
 
-  const [tab,       setTab]       = useState<'posts' | 'voice' | 'members' | 'diary' | 'diplo' | 'admin' | 'more'>('posts')
+  const [tab,       setTab]       = useState<'posts' | 'voice' | 'bottle' | 'members' | 'diary' | 'diplo' | 'admin' | 'more'>('posts')
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [postCat,   setPostCat]   = useState('全部')
   const [isMember,  setIsMember]  = useState(false)
@@ -1269,10 +1269,11 @@ export default function VillageDetailPage() {
 
   const pendingDiploCount = diplomacyIn.filter(d => d.status === 'pending').length + mergeRequests.filter(r => r.to_village_id === id).length
 
-  // メインタブは4本固定。だより/外交/管理は「⋯」から展開
+  // メインタブは5本固定。だより/外交/管理は「⋯」から展開
   const mainTabs = [
     { key: 'posts',   label: '📝 投稿' },
     { key: 'voice',   label: '🎙️ 通話' },
+    { key: 'bottle',  label: '🌊 瓶' },
     { key: 'members', label: '👥 住民' },
   ]
   const moreTabs = [
@@ -1608,17 +1609,6 @@ export default function VillageDetailPage() {
             isMember={isMember}
           />
 
-          {/* 漂流瓶 */}
-          <DriftBottle
-            villageId={id}
-            villageName={village.name}
-            userId={userId ?? ''}
-            style={style}
-            isMember={isMember}
-            canPost={tier.canPost}
-            canReply={tier.canCreateRoom}
-          />
-
           {/* 初投稿プロンプト（メンバーで未投稿の場合） */}
           {isMember && showFirstPrompt && userVillagePosts === 0 && (
             <FirstPostPrompt
@@ -1782,6 +1772,47 @@ export default function VillageDetailPage() {
                 isPinned={false} userId={userId} isHost={isHost} villageId={id} />
             ))
           )}
+        </div>
+      )}
+
+      {/* ════════ BOTTLE TAB ════════ */}
+      {tab === 'bottle' && (
+        <div className="px-4 pb-32 pt-3 space-y-4">
+
+          {/* ヘッダー説明カード */}
+          <div className="rounded-2xl px-4 py-4 flex items-start gap-3"
+            style={{ background: 'linear-gradient(135deg, #0c1445 0%, #1a2c6b 100%)', border: '1px solid rgba(99,179,237,0.2)' }}>
+            <span className="text-3xl flex-shrink-0 mt-0.5">🌊</span>
+            <div>
+              <p className="text-sm font-extrabold text-white">漂流瓶</p>
+              <p className="text-xs text-blue-200 mt-1 leading-relaxed">
+                気持ちや悩みを匿名でメッセージに込めて村に流します。<br />
+                住民の誰かが拾って、返事をくれるかもしれません。
+              </p>
+              <div className="flex gap-3 mt-2.5">
+                {[
+                  { icon: '🔒', text: '送り手は匿名' },
+                  { icon: '💬', text: '住民が返事' },
+                  { icon: '🌿', text: '1日3通まで' },
+                ].map(item => (
+                  <div key={item.text} className="flex items-center gap-1">
+                    <span className="text-[11px]">{item.icon}</span>
+                    <span className="text-[10px] text-blue-300 font-medium">{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DriftBottle
+            villageId={id}
+            villageName={village.name}
+            userId={userId ?? ''}
+            style={style}
+            isMember={isMember}
+            canPost={tier.canPost}
+            canReply={tier.canCreateRoom}
+          />
         </div>
       )}
 
