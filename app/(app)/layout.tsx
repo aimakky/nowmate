@@ -1,14 +1,59 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { User } from 'lucide-react'
 import BottomNav from '@/components/layout/BottomNav'
 import FeedbackModal from '@/components/features/FeedbackModal'
+import { createClient } from '@/lib/supabase/client'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [showFeedback, setShowFeedback] = useState(false)
+  const [avatarUrl, setAvatarUrl]       = useState<string | null>(null)
+  const pathname = usePathname()
+
+  // ページ自体にヘッダーがある場合は重複を避けるため非表示にするパス
+  const hideAvatar = pathname.startsWith('/villages/') || pathname.startsWith('/chat/')
+
+  useEffect(() => {
+    async function fetchAvatar() {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', user.id)
+          .single()
+        if (data?.avatar_url) setAvatarUrl(data.avatar_url)
+      } catch {
+        // silent
+      }
+    }
+    fetchAvatar()
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* マイページ — 左上固定アバター（Twitter/X スタイル） */}
+      {!hideAvatar && (
+        <Link
+          href="/mypage"
+          className="fixed top-3 left-4 z-50 w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-md active:scale-90 transition-all"
+          style={{ top: 'max(12px, env(safe-area-inset-top, 12px))' }}
+        >
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="マイページ" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-stone-200 flex items-center justify-center">
+              <User size={18} className="text-stone-500" />
+            </div>
+          )}
+        </Link>
+      )}
+
       <div style={{ paddingBottom: 'max(calc(4rem + env(safe-area-inset-bottom, 8px)), 5.5rem)' }}>
         {children}
       </div>

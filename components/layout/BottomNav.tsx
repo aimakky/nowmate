@@ -2,24 +2,25 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Compass, Layers, Bell, User } from 'lucide-react'
+import { Compass, Layers, Bell, MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-// チャットを外して中央に🌊漂流瓶FABを配置
+// Twitter/X方式: 村|TL|[🌊FAB]|通知|チャット  マイページはヘッダー左上
 const LEFT_ITEMS = [
   { href: '/villages',  label: '村',          icon: Compass },
-  { href: '/timeline',  label: 'タイムライン', icon: Layers  },
+  { href: '/timeline',  label: 'TL',          icon: Layers  },
 ]
 const RIGHT_ITEMS = [
-  { href: '/notifications', label: '通知',      icon: Bell },
-  { href: '/mypage',        label: 'マイページ', icon: User },
+  { href: '/notifications', label: '通知', icon: Bell        },
+  { href: '/chat',          label: 'チャット', icon: MessageCircle },
 ]
 
 export default function BottomNav() {
   const pathname   = usePathname()
-  const [notifCount, setNotifCount] = useState(0)
+  const [notifCount,  setNotifCount]  = useState(0)
+  const [chatCount,   setChatCount]   = useState(0)
   const [bottleCount, setBottleCount] = useState(0)
 
   useEffect(() => {
@@ -37,7 +38,24 @@ export default function BottomNav() {
           .eq('is_read', false)
         setNotifCount(nc ?? 0)
 
-        // 拾える漂流瓶数（自分が参加している村の・自分以外が送った瓶）
+        // 未読チャット数
+        const { data: matches } = await supabase
+          .from('matches')
+          .select('id')
+          .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+        if (matches && matches.length > 0) {
+          const matchIds = matches.map((m: any) => m.id)
+          const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+          const { count: mc } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .in('match_id', matchIds)
+            .neq('sender_id', user.id)
+            .gte('created_at', since48h)
+          setChatCount(mc ?? 0)
+        }
+
+        // 拾える漂流瓶数
         const { data: myVillages } = await supabase
           .from('village_members')
           .select('village_id')
@@ -63,6 +81,7 @@ export default function BottomNav() {
 
   useEffect(() => {
     if (pathname === '/notifications') setNotifCount(0)
+    if (pathname === '/chat' || pathname.startsWith('/chat/')) setChatCount(0)
   }, [pathname])
 
   const badges: Record<string, number> = { '/notifications': notifCount }
