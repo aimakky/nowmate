@@ -1269,15 +1269,16 @@ export default function VillageDetailPage() {
 
   const pendingDiploCount = diplomacyIn.filter(d => d.status === 'pending').length + mergeRequests.filter(r => r.to_village_id === id).length
 
-  // メインタブは5本固定。だより/外交/管理は「⋯」から展開
+  // メインタブ4本（競合ベストプラクティス準拠）
+  // Yay!・Twitter Communities・LINE OpenChat参考: 初見でも意味が分かるラベル
   const mainTabs = [
-    { key: 'posts',   label: '📝 投稿' },
-    { key: 'voice',   label: '🎙️ 通話' },
-    { key: 'bottle',  label: '🌊 瓶' },
-    { key: 'members', label: '👥 住民' },
+    { key: 'posts',   icon: '🏠', label: 'ホーム',    desc: '投稿タイムライン' },
+    { key: 'voice',   icon: '🎙️', label: '通話',      desc: 'ボイスルーム' },
+    { key: 'bottle',  icon: '💌', label: 'ひとこと',  desc: '匿名で気持ちを流す' },
+    { key: 'members', icon: '👥', label: '住民',      desc: 'メンバー一覧' },
   ]
   const moreTabs = [
-    { key: 'diary', label: '📰 だより', desc: '週次の村の活動まとめ' },
+    { key: 'diary', label: '📰 村のだより', desc: '週次の活動まとめ' },
     { key: 'diplo', label: `🌐 外交${pendingDiploCount > 0 ? `  (${pendingDiploCount})` : ''}`, desc: '他の村と交流・同盟' },
     ...(isHost ? [{ key: 'admin', label: '⚙️ 管理', desc: '村のルール・メンバー管理' }] : []),
   ]
@@ -1368,24 +1369,30 @@ export default function VillageDetailPage() {
           </div>
         </div>
 
-        {/* Stats bar */}
-        <div className="mx-4 mb-4 rounded-2xl px-4 py-3 grid grid-cols-3 gap-3"
-          style={{ background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.15)' }}>
-          {[
-            { label: 'にぎわい',   value: busyScore },
-            { label: '安心度',     value: safetyScore },
-            { label: '入りやすさ', value: welcomeScore },
-          ].map(({ label, value }) => (
-            <div key={label} className="text-center">
-              <p className="text-[9px] text-white/50 font-semibold mb-1">{label}</p>
-              <div className="flex gap-0.5 justify-center">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="w-2.5 h-1.5 rounded-full"
-                    style={{ background: i < value ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.2)' }} />
-                ))}
-              </div>
-            </div>
-          ))}
+        {/* Stats コンパクト1行 */}
+        <div className="flex items-center justify-center gap-3 mb-5 px-4 flex-wrap">
+          <span className="flex items-center gap-1 text-[11px] text-white/80 font-semibold">
+            <Users size={11} className="opacity-70" /> {village.member_count}人
+          </span>
+          <span className="text-white/30">·</span>
+          <span className="flex items-center gap-1 text-[11px] font-semibold"
+            style={{ color: fire.animate ? '#fbbf24' : 'rgba(255,255,255,0.8)' }}>
+            <span className={fire.animate ? 'animate-pulse' : ''}>{fire.emoji}</span>
+            {fire.label}
+          </span>
+          <span className="text-white/30">·</span>
+          <span className="text-[11px] text-white/80 font-semibold">
+            {'★'.repeat(safetyScore)}{'☆'.repeat(5 - safetyScore)} 安心
+          </span>
+          {isHost && (
+            <>
+              <span className="text-white/30">·</span>
+              <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(255,215,0,0.25)', color: '#fde047' }}>
+                <Crown size={10} /> 村長
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -1481,85 +1488,83 @@ export default function VillageDetailPage() {
         </div>
       )}
 
-      {/* ── ルールバナー ── */}
-      {village.rules && village.rules.length > 0 && (
-        <div className="mx-4 mt-3 rounded-2xl px-4 py-3"
-          style={{ background: `${style.accent}08`, border: `1px solid ${style.accent}20` }}>
-          <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: style.accent }}>
-            📜 村のルール
-          </p>
-          <div className="space-y-1">
-            {(village.rules as string[]).map((r, i) => r && (
-              <p key={i} className="text-xs text-stone-600 leading-relaxed">・{r}</p>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── 週次イベント ── */}
-      <div className="mx-4 mt-3 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl"
-        style={{ background: `${style.accent}12`, border: `1px solid ${style.accent}25` }}>
-        <span className="text-base">{weeklyEvent.icon}</span>
-        <div>
-          <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: style.accent }}>今週のイベント</p>
-          <p className="text-xs font-bold text-stone-800">{weeklyEvent.label}</p>
-        </div>
-        <div className="ml-auto flex items-center gap-1.5 text-stone-400 text-xs">
-          <Users size={11} />
-          <span className="font-semibold">{village.member_count} 住民</span>
-        </div>
-      </div>
-
-      {/* ── Tabs ── */}
-      <div className="px-4 pt-3 pb-2 sticky top-0 z-10 bg-birch">
-        <div className="flex gap-1 rounded-2xl p-1"
-          style={{ background: `${style.accent}12`, border: `1px solid ${style.accent}20` }}>
-          {mainTabs.map(({ key, label }) => (
-            <button key={key} onClick={() => { setTab(key as any); setShowMoreMenu(false) }}
-              className="flex-shrink-0 flex-1 py-2 text-[11px] font-bold rounded-xl transition-all whitespace-nowrap px-1"
-              style={tab === key
-                ? { background: style.accent, color: '#fff', boxShadow: `0 2px 8px ${style.accent}40` }
-                : { color: style.accent }}>
-              {label}
+      {/* ── Tabs ── アイコン+ラベル縦2段（標準モバイルアプリUI準拠） ── */}
+      <div className="sticky top-0 z-10 bg-white border-b border-stone-100 shadow-sm">
+        <div className="flex">
+          {mainTabs.map(({ key, icon, label }) => (
+            <button key={key}
+              onClick={() => { setTab(key as any); setShowMoreMenu(false) }}
+              className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-all active:scale-95 relative"
+              style={tab === key ? { color: style.accent } : { color: '#a8a29e' }}>
+              <span className="text-lg leading-none">{icon}</span>
+              <span className="text-[10px] font-bold leading-none">{label}</span>
+              {/* アクティブインジケーター */}
+              {tab === key && (
+                <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
+                  style={{ background: style.accent }} />
+              )}
             </button>
           ))}
           {/* ⋯ もっとボタン */}
           <button
             onClick={() => setShowMoreMenu(v => !v)}
-            className="flex-shrink-0 px-3 py-2 text-[11px] font-bold rounded-xl transition-all relative"
-            style={isMoreTab || showMoreMenu
-              ? { background: style.accent, color: '#fff', boxShadow: `0 2px 8px ${style.accent}40` }
-              : { color: style.accent }}>
-            ⋯
+            className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-all active:scale-95 relative"
+            style={isMoreTab || showMoreMenu ? { color: style.accent } : { color: '#a8a29e' }}>
+            <span className="text-lg leading-none font-bold tracking-widest">···</span>
+            <span className="text-[10px] font-bold leading-none">もっと</span>
             {pendingDiploCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] text-white font-extrabold flex items-center justify-center">
+              <span className="absolute top-1.5 right-[calc(50%-16px)] w-4 h-4 bg-red-500 rounded-full text-[9px] text-white font-extrabold flex items-center justify-center">
                 {pendingDiploCount}
               </span>
+            )}
+            {(isMoreTab || showMoreMenu) && (
+              <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
+                style={{ background: style.accent }} />
             )}
           </button>
         </div>
 
         {/* ⋯ ドロップダウン */}
         {showMoreMenu && (
-          <div className="mt-2 bg-white rounded-2xl shadow-lg border border-stone-100 overflow-hidden">
+          <div className="absolute left-0 right-0 top-full bg-white border-b border-stone-100 shadow-lg z-20">
             {moreTabs.map(({ key, label, desc }) => (
               <button key={key}
                 onClick={() => { setTab(key as any); setShowMoreMenu(false) }}
-                className="w-full flex items-center justify-between px-4 py-3 border-b border-stone-50 last:border-0 active:bg-stone-50 transition-all">
+                className="w-full flex items-center justify-between px-5 py-3 border-b border-stone-50 last:border-0 active:bg-stone-50 transition-all">
                 <div className="text-left">
                   <p className="text-sm font-bold text-stone-800">{label}</p>
-                  <p className="text-[10px] text-stone-400 mt-0.5">{desc}</p>
+                  <p className="text-[11px] text-stone-400 mt-0.5">{desc}</p>
                 </div>
-                <ChevronRight size={14} className="text-stone-300" />
+                <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* ════════ POSTS TAB ════════ */}
+      {/* ════════ POSTS TAB (ホーム) ════════ */}
       {tab === 'posts' && (
-        <div className="px-4 pb-32 space-y-3">
+        <div className="px-4 pb-32 space-y-3 pt-2">
+
+          {/* 週次イベント・村ルール：ホームタブ先頭に統合 */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl"
+              style={{ background: `${style.accent}12`, border: `1px solid ${style.accent}20` }}>
+              <span className="text-sm">{weeklyEvent.icon}</span>
+              <p className="text-[11px] font-bold text-stone-700 truncate">{weeklyEvent.label}</p>
+            </div>
+            {village.rules && village.rules.filter(Boolean).length > 0 && (
+              <button
+                onClick={() => {
+                  const el = document.getElementById('village-rules')
+                  el?.scrollIntoView({ behavior: 'smooth' })
+                }}
+                className="flex items-center gap-1 px-3 py-2 rounded-xl text-[11px] font-bold flex-shrink-0"
+                style={{ background: `${style.accent}10`, color: style.accent, border: `1px solid ${style.accent}20` }}>
+                📜 ルール
+              </button>
+            )}
+          </div>
 
           {/* カテゴリフィルター */}
           <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
@@ -1772,35 +1777,55 @@ export default function VillageDetailPage() {
                 isPinned={false} userId={userId} isHost={isHost} villageId={id} />
             ))
           )}
+
+          {/* 村のルール（スクロール先） */}
+          {village.rules && village.rules.filter(Boolean).length > 0 && (
+            <div id="village-rules" className="rounded-2xl px-4 py-3 mt-2"
+              style={{ background: `${style.accent}08`, border: `1px solid ${style.accent}18` }}>
+              <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: style.accent }}>
+                📜 村のルール
+              </p>
+              <div className="space-y-1">
+                {(village.rules as string[]).map((r, i) => r && (
+                  <p key={i} className="text-xs text-stone-600 leading-relaxed">・{r}</p>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ════════ BOTTLE TAB ════════ */}
+      {/* ════════ BOTTLE TAB（ひとこと）════════ */}
       {tab === 'bottle' && (
         <div className="px-4 pb-32 pt-3 space-y-4">
 
-          {/* ヘッダー説明カード */}
-          <div className="rounded-2xl px-4 py-4 flex items-start gap-3"
-            style={{ background: 'linear-gradient(135deg, #0c1445 0%, #1a2c6b 100%)', border: '1px solid rgba(99,179,237,0.2)' }}>
-            <span className="text-3xl flex-shrink-0 mt-0.5">🌊</span>
-            <div>
-              <p className="text-sm font-extrabold text-white">漂流瓶</p>
-              <p className="text-xs text-blue-200 mt-1 leading-relaxed">
-                気持ちや悩みを匿名でメッセージに込めて村に流します。<br />
-                住民の誰かが拾って、返事をくれるかもしれません。
-              </p>
-              <div className="flex gap-3 mt-2.5">
+          {/* 初見説明カード — シンプル3ステップ */}
+          <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
+            <div className="px-4 pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-2xl">💌</span>
+                <div>
+                  <p className="text-sm font-extrabold text-stone-900">ひとこと — 匿名のつぶやき</p>
+                  <p className="text-[11px] text-stone-400">気持ちや悩みを村に流すと、誰かが返事をくれます</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
                 {[
-                  { icon: '🔒', text: '送り手は匿名' },
-                  { icon: '💬', text: '住民が返事' },
-                  { icon: '🌿', text: '1日3通まで' },
-                ].map(item => (
-                  <div key={item.text} className="flex items-center gap-1">
-                    <span className="text-[11px]">{item.icon}</span>
-                    <span className="text-[10px] text-blue-300 font-medium">{item.text}</span>
+                  { step: '①', text: '匿名で\n送る',    icon: '🔒' },
+                  { step: '②', text: '住民が\n拾う',    icon: '🤲' },
+                  { step: '③', text: '返事が\n届く',    icon: '💬' },
+                ].map(s => (
+                  <div key={s.step} className="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl"
+                    style={{ background: `${style.accent}08` }}>
+                    <span className="text-base">{s.icon}</span>
+                    <span className="text-[9px] font-bold text-stone-500 text-center whitespace-pre-line leading-tight">{s.text}</span>
                   </div>
                 ))}
               </div>
+            </div>
+            <div className="px-4 py-2 border-t border-stone-50 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: style.accent }} />
+              <p className="text-[10px] text-stone-400">1日3通まで送れます · 返信はregular以上のメンバーのみ</p>
             </div>
           </div>
 
@@ -1882,10 +1907,11 @@ export default function VillageDetailPage() {
             style={{ background: `${style.accent}10`, border: `1px solid ${style.accent}20` }}>
             <span className="text-2xl mt-0.5">🎙️</span>
             <div>
-              <p className="text-sm font-bold" style={{ color: style.accent }}>村の通話広場</p>
+              <p className="text-sm font-bold" style={{ color: style.accent }}>🎙️ 通話広場</p>
               <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
-                住民と声で話せます。最大4名まで同時に話せます。聴くだけでも参加OKです。
+                住民とリアルタイムで声で話せます。聴くだけでも参加OKです。
               </p>
+              <p className="text-[10px] text-stone-400 mt-0.5">最大4名 · 録音禁止 · 無断拡散禁止</p>
             </div>
           </div>
           {isMember && (
