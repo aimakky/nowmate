@@ -117,7 +117,7 @@ export default function BottomNav() {
               boxShadow: '0 4px 16px rgba(29,78,216,0.45)',
             }}>
             <span className="text-2xl leading-none">💬</span>
-            <span className="text-[8px] font-extrabold text-white/90 mt-0.5 leading-none">質問村</span>
+            <span className="text-[8px] font-extrabold text-white/90 mt-0.5 leading-none">Q＆A村</span>
             {bottleCount > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center px-1 border-2 border-white">
                 <span className="text-[9px] font-extrabold text-white leading-none">

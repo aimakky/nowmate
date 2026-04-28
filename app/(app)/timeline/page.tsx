@@ -8,7 +8,6 @@ import { timeAgo } from '@/lib/utils'
 import { detectNgWords } from '@/lib/moderation'
 import { Heart, RefreshCw, ChevronRight, Users, Globe, Home, Share2, Sparkles, HelpCircle, Send, CheckCircle, X, Plus } from 'lucide-react'
 import Link from 'next/link'
-import { detectCrisisKeywords, getBottleSendCount, incrementBottleSendCount, BOTTLE_DAILY_LIMIT } from '@/lib/moderation'
 
 // ── 型定義 ──────────────────────────────────────────────────────
 type Tab = 'myvillage' | 'all' | 'following'
@@ -325,298 +324,138 @@ const POST_CATEGORIES = [
   { id: '趣味',           emoji: '🎨' },
 ]
 
-// ── 投稿＆漂流瓶モーダル ──────────────────────────────────────
+// ── 投稿モーダル（X風・オープン）─────────────────────────────
 function ComposeModal({
-  userId, myVillageIds, onClose, onPosted,
+  userId, userProfile, onClose, onPosted,
 }: {
   userId: string
-  myVillageIds: string[]
+  userProfile: { display_name: string; avatar_url: string | null } | null
   onClose: () => void
   onPosted: () => void
 }) {
-  const [mode,        setMode]        = useState<'post' | 'bottle'>('post')
-  const [text,        setText]        = useState('')
-  const [category,    setCategory]    = useState('今日のひとこと')
-  const [villageId,   setVillageId]   = useState<string>('')
-  const [villages,    setVillages]    = useState<{ id: string; name: string; icon: string }[]>([])
-  const [sending,     setSending]     = useState(false)
-  const [sent,        setSent]        = useState(false)
-  const [showCrisis,  setShowCrisis]  = useState(false)
-  const [errMsg,      setErrMsg]      = useState('')
+  const [text,     setText]     = useState('')
+  const [category, setCategory] = useState('今日のひとこと')
+  const [sending,  setSending]  = useState(false)
+  const [sent,     setSent]     = useState(false)
+  const [errMsg,   setErrMsg]   = useState('')
+  const MAX = 300
 
-  const bottleSendCount = getBottleSendCount()
-  const bottleLimitHit  = bottleSendCount >= BOTTLE_DAILY_LIMIT
-  const MAX_POST   = 300
-  const MAX_BOTTLE = 140
-
-  // 参加している村を取得
-  useEffect(() => {
-    if (myVillageIds.length === 0) return
-    createClient()
-      .from('villages')
-      .select('id, name, icon')
-      .in('id', myVillageIds)
-      .then(({ data }) => {
-        const vs = (data || []) as { id: string; name: string; icon: string }[]
-        setVillages(vs)
-        if (vs.length > 0) setVillageId(vs[0].id)
-      })
-  }, [myVillageIds])
-
-  // スクロール防止
   useEffect(() => {
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
   }, [])
 
   async function handlePost() {
-    if (!text.trim() || !villageId || sending) return
+    if (!text.trim() || sending) return
     const ng = detectNgWords(text)
     if (ng) { setErrMsg(`「${ng}」は使えません`); return }
     setSending(true)
     const { error } = await createClient().from('village_posts').insert({
-      village_id: villageId,
+      village_id: null,   // オープン投稿（村に紐づかない）
       user_id:    userId,
       content:    text.trim(),
       category,
     })
     setSending(false)
-    if (!error) { setSent(true); setTimeout(onPosted, 1200) }
+    if (!error) { setSent(true); setTimeout(onPosted, 1000) }
   }
 
-  async function handleBottle() {
-    if (!text.trim() || !villageId || bottleLimitHit || sending) return
-    const ng = detectNgWords(text)
-    if (ng) { setErrMsg(`「${ng}」は使えません`); return }
-    if (detectCrisisKeywords(text)) { setShowCrisis(true); return }
-    await doSendBottle()
-  }
-
-  async function doSendBottle() {
-    setSending(true)
-    const { error } = await createClient().rpc('send_drift_bottle', {
-      p_village_id:  villageId,
-      p_user_id:     userId,
-      p_message:     text.trim(),
-      p_is_question: false,
-    })
-    setSending(false)
-    if (!error) { incrementBottleSendCount(); setSent(true); setTimeout(onPosted, 1800) }
-  }
-
-  const isPost   = mode === 'post'
-  const maxChars = isPost ? MAX_POST : MAX_BOTTLE
+  const avatarLetter = userProfile?.display_name?.[0] ?? '?'
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-
-      {/* 危機モーダル */}
-      {showCrisis && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center px-5">
-          <div className="absolute inset-0 bg-black/70" />
-          <div className="relative w-full max-w-sm rounded-3xl p-6 text-center space-y-4"
-            style={{ background: 'linear-gradient(180deg,#1a1a2e,#0f1629)', border: '1px solid rgba(255,255,255,0.12)' }}>
-            <div className="text-4xl">🤝</div>
-            <p className="font-extrabold text-white text-base">あなたの気持ち、大切に受け取りました</p>
-            <p className="text-xs text-white/60 leading-relaxed">
-              専門の相談窓口もあります。<br />
-              <a href="tel:0120-279-338" className="text-blue-300 font-bold">よりそいホットライン 0120-279-338</a>
-            </p>
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => { setShowCrisis(false); onClose() }}
-                className="flex-1 py-2.5 rounded-xl text-xs font-bold border"
-                style={{ borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.5)' }}>閉じる</button>
-              <button onClick={() => { setShowCrisis(false); doSendBottle() }}
-                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white"
-                style={{ background: 'rgba(100,140,255,0.25)', border: '1px solid rgba(100,140,255,0.3)' }}>このまま流す</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
       <div
-        className="relative rounded-t-3xl w-full max-w-md mx-auto overflow-hidden"
-        style={{ background: '#fff' }}
+        className="relative rounded-t-3xl w-full max-w-md mx-auto bg-white overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
-        {/* カラーバー */}
-        <div className="h-1 w-full" style={{
-          background: isPost
-            ? 'linear-gradient(90deg,#6366f1,#4f46e5)'
-            : 'linear-gradient(90deg,#1d4ed8,#3b82f6)',
-        }} />
+        {/* ドラッグハンドル */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-stone-200" />
+        </div>
 
         {/* ヘッダー */}
-        <div className="px-5 pt-4 pb-3 border-b border-stone-100">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-extrabold text-stone-400 uppercase tracking-widest">
-              {isPost ? '投稿する' : '気持ちを流す'}
-            </p>
-            <button onClick={onClose}
-              className="w-7 h-7 rounded-full bg-stone-100 flex items-center justify-center active:scale-90 transition-all">
-              <X size={13} className="text-stone-500" />
-            </button>
+        <div className="flex items-center justify-between px-5 py-2">
+          <button onClick={onClose}
+            className="text-sm font-bold text-stone-400 active:text-stone-600 transition-colors">
+            キャンセル
+          </button>
+          <button
+            onClick={handlePost}
+            disabled={!text.trim() || sending || sent}
+            className="px-5 py-1.5 rounded-full text-sm font-extrabold text-white disabled:opacity-40 active:scale-95 transition-all flex items-center gap-1.5"
+            style={{ background: 'linear-gradient(135deg,#1c1917,#3c3836)' }}
+          >
+            {sending
+              ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              : sent ? '✓ 投稿済み' : '投稿する'}
+          </button>
+        </div>
+
+        <div className="px-5 pb-4">
+
+          {/* 入力エリア（アバター + テキスト） */}
+          <div className="flex gap-3 pt-2 pb-3">
+            {/* アバター */}
+            <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold text-white"
+              style={{ background: 'linear-gradient(135deg,#6366f1,#4f46e5)' }}>
+              {userProfile?.avatar_url
+                ? <img src={userProfile.avatar_url} alt="" className="w-full h-full object-cover" />
+                : avatarLetter}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <textarea
+                value={text}
+                onChange={e => { setText(e.target.value.slice(0, MAX)); setErrMsg('') }}
+                placeholder="いまどうしてる？"
+                rows={4}
+                autoFocus
+                className="w-full text-[17px] leading-relaxed resize-none focus:outline-none text-stone-900 placeholder-stone-300 bg-transparent"
+              />
+            </div>
           </div>
 
-          {/* モード切り替え */}
-          <div className="flex gap-2">
-            {([
-              { id: 'post',   icon: '✏️', label: '村に投稿',   sub: '村のみんなに届く' },
-              { id: 'bottle', icon: '🌊', label: '漂流瓶で流す', sub: '匿名・どこかへ' },
-            ] as const).map(m => (
-              <button key={m.id} onClick={() => { setMode(m.id); setText(''); setErrMsg('') }}
-                className="flex-1 flex flex-col items-center py-2.5 rounded-2xl text-center transition-all active:scale-95"
-                style={mode === m.id
-                  ? { background: m.id === 'post' ? '#eef2ff' : '#eff6ff', border: `2px solid ${m.id === 'post' ? '#6366f1' : '#3b82f6'}` }
-                  : { background: '#fafaf9', border: '2px solid #e7e5e4' }
+          {/* カテゴリ */}
+          <div className="flex gap-1.5 flex-wrap pb-3 border-b border-stone-100">
+            {POST_CATEGORIES.map(c => (
+              <button key={c.id} onClick={() => setCategory(c.id)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all active:scale-95"
+                style={category === c.id
+                  ? { background: '#1c1917', color: '#fff', borderColor: '#1c1917' }
+                  : { background: '#fafaf9', color: '#78716c', borderColor: '#e7e5e4' }
                 }
               >
-                <span className="text-base leading-none">{m.icon}</span>
-                <span className="text-[11px] font-extrabold mt-1 leading-tight"
-                  style={{ color: mode === m.id ? (m.id === 'post' ? '#4f46e5' : '#1d4ed8') : '#78716c' }}>
-                  {m.label}
-                </span>
-                <span className="text-[9px] mt-0.5" style={{ color: mode === m.id ? (m.id === 'post' ? '#818cf8' : '#60a5fa') : '#a8a29e' }}>
-                  {m.sub}
-                </span>
+                {c.emoji} {c.id}
               </button>
             ))}
           </div>
-        </div>
 
-        <div className="px-5 py-4 space-y-3">
-
-          {/* 送信済み */}
-          {sent && (
-            <div className="py-6 text-center space-y-2">
-              <div className="text-4xl">{isPost ? '✅' : '🌊'}</div>
-              <p className="font-extrabold text-stone-800">
-                {isPost ? '投稿しました！' : '流れていきました'}
-              </p>
-              <p className="text-xs text-stone-400">
-                {isPost ? '村のタイムラインに反映されます' : 'どこかの村に届きますように'}
-              </p>
-            </div>
-          )}
-
-          {!sent && (
-            <>
-              {/* 村選択 */}
-              {villages.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">
-                    {isPost ? '投稿する村' : '流す村（出発点）'}
-                  </p>
-                  <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
-                    {villages.map(v => (
-                      <button key={v.id} onClick={() => setVillageId(v.id)}
-                        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold border transition-all active:scale-95"
-                        style={villageId === v.id
-                          ? { background: isPost ? '#4f46e5' : '#1d4ed8', color: '#fff', borderColor: 'transparent' }
-                          : { background: '#fafaf9', color: '#57534e', borderColor: '#e7e5e4' }
-                        }
-                      >
-                        <span>{v.icon}</span>
-                        <span className="truncate max-w-[80px]">{v.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {villages.length === 0 && (
-                <div className="py-4 text-center">
-                  <p className="text-sm font-bold text-stone-500">まず村に参加しましょう</p>
-                </div>
-              )}
-
-              {/* カテゴリ（投稿のみ） */}
-              {isPost && (
-                <div>
-                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">カテゴリ</p>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {POST_CATEGORIES.map(c => (
-                      <button key={c.id} onClick={() => setCategory(c.id)}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all active:scale-95"
-                        style={category === c.id
-                          ? { background: '#4f46e5', color: '#fff', borderColor: 'transparent' }
-                          : { background: '#fafaf9', color: '#78716c', borderColor: '#e7e5e4' }
-                        }
-                      >
-                        {c.emoji} {c.id}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* テキスト入力 */}
-              {isPost ? (
-                <textarea
-                  value={text}
-                  onChange={e => { setText(e.target.value.slice(0, MAX_POST)); setErrMsg('') }}
-                  placeholder="村のみんなに伝えたいことを…"
-                  rows={4}
-                  autoFocus
-                  className="w-full px-4 py-3 rounded-2xl border-2 text-sm resize-none focus:outline-none leading-relaxed"
-                  style={{ borderColor: '#e7e5e4', background: '#fafaf9', caretColor: '#6366f1' }}
+          {/* フッター：字数 + エラー */}
+          <div className="flex items-center justify-between pt-3">
+            {errMsg
+              ? <p className="text-xs text-red-500 font-bold">⚠️ {errMsg}</p>
+              : <p className="text-[11px] text-stone-400">samee全体に公開されます</p>
+            }
+            <div className="flex items-center gap-2">
+              {/* 円形プログレス */}
+              <svg width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
+                <circle cx="11" cy="11" r="9" fill="none" stroke="#e7e5e4" strokeWidth="2.5" />
+                <circle cx="11" cy="11" r="9" fill="none"
+                  stroke={text.length > MAX * 0.9 ? '#f97316' : '#1c1917'}
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 9}`}
+                  strokeDashoffset={`${2 * Math.PI * 9 * (1 - text.length / MAX)}`}
+                  style={{ transition: 'stroke-dashoffset 0.1s' }}
                 />
-              ) : (
-                <>
-                  {bottleLimitHit ? (
-                    <div className="py-4 text-center">
-                      <p className="text-sm font-bold text-stone-500">今日の送信上限（{BOTTLE_DAILY_LIMIT}通）に達しました</p>
-                      <p className="text-xs text-stone-400 mt-1">明日また流せます</p>
-                    </div>
-                  ) : (
-                    <textarea
-                      value={text}
-                      onChange={e => { setText(e.target.value.slice(0, MAX_BOTTLE)); setErrMsg('') }}
-                      placeholder={'今の気持ちをひとことだけ…\n\n答えを求めなくていい。\nただ、誰かに受け止めてほしいとき。'}
-                      rows={4}
-                      autoFocus
-                      className="w-full px-4 py-3 rounded-2xl border-2 text-sm resize-none focus:outline-none leading-relaxed"
-                      style={{ borderColor: '#bfdbfe', background: '#f0f9ff', caretColor: '#1d4ed8' }}
-                    />
-                  )}
-                </>
-              )}
-
-              {/* 字数 + エラー */}
-              <div className="flex items-center justify-between px-1">
-                {errMsg
-                  ? <p className="text-[10px] text-red-500 font-bold">⚠️ {errMsg}</p>
-                  : <span />
-                }
-                <p className={`text-[10px] font-bold ${text.length > maxChars * 0.9 ? 'text-amber-500' : 'text-stone-300'}`}>
-                  {text.length}/{maxChars}
-                </p>
-              </div>
-
-              {/* 送信ボタン */}
-              <button
-                onClick={isPost ? handlePost : handleBottle}
-                disabled={!text.trim() || sending || !villageId || (mode === 'bottle' && bottleLimitHit)}
-                className="w-full py-3.5 rounded-2xl text-white text-sm font-extrabold disabled:opacity-40 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                style={{
-                  background: isPost
-                    ? 'linear-gradient(135deg,#6366f1,#4f46e5)'
-                    : 'linear-gradient(135deg,#1d4ed8,#3b82f6)',
-                  boxShadow: isPost
-                    ? '0 6px 20px rgba(99,102,241,0.4)'
-                    : '0 6px 20px rgba(29,78,216,0.4)',
-                }}
-              >
-                {sending
-                  ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  : isPost
-                    ? <><Send size={14} /> 投稿する</>
-                    : <><span className="text-base">🌊</span> 流す</>
-                }
-              </button>
-            </>
-          )}
+              </svg>
+              <span className={`text-[11px] font-bold ${text.length > MAX * 0.9 ? 'text-orange-500' : 'text-stone-300'}`}>
+                {MAX - text.length}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -639,6 +478,7 @@ export default function TimelinePage() {
   const [followingIds, setFollowingIds] = useState<string[]>([])
   const [likedIds,     setLikedIds]     = useState<Set<string>>(new Set())
   const [showCompose,  setShowCompose]  = useState(false)
+  const [userProfile,  setUserProfile]  = useState<{ display_name: string; avatar_url: string | null } | null>(null)
 
   const offsetRef   = useRef(0)
   const todayPrompt = DAILY_PROMPTS[new Date().getDay()]
@@ -654,17 +494,19 @@ export default function TimelinePage() {
         if (!user) { router.push('/login'); return }
         setUserId(user.id)
 
-        const [{ data: memberships }, { data: follows }, { data: reactions }, { data: trust }] = await Promise.all([
+        const [{ data: memberships }, { data: follows }, { data: reactions }, { data: trust }, { data: profile }] = await Promise.all([
           supabase.from('village_members').select('village_id').eq('user_id', user.id),
           supabase.from('user_follows').select('following_id').eq('follower_id', user.id),
           supabase.from('village_reactions').select('post_id').eq('user_id', user.id),
           supabase.from('user_trust').select('tier').eq('user_id', user.id).single(),
+          supabase.from('profiles').select('display_name, avatar_url').eq('id', user.id).single(),
         ])
 
         setMyVillageIds((memberships || []).map((m: any) => m.village_id))
         setFollowingIds((follows || []).map((f: any) => f.following_id))
         setLikedIds(new Set((reactions || []).map((r: any) => r.post_id)))
         if (trust?.tier) setUserTier(trust.tier)
+        if (profile) setUserProfile({ display_name: profile.display_name, avatar_url: profile.avatar_url ?? null })
       } catch (e) {
         console.error('timeline init error:', e)
       }
@@ -977,7 +819,7 @@ export default function TimelinePage() {
       {showCompose && userId && (
         <ComposeModal
           userId={userId}
-          myVillageIds={myVillageIds}
+          userProfile={userProfile}
           onClose={() => setShowCompose(false)}
           onPosted={() => {
             setShowCompose(false)

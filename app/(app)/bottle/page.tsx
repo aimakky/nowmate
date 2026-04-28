@@ -251,10 +251,10 @@ export default function BottlePage() {
         <div className="flex items-start justify-between gap-3 mb-4 relative">
           <div>
             <p className="text-blue-300/70 text-[10px] font-bold tracking-widest mb-0.5 uppercase">
-              {tab === 'qa' ? '質問村' : 'Drift Bottle'}
+              {tab === 'qa' ? 'Q＆A村' : 'Drift Bottle'}
             </p>
             <h1 className="font-extrabold text-white text-2xl leading-tight">
-              {tab === 'qa' ? '💬 質問村' : '🌊 漂流瓶'}
+              {tab === 'qa' ? '💬 Q＆A村' : '🌊 漂流瓶'}
             </h1>
             <p className="text-blue-200/60 text-[11px] mt-0.5">
               {tab === 'qa'
@@ -281,7 +281,7 @@ export default function BottlePage() {
         {/* ── メインタブ ── */}
         <div className="flex relative">
           {([
-            { id: 'qa',     icon: '💬', label: '質問村' },
+            { id: 'qa',     icon: '💬', label: 'Q＆A村' },
             { id: 'bottle', icon: '🌊', label: '漂流瓶' },
           ] as { id: 'qa' | 'bottle'; icon: string; label: string }[]).map(t => (
             <button
@@ -542,7 +542,7 @@ export default function BottlePage() {
           >
             <span className="text-xl">💬</span>
             <div className="flex-1 text-left">
-              <p className="text-xs font-bold text-blue-700">答えが欲しいなら → 質問村</p>
+              <p className="text-xs font-bold text-blue-700">答えが欲しいなら → Q＆A村</p>
               <p className="text-[10px] text-blue-400">カテゴリ別に経験者が回答してくれます</p>
             </div>
             <span className="text-blue-300 text-xs">→</span>
