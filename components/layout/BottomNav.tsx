@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Compass, Layers, Bell, MessageCircle } from 'lucide-react'
+import { Compass, Layers, Bell, MessageCircle, Briefcase } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 const NAV_ITEMS = [
   { href: '/timeline',      label: 'TL',      icon: Layers         },
   { href: '/villages',      label: '自由村',  icon: Compass        },
-  { href: '/guild',         label: '仕事村',  icon: null           },
+  { href: '/guild',         label: '仕事村',  icon: Briefcase      },
   { href: '/notifications', label: '通知',    icon: Bell           },
   { href: '/chat',          label: 'チャット', icon: MessageCircle },
 ]
@@ -76,17 +76,12 @@ export default function BottomNav() {
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           const badge  = badges[href] ?? 0
-          const isGuild = href === '/guild'
-
           return (
             <Link key={href} href={href}
               className={cn('flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-colors',
                 active ? 'text-stone-900' : 'text-stone-400')}>
               <div className="relative">
-                {isGuild
-                  ? <span className="text-xl leading-none">⚔️</span>
-                  : Icon && <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
-                }
+                {Icon && <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />}
                 {badge > 0 && (
                   <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 bg-brand-500 rounded-full flex items-center justify-center px-1">
                     <span className="text-[9px] font-extrabold text-white leading-none">{badge > 99 ? '99+' : badge}</span>
