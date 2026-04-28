@@ -9,16 +9,39 @@ const nextConfig = {
       },
     ],
   },
-  async redirects() {
-    // 廃止済みページのリダイレクト
+
+  // ── キャッシュ無効化（スマホPWA対策）────────────────────────────
+  async headers() {
     return [
-      { source: '/explore',         destination: '/villages',        permanent: true },
-      { source: '/matches',         destination: '/villages',        permanent: true },
-      { source: '/likes-me',        destination: '/villages',        permanent: true },
-      { source: '/community',       destination: '/villages',        permanent: true },
-      { source: '/create',          destination: '/villages/create', permanent: true },
-      { source: '/qa',              destination: '/timeline',        permanent: true },
-      { source: '/qa/:path*',       destination: '/villages',        permanent: true },
+      {
+        // HTMLページはキャッシュしない
+        source: '/(.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Pragma',        value: 'no-cache' },
+          { key: 'Expires',       value: '0' },
+        ],
+      },
+      {
+        // 静的アセット（JS/CSS/画像）は1年キャッシュ（ハッシュ付きで自動バスト）
+        source: '/_next/static/(.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+    ]
+  },
+
+  async redirects() {
+    // 廃止済みページのリダイレクト（permanent→falseに変更しキャッシュを防ぐ）
+    return [
+      { source: '/explore',         destination: '/villages',        permanent: false },
+      { source: '/matches',         destination: '/villages',        permanent: false },
+      { source: '/likes-me',        destination: '/villages',        permanent: false },
+      { source: '/community',       destination: '/villages',        permanent: false },
+      { source: '/create',          destination: '/villages/create', permanent: false },
+      { source: '/qa',              destination: '/timeline',        permanent: false },
+      { source: '/qa/:path*',       destination: '/villages',        permanent: false },
     ]
   },
 }

@@ -1,16 +1,16 @@
 {
-  "name": "Samee",
-  "short_name": "Samee",
-  "description": "Connect with foreigners in Japan",
+  "name": "samee — 安心して話せる大人のコミュニティ",
+  "short_name": "samee",
+  "description": "民度を重視した大人のコミュニティアプリ。通話村・チャット村で本音が話せる。",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0ea5e9",
+  "background_color": "#fafaf9",
+  "theme_color": "#1a1a2e",
   "orientation": "portrait",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ],
   "categories": ["social", "lifestyle"],
-  "lang": "en"
+  "lang": "ja"
 }
