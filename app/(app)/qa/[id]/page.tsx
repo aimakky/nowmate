@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Flag, CheckCircle, Star, Send, ThumbsUp, Trophy, ImagePlus, X } from 'lucide-react'
 import { timeAgo } from '@/lib/utils'
-import { getCategoryStyle, getAnonDisplay, getTitleName } from '@/lib/qa'
+import { getCategoryStyle, getAnonDisplay, getTitleName, awardQaTitle } from '@/lib/qa'
 import TrustBadge from '@/components/ui/TrustBadge'
 import { getUserTrust, getTierById } from '@/lib/trust'
 
@@ -237,6 +237,11 @@ export default function QADetailPage() {
       status:         'resolved',
       thank_you_note: msg.trim() || null,
     }).eq('id', id)
+    // ベストアンサー選出 → 称号チェック
+    const bestAns = answers.find(a => a.id === thankYouFor)
+    if (bestAns?.user_id && question?.category) {
+      awardQaTitle(supabase, bestAns.user_id, question.category).catch(() => {})
+    }
     await fetchQuestion()
     await fetchAnswers()
     setSelecting(null)
@@ -249,16 +254,21 @@ export default function QADetailPage() {
     const supabase = createClient()
     const alreadyVoted = myHelpfulIds.has(answerId)
 
+    const targetAnswer = answers.find(a => a.id === answerId)
     if (alreadyVoted) {
       await supabase.from('qa_helpful_votes').delete().eq('answer_id', answerId).eq('user_id', userId)
-      await supabase.from('qa_answers').update({ helpful_count: Math.max(0, (answers.find(a => a.id === answerId)?.helpful_count ?? 1) - 1) }).eq('id', answerId)
+      await supabase.from('qa_answers').update({ helpful_count: Math.max(0, (targetAnswer?.helpful_count ?? 1) - 1) }).eq('id', answerId)
       setMyHelpfulIds(prev => { const n = new Set(prev); n.delete(answerId); return n })
       setAnswers(prev => prev.map(a => a.id === answerId ? { ...a, helpful_count: Math.max(0, a.helpful_count - 1) } : a))
     } else {
       await supabase.from('qa_helpful_votes').insert({ answer_id: answerId, user_id: userId })
-      await supabase.from('qa_answers').update({ helpful_count: (answers.find(a => a.id === answerId)?.helpful_count ?? 0) + 1 }).eq('id', answerId)
+      await supabase.from('qa_answers').update({ helpful_count: (targetAnswer?.helpful_count ?? 0) + 1 }).eq('id', answerId)
       setMyHelpfulIds(prev => new Set([...prev, answerId]))
       setAnswers(prev => prev.map(a => a.id === answerId ? { ...a, helpful_count: (a.helpful_count ?? 0) + 1 } : a))
+      // 称号チェック（いいね追加時のみ）
+      if (targetAnswer?.user_id && question?.category) {
+        awardQaTitle(supabase, targetAnswer.user_id, question.category).catch(() => {})
+      }
     }
     setHelpfulLoading(null)
   }

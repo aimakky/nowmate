@@ -40,6 +40,8 @@ export default function MyPage() {
   const [showPhoneVerify,setShowPhoneVerify]= useState(false)
   const [idCopied,       setIdCopied]       = useState(false)
   const [myAnswers,      setMyAnswers]      = useState<any[]>([])
+  const [qaStats,        setQaStats]        = useState<Record<string, { helpful: number; best: number }>>({})
+  const [totalLikes,     setTotalLikes]     = useState(0)
 
   useEffect(() => {
     async function load() {
@@ -83,17 +85,33 @@ export default function MyPage() {
         supabase.from('user_follows').select('follower_id, profiles:follower_id(id,display_name,avatar_url,bio)').eq('following_id', user.id),
       ])
 
-      // 自分の回答履歴（全件・匿名/実名両方表示）
+      // 自分の回答履歴（全件・匿名/実名両方表示）+ いいね統計
       const { data: answersData } = await supabase
         .from('qa_answers')
-        .select('id, content, is_anonymous, created_at, qa_questions(id, title, category)')
+        .select('id, content, is_anonymous, helpful_count, is_best, created_at, qa_questions(id, title, category)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(30)
-      setMyAnswers((answersData || []).map((a: any) => ({
+        .limit(100)
+
+      const normalized = (answersData || []).map((a: any) => ({
         ...a,
         qa_questions: Array.isArray(a.qa_questions) ? a.qa_questions[0] ?? null : a.qa_questions,
-      })))
+      }))
+      setMyAnswers(normalized.slice(0, 30))
+
+      // カテゴリ別いいね・ベストアンサー集計
+      const stats: Record<string, { helpful: number; best: number }> = {}
+      let total = 0
+      for (const a of normalized) {
+        const cat = a.qa_questions?.category
+        if (!cat) continue
+        if (!stats[cat]) stats[cat] = { helpful: 0, best: 0 }
+        stats[cat].helpful += a.helpful_count ?? 0
+        if (a.is_best) stats[cat].best += 1
+        total += a.helpful_count ?? 0
+      }
+      setQaStats(stats)
+      setTotalLikes(total)
 
       if (!p) { router.push('/onboarding'); return }
       setProfile(p)
@@ -655,25 +673,101 @@ export default function MyPage() {
           </div>
         )}
 
-        {/* ── Q&A 称号 ── */}
-        {qaTitles.length > 0 && (
-          <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm">
-            <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">獲得した称号</p>
-            <div className="flex flex-wrap gap-2">
-              {qaTitles.map((t: any) => {
-                const lvStyle = TITLE_LEVEL_STYLE[t.level]
-                return (
-                  <div
-                    key={t.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold"
-                    style={{ background: '#fafaf9', borderColor: '#e7e5e4', color: '#44403c' }}
-                  >
-                    <span>{lvStyle?.badge}</span>
-                    <span>{getTitleName(t.category, t.level)}</span>
-                  </div>
-                )
-              })}
+        {/* ── Q&A 実績 ── */}
+        {(qaTitles.length > 0 || totalLikes > 0 || Object.keys(qaStats).length > 0) && (
+          <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
+            {/* ヘッダー */}
+            <div className="px-4 py-3 border-b border-stone-50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">👍</span>
+                <p className="text-xs font-bold text-stone-700">Q&A 実績</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm">👍</span>
+                <p className="text-sm font-extrabold text-stone-800">{totalLikes}</p>
+                <p className="text-[10px] text-stone-400">いいね受領</p>
+              </div>
             </div>
+
+            {/* 称号グリッド */}
+            {qaTitles.length > 0 && (
+              <div className="px-4 pt-3 pb-2">
+                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2">獲得した称号</p>
+                <div className="flex flex-wrap gap-2">
+                  {qaTitles.map((t: any) => {
+                    const cs      = getCategoryStyle(t.category)
+                    const lvStyle = TITLE_LEVEL_STYLE[t.level]
+                    return (
+                      <div
+                        key={t.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold"
+                        style={{ background: cs.bg, borderColor: cs.border, color: cs.color }}
+                      >
+                        <span>{lvStyle?.badge}</span>
+                        <span>{getTitleName(t.category, t.level)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* カテゴリ別進捗 */}
+            {Object.keys(qaStats).length > 0 && (
+              <div className="px-4 pt-2 pb-4 space-y-3">
+                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">ジャンル別いいね</p>
+                {Object.entries(qaStats)
+                  .sort(([, a], [, b]) => b.helpful - a.helpful)
+                  .map(([cat, stat]) => {
+                    const cs    = getCategoryStyle(cat)
+                    const title = qaTitles.find((t: any) => t.category === cat)
+                    // 次のレベルまでの進捗
+                    const nextThreshold =
+                      !title            ? 5  :
+                      title.level === 'bronze' ? 15 :
+                      title.level === 'silver' ? 50 : null
+                    const progress = nextThreshold
+                      ? Math.min(100, Math.round((stat.helpful / nextThreshold) * 100))
+                      : 100
+                    return (
+                      <div key={cat}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                              style={{ background: cs.bg, color: cs.color, border: `1px solid ${cs.border}` }}
+                            >
+                              {cs.emoji} {cat}
+                            </span>
+                            {title && (
+                              <span className="text-[9px] font-bold text-stone-500">
+                                {TITLE_LEVEL_STYLE[title.level]?.badge} {getTitleName(cat, title.level)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] text-stone-500">
+                            <span>👍 {stat.helpful}</span>
+                            <span>⭐ {stat.best}</span>
+                          </div>
+                        </div>
+                        {nextThreshold && (
+                          <div className="w-full h-1.5 rounded-full bg-stone-100 overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{ width: `${progress}%`, background: cs.color }}
+                            />
+                          </div>
+                        )}
+                        {nextThreshold && (
+                          <p className="text-[9px] text-stone-300 mt-0.5 text-right">
+                            次のレベルまで あと {Math.max(0, nextThreshold - stat.helpful)} いいね
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+              </div>
+            )}
           </div>
         )}
 

@@ -8,7 +8,7 @@ import { ArrowLeft, Heart, ChevronRight, MessageSquare } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
 import Link from 'next/link'
-import { getCategoryStyle } from '@/lib/qa'
+import { getCategoryStyle, getTitleName, TITLE_LEVEL_STYLE } from '@/lib/qa'
 
 interface VillagePost {
   id: string
@@ -44,6 +44,7 @@ export default function UserProfilePage() {
   const [activeTab, setActiveTab] = useState<'posts' | 'answers'>('posts')
   const [answers, setAnswers] = useState<QAAnswerWithQ[]>([])
   const [showAnswersTab, setShowAnswersTab] = useState(true)
+  const [qaTitles, setQaTitles] = useState<any[]>([])
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -55,7 +56,7 @@ export default function UserProfilePage() {
     if (!userId) return
     async function load() {
       const supabase = createClient()
-      const [{ data: p }, { data: posts }, { count: totalPosts }, { count: followers }, { count: following }, { data: trust }, { data: premSub }, { data: answersData }] = await Promise.all([
+      const [{ data: p }, { data: posts }, { count: totalPosts }, { count: followers }, { count: following }, { data: trust }, { data: premSub }, { data: answersData }, { data: titlesData }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
         supabase.from('village_posts')
           .select('id, content, category, created_at, village_id, reaction_count, villages(id, name, icon)')
@@ -73,9 +74,11 @@ export default function UserProfilePage() {
           .eq('is_anonymous', false)
           .order('created_at', { ascending: false })
           .limit(20),
+        supabase.from('qa_titles').select('*').eq('user_id', userId).order('awarded_at', { ascending: false }),
       ])
       setProfile(p)
       setShowAnswersTab(p?.show_answers !== false)
+      setQaTitles(titlesData ?? [])
       const normalized = (posts || []).map((post: any) => ({
         ...post,
         villages: Array.isArray(post.villages) ? post.villages[0] ?? null : post.villages,
@@ -172,6 +175,26 @@ if (loading) return (
             <p className="text-xs text-stone-400">フォロー中</p>
           </div>
         </div>
+
+        {/* ── 称号バッジ ── */}
+        {qaTitles.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {qaTitles.map((t: any) => {
+              const cs      = getCategoryStyle(t.category)
+              const lvStyle = TITLE_LEVEL_STYLE[t.level]
+              return (
+                <div
+                  key={t.id}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold"
+                  style={{ background: cs.bg, border: `1px solid ${cs.border}`, color: cs.color }}
+                >
+                  <span>{lvStyle?.badge}</span>
+                  <span>{getTitleName(t.category, t.level)}</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {!isMe && (
           <button onClick={toggleFollow} disabled={toggling}

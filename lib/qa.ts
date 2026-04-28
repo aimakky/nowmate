@@ -74,8 +74,27 @@ export function getTitleName(category: string, level: string): string {
   return QA_TITLE_MAP[category]?.[level] ?? '村の相談役'
 }
 
-// ─── ベストアンサー閾値 ────────────────────────────────────────
+// ─── 称号取得閾値（いいね数 + ベストアンサー数）────────────────
+export const TITLE_THRESHOLDS = {
+  bronze: { helpful: 5,  best: 1 },
+  silver: { helpful: 15, best: 2 },
+  gold:   { helpful: 50, best: 5 },
+}
+// 後方互換
 export const BA_THRESHOLDS = { bronze: 5, silver: 20, gold: 50 }
+
+// ─── 称号付与 RPC 呼び出し ──────────────────────────────────────
+export async function awardQaTitle(
+  supabase: ReturnType<typeof import('@/lib/supabase/client').createClient>,
+  userId: string,
+  category: string,
+): Promise<string> {
+  const { data } = await supabase.rpc('award_qa_title', {
+    p_user_id: userId,
+    p_category: category,
+  })
+  return (data as string) ?? 'none'
+}
 
 // ─── 匿名表示名（Tierアイコン + ロール） ──────────────────────
 export const ANON_DISPLAY: Record<string, string> = {
