@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, MessageCircle, Eye } from 'lucide-react'
+import { Plus, MessageCircle, Eye, Briefcase } from 'lucide-react'
 import { INDUSTRIES, TOPIC_TAGS, REACTIONS, getIndustry, getTopicTag, getTotalReactions } from '@/lib/guild'
 import { timeAgo } from '@/lib/utils'
 import { getUserTrust } from '@/lib/trust'
@@ -154,7 +154,10 @@ export default function GuildPage() {
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-indigo-300/70 text-[10px] font-bold tracking-widest uppercase mb-0.5">匿名仕事村</p>
-              <h1 className="font-extrabold text-white text-2xl leading-tight">⚔️ 匿名仕事村</h1>
+              <h1 className="font-extrabold text-white text-2xl leading-tight flex items-center gap-2">
+                  <Briefcase size={22} className="text-indigo-300" />
+                  匿名仕事村
+                </h1>
               <p className="text-indigo-200/60 text-[11px] mt-0.5">仕事の本音が集まる場所</p>
             </div>
             <button
@@ -220,7 +223,7 @@ export default function GuildPage() {
           className="mx-4 mt-4 flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer active:scale-[0.99] transition-all"
           style={{ background: '#ede9fe', border: '1px solid #c4b5fd' }}
         >
-          <span className="text-xl">⚔️</span>
+          <Briefcase size={18} className="text-indigo-500 flex-shrink-0" />
           <div className="flex-1">
             <p className="text-xs font-bold text-indigo-700">業界を設定すると仕事村に参加できます</p>
             <p className="text-[10px] text-indigo-400 mt-0.5">設定 → 業界を選択してください</p>
@@ -298,7 +301,9 @@ export default function GuildPage() {
           ))
         ) : posts.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-5xl mb-4">⚔️</p>
+            <div className="flex items-center justify-center w-20 h-20 rounded-3xl bg-indigo-50 mx-auto mb-4">
+              <Briefcase size={36} className="text-indigo-300" />
+            </div>
             <p className="font-extrabold text-stone-800 text-base mb-1.5">まだ投稿がありません</p>
             <p className="text-sm text-indigo-400 mb-6">最初の投稿をしてみましょう</p>
             {canPost && (
