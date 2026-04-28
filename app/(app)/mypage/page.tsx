@@ -13,7 +13,7 @@ import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 
-type ProfileTab = 'tweets' | 'villages' | 'following' | 'followers'
+type ProfileTab = 'tweets' | 'images' | 'joined_villages' | 'hosted_villages'
 
 // ── ツイートコンポーズシート ────────────────────────────────────
 function TweetComposeSheet({
@@ -151,11 +151,10 @@ export default function MyPage() {
   const [postCount,      setPostCount]      = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
   const [followersCount, setFollowersCount] = useState(0)
-  const [followingUsers, setFollowingUsers] = useState<any[]>([])
-  const [followerUsers,  setFollowerUsers]  = useState<any[]>([])
   const [followingIds,   setFollowingIds]   = useState<Set<string>>(new Set())
   const [hostedVillages, setHostedVillages] = useState<any[]>([])
   const [joinedVillages, setJoinedVillages] = useState<any[]>([])
+  const [imagePosts,     setImagePosts]     = useState<any[]>([])
   const [tweets,         setTweets]         = useState<TweetData[]>([])
   const [tweetLoading,   setTweetLoading]   = useState(false)
   const [userId,         setUserId]         = useState<string | null>(null)
@@ -182,6 +181,7 @@ export default function MyPage() {
         joinedRes,
         followsRes,
         followersRes,
+        imageRes,
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         getUserTrust(user.id),
@@ -196,11 +196,17 @@ export default function MyPage() {
           .eq('user_id', user.id).eq('role', 'member')
           .order('joined_at', { ascending: false }).limit(12),
         supabase.from('user_follows')
-          .select('following_id, profiles:following_id(id,display_name,avatar_url,bio)')
+          .select('following_id')
           .eq('follower_id', user.id),
         supabase.from('user_follows')
-          .select('follower_id, profiles:follower_id(id,display_name,avatar_url,bio)')
+          .select('follower_id', { count: 'exact', head: true })
           .eq('following_id', user.id),
+        supabase.from('guild_posts')
+          .select('id, image_url, content, created_at')
+          .eq('user_id', user.id)
+          .not('image_url', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(30),
       ])
 
       if (!p) { router.push('/onboarding'); return }
@@ -216,21 +222,13 @@ export default function MyPage() {
       const followingIdArr: string[] = followingRaw.map((r: any) => r.following_id)
       setFollowingIds(new Set(followingIdArr))
       setFollowingCount(followingIdArr.length)
-      setFollowingUsers(followingRaw.map((r: any) => {
-        const u = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
-        return u
-      }).filter(Boolean))
 
-      const followerRaw: any[] = (followersRes as any)?.data ?? []
-      setFollowersCount(followerRaw.length)
-      setFollowerUsers(followerRaw.map((r: any) => {
-        const u = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
-        return u
-      }).filter(Boolean))
+      setFollowersCount((followersRes as any)?.count ?? 0)
+      setImagePosts((imageRes as any)?.data ?? [])
 
       setLoading(false)
 
-      // ツイート取得
+      // 投稿取得
       loadTweets(user.id, supabase)
     }
     load()
@@ -247,25 +245,6 @@ export default function MyPage() {
       .limit(30)
     setTweets((data ?? []) as TweetData[])
     setTweetLoading(false)
-  }
-
-  async function handleUnfollow(targetId: string) {
-    const supabase = createClient()
-    await supabase.from('user_follows').delete()
-      .eq('follower_id', profile.id).eq('following_id', targetId)
-    setFollowingUsers(prev => prev.filter(u => u.id !== targetId))
-    setFollowingIds(prev => { const n = new Set(prev); n.delete(targetId); return n })
-    setFollowingCount(prev => prev - 1)
-  }
-
-  async function handleFollowBack(targetId: string) {
-    const supabase = createClient()
-    await supabase.from('user_follows').insert({ follower_id: profile.id, following_id: targetId })
-    const { data: u } = await supabase.from('profiles')
-      .select('id,display_name,avatar_url,bio').eq('id', targetId).single()
-    if (u) setFollowingUsers(prev => [...prev, u])
-    setFollowingIds(prev => new Set([...prev, targetId]))
-    setFollowingCount(prev => prev + 1)
   }
 
   async function handleLogout() {
@@ -288,11 +267,6 @@ export default function MyPage() {
   const bannerGradient = industryInfo
     ? industryInfo.gradient
     : 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
-
-  const allVillages = [
-    ...hostedVillages.map((v: any) => ({ ...v, _isHost: true })),
-    ...joinedVillages,
-  ]
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-stone-50">
@@ -371,28 +345,28 @@ export default function MyPage() {
 
         {/* フォロー / フォロワー / 投稿 */}
         <div className="flex gap-5 mt-3">
-          <button onClick={() => setActiveTab('following')} className="flex items-center gap-1.5 active:opacity-60 transition-opacity">
+          <div className="flex items-center gap-1.5">
             <span className="font-extrabold text-stone-900 text-sm">{followingCount}</span>
             <span className="text-xs text-stone-500">フォロー中</span>
-          </button>
-          <button onClick={() => setActiveTab('followers')} className="flex items-center gap-1.5 active:opacity-60 transition-opacity">
+          </div>
+          <div className="flex items-center gap-1.5">
             <span className="font-extrabold text-stone-900 text-sm">{followersCount}</span>
             <span className="text-xs text-stone-500">フォロワー</span>
-          </button>
-          <button onClick={() => setActiveTab('tweets')} className="flex items-center gap-1.5 active:opacity-60 transition-opacity">
+          </div>
+          <div className="flex items-center gap-1.5">
             <span className="font-extrabold text-stone-900 text-sm">{tweets.length}</span>
             <span className="text-xs text-stone-500">投稿</span>
-          </button>
+          </div>
         </div>
       </div>
 
       {/* ── タブ ── */}
       <div className="flex bg-white border-b border-stone-100 sticky top-0 z-10">
         {([
-          { id: 'tweets',    label: '投稿' },
-          { id: 'villages',  label: '村' },
-          { id: 'following', label: 'フォロー中' },
-          { id: 'followers', label: 'フォロワー' },
+          { id: 'tweets',          label: '投稿' },
+          { id: 'images',          label: '画像' },
+          { id: 'joined_villages', label: 'フォロー村' },
+          { id: 'hosted_villages', label: 'オーナー村' },
         ] as { id: ProfileTab; label: string }[]).map(tab => (
           <button
             key={tab.id}
@@ -461,10 +435,41 @@ export default function MyPage() {
           </div>
         )}
 
-        {/* 村タブ */}
-        {activeTab === 'villages' && (
+        {/* 画像タブ */}
+        {activeTab === 'images' && (
           <div>
-            {allVillages.length === 0 ? (
+            {imagePosts.length === 0 ? (
+              <div className="flex flex-col items-center py-16 text-center px-6">
+                <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mb-4">
+                  <span className="text-3xl">🖼️</span>
+                </div>
+                <p className="font-bold text-stone-600 text-sm">まだ画像投稿がありません</p>
+                <p className="text-xs text-stone-400 mt-1.5">仕事村に画像付きで投稿しよう</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-0.5 bg-stone-100">
+                {imagePosts.map((post: any) => (
+                  <div
+                    key={post.id}
+                    className="aspect-square overflow-hidden bg-stone-200 active:opacity-80 transition-opacity"
+                    onClick={() => router.push(`/guild/${post.id}`)}
+                  >
+                    <img
+                      src={post.image_url}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* フォロー村タブ */}
+        {activeTab === 'joined_villages' && (
+          <div>
+            {joinedVillages.length === 0 ? (
               <div className="flex flex-col items-center py-16 text-center">
                 <span className="text-4xl mb-3">🏘️</span>
                 <p className="text-sm font-bold text-stone-600">まだ村に参加していません</p>
@@ -477,29 +482,17 @@ export default function MyPage() {
               </div>
             ) : (
               <div className="divide-y divide-stone-100 bg-white">
-                {allVillages.map((v: any) => {
+                {joinedVillages.map((v: any) => {
                   const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
                   return (
-                    <Link
-                      key={v.id}
-                      href={`/villages/${v.id}`}
-                      className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors"
-                    >
-                      <div
-                        className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
-                        style={{ background: vs.gradient }}
-                      >
+                    <Link key={v.id} href={`/villages/${v.id}`}
+                      className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
+                      <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
+                        style={{ background: vs.gradient }}>
                         {v.icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
-                          {v._isHost && (
-                            <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex-shrink-0">
-                              <Crown size={8} /> 村長
-                            </span>
-                          )}
-                        </div>
+                        <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
                         <p className="text-[11px] text-stone-400">
                           <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
                         </p>
@@ -513,74 +506,48 @@ export default function MyPage() {
           </div>
         )}
 
-        {/* フォロー中 */}
-        {activeTab === 'following' && (
-          <div className="bg-white divide-y divide-stone-100">
-            {followingUsers.length === 0 ? (
+        {/* オーナー村タブ */}
+        {activeTab === 'hosted_villages' && (
+          <div>
+            {hostedVillages.length === 0 ? (
               <div className="flex flex-col items-center py-16 text-center">
-                <span className="text-4xl mb-3">👥</span>
-                <p className="text-sm font-bold text-stone-600">まだ誰もフォローしていません</p>
-              </div>
-            ) : followingUsers.map((u: any) => (
-              <div key={u.id} className="flex items-center gap-3 px-4 py-3.5">
-                <Link href={`/profile/${u.id}`} className="flex-shrink-0">
-                  <div className="w-11 h-11 rounded-full bg-stone-100 overflow-hidden flex items-center justify-center text-lg border border-stone-100">
-                    {u.avatar_url
-                      ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
-                      : <span>🙂</span>}
-                  </div>
-                </Link>
-                <Link href={`/profile/${u.id}`} className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-stone-900 truncate">{u.display_name}</p>
-                  {u.bio && <p className="text-xs text-stone-400 truncate mt-0.5">{u.bio}</p>}
-                </Link>
+                <Crown size={36} className="text-stone-200 mb-3" />
+                <p className="text-sm font-bold text-stone-600">まだ村を作っていません</p>
                 <button
-                  onClick={() => handleUnfollow(u.id)}
-                  className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border border-stone-200 text-stone-600 active:scale-95 transition-all"
+                  onClick={() => router.push('/villages/create')}
+                  className="mt-4 px-5 py-2.5 bg-brand-500 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
                 >
-                  フォロー中
+                  村を作る
                 </button>
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* フォロワー */}
-        {activeTab === 'followers' && (
-          <div className="bg-white divide-y divide-stone-100">
-            {followerUsers.length === 0 ? (
-              <div className="flex flex-col items-center py-16 text-center">
-                <span className="text-4xl mb-3">🌱</span>
-                <p className="text-sm font-bold text-stone-600">まだフォロワーがいません</p>
+            ) : (
+              <div className="divide-y divide-stone-100 bg-white">
+                {hostedVillages.map((v: any) => {
+                  const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
+                  return (
+                    <Link key={v.id} href={`/villages/${v.id}`}
+                      className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
+                      <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
+                        style={{ background: vs.gradient }}>
+                        {v.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
+                          <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex-shrink-0">
+                            <Crown size={8} /> 村長
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-400">
+                          <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
+                        </p>
+                      </div>
+                      <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                    </Link>
+                  )
+                })}
               </div>
-            ) : followerUsers.map((u: any) => {
-              const isFollowing = followingIds.has(u.id)
-              return (
-                <div key={u.id} className="flex items-center gap-3 px-4 py-3.5">
-                  <Link href={`/profile/${u.id}`} className="flex-shrink-0">
-                    <div className="w-11 h-11 rounded-full bg-stone-100 overflow-hidden flex items-center justify-center text-lg border border-stone-100">
-                      {u.avatar_url
-                        ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
-                        : <span>🙂</span>}
-                    </div>
-                  </Link>
-                  <Link href={`/profile/${u.id}`} className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-stone-900 truncate">{u.display_name}</p>
-                    {u.bio && <p className="text-xs text-stone-400 truncate mt-0.5">{u.bio}</p>}
-                  </Link>
-                  {isFollowing ? (
-                    <span className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-stone-100 text-stone-400">相互</span>
-                  ) : (
-                    <button
-                      onClick={() => handleFollowBack(u.id)}
-                      className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-stone-900 text-white active:scale-95 transition-all"
-                    >
-                      フォローする
-                    </button>
-                  )}
-                </div>
-              )
-            })}
+            )}
           </div>
         )}
 
