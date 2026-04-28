@@ -126,11 +126,11 @@ export default function GuildPage() {
   const ind = myIndustry ? getIndustry(myIndustry) : null
 
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0f0f1a' }}>
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#111827' }}>
 
       {/* ── ヘッダー ── */}
       <div className="sticky top-0 z-10 px-4 pt-12 pb-0"
-        style={{ background: 'linear-gradient(160deg, #0c0c1e 0%, #1a1035 60%, #0f1a35 100%)' }}>
+        style={{ background: 'linear-gradient(160deg, #111827 0%, #1e1b4b 60%, #1e1b4b 100%)' }}>
 
         {/* 星背景 */}
         <div className="absolute inset-0 opacity-30 pointer-events-none"
@@ -139,9 +139,9 @@ export default function GuildPage() {
         <div className="relative">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-indigo-300/60 text-[10px] font-bold tracking-widest uppercase mb-0.5">Guild</p>
+              <p className="text-indigo-300/70 text-[10px] font-bold tracking-widest uppercase mb-0.5">Guild</p>
               <h1 className="font-extrabold text-white text-2xl leading-tight">⚔️ ギルド</h1>
-              <p className="text-indigo-200/50 text-[11px] mt-0.5">同じ業界の本音が集まる場所</p>
+              <p className="text-indigo-200/60 text-[11px] mt-0.5">同じ業界の本音が集まる場所</p>
             </div>
             <button
               onClick={() => canPost ? router.push('/guild/create') : router.push('/mypage')}
@@ -263,38 +263,38 @@ export default function GuildPage() {
             return (
               <div key={post.id}
                 className="rounded-3xl overflow-hidden cursor-pointer active:scale-[0.99] transition-all"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)' }}
+                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.13)', backdropFilter: 'blur(8px)' }}
               >
                 {/* カラーバー */}
-                <div className="h-0.5" style={{ background: industry.gradient }} />
+                <div className="h-[3px]" style={{ background: industry.gradient }} />
 
                 <div className="p-4" onClick={() => router.push(`/guild/${post.id}`)}>
                   {/* バッジ行 */}
                   <div className="flex items-center gap-2 mb-2.5 flex-wrap">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background: `${industry.color}20`, color: industry.color, border: `1px solid ${industry.color}35` }}>
+                      style={{ background: `${industry.color}28`, color: industry.color, border: `1px solid ${industry.color}50` }}>
                       {industry.emoji} {post.industry}
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                      style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.18)' }}>
                       {topic.emoji} #{post.topic_tag}
                     </span>
                   </div>
 
                   {/* 本文 */}
-                  <p className="text-sm text-white/85 leading-relaxed line-clamp-4 mb-3 whitespace-pre-wrap">
+                  <p className="text-sm text-white/95 leading-relaxed line-clamp-4 mb-3 whitespace-pre-wrap">
                     {post.content}
                   </p>
 
                   {/* 画像 */}
                   {post.image_url && (
-                    <img src={post.image_url} alt="" className="w-full rounded-2xl object-cover max-h-48 mb-3 border border-white/10" />
+                    <img src={post.image_url} alt="" className="w-full rounded-2xl object-cover max-h-48 mb-3 border border-white/15" />
                   )}
 
                   {/* フッター */}
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-white/30">{timeAgo(post.created_at)}</span>
-                    <div className="flex items-center gap-3 text-[10px] text-white/30">
+                    <span className="text-[10px] text-white/50">{timeAgo(post.created_at)}</span>
+                    <div className="flex items-center gap-3 text-[10px] text-white/50">
                       {total > 0 && <span>💬 {total}</span>}
                       {post.comment_count > 0 && (
                         <span className="flex items-center gap-1">
@@ -307,7 +307,7 @@ export default function GuildPage() {
                 </div>
 
                 {/* リアクションバー */}
-                <div className="flex items-center gap-1 px-4 pb-3 border-t border-white/5 pt-2">
+                <div className="flex items-center gap-1 px-4 pb-3 border-t border-white/8 pt-2">
                   {REACTIONS.map(r => {
                     const count   = post.reaction_counts?.[r.id] ?? 0
                     const isMe    = post.myReaction === r.id
@@ -318,8 +318,8 @@ export default function GuildPage() {
                         disabled={!!reacting || isMine}
                         className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95 disabled:opacity-40"
                         style={isMe
-                          ? { background: `${getIndustry(post.industry).color}25`, color: getIndustry(post.industry).color, border: `1px solid ${getIndustry(post.industry).color}40` }
-                          : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.1)' }
+                          ? { background: `${getIndustry(post.industry).color}28`, color: getIndustry(post.industry).color, border: `1px solid ${getIndustry(post.industry).color}50` }
+                          : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.15)' }
                         }
                       >
                         <span>{r.emoji}</span>

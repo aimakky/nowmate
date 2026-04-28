@@ -75,7 +75,7 @@ export default function GuildCreatePage() {
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0f0f1a' }}>
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#111827' }}>
 
       {/* ヘッダー */}
       <div className="sticky top-0 z-10 px-4 py-4 flex items-center gap-3"
@@ -149,10 +149,10 @@ export default function GuildCreatePage() {
             maxLength={500}
             rows={6}
             className="w-full px-4 py-3 rounded-2xl text-sm resize-none focus:outline-none leading-relaxed"
-            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.9)', caretColor: '#6366f1' }}
+            style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.95)', caretColor: '#6366f1' }}
           />
           <div className="flex justify-between mt-1">
-            <p className="text-[10px] text-white/30">10〜500文字</p>
+            <p className="text-[10px] text-white/50">10〜500文字</p>
             <p className="text-[10px]" style={{ color: content.length > 450 ? '#f87171' : 'rgba(255,255,255,0.3)' }}>{content.length}/500</p>
           </div>
         </div>
@@ -192,8 +192,8 @@ export default function GuildCreatePage() {
         </div>
 
         {/* 注意 */}
-        <div className="rounded-2xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <p className="text-xs text-white/35 leading-relaxed">
+        <div className="rounded-2xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+          <p className="text-xs text-white/55 leading-relaxed">
             🔒 <span className="font-bold text-white/50">匿名ルール</span><br />
             · 表示されるのは業界名と信頼ティアのみ<br />
             · 個人・会社を特定できる情報は書かないでください<br />
