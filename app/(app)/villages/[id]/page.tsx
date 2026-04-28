@@ -667,6 +667,7 @@ export default function VillageDetailPage() {
   const [resolvePost,       setResolvePost]       = useState<any>(null)
   const [showFirstPrompt,   setShowFirstPrompt]   = useState(false)
   const [userVillagePosts,  setUserVillagePosts]  = useState(0) // ユーザーのこの村での投稿数
+  const [bottlePreviewCount, setBottlePreviewCount] = useState(0) // 拾える漂流瓶の数
 
   // ── 民度設計 ─────────────────────────────────────────────────
   const [showCharter,      setShowCharter]      = useState(false)
@@ -1014,6 +1015,18 @@ export default function VillageDetailPage() {
   useEffect(() => { fetchStamps() },        [fetchStamps])
   useEffect(() => { recordVisit() },        [recordVisit])
   useEffect(() => { checkAbandonment() },   [checkAbandonment])
+
+  // 漂流瓶プレビュー：拾える瓶の数を取得
+  useEffect(() => {
+    if (!userId) return
+    createClient()
+      .from('drift_bottles')
+      .select('id', { count: 'exact', head: true })
+      .eq('village_id', id)
+      .neq('sender_id', userId)
+      .is('deleted_at', null)
+      .then(({ count }) => setBottlePreviewCount(count ?? 0))
+  }, [id, userId])
   useEffect(() => { fetchDiplomacy() },     [fetchDiplomacy])
   useEffect(() => { fetchFollowing() },     [fetchFollowing])
   useEffect(() => { fetchFreeNow() },       [fetchFreeNow])
@@ -1565,6 +1578,39 @@ export default function VillageDetailPage() {
               </button>
             )}
           </div>
+
+          {/* 🌊 漂流瓶誘導カード — ホームタブ常設 */}
+          <button
+            onClick={() => { setTab('bottle'); setShowMoreMenu(false) }}
+            className="w-full flex items-center justify-between px-4 py-3 rounded-2xl active:scale-[0.99] transition-all"
+            style={{
+              background: bottlePreviewCount > 0
+                ? 'linear-gradient(135deg,#0c1445 0%,#1a3a6b 100%)'
+                : 'linear-gradient(135deg,#f0f4ff 0%,#e8eeff 100%)',
+              border: bottlePreviewCount > 0
+                ? '1px solid rgba(99,179,237,0.3)'
+                : '1px solid #dde5ff',
+            }}>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🌊</span>
+              <div className="text-left">
+                {bottlePreviewCount > 0 ? (
+                  <>
+                    <p className="text-xs font-extrabold text-white">
+                      {bottlePreviewCount}件のひとことが届いています
+                    </p>
+                    <p className="text-[10px] text-blue-300 mt-0.5">タップして読む・返事する</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs font-extrabold text-indigo-700">気持ちを村に流してみる</p>
+                    <p className="text-[10px] text-indigo-400 mt-0.5">匿名で送れます · 誰かが返事してくれるかも</p>
+                  </>
+                )}
+              </div>
+            </div>
+            <span className={bottlePreviewCount > 0 ? 'text-blue-300 text-sm' : 'text-indigo-400 text-sm'}>→</span>
+          </button>
 
           {/* カテゴリフィルター */}
           <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
