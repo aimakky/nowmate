@@ -210,7 +210,7 @@ export default function MyPage() {
           .limit(30),
         supabase
           .from('tweets')
-          .select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)')
+          .select('*, profiles!tweets_user_id_fkey(display_name, nationality, avatar_url), tweet_reactions!tweet_reactions_tweet_id_fkey(user_id, reaction), tweet_replies!tweet_replies_tweet_id_fkey(id)')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(30),
@@ -232,7 +232,9 @@ export default function MyPage() {
 
       setFollowersCount((followersRes as any)?.count ?? 0)
       setImagePosts((imageRes as any)?.data ?? [])
-      setTweets(((tweetRes as any)?.data ?? []) as TweetData[])
+      const tr = tweetRes as any
+      if (tr?.error) console.error('tweets fetch error:', tr.error)
+      setTweets((tr?.data ?? []) as TweetData[])
 
       setLoading(false)
     }
@@ -244,7 +246,7 @@ export default function MyPage() {
     setTweetLoading(true)
     const { data, error } = await client
       .from('tweets')
-      .select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)')
+      .select('*, profiles!tweets_user_id_fkey(display_name, nationality, avatar_url), tweet_reactions!tweet_reactions_tweet_id_fkey(user_id, reaction), tweet_replies!tweet_replies_tweet_id_fkey(id)')
       .eq('user_id', uid)
       .order('created_at', { ascending: false })
       .limit(30)
