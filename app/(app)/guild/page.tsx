@@ -19,7 +19,6 @@ type Post = {
   comment_count: number
   reaction_counts: Record<string, number> | null
   created_at: string
-  user_trust: { tier: string } | null
   myReaction?: string | null
 }
 
@@ -57,7 +56,7 @@ export default function GuildPage() {
 
     let q = supabase
       .from('guild_posts')
-      .select('*, user_trust!guild_posts_user_id_fkey(tier)')
+      .select('*')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(40)
@@ -80,7 +79,6 @@ export default function GuildPage() {
 
       setPosts((postsData || []).map((p: any) => ({
         ...p,
-        user_trust: Array.isArray(p.user_trust) ? p.user_trust[0] ?? null : p.user_trust,
         myReaction: myMap[p.id] ?? null,
       })))
     } else {

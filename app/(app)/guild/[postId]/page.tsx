@@ -35,16 +35,13 @@ export default function GuildPostPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('guild_posts')
-      .select('*, user_trust!guild_posts_user_id_fkey(tier)')
+      .select('*')
       .eq('id', postId)
       .single()
     if (data) {
-      setPost({
-        ...data,
-        user_trust: Array.isArray(data.user_trust) ? data.user_trust[0] ?? null : data.user_trust,
-      })
-      // 閲覧数
-      await supabase.from('guild_posts').update({ view_count: (data.view_count ?? 0) + 1 }).eq('id', postId)
+      setPost(data)
+      // 閲覧数（SECURITY DEFINER関数でRLS回避）
+      await supabase.rpc('increment_guild_view_count', { p_post_id: postId })
     }
     setLoading(false)
   }, [postId])
@@ -52,13 +49,12 @@ export default function GuildPostPage() {
   const fetchComments = useCallback(async () => {
     const { data } = await createClient()
       .from('guild_comments')
-      .select('*, user_trust!guild_comments_user_id_fkey(tier), profiles!guild_comments_user_id_fkey(industry)')
+      .select('*, profiles!guild_comments_user_id_fkey(industry)')
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
     setComments((data || []).map((c: any) => ({
       ...c,
-      user_trust: Array.isArray(c.user_trust) ? c.user_trust[0] ?? null : c.user_trust,
-      profiles:   Array.isArray(c.profiles)   ? c.profiles[0]   ?? null : c.profiles,
+      profiles: Array.isArray(c.profiles) ? c.profiles[0] ?? null : c.profiles,
     })))
   }, [postId])
 
@@ -109,7 +105,7 @@ export default function GuildPostPage() {
     setPosting(true)
     const supabase = createClient()
     await supabase.from('guild_comments').insert({ post_id: postId, user_id: userId, content: newComment.trim() })
-    await supabase.from('guild_posts').update({ comment_count: (post?.comment_count ?? 0) + 1 }).eq('id', postId)
+    await supabase.rpc('update_guild_comment_count', { p_post_id: postId, p_delta: 1 })
     setNewComment('')
     await fetchComments()
     await fetchPost()
