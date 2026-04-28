@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -18,36 +18,7 @@ import { getUserTrust, getTierById, awardPoints } from '@/lib/trust'
 import CulturalCharter, { shouldShowCharter, markCharterShown } from '@/components/features/CulturalCharter'
 import FirstPostPrompt from '@/components/features/FirstPostPrompt'
 
-// ─── AutoMod: NGワードリスト ─────────────────────────────────
-const NG_WORDS = [
-  '死ね', 'しね', '殺す', 'ころす', 'キモい', 'きもい', 'うざい', 'ウザい',
-  'バカ', 'ばか', 'アホ', 'あほ', 'クズ', 'くず', 'ゴミ', 'ごみ',
-  '消えろ', 'きえろ', 'カス', 'かす', 'ブス', 'ぶす',
-  'LINE教えて', 'line教えて', '連絡先教えて', 'インスタ教えて',
-  '副業', '稼げる', '儲かる', 'ビジネス紹介', 'MLM', 'ネットワーク',
-]
-
-// ─── テキスト正規化（表記ゆれ対策）──────────────────────────
-function normalizeText(text: string): string {
-  return text
-    .toLowerCase()
-    // 全角→半角
-    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
-    // スペース・空白・記号を除去
-    .replace(/[\s　 ​‌‍﻿・。、！？!?　]/g, '')
-    // 数字→読み替え（4ne → しね 等）
-    .replace(/4/g, 'し').replace(/9/g, 'く').replace(/0/g, 'お')
-    // よくある置き換え表記
-    .replace(/ｼﾇ|ｼﾈ/g, 'しね')
-    // カタカナ→ひらがな
-    .replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60))
-}
-
-function detectNgWords(text: string): string | null {
-  const normalized = normalizeText(text)
-  const found = NG_WORDS.find(w => normalized.includes(normalizeText(w)))
-  return found ?? null
-}
+import { detectNgWords } from '@/lib/moderation'
 
 // ─── Slow mode: 投稿間隔制限 ─────────────────────────────────
 const SLOW_MODE_MS  = 2 * 60 * 1000  // 2分
@@ -1607,6 +1578,7 @@ export default function VillageDetailPage() {
             style={style}
             isMember={isMember}
             canPost={tier.canPost}
+            canReply={tier.canCreateRoom}
           />
 
           {/* 初投稿プロンプト（メンバーで未投稿の場合） */}
