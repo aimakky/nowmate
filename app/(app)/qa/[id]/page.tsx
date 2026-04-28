@@ -122,9 +122,15 @@ export default function QADetailPage() {
   const fetchQuestion = useCallback(async () => {
     const { data } = await createClient()
       .from('qa_questions')
-      .select('*, profiles(display_name), user_trust!qa_questions_user_id_fkey(tier)')
+      .select('*, profiles(display_name), user_trust!qa_questions_user_id_fkey(tier), villages(id,name,icon)')
       .eq('id', id).single()
-    setQuestion(data)
+    const normalized = data ? {
+      ...data,
+      profiles:   Array.isArray(data.profiles)   ? data.profiles[0]   ?? null : data.profiles,
+      user_trust: Array.isArray(data.user_trust) ? data.user_trust[0] ?? null : data.user_trust,
+      villages:   Array.isArray(data.villages)   ? data.villages[0]   ?? null : data.villages,
+    } : null
+    setQuestion(normalized)
     // view_count++
     await createClient().from('qa_questions').update({ view_count: (data?.view_count ?? 0) + 1 }).eq('id', id)
     setLoading(false)
@@ -214,12 +220,21 @@ export default function QADetailPage() {
         )}
 
         <div className="px-5 pt-16 pb-6">
-          {/* Category badge */}
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white/80 px-2.5 py-1 rounded-full mb-3"
-            style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.2)' }}
-          >
-            {cs.emoji} {question.category}
-          </span>
+          {/* Category badge + 村バッジ */}
+          <div className="flex items-center flex-wrap gap-2 mb-3">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white/80 px-2.5 py-1 rounded-full"
+              style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.2)' }}
+            >
+              {cs.emoji} {question.category}
+            </span>
+            {question.villages && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
+                style={{ background: 'rgba(99,102,241,0.3)', border: '1px solid rgba(99,102,241,0.4)', color: '#e0e7ff' }}
+              >
+                🏕️ {question.villages.icon} {question.villages.name}
+              </span>
+            )}
+          </div>
 
           {/* Title */}
           <h1 className="font-extrabold text-white text-lg leading-snug mb-3 drop-shadow-sm">

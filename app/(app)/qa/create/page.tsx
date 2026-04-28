@@ -1,22 +1,49 @@
 ﻿'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, X } from 'lucide-react'
 import { QA_CATEGORIES, getCategoryStyle } from '@/lib/qa'
 import { getUserTrust } from '@/lib/trust'
 
+interface Village {
+  id: string
+  name: string
+  icon: string
+}
+
 export default function QACreatePage() {
   const router = useRouter()
-  const [category,     setCategory]     = useState('なんでも相談')
-  const [title,        setTitle]        = useState('')
-  const [content,      setContent]      = useState('')
-  const [isAnonymous,  setIsAnonymous]  = useState(true)
-  const [submitting,   setSubmitting]   = useState(false)
-  const [error,        setError]        = useState('')
+  const [category,      setCategory]      = useState('なんでも相談')
+  const [title,         setTitle]         = useState('')
+  const [content,       setContent]       = useState('')
+  const [isAnonymous,   setIsAnonymous]   = useState(true)
+  const [submitting,    setSubmitting]    = useState(false)
+  const [error,         setError]         = useState('')
+  const [myVillages,    setMyVillages]    = useState<Village[]>([])
+  const [selectedVillage, setSelectedVillage] = useState<Village | null>(null)
+  const [showVillages,  setShowVillages]  = useState(false)
 
   const cs = getCategoryStyle(category)
+
+  useEffect(() => {
+    async function loadVillages() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('village_members')
+        .select('villages(id, name, icon)')
+        .eq('user_id', user.id)
+        .limit(20)
+      const villages = (data || [])
+        .map((r: any) => Array.isArray(r.villages) ? r.villages[0] : r.villages)
+        .filter(Boolean) as Village[]
+      setMyVillages(villages)
+    }
+    loadVillages()
+  }, [])
 
   async function handleSubmit() {
     if (!title.trim() || !content.trim() || submitting) return
@@ -40,6 +67,7 @@ export default function QACreatePage() {
       title:        title.trim(),
       content:      content.trim(),
       is_anonymous: isAnonymous,
+      village_id:   selectedVillage?.id ?? null,
     })
 
     if (err) {
@@ -134,6 +162,69 @@ export default function QACreatePage() {
             <p className="text-[10px] text-stone-400">{content.length}/1000</p>
           </div>
         </div>
+
+        {/* ── 届け先の村（任意） ── */}
+        {myVillages.length > 0 && (
+          <div>
+            <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+              届け先の村 <span className="text-stone-300 normal-case font-normal">（任意）</span>
+            </p>
+
+            {/* 選択済みの村 */}
+            {selectedVillage ? (
+              <div
+                className="flex items-center gap-3 p-3.5 rounded-2xl border-2"
+                style={{ borderColor: cs.color, background: cs.bg }}
+              >
+                <span className="text-2xl">{selectedVillage.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold truncate" style={{ color: cs.color }}>
+                    {selectedVillage.name}
+                  </p>
+                  <p className="text-[10px] text-stone-400 mt-0.5">
+                    この村のメンバーに優先的に届きます
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedVillage(null)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: `${cs.color}20` }}
+                >
+                  <X size={13} style={{ color: cs.color }} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowVillages(v => !v)}
+                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 border-dashed border-stone-200 bg-white active:bg-stone-50 transition-colors text-left"
+              >
+                <span className="text-xl">🏕️</span>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-stone-400">村を選ぶ</p>
+                  <p className="text-[10px] text-stone-300">選ばない場合は全体公開のみ</p>
+                </div>
+                <span className="text-stone-300 text-xs">{showVillages ? '▲' : '▼'}</span>
+              </button>
+            )}
+
+            {/* 村リスト */}
+            {showVillages && !selectedVillage && (
+              <div className="mt-2 rounded-2xl overflow-hidden border border-stone-100 divide-y divide-stone-50 shadow-sm">
+                {myVillages.map(v => (
+                  <button
+                    key={v.id}
+                    onClick={() => { setSelectedVillage(v); setShowVillages(false) }}
+                    className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-stone-50 active:bg-stone-100 transition-colors text-left"
+                  >
+                    <span className="text-xl flex-shrink-0">{v.icon}</span>
+                    <p className="text-sm font-bold text-stone-800 flex-1 truncate">{v.name}</p>
+                    <span className="text-[10px] text-stone-300">選ぶ →</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── 匿名設定 ── */}
         <div

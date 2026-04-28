@@ -21,6 +21,8 @@ type Question = {
   status: string
   answer_count: number
   created_at: string
+  village_id: string | null
+  villages: { id: string; name: string; icon: string } | null
   profiles: { display_name: string } | null
   user_trust: { tier: string } | null
 }
@@ -46,7 +48,7 @@ function QuestionCard({
     >
       <div className="h-1" style={{ background: cs.color }} />
       <div className="p-4">
-        {/* カテゴリ + ステータス */}
+        {/* カテゴリ + ステータス + 村バッジ */}
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <span
             className="text-[10px] font-bold px-2 py-0.5 rounded-full"
@@ -54,6 +56,11 @@ function QuestionCard({
           >
             {cs.emoji} {q.category}
           </span>
+          {q.villages && (
+            <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
+              {q.villages.icon} {q.villages.name}
+            </span>
+          )}
           {q.status === 'resolved' && (
             <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
               <CheckCircle size={9} /> 解決済み
@@ -171,12 +178,17 @@ export default function BottlePage() {
     setQaLoading(true)
     let q = createClient()
       .from('qa_questions')
-      .select('*, profiles(display_name), user_trust!qa_questions_user_id_fkey(tier)')
+      .select('*, profiles(display_name), user_trust!qa_questions_user_id_fkey(tier), villages(id,name,icon)')
       .order('created_at', { ascending: false })
       .limit(30)
     if (qaCategory !== 'all') q = q.eq('category', qaCategory)
     const { data } = await q
-    setQuestions((data || []) as Question[])
+    setQuestions((data || []).map((item: any) => ({
+      ...item,
+      profiles:   Array.isArray(item.profiles)   ? item.profiles[0]   ?? null : item.profiles,
+      user_trust: Array.isArray(item.user_trust) ? item.user_trust[0] ?? null : item.user_trust,
+      villages:   Array.isArray(item.villages)   ? item.villages[0]   ?? null : item.villages,
+    })) as Question[])
     setQaLoading(false)
   }, [qaCategory])
 
@@ -189,7 +201,7 @@ export default function BottlePage() {
     // 未解決・open の質問を取得（自分の質問除く）
     let q = supabase
       .from('qa_questions')
-      .select('*, profiles(display_name), user_trust!qa_questions_user_id_fkey(tier)')
+      .select('*, profiles(display_name), user_trust!qa_questions_user_id_fkey(tier), villages(id,name,icon)')
       .eq('status', 'open')
       .neq('user_id', userId)
       .order('answer_count', { ascending: true })   // 回答0件を先に
@@ -197,7 +209,12 @@ export default function BottlePage() {
       .limit(30)
     if (answerCategory !== 'all') q = q.eq('category', answerCategory)
     const { data } = await q
-    setAnswerTargets((data || []) as Question[])
+    setAnswerTargets((data || []).map((item: any) => ({
+      ...item,
+      profiles:   Array.isArray(item.profiles)   ? item.profiles[0]   ?? null : item.profiles,
+      user_trust: Array.isArray(item.user_trust) ? item.user_trust[0] ?? null : item.user_trust,
+      villages:   Array.isArray(item.villages)   ? item.villages[0]   ?? null : item.villages,
+    })) as Question[])
 
     // 自分がこれまでに回答した総数
     const { count } = await supabase

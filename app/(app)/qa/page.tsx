@@ -24,6 +24,8 @@ type Question = {
   status: string
   answer_count: number
   created_at: string
+  village_id: string | null
+  villages: { id: string; name: string; icon: string } | null
   profiles: { display_name: string } | null
   user_trust: { tier: string } | null
 }
@@ -50,7 +52,7 @@ export default function QAPage() {
     setLoading(true)
     let q = createClient()
       .from('qa_questions')
-      .select('*, profiles(display_name), user_trust!qa_questions_user_id_fkey(tier)')
+      .select('*, profiles(display_name), user_trust!qa_questions_user_id_fkey(tier), villages(id,name,icon)')
       .order('created_at', { ascending: false })
       .limit(40)
 
@@ -58,7 +60,12 @@ export default function QAPage() {
     if (status   !== 'all') q = q.eq('status',   status)
 
     const { data } = await q
-    setQuestions((data || []) as Question[])
+    setQuestions((data || []).map((item: any) => ({
+      ...item,
+      profiles:   Array.isArray(item.profiles)   ? item.profiles[0]   ?? null : item.profiles,
+      user_trust: Array.isArray(item.user_trust) ? item.user_trust[0] ?? null : item.user_trust,
+      villages:   Array.isArray(item.villages)   ? item.villages[0]   ?? null : item.villages,
+    })) as Question[])
     setLoading(false)
   }, [category, status])
 
@@ -201,6 +208,11 @@ export default function QAPage() {
                     >
                       {cs.emoji} {q.category}
                     </span>
+                    {q.villages && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
+                        {q.villages.icon} {q.villages.name}
+                      </span>
+                    )}
                     {q.status === 'resolved' && (
                       <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
                         <CheckCircle size={9} /> 解決済み
