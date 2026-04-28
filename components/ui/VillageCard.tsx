@@ -179,32 +179,36 @@ export function getFireStatus(lastPostAt: string | null): {
 
 // ─── コミュスタイル設定 ──────────────────────────────────────
 export const COMM_STYLE_CONFIG: Record<string, {
-  icon:       string
-  label:      string
-  topBar:     string   // CSS gradient for the top accent bar
-  badgeBg:    string
-  badgeText:  string
+  icon:           string
+  label:          string
+  topBar:         string   // CSS gradient for the top accent bar
+  bannerGradient: string   // CSS gradient for the main card banner
+  badgeBg:        string
+  badgeText:      string
 }> = {
   text: {
-    icon:      '💬',
-    label:     'チャット村',
-    topBar:    'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
-    badgeBg:   '#3b82f6',
-    badgeText: '#fff',
+    icon:           '💬',
+    label:          'チャット村',
+    topBar:         'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
+    bannerGradient: 'linear-gradient(135deg, #1d4ed8 0%, #3b82f6 60%, #60a5fa 100%)',
+    badgeBg:        '#3b82f6',
+    badgeText:      '#fff',
   },
   voice: {
-    icon:      '🎙️',
-    label:     '通話村',
-    topBar:    'linear-gradient(90deg, #fb923c 0%, #ea580c 100%)',
-    badgeBg:   '#f97316',
-    badgeText: '#fff',
+    icon:           '🎙️',
+    label:          '通話村',
+    topBar:         'linear-gradient(90deg, #fb923c 0%, #ea580c 100%)',
+    bannerGradient: 'linear-gradient(135deg, #c2410c 0%, #f97316 60%, #fb923c 100%)',
+    badgeBg:        '#f97316',
+    badgeText:      '#fff',
   },
   both: {
-    icon:      '🔀',
-    label:     '両方OK',
-    topBar:    'linear-gradient(90deg, #3b82f6 0%, #f97316 100%)',
-    badgeBg:   '#8b5cf6',
-    badgeText: '#fff',
+    icon:           '🔀',
+    label:          '両方OK',
+    topBar:         'linear-gradient(90deg, #3b82f6 0%, #f97316 100%)',
+    bannerGradient: 'linear-gradient(135deg, #1d4ed8 0%, #7c3aed 50%, #ea580c 100%)',
+    badgeBg:        '#8b5cf6',
+    badgeText:      '#fff',
   },
 }
 
@@ -247,7 +251,7 @@ export default function VillageCard({
       <div
         className="relative flex items-center justify-center"
         style={{
-          background: style.gradient,
+          background: commCfg ? commCfg.bannerGradient : style.gradient,
           height: featured ? 120 : 96,
         }}
       >

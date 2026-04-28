@@ -49,7 +49,7 @@ function SmallVillageCard({ village, isMember, isLive, onJoin }: {
       {commCfg && (
         <div className="h-[3px] w-full" style={{ background: commCfg.topBar }} />
       )}
-      <div className="h-16 flex items-center justify-center relative" style={{ background: style.gradient }}>
+      <div className="h-16 flex items-center justify-center relative" style={{ background: commCfg ? commCfg.bannerGradient : style.gradient }}>
         <span className="text-3xl" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))' }}>
           {village.icon}
         </span>
