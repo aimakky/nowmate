@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   ArrowLeft, Mic, Users, Send, Flag, CheckCircle, Crown,
-  Pin, Trash2, Settings2, BookOpen, Save, X, PinOff, Flame,
+  Pin, Trash2, Settings2, BookOpen, Save, X, PinOff, Flame, PenLine, ChevronRight,
 } from 'lucide-react'
 import { timeAgo } from '@/lib/utils'
 import { getOccupationBadge } from '@/lib/occupation'
@@ -635,7 +635,8 @@ export default function VillageDetailPage() {
   const [diary,       setDiary]       = useState<any[]>([])
   const [pinnedPost,  setPinnedPost]  = useState<any>(null)
 
-  const [tab,       setTab]       = useState<'posts' | 'voice' | 'members' | 'diary' | 'diplo' | 'admin'>('posts')
+  const [tab,       setTab]       = useState<'posts' | 'voice' | 'members' | 'diary' | 'diplo' | 'admin' | 'more'>('posts')
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [postCat,   setPostCat]   = useState('全部')
   const [isMember,  setIsMember]  = useState(false)
   const [isHost,    setIsHost]    = useState(false)
@@ -1268,14 +1269,18 @@ export default function VillageDetailPage() {
 
   const pendingDiploCount = diplomacyIn.filter(d => d.status === 'pending').length + mergeRequests.filter(r => r.to_village_id === id).length
 
-  const allTabs = [
+  // メインタブは4本固定。だより/外交/管理は「⋯」から展開
+  const mainTabs = [
     { key: 'posts',   label: '📝 投稿' },
     { key: 'voice',   label: '🎙️ 通話' },
     { key: 'members', label: '👥 住民' },
-    { key: 'diary',   label: '📰 だより' },
-    { key: 'diplo',   label: `🌐 外交${pendingDiploCount > 0 ? ` (${pendingDiploCount})` : ''}` },
-    ...(isHost ? [{ key: 'admin', label: '⚙️ 管理' }] : []),
   ]
+  const moreTabs = [
+    { key: 'diary', label: '📰 だより', desc: '週次の村の活動まとめ' },
+    { key: 'diplo', label: `🌐 外交${pendingDiploCount > 0 ? `  (${pendingDiploCount})` : ''}`, desc: '他の村と交流・同盟' },
+    ...(isHost ? [{ key: 'admin', label: '⚙️ 管理', desc: '村のルール・メンバー管理' }] : []),
+  ]
+  const isMoreTab = ['diary','diplo','admin'].includes(tab)
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-birch">
@@ -1383,8 +1388,68 @@ export default function VillageDetailPage() {
         </div>
       </div>
 
-      {/* ══ 焚き火バナー（21-23時JST）══════════════════════════ */}
-      {isBonfireTime && (
+      {/* ══ 優先バナー（最大1枚）══════════════════════════════
+          優先度: 廃村 > 電話認証 > 廃村警告 > 焚き火
+      ══════════════════════════════════════════════════════ */}
+      {isAbandoned ? (
+        <div className="mx-4 mt-3 rounded-2xl overflow-hidden"
+          style={{ background: 'linear-gradient(135deg,#1c1c1c 0%,#2d2d2d 100%)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="px-4 py-3 flex items-center gap-3">
+            <span className="text-2xl flex-shrink-0">🏚️</span>
+            <div className="flex-1">
+              <p className="text-xs font-extrabold text-stone-300">この村は廃村です</p>
+              <p className="text-[10px] text-stone-500 mt-0.5">あなたの一言が村を復興させるかもしれません。</p>
+            </div>
+            {village?.revival_count > 0 && (
+              <div className="flex-shrink-0 text-center">
+                <p className="text-lg font-extrabold text-stone-400">{village.revival_count}</p>
+                <p className="text-[8px] text-stone-600">度目の復興</p>
+              </div>
+            )}
+          </div>
+          {isMember && tier.canPost && (
+            <div className="px-4 pb-3">
+              <button onClick={() => { setNewPostCat('雑談'); document.querySelector('textarea')?.focus() }}
+                className="w-full py-2.5 rounded-xl text-xs font-bold text-white active:scale-95 transition-all"
+                style={{ background: 'linear-gradient(135deg,#22c55e 0%,#16a34a 100%)' }}>
+                🌱 この村を復興する
+              </button>
+            </div>
+          )}
+        </div>
+      ) : userTrust?.tier === 'visitor' ? (
+        <div onClick={() => setShowPhoneVerify(true)}
+          className="mx-4 mt-3 rounded-2xl px-4 py-3 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all"
+          style={{ background: `${style.accent}15`, border: `1px solid ${style.accent}30` }}>
+          <span className="text-2xl">📱</span>
+          <div className="flex-1">
+            <p className="text-xs font-bold" style={{ color: style.accent }}>電話番号を認証して「住民」になろう</p>
+            <p className="text-[10px] text-stone-400">投稿・通話ができるようになります · +30pt</p>
+          </div>
+          <span className="text-stone-400 text-sm">›</span>
+        </div>
+      ) : daysLeft !== null && daysLeft <= 7 ? (
+        <div className="mx-4 mt-3 rounded-2xl px-4 py-3 flex items-center gap-3"
+          style={{
+            background: daysLeft <= 3 ? 'linear-gradient(135deg,#450a0a 0%,#7f1d1d 100%)' : 'linear-gradient(135deg,#1c1407 0%,#3d2c00 100%)',
+            border: `1px solid ${daysLeft <= 3 ? 'rgba(239,68,68,0.4)' : 'rgba(234,179,8,0.3)'}`,
+          }}>
+          <div className="relative flex-shrink-0">
+            <span className="text-2xl">{daysLeft <= 3 ? '⚠️' : '🕯️'}</span>
+            {daysLeft <= 3 && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full animate-ping" style={{ background: '#ef4444' }} />}
+          </div>
+          <div className="flex-1">
+            <p className="text-xs font-extrabold" style={{ color: daysLeft <= 3 ? '#fca5a5' : '#fde68a' }}>
+              {daysLeft <= 3 ? `あと${daysLeft}日で廃村になります` : `${daysLeft}日後に廃村の危機`}
+            </p>
+            <p className="text-[10px] mt-0.5" style={{ color: daysLeft <= 3 ? '#f87171' : '#d97706' }}>誰かが投稿すると廃村を免れます</p>
+          </div>
+          <div className="flex-shrink-0 text-center">
+            <p className="font-extrabold text-2xl" style={{ color: daysLeft <= 3 ? '#ef4444' : '#eab308' }}>{daysLeft}</p>
+            <p className="text-[8px]" style={{ color: daysLeft <= 3 ? '#f87171' : '#ca8a04' }}>日</p>
+          </div>
+        </div>
+      ) : isBonfireTime ? (
         <div className="mx-4 mt-3 rounded-2xl px-4 py-3 flex items-center gap-3"
           style={{ background: 'linear-gradient(135deg, #1c0a00 0%, #2d1200 100%)', border: '1px solid rgba(255,120,0,0.35)' }}>
           <div className="relative flex-shrink-0">
@@ -1398,11 +1463,10 @@ export default function VillageDetailPage() {
             </p>
           </div>
           <div className="flex items-center gap-1 text-[10px] font-bold text-orange-400/60">
-            <Flame size={11} />
-            <span>〜23:00</span>
+            <Flame size={11} /><span>〜23:00</span>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* ══ 復興セレブレーション ══════════════════════════════ */}
       {showRevival && (
@@ -1413,86 +1477,6 @@ export default function VillageDetailPage() {
             <p className="font-extrabold text-stone-900 text-lg">村が復興しました！</p>
             <p className="text-xs text-stone-500 mt-1">あなたの投稿が村を救いました</p>
           </div>
-        </div>
-      )}
-
-      {/* ══ 廃村バナー ══════════════════════════════════════════ */}
-      {isAbandoned && (
-        <div className="mx-4 mt-3 rounded-2xl overflow-hidden"
-          style={{ background: 'linear-gradient(135deg,#1c1c1c 0%,#2d2d2d 100%)', border: '1px solid rgba(255,255,255,0.1)' }}>
-          <div className="px-4 py-3 flex items-center gap-3">
-            <span className="text-2xl flex-shrink-0">🏚️</span>
-            <div className="flex-1">
-              <p className="text-xs font-extrabold text-stone-300">この村は廃村です</p>
-              <p className="text-[10px] text-stone-500 mt-0.5 leading-relaxed">
-                長い間、誰も投稿しませんでした。<br />
-                あなたの一言が村を復興させるかもしれません。
-              </p>
-            </div>
-            {village?.revival_count > 0 && (
-              <div className="flex-shrink-0 text-center">
-                <p className="text-lg font-extrabold text-stone-400">{village.revival_count}</p>
-                <p className="text-[8px] text-stone-600">度目の復興</p>
-              </div>
-            )}
-          </div>
-          {isMember && tier.canPost && (
-            <div className="px-4 pb-3">
-              <button
-                onClick={() => { setNewPostCat('雑談'); document.querySelector('textarea')?.focus() }}
-                className="w-full py-2.5 rounded-xl text-xs font-bold text-white active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg,#22c55e 0%,#16a34a 100%)' }}>
-                🌱 この村を復興する
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ══ 廃村警告バナー（7日以下）══════════════════════════ */}
-      {!isAbandoned && daysLeft !== null && daysLeft <= 7 && (
-        <div className="mx-4 mt-3 rounded-2xl px-4 py-3 flex items-center gap-3"
-          style={{
-            background: daysLeft <= 3
-              ? 'linear-gradient(135deg,#450a0a 0%,#7f1d1d 100%)'
-              : 'linear-gradient(135deg,#1c1407 0%,#3d2c00 100%)',
-            border: `1px solid ${daysLeft <= 3 ? 'rgba(239,68,68,0.4)' : 'rgba(234,179,8,0.3)'}`,
-          }}>
-          <div className="relative flex-shrink-0">
-            <span className="text-2xl">{daysLeft <= 3 ? '⚠️' : '🕯️'}</span>
-            {daysLeft <= 3 && (
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full animate-ping"
-                style={{ background: '#ef4444' }} />
-            )}
-          </div>
-          <div className="flex-1">
-            <p className="text-xs font-extrabold" style={{ color: daysLeft <= 3 ? '#fca5a5' : '#fde68a' }}>
-              {daysLeft <= 3 ? `あと${daysLeft}日で廃村になります` : `${daysLeft}日後に廃村の危機`}
-            </p>
-            <p className="text-[10px] mt-0.5" style={{ color: daysLeft <= 3 ? '#f87171' : '#d97706' }}>
-              誰かが投稿すると廃村を免れます
-            </p>
-          </div>
-          <div className="flex-shrink-0 text-center">
-            <p className="font-extrabold text-2xl" style={{ color: daysLeft <= 3 ? '#ef4444' : '#eab308' }}>
-              {daysLeft}
-            </p>
-            <p className="text-[8px]" style={{ color: daysLeft <= 3 ? '#f87171' : '#ca8a04' }}>日</p>
-          </div>
-        </div>
-      )}
-
-      {/* ── 見習いバナー ── */}
-      {userTrust && userTrust.tier === 'visitor' && (
-        <div onClick={() => setShowPhoneVerify(true)}
-          className="mx-4 mt-3 rounded-2xl px-4 py-3 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all"
-          style={{ background: `${style.accent}15`, border: `1px solid ${style.accent}30` }}>
-          <span className="text-2xl">📱</span>
-          <div className="flex-1">
-            <p className="text-xs font-bold" style={{ color: style.accent }}>電話番号を認証して「住民」になろう</p>
-            <p className="text-[10px] text-stone-400">投稿・通話ができるようになります · +30pt</p>
-          </div>
-          <span className="text-stone-400 text-sm">›</span>
         </div>
       )}
 
@@ -1527,10 +1511,10 @@ export default function VillageDetailPage() {
 
       {/* ── Tabs ── */}
       <div className="px-4 pt-3 pb-2 sticky top-0 z-10 bg-birch">
-        <div className="flex gap-1 rounded-2xl p-1 overflow-x-auto scrollbar-none"
+        <div className="flex gap-1 rounded-2xl p-1"
           style={{ background: `${style.accent}12`, border: `1px solid ${style.accent}20` }}>
-          {allTabs.map(({ key, label }) => (
-            <button key={key} onClick={() => setTab(key as any)}
+          {mainTabs.map(({ key, label }) => (
+            <button key={key} onClick={() => { setTab(key as any); setShowMoreMenu(false) }}
               className="flex-shrink-0 flex-1 py-2 text-[11px] font-bold rounded-xl transition-all whitespace-nowrap px-1"
               style={tab === key
                 ? { background: style.accent, color: '#fff', boxShadow: `0 2px 8px ${style.accent}40` }
@@ -1538,7 +1522,38 @@ export default function VillageDetailPage() {
               {label}
             </button>
           ))}
+          {/* ⋯ もっとボタン */}
+          <button
+            onClick={() => setShowMoreMenu(v => !v)}
+            className="flex-shrink-0 px-3 py-2 text-[11px] font-bold rounded-xl transition-all relative"
+            style={isMoreTab || showMoreMenu
+              ? { background: style.accent, color: '#fff', boxShadow: `0 2px 8px ${style.accent}40` }
+              : { color: style.accent }}>
+            ⋯
+            {pendingDiploCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] text-white font-extrabold flex items-center justify-center">
+                {pendingDiploCount}
+              </span>
+            )}
+          </button>
         </div>
+
+        {/* ⋯ ドロップダウン */}
+        {showMoreMenu && (
+          <div className="mt-2 bg-white rounded-2xl shadow-lg border border-stone-100 overflow-hidden">
+            {moreTabs.map(({ key, label, desc }) => (
+              <button key={key}
+                onClick={() => { setTab(key as any); setShowMoreMenu(false) }}
+                className="w-full flex items-center justify-between px-4 py-3 border-b border-stone-50 last:border-0 active:bg-stone-50 transition-all">
+                <div className="text-left">
+                  <p className="text-sm font-bold text-stone-800">{label}</p>
+                  <p className="text-[10px] text-stone-400 mt-0.5">{desc}</p>
+                </div>
+                <ChevronRight size={14} className="text-stone-300" />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ════════ POSTS TAB ════════ */}
@@ -1633,7 +1648,7 @@ export default function VillageDetailPage() {
           {/* 投稿コンポーザー */}
           {isMember && (
             tier.canPost ? (
-              <div className="bg-white border border-stone-100 rounded-3xl p-4 shadow-md"
+              <div id="post-composer" className="bg-white border border-stone-100 rounded-3xl p-4 shadow-md"
                 style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                 <div className="flex gap-1.5 overflow-x-auto scrollbar-none mb-3 pb-0.5">
                   {POST_CATEGORIES.slice(1).map(c => (
@@ -1647,7 +1662,7 @@ export default function VillageDetailPage() {
                   ))}
                 </div>
                 <div className="flex gap-2 items-end">
-                  <textarea value={newPost} onChange={e => { setNewPost(e.target.value); setNgWarning('') }}
+                  <textarea id="post-textarea" value={newPost} onChange={e => { setNewPost(e.target.value); setNgWarning('') }}
                     placeholder="考えを出す…" rows={2} maxLength={300}
                     className="flex-1 px-3 py-2.5 rounded-2xl border border-stone-200 text-sm resize-none focus:outline-none" />
                   <button onClick={() => submitPost()} disabled={!newPost.trim() || posting || slowModeLeft > 0}
@@ -2402,6 +2417,25 @@ export default function VillageDetailPage() {
       )}
 
       {/* ── Modals ── */}
+      {/* ── 投稿FABボタン（メンバーかつ投稿可能な場合に固定表示） ── */}
+      {isMember && tier.canPost && (
+        <button
+          onClick={() => {
+            setTab('posts')
+            setShowMoreMenu(false)
+            setTimeout(() => {
+              document.getElementById('post-composer')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              setTimeout(() => document.getElementById('post-textarea')?.focus(), 400)
+            }, tab === 'posts' ? 0 : 200)
+          }}
+          className="fixed bottom-24 right-4 w-14 h-14 rounded-full shadow-xl z-40 flex items-center justify-center active:scale-90 transition-all"
+          style={{ background: style.gradient, boxShadow: `0 6px 20px ${style.accent}50` }}
+          aria-label="投稿する"
+        >
+          <PenLine size={22} className="text-white" />
+        </button>
+      )}
+
       {showPhoneVerify && (
         <PhoneVerifyModal onClose={() => setShowPhoneVerify(false)}
           onVerified={async () => { const t = await getUserTrust(userId!); setUserTrust(t) }} />
