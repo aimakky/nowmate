@@ -237,6 +237,7 @@ export default function VillagesPage() {
               radial-gradient(1.5px 1.5px at 80% 55%, white, transparent),
               radial-gradient(1px 1px at 35% 70%, white, transparent),
               radial-gradient(1px 1px at 90% 25%, white, transparent)`,
+            pointerEvents: 'none',
           }}
         />
 
