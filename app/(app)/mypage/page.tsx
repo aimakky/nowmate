@@ -182,6 +182,7 @@ export default function MyPage() {
         followsRes,
         followersRes,
         imageRes,
+        tweetRes,
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         getUserTrust(user.id),
@@ -207,6 +208,12 @@ export default function MyPage() {
           .not('image_url', 'is', null)
           .order('created_at', { ascending: false })
           .limit(30),
+        supabase
+          .from('tweets')
+          .select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(30),
       ])
 
       if (!p) { router.push('/onboarding'); return }
@@ -225,24 +232,23 @@ export default function MyPage() {
 
       setFollowersCount((followersRes as any)?.count ?? 0)
       setImagePosts((imageRes as any)?.data ?? [])
+      setTweets(((tweetRes as any)?.data ?? []) as TweetData[])
 
       setLoading(false)
-
-      // 投稿取得
-      loadTweets(user.id, supabase)
     }
     load()
   }, [router])
 
   async function loadTweets(uid: string, supabaseClient?: any) {
-    const supabase = supabaseClient ?? createClient()
+    const client = supabaseClient ?? createClient()
     setTweetLoading(true)
-    const { data } = await supabase
+    const { data, error } = await client
       .from('tweets')
       .select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)')
       .eq('user_id', uid)
       .order('created_at', { ascending: false })
       .limit(30)
+    if (error) console.error('loadTweets error:', error)
     setTweets((data ?? []) as TweetData[])
     setTweetLoading(false)
   }

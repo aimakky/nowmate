@@ -882,12 +882,13 @@ export default function TimelinePage() {
     setTweetLoading(true)
     const supabase = createClient()
     const userIds = followingIds.length > 0 ? [...followingIds, userId] : [userId]
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('tweets')
       .select('*, profiles(display_name, nationality, avatar_url), tweet_reactions(user_id, reaction), tweet_replies(id)')
       .in('user_id', userIds)
       .order('created_at', { ascending: false })
       .limit(40)
+    if (error) console.error('fetchTweets error:', error)
     setTweetFeed((data ?? []) as TweetData[])
     setTweetLoading(false)
   }, [userId, followingIds])
