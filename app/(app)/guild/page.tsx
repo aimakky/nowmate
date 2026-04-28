@@ -139,9 +139,9 @@ export default function GuildPage() {
         <div className="relative">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-indigo-300/70 text-[10px] font-bold tracking-widest uppercase mb-0.5">Guild</p>
-              <h1 className="font-extrabold text-white text-2xl leading-tight">⚔️ ギルド</h1>
-              <p className="text-indigo-200/60 text-[11px] mt-0.5">同じ業界の本音が集まる場所</p>
+              <p className="text-indigo-300/70 text-[10px] font-bold tracking-widest uppercase mb-0.5">仕事村</p>
+              <h1 className="font-extrabold text-white text-2xl leading-tight">⚔️ 仕事村</h1>
+              <p className="text-indigo-200/60 text-[11px] mt-0.5">仕事の本音が集まる場所</p>
             </div>
             <button
               onClick={() => canPost ? router.push('/guild/create') : router.push('/mypage')}
@@ -208,7 +208,7 @@ export default function GuildPage() {
         >
           <span className="text-xl">⚔️</span>
           <div className="flex-1">
-            <p className="text-xs font-bold text-indigo-300">業界を設定するとギルドに参加できます</p>
+            <p className="text-xs font-bold text-indigo-300">業界を設定すると仕事村に参加できます</p>
             <p className="text-[10px] text-indigo-400/60 mt-0.5">設定 → 業界を選択してください</p>
           </div>
           <span className="text-indigo-400/60 text-xs">›</span>
@@ -224,7 +224,7 @@ export default function GuildPage() {
         >
           <span className="text-xl">📱</span>
           <div className="flex-1">
-            <p className="text-xs font-bold text-amber-300">電話認証するとギルドに投稿できます</p>
+            <p className="text-xs font-bold text-amber-300">電話認証すると仕事村に投稿できます</p>
             <p className="text-[10px] text-amber-400/60 mt-0.5">マイページ → 電話番号認証</p>
           </div>
           <span className="text-amber-400/60 text-xs">›</span>

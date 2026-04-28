@@ -86,7 +86,7 @@ export default function GuildCreatePage() {
           <ArrowLeft size={18} className="text-white" />
         </button>
         <div>
-          <p className="font-extrabold text-white text-base">ギルドに投稿</p>
+          <p className="font-extrabold text-white text-base">仕事村に投稿</p>
           <p className="text-white/60 text-[10px]">匿名で本音を話そう</p>
         </div>
       </div>
@@ -214,7 +214,7 @@ export default function GuildCreatePage() {
           {submitting
             ? <><span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 {uploading ? '画像アップロード中...' : '投稿中...'}</>
-            : `⚔️ ギルドに投稿する`
+            : `⚔️ 仕事村に投稿する`
           }
         </button>
       </div>

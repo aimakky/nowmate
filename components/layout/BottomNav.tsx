@@ -90,7 +90,7 @@ export default function BottomNav() {
           )
         })}
 
-        {/* 中央：ギルド FABボタン */}
+        {/* 中央：仕事村 FABボタン */}
         <div className="flex-1 flex flex-col items-center justify-center relative">
           <Link href="/guild"
             className="flex flex-col items-center justify-center w-14 h-14 rounded-full -mt-5 shadow-lg active:scale-90 transition-all relative"
@@ -101,7 +101,7 @@ export default function BottomNav() {
               boxShadow: '0 4px 16px rgba(99,102,241,0.5)',
             }}>
             <span className="text-2xl leading-none">⚔️</span>
-            <span className="text-[8px] font-extrabold text-white/90 mt-0.5 leading-none">ギルド</span>
+            <span className="text-[8px] font-extrabold text-white/90 mt-0.5 leading-none">仕事村</span>
           </Link>
         </div>
 

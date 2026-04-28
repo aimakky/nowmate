@@ -155,10 +155,10 @@ export default function SettingsPage() {
           <p className="text-right text-[10px] text-stone-400 mt-1">{bio.length}/200</p>
         </div>
 
-        {/* ── ギルド業界 ── */}
+        {/* ── 仕事村の業界 ── */}
         <div>
           <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
-            ギルド業界 <span className="text-[10px] text-stone-400 normal-case font-normal">（ギルドで表示される業界）</span>
+            仕事村の業界 <span className="text-[10px] text-stone-400 normal-case font-normal">（仕事村で表示される業界）</span>
           </label>
           <div className="grid grid-cols-2 gap-2">
             {INDUSTRIES.map(ind => (
