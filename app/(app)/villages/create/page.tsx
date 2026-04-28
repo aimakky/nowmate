@@ -75,7 +75,7 @@ export default function CreateVillagePage() {
   const [type,        setType]        = useState('雑談')
   const [jobLocked,   setJobLocked]   = useState(false)
   const [jobType,     setJobType]     = useState('')
-  const [commStyle,   setCommStyle]   = useState<'text' | 'voice' | 'both'>('both')
+  const [commStyle,   setCommStyle]   = useState<'text' | 'voice'>('text')
   const [creating,    setCreating]    = useState(false)
 
   const selectedType  = VILLAGE_TYPES.find(t => t.id === type)!
@@ -167,14 +167,12 @@ export default function CreateVillagePage() {
             >
               🌱 芽吹いた村
             </div>
-            {commStyle !== 'both' && (
-              <div
-                className="absolute top-8 left-2 text-[9px] font-bold text-white/80 px-2 py-0.5 rounded-full"
-                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.2)' }}
-              >
-                {commStyle === 'text' ? '📝 テキスト中心' : '🎙️ 通話中心'}
-              </div>
-            )}
+            <div
+              className="absolute top-8 left-2 text-[9px] font-bold text-white/80 px-2 py-0.5 rounded-full"
+              style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.2)' }}
+            >
+              {commStyle === 'text' ? '💬 チャット村' : '🎙️ 通話村'}
+            </div>
             <span style={{ fontSize: '2.8rem', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.25))' }}>
               {selectedType.icon}
             </span>
@@ -321,29 +319,47 @@ export default function CreateVillagePage() {
 
         {/* ── コミュニケーションスタイル ── */}
         <div>
-          <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">
-            コミュニティスタイル
+          <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">
+            村のスタイル
           </p>
-          <div className="grid grid-cols-3 gap-2">
+          <p className="text-[10px] text-stone-400 mb-3">通話村はチャットも使えます</p>
+          <div className="grid grid-cols-2 gap-3">
             {([
-              { id: 'text',  icon: '📝', label: 'テキスト中心', desc: '文章で深く語る' },
-              { id: 'voice', icon: '🎙️', label: '通話中心',     desc: '声で話し合う' },
-              { id: 'both',  icon: '🔀', label: '両方OK',       desc: 'どちらでも' },
-            ] as { id: 'text' | 'voice' | 'both'; icon: string; label: string; desc: string }[]).map(opt => (
+              {
+                id: 'text', icon: '💬', label: 'チャット村',
+                desc: '文章で深く語り合う村\nテキスト投稿・返信中心',
+                color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe',
+              },
+              {
+                id: 'voice', icon: '🎙️', label: '通話村',
+                desc: '声で話し合える村\n通話 ＋ チャット両方使える',
+                color: '#ea580c', bg: '#fff7ed', border: '#fed7aa',
+              },
+            ] as { id: 'text' | 'voice'; icon: string; label: string; desc: string; color: string; bg: string; border: string }[]).map(opt => (
               <button
                 key={opt.id}
                 onClick={() => setCommStyle(opt.id)}
-                className="flex flex-col items-center gap-1 p-3 rounded-2xl border-2 text-center transition-all active:scale-95"
+                className="flex flex-col items-start gap-2 p-4 rounded-2xl border-2 text-left transition-all active:scale-95"
                 style={commStyle === opt.id
-                  ? { borderColor: '#6366f1', background: '#eef2ff' }
+                  ? { borderColor: opt.color, background: opt.bg }
                   : { borderColor: '#e7e5e4', background: '#fff' }
                 }
               >
-                <span className="text-2xl">{opt.icon}</span>
-                <p className="text-[11px] font-extrabold leading-tight" style={{ color: commStyle === opt.id ? '#4f46e5' : '#44403c' }}>
-                  {opt.label}
-                </p>
-                <p className="text-[9px] text-stone-400">{opt.desc}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{opt.icon}</span>
+                  <p className="text-xs font-extrabold leading-tight" style={{ color: commStyle === opt.id ? opt.color : '#44403c' }}>
+                    {opt.label}
+                  </p>
+                </div>
+                <p className="text-[10px] text-stone-400 leading-relaxed whitespace-pre-line">{opt.desc}</p>
+                {commStyle === opt.id && (
+                  <span
+                    className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: opt.color, color: '#fff' }}
+                  >
+                    ✓ 選択中
+                  </span>
+                )}
               </button>
             ))}
           </div>

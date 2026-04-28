@@ -202,14 +202,6 @@ export const COMM_STYLE_CONFIG: Record<string, {
     badgeBg:        '#f97316',
     badgeText:      '#fff',
   },
-  both: {
-    icon:           '🔀',
-    label:          '両方OK',
-    topBar:         'linear-gradient(90deg, #3b82f6 0%, #f97316 100%)',
-    bannerGradient: 'linear-gradient(135deg, #1d4ed8 0%, #7c3aed 50%, #ea580c 100%)',
-    badgeBg:        '#8b5cf6',
-    badgeText:      '#fff',
-  },
 }
 
 // ─── Main Card ───────────────────────────────────────────────
