@@ -9,8 +9,8 @@ import { createClient } from '@/lib/supabase/client'
 
 // Twitter/X方式: 村|TL|[🌊FAB]|通知|チャット  マイページはヘッダー左上
 const LEFT_ITEMS = [
-  { href: '/villages',  label: '村',          icon: Compass },
   { href: '/timeline',  label: 'TL',          icon: Layers  },
+  { href: '/villages',  label: '村',          icon: Compass },
 ]
 const RIGHT_ITEMS = [
   { href: '/notifications', label: '通知', icon: Bell        },

@@ -1,9 +1,9 @@
-﻿'use client'
+'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Eye, EyeOff, X } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, X, ImagePlus } from 'lucide-react'
 import { QA_CATEGORIES, getCategoryStyle } from '@/lib/qa'
 import { getUserTrust } from '@/lib/trust'
 
@@ -15,15 +15,24 @@ interface Village {
 
 export default function QACreatePage() {
   const router = useRouter()
-  const [category,      setCategory]      = useState('なんでも相談')
-  const [title,         setTitle]         = useState('')
-  const [content,       setContent]       = useState('')
-  const [isAnonymous,   setIsAnonymous]   = useState(true)
-  const [submitting,    setSubmitting]    = useState(false)
-  const [error,         setError]         = useState('')
-  const [myVillages,    setMyVillages]    = useState<Village[]>([])
+  const fileRef = useRef<HTMLInputElement>(null)
+  const ansFileRef = useRef<HTMLInputElement>(null)
+
+  const [category,        setCategory]        = useState('なんでも相談')
+  const [title,           setTitle]           = useState('')
+  const [content,         setContent]         = useState('')
+  const [isAnonymous,     setIsAnonymous]     = useState(true)
+  const [targetScope,     setTargetScope]     = useState<'all' | 'villages'>('all')
+  const [submitting,      setSubmitting]      = useState(false)
+  const [error,           setError]           = useState('')
+  const [myVillages,      setMyVillages]      = useState<Village[]>([])
   const [selectedVillage, setSelectedVillage] = useState<Village | null>(null)
-  const [showVillages,  setShowVillages]  = useState(false)
+  const [showVillages,    setShowVillages]    = useState(false)
+
+  // Image
+  const [imageFile,    setImageFile]    = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [uploading,    setUploading]    = useState(false)
 
   const cs = getCategoryStyle(category)
 
@@ -45,6 +54,34 @@ export default function QACreatePage() {
     loadVillages()
   }, [])
 
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setError('画像は5MB以下にしてください')
+      return
+    }
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+    setError('')
+  }
+
+  function removeImage() {
+    setImageFile(null)
+    setImagePreview(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  async function uploadImage(userId: string, file: File): Promise<string | null> {
+    const supabase = createClient()
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const path = `${userId}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('qa-images').upload(path, file, { contentType: file.type })
+    if (error) return null
+    const { data } = supabase.storage.from('qa-images').getPublicUrl(path)
+    return data.publicUrl
+  }
+
   async function handleSubmit() {
     if (!title.trim() || !content.trim() || submitting) return
     setError('')
@@ -61,6 +98,19 @@ export default function QACreatePage() {
       return
     }
 
+    // Upload image if any
+    let imageUrl: string | null = null
+    if (imageFile) {
+      setUploading(true)
+      imageUrl = await uploadImage(user.id, imageFile)
+      setUploading(false)
+      if (!imageUrl) {
+        setError('画像のアップロードに失敗しました')
+        setSubmitting(false)
+        return
+      }
+    }
+
     const { error: err } = await supabase.from('qa_questions').insert({
       user_id:      user.id,
       category,
@@ -68,6 +118,8 @@ export default function QACreatePage() {
       content:      content.trim(),
       is_anonymous: isAnonymous,
       village_id:   selectedVillage?.id ?? null,
+      target_scope: targetScope,
+      image_url:    imageUrl,
     })
 
     if (err) {
@@ -125,6 +177,41 @@ export default function QACreatePage() {
           </div>
         </div>
 
+        {/* ── 質問の対象 ── */}
+        <div>
+          <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">質問の対象</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setTargetScope('all')}
+              className="flex flex-col items-center gap-1.5 p-3.5 rounded-2xl border-2 transition-all active:scale-95"
+              style={targetScope === 'all'
+                ? { borderColor: cs.color, background: cs.bg }
+                : { borderColor: '#e7e5e4', background: '#fff' }
+              }
+            >
+              <span className="text-2xl">🌐</span>
+              <p className="text-xs font-extrabold" style={{ color: targetScope === 'all' ? cs.color : '#44403c' }}>全体</p>
+              <p className="text-[10px] leading-tight text-center" style={{ color: targetScope === 'all' ? cs.color : '#a8a29e' }}>
+                みんなに届く
+              </p>
+            </button>
+            <button
+              onClick={() => setTargetScope('villages')}
+              className="flex flex-col items-center gap-1.5 p-3.5 rounded-2xl border-2 transition-all active:scale-95"
+              style={targetScope === 'villages'
+                ? { borderColor: cs.color, background: cs.bg }
+                : { borderColor: '#e7e5e4', background: '#fff' }
+              }
+            >
+              <span className="text-2xl">🏕️</span>
+              <p className="text-xs font-extrabold" style={{ color: targetScope === 'villages' ? cs.color : '#44403c' }}>参加している村全体</p>
+              <p className="text-[10px] leading-tight text-center" style={{ color: targetScope === 'villages' ? cs.color : '#a8a29e' }}>
+                村メンバーに届く
+              </p>
+            </button>
+          </div>
+        </div>
+
         {/* ── タイトル ── */}
         <div>
           <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
@@ -163,6 +250,51 @@ export default function QACreatePage() {
           </div>
         </div>
 
+        {/* ── 画像添付 ── */}
+        <div>
+          <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+            画像 <span className="text-stone-300 normal-case font-normal">（任意・5MBまで）</span>
+          </p>
+          {imagePreview ? (
+            <div className="relative">
+              <img
+                src={imagePreview}
+                alt="プレビュー"
+                className="w-full max-h-64 object-cover rounded-2xl border border-stone-200"
+              />
+              <button
+                onClick={removeImage}
+                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center active:scale-90 transition-all"
+              >
+                <X size={13} className="text-white" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 border-dashed border-stone-200 bg-white active:bg-stone-50 transition-colors"
+            >
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: cs.bg }}
+              >
+                <ImagePlus size={18} style={{ color: cs.color }} />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-bold text-stone-400">画像を追加</p>
+                <p className="text-[10px] text-stone-300">JPG / PNG / WebP</p>
+              </div>
+            </button>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+            onChange={handleImageChange}
+          />
+        </div>
+
         {/* ── 届け先の村（任意） ── */}
         {myVillages.length > 0 && (
           <div>
@@ -170,7 +302,6 @@ export default function QACreatePage() {
               届け先の村 <span className="text-stone-300 normal-case font-normal">（任意）</span>
             </p>
 
-            {/* 選択済みの村 */}
             {selectedVillage ? (
               <div
                 className="flex items-center gap-3 p-3.5 rounded-2xl border-2"
@@ -207,7 +338,6 @@ export default function QACreatePage() {
               </button>
             )}
 
-            {/* 村リスト */}
             {showVillages && !selectedVillage && (
               <div className="mt-2 rounded-2xl overflow-hidden border border-stone-100 divide-y divide-stone-50 shadow-sm">
                 {myVillages.map(v => (
@@ -288,7 +418,10 @@ export default function QACreatePage() {
           style={{ background: cs.gradient, boxShadow: `0 8px 24px ${cs.color}40` }}
         >
           {submitting
-            ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ? <>
+                <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                {uploading ? '画像アップロード中...' : '投稿中...'}
+              </>
             : <>{cs.emoji} 質問を投稿する</>
           }
         </button>

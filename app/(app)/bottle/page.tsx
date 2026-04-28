@@ -125,7 +125,7 @@ export default function BottlePage() {
   // メインタブ
   const [tab,    setTab]    = useState<'qa' | 'bottle'>('qa')
   // Q&A サブタブ
-  const [qaMode, setQaMode] = useState<'browse' | 'answer'>('browse')
+  const [qaMode, setQaMode] = useState<'open' | 'resolved'>('open')
 
   // 共通
   const [userId,    setUserId]    = useState<string | null>(null)
@@ -136,17 +136,15 @@ export default function BottlePage() {
   const [villages, setVillages] = useState<any[]>([])
   const [selected, setSelected] = useState<any>(null)
 
-  // Q&A（質問する）
-  const [questions,    setQuestions]    = useState<Question[]>([])
-  const [qaLoading,    setQaLoading]    = useState(false)
-  const [qaCategory,   setQaCategory]   = useState('all')
-  const [qaUnanswered, setQaUnanswered] = useState(false)
+  // Q&A（回答受付中）
+  const [questions,  setQuestions]  = useState<Question[]>([])
+  const [qaLoading,  setQaLoading]  = useState(false)
+  const [qaCategory, setQaCategory] = useState('all')
 
-  // Q&A（答える）
-  const [answerTargets,  setAnswerTargets]  = useState<Question[]>([])
-  const [answerLoading,  setAnswerLoading]  = useState(false)
-  const [answerCategory, setAnswerCategory] = useState('all')
-  const [myAnswerCount,  setMyAnswerCount]  = useState(0)
+  // Q&A（解決済み）
+  const [resolved,        setResolved]        = useState<Question[]>([])
+  const [resolvedLoading, setResolvedLoading] = useState(false)
+  const [resolvedCategory, setResolvedCategory] = useState('all')
 
   // ─── 初期化 ────────────────────────────────────────────────
   useEffect(() => {
@@ -174,16 +172,16 @@ export default function BottlePage() {
     init()
   }, [router])
 
-  // ─── 質問一覧取得 ──────────────────────────────────────────
+  // ─── 回答受付中 取得 ──────────────────────────────────────
   const fetchQuestions = useCallback(async () => {
     setQaLoading(true)
     let q = createClient()
       .from('qa_questions')
       .select('*, profiles(display_name), user_trust!qa_questions_user_id_fkey(tier), villages(id,name,icon)')
+      .eq('status', 'open')
       .order('created_at', { ascending: false })
       .limit(30)
     if (qaCategory !== 'all') q = q.eq('category', qaCategory)
-    if (qaUnanswered) q = q.eq('answer_count', 0)
     const { data } = await q
     setQuestions((data || []).map((item: any) => ({
       ...item,
@@ -192,49 +190,35 @@ export default function BottlePage() {
       villages:   Array.isArray(item.villages)   ? item.villages[0]   ?? null : item.villages,
     })) as Question[])
     setQaLoading(false)
-  }, [qaCategory, qaUnanswered])
+  }, [qaCategory])
 
-  // ─── 回答ターゲット取得 ────────────────────────────────────
-  const fetchAnswerTargets = useCallback(async () => {
-    if (!userId) return
-    setAnswerLoading(true)
-    const supabase = createClient()
-
-    // 未解決・open の質問を取得（自分の質問除く）
-    let q = supabase
+  // ─── 解決済み 取得 ────────────────────────────────────────
+  const fetchResolved = useCallback(async () => {
+    setResolvedLoading(true)
+    let q = createClient()
       .from('qa_questions')
       .select('*, profiles(display_name), user_trust!qa_questions_user_id_fkey(tier), villages(id,name,icon)')
-      .eq('status', 'open')
-      .neq('user_id', userId)
-      .order('answer_count', { ascending: true })   // 回答0件を先に
-      .order('created_at',   { ascending: false })
+      .eq('status', 'resolved')
+      .order('created_at', { ascending: false })
       .limit(30)
-    if (answerCategory !== 'all') q = q.eq('category', answerCategory)
+    if (resolvedCategory !== 'all') q = q.eq('category', resolvedCategory)
     const { data } = await q
-    setAnswerTargets((data || []).map((item: any) => ({
+    setResolved((data || []).map((item: any) => ({
       ...item,
       profiles:   Array.isArray(item.profiles)   ? item.profiles[0]   ?? null : item.profiles,
       user_trust: Array.isArray(item.user_trust) ? item.user_trust[0] ?? null : item.user_trust,
       villages:   Array.isArray(item.villages)   ? item.villages[0]   ?? null : item.villages,
     })) as Question[])
-
-    // 自分がこれまでに回答した総数
-    const { count } = await supabase
-      .from('qa_answers')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-    setMyAnswerCount(count ?? 0)
-
-    setAnswerLoading(false)
-  }, [userId, answerCategory])
+    setResolvedLoading(false)
+  }, [resolvedCategory])
 
   useEffect(() => {
-    if (tab === 'qa' && qaMode === 'browse') fetchQuestions()
+    if (tab === 'qa' && qaMode === 'open')     fetchQuestions()
   }, [tab, qaMode, fetchQuestions])
 
   useEffect(() => {
-    if (tab === 'qa' && qaMode === 'answer') fetchAnswerTargets()
-  }, [tab, qaMode, fetchAnswerTargets])
+    if (tab === 'qa' && qaMode === 'resolved') fetchResolved()
+  }, [tab, qaMode, fetchResolved])
 
   // ─── レンダリング ──────────────────────────────────────────
   if (loading) return (
@@ -277,24 +261,11 @@ export default function BottlePage() {
             </h1>
             <p className="text-blue-200/60 text-[11px] mt-0.5">
               {tab === 'qa'
-                ? qaMode === 'browse' ? '経験者が答えてくれる相談広場' : '誰かの悩みに、あなたの経験を'
+                ? qaMode === 'open' ? '経験者が答えてくれる相談広場' : '解決した知識を活かそう'
                 : '気持ちを匿名で流す・誰かが拾う'}
             </p>
           </div>
-          {tab === 'qa' && qaMode === 'browse' && (
-            <button
-              onClick={() => router.push('/qa/create')}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold flex-shrink-0 active:scale-95 transition-all"
-              style={{
-                background: 'rgba(255,255,255,0.15)',
-                color: '#fff',
-                border: '1px solid rgba(255,255,255,0.2)',
-                backdropFilter: 'blur(8px)',
-              }}
-            >
-              <Plus size={13} /> 質問する
-            </button>
-          )}
+          {/* 右上ボタン削除済み */}
         </div>
 
         {/* ── メインタブ ── */}
@@ -329,13 +300,13 @@ export default function BottlePage() {
           <div className="bg-white border-b border-stone-100 shadow-sm">
             <div className="flex px-4 pt-3 gap-2">
               {([
-                { id: 'browse', icon: '🔍', label: '質問を見る' },
-                { id: 'answer', icon: '✍️', label: '答える' },
-              ] as { id: 'browse' | 'answer'; icon: string; label: string }[]).map(m => (
+                { id: 'open',     icon: '🔍', label: '回答受付中' },
+                { id: 'resolved', icon: '✅', label: '解決済み'   },
+              ] as { id: 'open' | 'resolved'; icon: string; label: string }[]).map(m => (
                 <button
                   key={m.id}
                   onClick={() => setQaMode(m.id)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-xs font-extrabold transition-all active:scale-95 relative"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-xs font-extrabold transition-all active:scale-95"
                   style={qaMode === m.id
                     ? { background: '#1e40af', color: '#fff' }
                     : { background: '#fafaf9', color: '#78716c', border: '1px solid #e7e5e4' }
@@ -343,14 +314,6 @@ export default function BottlePage() {
                 >
                   <span>{m.icon}</span>
                   <span>{m.label}</span>
-                  {m.id === 'answer' && myAnswerCount > 0 && (
-                    <span
-                      className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-extrabold text-white border-2 border-white"
-                      style={{ background: '#f97316' }}
-                    >
-                      {myAnswerCount}
-                    </span>
-                  )}
                 </button>
               ))}
             </div>
@@ -358,9 +321,9 @@ export default function BottlePage() {
             {/* カテゴリフィルター */}
             <div className="px-4 pt-2 pb-3 flex gap-2 overflow-x-auto scrollbar-none">
               <button
-                onClick={() => qaMode === 'browse' ? setQaCategory('all') : setAnswerCategory('all')}
+                onClick={() => qaMode === 'open' ? setQaCategory('all') : setResolvedCategory('all')}
                 className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-all"
-                style={(qaMode === 'browse' ? qaCategory : answerCategory) === 'all'
+                style={(qaMode === 'open' ? qaCategory : resolvedCategory) === 'all'
                   ? { background: '#18181b', color: '#fff', border: '1px solid #18181b' }
                   : { background: '#fff', borderColor: '#e7e5e4', color: '#78716c' }
                 }
@@ -370,9 +333,9 @@ export default function BottlePage() {
               {QA_CATEGORIES.map(c => (
                 <button
                   key={c.id}
-                  onClick={() => qaMode === 'browse' ? setQaCategory(c.id) : setAnswerCategory(c.id)}
+                  onClick={() => qaMode === 'open' ? setQaCategory(c.id) : setResolvedCategory(c.id)}
                   className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-all"
-                  style={(qaMode === 'browse' ? qaCategory : answerCategory) === c.id
+                  style={(qaMode === 'open' ? qaCategory : resolvedCategory) === c.id
                     ? { background: c.color, color: '#fff', border: `1px solid ${c.color}` }
                     : { background: '#fff', borderColor: '#e7e5e4', color: '#78716c' }
                   }
@@ -381,25 +344,6 @@ export default function BottlePage() {
                 </button>
               ))}
             </div>
-
-            {/* 未回答フィルター（browseタブのみ） */}
-            {qaMode === 'browse' && (
-              <div className="px-4 pb-3">
-                <button
-                  onClick={() => setQaUnanswered(v => !v)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition-all active:scale-95"
-                  style={qaUnanswered
-                    ? { background: '#fef3c7', color: '#d97706', borderColor: '#fde68a' }
-                    : { background: '#fff', color: '#a8a29e', borderColor: '#e7e5e4' }
-                  }
-                >
-                  🔥 未回答のみ表示
-                  {qaUnanswered && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  )}
-                </button>
-              </div>
-            )}
           </div>
 
           {/* 見習いバナー */}
@@ -417,8 +361,8 @@ export default function BottlePage() {
             </div>
           )}
 
-          {/* ── 質問を見るモード ── */}
-          {qaMode === 'browse' && (
+          {/* ── 回答受付中 ── */}
+          {qaMode === 'open' && (
             <div className="px-4 pt-3 space-y-3">
               {qaLoading ? (
                 [...Array(4)].map((_, i) => (
@@ -432,13 +376,13 @@ export default function BottlePage() {
                 <div className="text-center py-20">
                   <p className="text-5xl mb-4">🔍</p>
                   <p className="font-extrabold text-stone-800 text-base mb-1.5">まだ質問がありません</p>
-                  <p className="text-sm text-stone-400 mb-6">最初の相談をしてみましょう</p>
+                  <p className="text-sm text-stone-400 mb-6">最初の質問をしてみましょう</p>
                   <button
                     onClick={() => router.push('/qa/create')}
                     className="px-6 py-3 rounded-2xl text-sm font-bold text-white"
                     style={{ background: 'linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%)' }}
                   >
-                    ✏️ 相談する
+                    ✏️ 質問する
                   </button>
                 </div>
               ) : (
@@ -454,49 +398,10 @@ export default function BottlePage() {
             </div>
           )}
 
-          {/* ── 答えるモード ── */}
-          {qaMode === 'answer' && (
+          {/* ── 解決済み ── */}
+          {qaMode === 'resolved' && (
             <div className="px-4 pt-3 space-y-3">
-
-              {/* 回答者ステータスバー */}
-              <div
-                className="rounded-2xl px-4 py-3 flex items-center gap-3"
-                style={{ background: 'linear-gradient(135deg, #1e3a8a10 0%, #1d4ed810 100%)', border: '1px solid #bfdbfe' }}
-              >
-                <div
-                  className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
-                  style={{ background: '#1e40af', boxShadow: '0 4px 12px rgba(30,64,175,0.3)' }}
-                >
-                  ✍️
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-extrabold text-blue-900">
-                    あなたがこれまで答えた数
-                  </p>
-                  <p className="text-[10px] text-blue-500 mt-0.5">
-                    回答するほど信頼スコアが上がります
-                  </p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-2xl font-extrabold text-blue-700">{myAnswerCount}</p>
-                  <p className="text-[9px] text-blue-400">回答</p>
-                </div>
-              </div>
-
-              {/* 未回答ゼロの場合のモチベーション */}
-              {!answerLoading && answerTargets.filter(q => q.answer_count === 0).length > 0 && (
-                <div
-                  className="rounded-2xl px-3 py-2.5 flex items-center gap-2"
-                  style={{ background: '#fffbeb', border: '1px solid #fde68a' }}
-                >
-                  <Zap size={14} className="text-amber-500 flex-shrink-0" />
-                  <p className="text-[11px] font-bold text-amber-700">
-                    まだ誰も答えていない質問が{answerTargets.filter(q => q.answer_count === 0).length}件あります
-                  </p>
-                </div>
-              )}
-
-              {answerLoading ? (
+              {resolvedLoading ? (
                 [...Array(3)].map((_, i) => (
                   <div key={i} className="bg-white rounded-3xl p-4 border border-stone-100 animate-pulse">
                     <div className="h-3 bg-stone-100 rounded-full w-1/4 mb-3" />
@@ -504,22 +409,18 @@ export default function BottlePage() {
                     <div className="h-3 bg-stone-100 rounded-full w-2/3" />
                   </div>
                 ))
-              ) : answerTargets.length === 0 ? (
+              ) : resolved.length === 0 ? (
                 <div className="text-center py-20">
                   <p className="text-5xl mb-4">✅</p>
-                  <p className="font-extrabold text-stone-800 text-base mb-1.5">
-                    未回答の質問はありません
-                  </p>
-                  <p className="text-sm text-stone-400">
-                    全部解決済みです。すごい！
-                  </p>
+                  <p className="font-extrabold text-stone-800 text-base mb-1.5">解決済みの質問はまだありません</p>
+                  <p className="text-sm text-stone-400">回答受付中の質問に答えてみましょう</p>
                 </div>
               ) : (
-                answerTargets.map(q => (
+                resolved.map(q => (
                   <QuestionCard
                     key={q.id}
                     q={q}
-                    mode="answer"
+                    mode="browse"
                     onClick={() => router.push(`/qa/${q.id}`)}
                   />
                 ))
@@ -527,19 +428,17 @@ export default function BottlePage() {
             </div>
           )}
 
-          {/* FAB（質問するモードのみ） */}
-          {qaMode === 'browse' && (
-            <button
-              onClick={() => router.push('/qa/create')}
-              className="fixed bottom-24 right-5 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
-              style={{
-                background: 'linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%)',
-                boxShadow: '0 8px 24px rgba(29,78,216,0.4)',
-              }}
-            >
-              <Plus size={22} className="text-white" />
-            </button>
-          )}
+          {/* FAB（質問する） */}
+          <button
+            onClick={() => router.push('/qa/create')}
+            className="fixed bottom-24 right-5 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
+            style={{
+              background: 'linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%)',
+              boxShadow: '0 8px 24px rgba(29,78,216,0.4)',
+            }}
+          >
+            <Plus size={22} className="text-white" />
+          </button>
         </div>
       )}
 

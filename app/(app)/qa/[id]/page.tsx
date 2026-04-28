@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Flag, CheckCircle, Star, Send, ThumbsUp, Trophy } from 'lucide-react'
+import { ArrowLeft, Flag, CheckCircle, Star, Send, ThumbsUp, Trophy, ImagePlus, X } from 'lucide-react'
 import { timeAgo } from '@/lib/utils'
 import { getCategoryStyle, getAnonDisplay, getTitleName } from '@/lib/qa'
 import TrustBadge from '@/components/ui/TrustBadge'
@@ -123,6 +123,9 @@ export default function QADetailPage() {
   const [loading,       setLoading]       = useState(true)
   const [newAnswer,     setNewAnswer]     = useState('')
   const [posting,       setPosting]       = useState(false)
+  const [ansImageFile,  setAnsImageFile]  = useState<File | null>(null)
+  const [ansImagePrev,  setAnsImagePrev]  = useState<string | null>(null)
+  const ansFileRef = useRef<HTMLInputElement>(null)
   const [reportTarget,  setReportTarget]  = useState<{ type: 'question'|'answer'; id: string } | null>(null)
   const [selecting,     setSelecting]     = useState<string | null>(null)
   const [thankYouFor,   setThankYouFor]   = useState<string | null>(null) // answerId
@@ -184,16 +187,34 @@ export default function QADetailPage() {
   const tier      = userTrust ? getTierById(userTrust.tier) : getTierById('visitor')
   const canAnswer = tier.canPost
 
+  async function uploadAnsImage(file: File): Promise<string | null> {
+    const supabase = createClient()
+    const ext  = file.name.split('.').pop() ?? 'jpg'
+    const path = `${userId}/${Date.now()}-ans.${ext}`
+    const { error } = await supabase.storage.from('qa-images').upload(path, file, { contentType: file.type })
+    if (error) return null
+    return supabase.storage.from('qa-images').getPublicUrl(path).data.publicUrl
+  }
+
   async function submitAnswer() {
     if (!userId || !newAnswer.trim() || posting) return
     setPosting(true)
+
+    let imageUrl: string | null = null
+    if (ansImageFile) {
+      imageUrl = await uploadAnsImage(ansImageFile)
+    }
+
     await createClient().from('qa_answers').insert({
-      question_id: id,
-      user_id:     userId,
-      content:     newAnswer.trim(),
-      is_anonymous: false,   // 実名固定
+      question_id:  id,
+      user_id:      userId,
+      content:      newAnswer.trim(),
+      is_anonymous: false,
+      image_url:    imageUrl,
     })
     setNewAnswer('')
+    setAnsImageFile(null)
+    setAnsImagePrev(null)
     await fetchAnswers()
     await fetchQuestion()
     setPosting(false)
@@ -333,6 +354,13 @@ export default function QADetailPage() {
       {/* ── Question content ── */}
       <div className="mx-4 mt-3 bg-white rounded-3xl p-5 shadow-sm border border-stone-100">
         <p className="text-sm text-stone-800 leading-relaxed whitespace-pre-wrap">{question.content}</p>
+        {question.image_url && (
+          <img
+            src={question.image_url}
+            alt="添付画像"
+            className="mt-3 w-full rounded-2xl object-cover max-h-72 border border-stone-100"
+          />
+        )}
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-stone-50">
           <span className="text-xs text-stone-400">{question.answer_count ?? answers.length} 件の回答</span>
           <button onClick={() => userId && setReportTarget({ type: 'question', id: question.id })}
@@ -409,9 +437,16 @@ export default function QADetailPage() {
                   </div>
 
                   {/* 本文 */}
-                  <p className="text-sm text-stone-800 leading-relaxed whitespace-pre-wrap mb-4">
+                  <p className="text-sm text-stone-800 leading-relaxed whitespace-pre-wrap mb-3">
                     {ans.content}
                   </p>
+                  {ans.image_url && (
+                    <img
+                      src={ans.image_url}
+                      alt="添付画像"
+                      className="mb-3 w-full rounded-2xl object-cover max-h-64 border border-stone-100"
+                    />
+                  )}
 
                   {/* アクションフッター */}
                   <div className="flex items-center justify-between">
@@ -467,24 +502,58 @@ export default function QADetailPage() {
                 <p className="text-xs font-bold text-stone-600">回答を投稿する</p>
                 <span className="text-[10px] text-stone-400 ml-auto">実名で公開されます</span>
               </div>
-              <div className="flex gap-2 items-end">
-                <textarea
-                  value={newAnswer}
-                  onChange={e => setNewAnswer(e.target.value.slice(0, 1000))}
-                  placeholder="誠実なアドバイスが、あなたの信頼を高めます..."
-                  rows={3}
-                  className="flex-1 px-3 py-2.5 rounded-2xl border border-stone-200 text-sm resize-none focus:outline-none leading-relaxed"
-                />
-                <button onClick={submitAnswer} disabled={!newAnswer.trim() || posting}
-                  className="w-11 h-11 rounded-2xl flex items-center justify-center disabled:opacity-40 active:scale-90 transition-all flex-shrink-0"
-                  style={{ background: cs.gradient }}>
-                  {posting
-                    ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    : <Send size={15} className="text-white" />
-                  }
+              <textarea
+                value={newAnswer}
+                onChange={e => setNewAnswer(e.target.value.slice(0, 1000))}
+                placeholder="誠実なアドバイスが、あなたの信頼を高めます..."
+                rows={3}
+                className="w-full px-3 py-2.5 rounded-2xl border border-stone-200 text-sm resize-none focus:outline-none leading-relaxed mb-2"
+              />
+              {/* 画像プレビュー */}
+              {ansImagePrev && (
+                <div className="relative mb-2">
+                  <img src={ansImagePrev} alt="プレビュー" className="w-full max-h-40 object-cover rounded-xl border border-stone-100" />
+                  <button
+                    onClick={() => { setAnsImageFile(null); setAnsImagePrev(null); if (ansFileRef.current) ansFileRef.current.value = '' }}
+                    className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center"
+                  >
+                    <X size={11} className="text-white" />
+                  </button>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => ansFileRef.current?.click()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95"
+                  style={{ background: `${cs.color}12`, color: cs.color }}
+                >
+                  <ImagePlus size={13} /> 画像
                 </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-stone-400">{newAnswer.length}/1000</span>
+                  <button onClick={submitAnswer} disabled={!newAnswer.trim() || posting}
+                    className="w-10 h-10 rounded-2xl flex items-center justify-center disabled:opacity-40 active:scale-90 transition-all"
+                    style={{ background: cs.gradient }}>
+                    {posting
+                      ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      : <Send size={15} className="text-white" />
+                    }
+                  </button>
+                </div>
               </div>
-              <p className="text-[10px] text-stone-400 mt-1.5 text-right">{newAnswer.length}/1000</p>
+              <input
+                ref={ansFileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0]
+                  if (!f) return
+                  if (f.size > 5 * 1024 * 1024) return
+                  setAnsImageFile(f)
+                  setAnsImagePrev(URL.createObjectURL(f))
+                }}
+              />
             </div>
           ) : (
             <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3 text-center">
