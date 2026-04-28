@@ -6,13 +6,13 @@ import { createClient } from '@/lib/supabase/client'
 import { getTierById } from '@/lib/trust'
 import { timeAgo } from '@/lib/utils'
 import { detectNgWords } from '@/lib/moderation'
-import { Heart, RefreshCw, ChevronRight, Users, Globe, Home, Share2, Sparkles, HelpCircle, Send, CheckCircle, X, Plus, Waves, Pencil, MessageCircle as MsgIcon } from 'lucide-react'
+import { Heart, RefreshCw, ChevronRight, Users, Globe, Home, Share2, Sparkles, HelpCircle, Send, CheckCircle, X, Plus, Waves } from 'lucide-react'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import { detectCrisisKeywords } from '@/lib/moderation'
 import Link from 'next/link'
 
 // ── 型定義 ──────────────────────────────────────────────────────
-type Tab = 'myvillage' | 'all' | 'following' | 'tweets'
+type Tab = 'myvillage' | 'all' | 'following'
 
 interface TPost {
   id: string
@@ -44,8 +44,9 @@ interface QABottle {
 }
 
 type FeedItem =
-  | { type: 'post'; data: TPost }
-  | { type: 'qa';   data: QABottle }
+  | { type: 'post';  data: TPost }
+  | { type: 'qa';    data: QABottle }
+  | { type: 'tweet'; data: TweetData }
 
 const PAGE_SIZE = 20
 
@@ -72,10 +73,9 @@ const CAT_COLOR: Record<string, string> = {
 }
 
 const TAB_CONFIG: { key: Tab; label: string; icon: React.ElementType }[] = [
-  { key: 'myvillage', label: 'マイ村',     icon: Home    },
-  { key: 'all',       label: 'みんな',     icon: Globe   },
-  { key: 'following', label: 'フォロー',   icon: Users   },
-  { key: 'tweets',    label: '投稿',   icon: MsgIcon },
+  { key: 'myvillage', label: 'マイ村',   icon: Home  },
+  { key: 'all',       label: 'みんな',   icon: Globe },
+  { key: 'following', label: 'フォロー', icon: Users },
 ]
 
 // ── Q&Aカード ──────────────────────────────────────────────────
@@ -320,93 +320,6 @@ function buildFeed(posts: TPost[], qaBottles: QABottle[]): FeedItem[] {
     feed.push({ type: 'qa', data: qaBottles[qaIdx++] })
   }
   return feed
-}
-
-// ── ツイートコンポーズシート ────────────────────────────────────
-function TweetComposeSheet({
-  userId, avatarUrl, displayName, onClose, onPosted,
-}: {
-  userId: string
-  avatarUrl: string | null
-  displayName: string
-  onClose: () => void
-  onPosted: () => Promise<void>
-}) {
-  const [text, setText] = useState('')
-  const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
-  const MAX = 280
-
-  useEffect(() => {
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
-  }, [])
-
-  async function handlePost() {
-    if (!text.trim() || sending || text.length > MAX) return
-    setSending(true)
-    const { error } = await createClient().from('tweets').insert({ user_id: userId, content: text.trim() })
-    setSending(false)
-    if (!error) {
-      setSent(true)
-      await onPosted()   // リロード完了を待ってからクローズ
-      onClose()
-    }
-  }
-
-  const remaining = MAX - text.length
-  const pct = text.length / MAX
-  const R = 9, C = 2 * Math.PI * R
-
-  return (
-    <div className="fixed inset-0 z-[60] flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl w-full max-w-md mx-auto overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-stone-200" />
-        </div>
-        <div className="flex items-center justify-between px-5 py-2.5">
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full active:bg-stone-100 transition-colors">
-            <X size={18} className="text-stone-500" />
-          </button>
-          <button
-            onClick={handlePost}
-            disabled={!text.trim() || sending || sent || text.length > MAX}
-            className="px-5 py-1.5 rounded-full text-sm font-extrabold text-white disabled:opacity-40 active:scale-95 transition-all"
-            style={{ background: 'linear-gradient(135deg,#1c1917,#3c3836)' }}
-          >
-            {sending ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin block" /> : sent ? '✓ 投稿済み' : '投稿する'}
-          </button>
-        </div>
-        <div className="flex gap-3 px-5 pt-1 pb-4">
-          <div className="flex-shrink-0">
-            <div className="w-10 h-10 rounded-full overflow-hidden bg-stone-100 flex items-center justify-center text-sm font-bold text-white"
-              style={{ background: 'linear-gradient(135deg,#6366f1,#4f46e5)' }}>
-              {avatarUrl ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" /> : <span>{displayName[0]}</span>}
-            </div>
-          </div>
-          <textarea
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder="いまどうしてる？"
-            rows={5} autoFocus
-            className="flex-1 text-[17px] leading-relaxed resize-none focus:outline-none text-stone-900 placeholder-stone-300 bg-transparent"
-          />
-        </div>
-        <div className="flex items-center justify-between px-5 py-3 border-t border-stone-100">
-          <p className="text-[11px] text-stone-400">自由村全体に公開されます</p>
-          <div className="flex items-center gap-2.5">
-            <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">
-              <circle cx="12" cy="12" r={R} fill="none" stroke="#e7e5e4" strokeWidth="2.5" />
-              <circle cx="12" cy="12" r={R} fill="none" stroke={pct > 0.9 ? '#f97316' : '#1c1917'} strokeWidth="2.5" strokeLinecap="round"
-                strokeDasharray={C} strokeDashoffset={C * (1 - pct)} style={{ transition: 'stroke-dashoffset 0.1s' }} />
-            </svg>
-            <span className={`text-xs font-bold ${remaining < 20 ? 'text-orange-500' : 'text-stone-300'}`}>{remaining}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 // ── 投稿カテゴリ ───────────────────────────────────────────────
@@ -722,7 +635,6 @@ export default function TimelinePage() {
   const [followingIds, setFollowingIds] = useState<string[]>([])
   const [likedIds,     setLikedIds]     = useState<Set<string>>(new Set())
   const [showCompose,    setShowCompose]    = useState(false)
-  const [showTweetCompose, setShowTweetCompose] = useState(false)
   const [userProfile,    setUserProfile]    = useState<{ display_name: string; avatar_url: string | null } | null>(null)
   const [myVillages,     setMyVillages]     = useState<Village[]>([])
   const [tweetFeed,      setTweetFeed]      = useState<TweetData[]>([])
@@ -876,31 +788,26 @@ export default function TimelinePage() {
     }
   }, [userId, tab, myVillageIds, followingIds])
 
-  // ── ツイートフェッチ ─────────────────────────────────────────
+  // ── ツイートフェッチ（みんなタブ用・全ユーザー） ────────────────
   const fetchTweets = useCallback(async () => {
-    if (!userId) return
     setTweetLoading(true)
     const supabase = createClient()
-    const userIds = followingIds.length > 0 ? [...followingIds, userId] : [userId]
     const { data, error } = await supabase
       .from('tweets')
       .select('*, profiles!tweets_user_id_fkey(display_name, nationality, avatar_url), tweet_reactions!tweet_reactions_tweet_id_fkey(user_id, reaction), tweet_replies!tweet_replies_tweet_id_fkey(id)')
-      .in('user_id', userIds)
+      .is('reply_to_id', null)
       .order('created_at', { ascending: false })
       .limit(40)
     if (error) console.error('fetchTweets error:', error)
     setTweetFeed((data ?? []) as TweetData[])
     setTweetLoading(false)
-  }, [userId, followingIds])
+  }, [])
 
   useEffect(() => {
     if (userId) {
-      if (tab === 'tweets') {
-        fetchTweets()
-      } else {
-        fetchPosts(true)
-        if (tab === 'myvillage') fetchQA(userId, myVillageIds)
-      }
+      fetchPosts(true)
+      if (tab === 'myvillage') fetchQA(userId, myVillageIds)
+      if (tab === 'all') fetchTweets()
     }
   }, [userId, tab, fetchPosts, fetchQA, fetchTweets, myVillageIds])
 
@@ -924,10 +831,22 @@ export default function TimelinePage() {
     setQaBottles(prev => prev.filter(b => b.id !== bottleId))
   }
 
-  // フィード合成（マイ村タブのみQ&A混在）
-  const feed: FeedItem[] = tab === 'myvillage' && qaBottles.length > 0
-    ? buildFeed(posts, qaBottles)
-    : posts.map(p => ({ type: 'post' as const, data: p }))
+  // フィード合成
+  const feed: FeedItem[] = (() => {
+    if (tab === 'myvillage' && qaBottles.length > 0) {
+      return buildFeed(posts, qaBottles)
+    }
+    if (tab === 'all' && tweetFeed.length > 0) {
+      const combined: FeedItem[] = [
+        ...posts.map(p => ({ type: 'post' as const, data: p })),
+        ...tweetFeed.map(t => ({ type: 'tweet' as const, data: t })),
+      ]
+      return combined.sort((a, b) =>
+        new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
+      )
+    }
+    return posts.map(p => ({ type: 'post' as const, data: p }))
+  })()
 
   // ── レンダリング ─────────────────────────────────────────────
   return (
@@ -941,7 +860,7 @@ export default function TimelinePage() {
             <h1 className="font-extrabold text-white text-2xl leading-tight">タイムライン</h1>
             <p className="text-xs text-white/50 mt-0.5">みんなの声が流れる場所</p>
           </div>
-          <button onClick={() => { fetchPosts(true); if (userId) fetchQA(userId, myVillageIds) }}
+          <button onClick={() => { fetchPosts(true); if (userId) fetchQA(userId, myVillageIds); if (tab === 'all') fetchTweets() }}
             className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
             style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
             <RefreshCw size={15} className="text-white/70" />
@@ -1029,48 +948,11 @@ export default function TimelinePage() {
           </div>
         )}
 
-        {/* ── 投稿タブ ── */}
-        {tab === 'tweets' && (
-          <div className="-mx-4">
-            {tweetLoading ? (
-              <Skeleton />
-            ) : tweetFeed.length === 0 ? (
-              <div className="text-center py-16 px-4">
-                <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-4">
-                  <Pencil size={28} className="text-stone-400" />
-                </div>
-                <p className="text-sm font-bold text-stone-800">まだ投稿がありません</p>
-                <p className="text-xs text-stone-400 mt-1.5">フォローした人の投稿が流れます</p>
-                <button
-                  onClick={() => setShowTweetCompose(true)}
-                  className="mt-5 px-5 py-2.5 rounded-full text-sm font-bold text-white active:scale-95 transition-all"
-                  style={{ background: 'linear-gradient(135deg,#1c1917,#3c3836)' }}
-                >
-                  最初の投稿をする
-                </button>
-              </div>
-            ) : (
-              <div className="bg-white divide-y divide-stone-50 rounded-2xl overflow-hidden shadow-sm">
-                {tweetFeed.map(t => (
-                  <TweetCard
-                    key={t.id}
-                    tweet={t}
-                    myId={userId}
-                    onUpdate={fetchTweets}
-                    showBorder={false}
-                    canInteract={true}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {/* ローディング */}
+        {loading && <Skeleton />}
 
-        {/* ローディング（村タブのみ） */}
-        {tab !== 'tweets' && loading && <Skeleton />}
-
-        {/* フィード（投稿 + Q&Aカード混在） */}
-        {tab !== 'tweets' && !loading && feed.map((item, idx) =>
+        {/* フィード（投稿 + Q&Aカード + ツイート混在） */}
+        {!loading && feed.map((item) =>
           item.type === 'qa' ? (
             <QACard
               key={`qa-${item.data.id}`}
@@ -1079,6 +961,16 @@ export default function TimelinePage() {
               canReply={canReply}
               onAnswered={handleAnswered}
             />
+          ) : item.type === 'tweet' ? (
+            <div key={`tweet-${item.data.id}`} className="bg-white rounded-2xl overflow-hidden shadow-sm">
+              <TweetCard
+                tweet={item.data}
+                myId={userId}
+                onUpdate={fetchTweets}
+                showBorder={false}
+                canInteract={true}
+              />
+            </div>
           ) : (
             <PostCard
               key={`post-${item.data.id}`}
@@ -1092,7 +984,7 @@ export default function TimelinePage() {
         )}
 
         {/* 空状態 */}
-        {tab !== 'tweets' && !loading && feed.length === 0 && (
+        {!loading && feed.length === 0 && (
           (tab === 'all') ||
           (tab === 'myvillage' && myVillageIds.length > 0) ||
           (tab === 'following' && followingIds.length > 0)
@@ -1104,7 +996,7 @@ export default function TimelinePage() {
         )}
 
         {/* もっと読む */}
-        {tab !== 'tweets' && !loading && hasMore && posts.length > 0 && (
+        {!loading && hasMore && posts.length > 0 && (
           <button onClick={() => fetchPosts(false)} disabled={loadingMore}
             className="w-full py-3.5 bg-white border border-stone-200 rounded-2xl text-sm font-bold text-stone-600 flex items-center justify-center gap-2 active:bg-stone-50 transition-all shadow-sm disabled:opacity-50">
             {loadingMore
@@ -1116,17 +1008,11 @@ export default function TimelinePage() {
 
       {/* ── FAB ── */}
       <button
-        onClick={() => tab === 'tweets' ? setShowTweetCompose(true) : setShowCompose(true)}
+        onClick={() => setShowCompose(true)}
         className="fixed bottom-24 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
-        style={tab === 'tweets'
-          ? { background: 'linear-gradient(135deg,#1c1917 0%,#3c3836 100%)', boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }
-          : { background: 'linear-gradient(135deg,#6366f1 0%,#4f46e5 100%)', boxShadow: '0 8px 24px rgba(99,102,241,0.45)' }
-        }
+        style={{ background: 'linear-gradient(135deg,#6366f1 0%,#4f46e5 100%)', boxShadow: '0 8px 24px rgba(99,102,241,0.45)' }}
       >
-        {tab === 'tweets'
-          ? <Pencil size={22} className="text-white" strokeWidth={2} />
-          : <Plus size={24} className="text-white" strokeWidth={2.5} />
-        }
+        <Plus size={24} className="text-white" strokeWidth={2.5} />
       </button>
 
       {/* ── 村投稿モーダル ── */}
@@ -1140,19 +1026,6 @@ export default function TimelinePage() {
             setShowCompose(false)
             fetchPosts(true)
             if (tab === 'myvillage') fetchQA(userId, myVillageIds)
-          }}
-        />
-      )}
-
-      {/* ── ツイートコンポーズシート ── */}
-      {showTweetCompose && userId && userProfile && (
-        <TweetComposeSheet
-          userId={userId}
-          avatarUrl={userProfile.avatar_url}
-          displayName={userProfile.display_name}
-          onClose={() => setShowTweetCompose(false)}
-          onPosted={async () => {
-            await fetchTweets()
           }}
         />
       )}
