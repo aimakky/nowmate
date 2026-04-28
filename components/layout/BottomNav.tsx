@@ -106,7 +106,7 @@ export default function BottomNav() {
           )
         })}
 
-        {/* 中央：🌊 漂流瓶 FABボタン */}
+        {/* 中央：Q&A FABボタン */}
         <div className="flex-1 flex flex-col items-center justify-center relative">
           <Link href="/bottle"
             className="flex flex-col items-center justify-center w-14 h-14 rounded-full -mt-5 shadow-lg active:scale-90 transition-all relative"
@@ -116,8 +116,8 @@ export default function BottomNav() {
                 : 'linear-gradient(135deg,#1e40af 0%,#1d4ed8 100%)',
               boxShadow: '0 4px 16px rgba(29,78,216,0.45)',
             }}>
-            <span className="text-2xl leading-none">🌊</span>
-            <span className="text-[8px] font-extrabold text-white/90 mt-0.5 leading-none">流す</span>
+            <span className="text-2xl leading-none">💬</span>
+            <span className="text-[8px] font-extrabold text-white/90 mt-0.5 leading-none">Q&A</span>
             {bottleCount > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center px-1 border-2 border-white">
                 <span className="text-[9px] font-extrabold text-white leading-none">
