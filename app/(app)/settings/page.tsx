@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Camera, Check, Trash2, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Camera, Check, Trash2, Eye, EyeOff, ShieldCheck, ShieldAlert } from 'lucide-react'
 import { INDUSTRIES } from '@/lib/guild'
 
 export default function SettingsPage() {
@@ -22,6 +22,7 @@ export default function SettingsPage() {
   const [savingAnswers,  setSavingAnswers]  = useState(false)
   const [industry,       setIndustry]       = useState('')
   const [savingIndustry, setSavingIndustry] = useState(false)
+  const [ageVerified,    setAgeVerified]    = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -36,6 +37,7 @@ export default function SettingsPage() {
       setAvatarPreview(p.avatar_url)
       setShowAnswers(p.show_answers !== false)
       setIndustry(p.industry ?? '')
+      setAgeVerified(!!p.age_verified)
       setLoading(false)
     }
     load()
@@ -155,10 +157,10 @@ export default function SettingsPage() {
           <p className="text-right text-[10px] text-stone-400 mt-1">{bio.length}/200</p>
         </div>
 
-        {/* ── 仕事村の業界 ── */}
+        {/* ── ゲームジャンル ── */}
         <div>
           <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
-            仕事村の業界 <span className="text-[10px] text-stone-400 normal-case font-normal">（仕事村で表示される業界）</span>
+            ゲームジャンル <span className="text-[10px] text-stone-400 normal-case font-normal">（ギルドで表示されるジャンル）</span>
           </label>
           <div className="grid grid-cols-2 gap-2">
             {INDUSTRIES.map(ind => (
@@ -203,6 +205,33 @@ export default function SettingsPage() {
               : '変更を保存する'
           }
         </button>
+
+        {/* ── 年齢認証 ── */}
+        <div
+          onClick={() => !ageVerified && router.push('/verify-age')}
+          className="flex items-center gap-3 px-4 py-4 rounded-2xl border-2 transition-all"
+          style={ageVerified
+            ? { borderColor: '#22c55e', background: '#f0fdf4', cursor: 'default' }
+            : { borderColor: '#ddd6fe', background: '#faf5ff', cursor: 'pointer' }
+          }
+        >
+          {ageVerified
+            ? <ShieldCheck size={22} className="text-green-500 flex-shrink-0" />
+            : <ShieldAlert size={22} className="text-purple-400 flex-shrink-0" />
+          }
+          <div className="flex-1">
+            <p className="text-sm font-bold" style={{ color: ageVerified ? '#15803d' : '#6d28d9' }}>
+              {ageVerified ? '年齢認証済み ✓' : '年齢認証（未完了）'}
+            </p>
+            <p className="text-[11px] mt-0.5" style={{ color: ageVerified ? '#16a34a' : '#7c3aed' }}>
+              {ageVerified
+                ? '身分証による本人確認が完了しています'
+                : 'タップして身分証で20歳以上を確認する'
+              }
+            </p>
+          </div>
+          {!ageVerified && <span className="text-purple-400 text-base">›</span>}
+        </div>
 
         {/* ── プライバシー設定 ── */}
         <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
