@@ -9,7 +9,7 @@ import { INDUSTRIES } from '@/lib/guild'
 
 // ── ステップ定義（5枚カードは step 1.5 として挿入）──
 const STEPS = [
-  { title: '年齢確認',         emoji: '🔒', sub: '18歳以上の方のみご利用いただけます' },
+  { title: '年齢確認',         emoji: '🔒', sub: '20歳以上の方のみご利用いただけます' },
   { title: 'プロフィール',     emoji: '👋', sub: '村での名前を決めましょう' },
   { title: '今、話したいこと', emoji: '💬', sub: '今どんなことを話したいですか？' },
   { title: '最初の村選択',     emoji: '🏕️', sub: 'まず参加する村を選んでみましょう' },
@@ -42,6 +42,8 @@ export default function OnboardingPage() {
   const [error,          setError]          = useState('')
   const [userId,         setUserId]         = useState<string | null>(null)
   const [ageConfirmed,   setAgeConfirmed]   = useState(false)
+  const [birthYear,      setBirthYear]      = useState('')
+  const [ageBlocked,     setAgeBlocked]     = useState(false)
   const [name,           setName]           = useState('')
   const [bio,            setBio]            = useState('')
   const [selectedTypes,  setSelectedTypes]  = useState<string[]>([])
@@ -58,8 +60,9 @@ export default function OnboardingPage() {
     })
   }, [router])
 
+  const currentAge = birthYear ? new Date().getFullYear() - parseInt(birthYear) : 0
   const canNext = [
-    ageConfirmed,
+    ageConfirmed && !!birthYear && currentAge >= 20,
     name.trim().length >= 2,
     true,
     true,
@@ -110,7 +113,7 @@ export default function OnboardingPage() {
       display_name:      name.trim(),
       bio:               bio.trim() || null,
       industry:          industry || null,
-      age:               18,
+      age:               currentAge || 20,
       gender:            'other',
       nationality:       'JP',
       area:              'Tokyo',
@@ -176,7 +179,7 @@ export default function OnboardingPage() {
       display_name:      name.trim(),
       bio:               bio.trim() || null,
       industry:          industry || null,
-      age:               18,
+      age:               currentAge || 20,
       gender:            'other',
       nationality:       'JP',
       area:              'Tokyo',
@@ -220,50 +223,88 @@ export default function OnboardingPage() {
         {/* ─── STEP 0: 年齢確認 ─── */}
         {step === 0 && (
           <div className="space-y-4 pt-4">
-            <div className="rounded-3xl p-6 text-center"
-              style={{ background: 'linear-gradient(135deg,#1a1a2e 0%,#0f3460 100%)' }}>
-              <div className="text-5xl mb-4">🔒</div>
-              <h3 className="font-extrabold text-white text-lg mb-2">ご利用は18歳以上</h3>
-              <p className="text-white/60 text-xs leading-relaxed">
-                自由村は18歳以上の方のためのコミュニティです。<br />
-                健全な場づくりのため、年齢確認をお願いしています。
-              </p>
-            </div>
 
-            {/* サービス紹介 */}
-            <div className="bg-white border border-stone-100 rounded-2xl p-4 space-y-3">
-              {[
-                { icon: '🌊', text: '匿名で悩みや質問を流せる漂流瓶' },
-                { icon: '🏕️', text: '同じテーマの村で顔なじみができる' },
-                { icon: '🤝', text: '人助けが実績として残るコミュニティ' },
-                { icon: '🛡️', text: '電話認証・Trust Tier制度で民度を設計' },
-              ].map(({ icon, text }) => (
-                <div key={text} className="flex items-center gap-3">
-                  <span className="text-xl">{icon}</span>
-                  <span className="text-sm text-stone-700 font-medium">{text}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3">
-              <p className="text-xs text-indigo-700 leading-relaxed">
-                💡 自由村は「知らない誰かに助けてもらえる」コミュニティです。
-                時間を消費するだけのSNSとは逆の場所を目指しています。
-              </p>
-            </div>
-
-            <button onClick={() => setAgeConfirmed(v => !v)}
-              className="w-full flex items-start gap-3 p-4 bg-white border-2 rounded-2xl transition-all text-left active:scale-[0.99]"
-              style={{ borderColor: ageConfirmed ? '#4f46e5' : '#e7e5e4' }}>
-              <div className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all"
-                style={{ borderColor: ageConfirmed ? '#4f46e5' : '#d6d3d1', background: ageConfirmed ? '#4f46e5' : '#fff' }}>
-                {ageConfirmed && <span className="text-white text-[11px] font-bold">✓</span>}
+            {/* 20歳未満ブロック */}
+            {ageBlocked ? (
+              <div className="rounded-3xl p-8 text-center"
+                style={{ background: 'linear-gradient(135deg,#1a0a0a 0%,#450a0a 100%)' }}>
+                <div className="text-5xl mb-4">🚫</div>
+                <h3 className="font-extrabold text-white text-lg mb-2">ご利用いただけません</h3>
+                <p className="text-white/60 text-xs leading-relaxed">
+                  sameeは<span className="text-red-300 font-bold">20歳以上</span>の方のみご利用いただけます。<br />
+                  ご理解ください。
+                </p>
+                <button
+                  onClick={() => { setAgeBlocked(false); setBirthYear('') }}
+                  className="mt-6 px-6 py-2 rounded-xl text-xs font-bold text-white/70 border border-white/20"
+                >入力し直す</button>
               </div>
-              <span className="text-sm text-stone-700 font-medium leading-relaxed">
-                私は<span className="font-extrabold text-indigo-600">18歳以上</span>であることを確認しました。
-                利用規約とプライバシーポリシーに同意します。
-              </span>
-            </button>
+            ) : (
+              <>
+                <div className="rounded-3xl p-6 text-center"
+                  style={{ background: 'linear-gradient(135deg,#0f0f1a 0%,#1a1035 100%)' }}>
+                  <div className="text-5xl mb-4">🎮</div>
+                  <h3 className="font-extrabold text-white text-lg mb-2">大人のゲームコミュニティ</h3>
+                  <p className="text-white/60 text-xs leading-relaxed">
+                    sameeは<span className="text-purple-300 font-bold">20歳以上限定</span>の民度重視コミュニティです。<br />
+                    年齢確認のため、生まれた年を入力してください。
+                  </p>
+                </div>
+
+                {/* 生まれた年入力 */}
+                <div className="bg-white border-2 rounded-2xl p-4 space-y-3"
+                  style={{ borderColor: birthYear ? (currentAge >= 20 ? '#4f46e5' : '#ef4444') : '#e7e5e4' }}>
+                  <p className="text-xs font-bold text-stone-500 uppercase tracking-wider">生まれた年</p>
+                  <select
+                    value={birthYear}
+                    onChange={e => {
+                      const y = e.target.value
+                      setBirthYear(y)
+                      const age = y ? new Date().getFullYear() - parseInt(y) : 0
+                      if (y && age < 20) setAgeBlocked(true)
+                    }}
+                    className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:outline-none focus:border-indigo-400 bg-stone-50 font-bold text-stone-800"
+                  >
+                    <option value="">選択してください</option>
+                    {Array.from({ length: 60 }, (_, i) => {
+                      const year = new Date().getFullYear() - 20 - i
+                      return <option key={year} value={year}>{year}年生まれ</option>
+                    })}
+                  </select>
+                  {birthYear && currentAge >= 20 && (
+                    <p className="text-xs text-indigo-500 font-bold">✓ {currentAge}歳 — ご利用いただけます</p>
+                  )}
+                </div>
+
+                {/* サービス紹介 */}
+                <div className="bg-white border border-stone-100 rounded-2xl p-4 space-y-3">
+                  {[
+                    { icon: '🎮', text: '荒らしゼロのゲームコミュニティ' },
+                    { icon: '🏕️', text: '好きなゲームの村で顔なじみができる' },
+                    { icon: '🛡️', text: '電話認証・Trust Tier制度で民度を設計' },
+                    { icon: '🌊', text: '匿名で話せるギルド掲示板' },
+                  ].map(({ icon, text }) => (
+                    <div key={text} className="flex items-center gap-3">
+                      <span className="text-xl">{icon}</span>
+                      <span className="text-sm text-stone-700 font-medium">{text}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <button onClick={() => setAgeConfirmed(v => !v)}
+                  className="w-full flex items-start gap-3 p-4 bg-white border-2 rounded-2xl transition-all text-left active:scale-[0.99]"
+                  style={{ borderColor: ageConfirmed ? '#4f46e5' : '#e7e5e4' }}>
+                  <div className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all"
+                    style={{ borderColor: ageConfirmed ? '#4f46e5' : '#d6d3d1', background: ageConfirmed ? '#4f46e5' : '#fff' }}>
+                    {ageConfirmed && <span className="text-white text-[11px] font-bold">✓</span>}
+                  </div>
+                  <span className="text-sm text-stone-700 font-medium leading-relaxed">
+                    私は<span className="font-extrabold text-indigo-600">20歳以上</span>であることを確認しました。
+                    利用規約とプライバシーポリシーに同意します。
+                  </span>
+                </button>
+              </>
+            )}
           </div>
         )}
 
@@ -302,9 +343,9 @@ export default function OnboardingPage() {
             {/* 業界選択（任意） */}
             <div>
               <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">
-                仕事の業界 <span className="text-stone-300 normal-case font-normal">（任意・後で変更可）</span>
+                ゲームジャンル <span className="text-stone-300 normal-case font-normal">（任意・後で変更可）</span>
               </label>
-              <p className="text-[11px] text-indigo-500 mb-2 font-medium">⚔️ 選ぶと匿名仕事村に入れます</p>
+              <p className="text-[11px] text-purple-500 mb-2 font-medium">🎮 選ぶとゲームギルドに参加できます</p>
               <div className="grid grid-cols-2 gap-1.5">
                 {INDUSTRIES.map(ind => (
                   <button key={ind.id}
