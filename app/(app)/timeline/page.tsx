@@ -1,11 +1,12 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getTierById } from '@/lib/trust'
 import { timeAgo } from '@/lib/utils'
-import { Heart, RefreshCw, ChevronRight, Users, Globe, Home, Share2, Sparkles } from 'lucide-react'
+import { detectNgWords } from '@/lib/moderation'
+import { Heart, RefreshCw, ChevronRight, Users, Globe, Home, Share2, Sparkles, HelpCircle, Send, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 
 // ── 型定義 ──────────────────────────────────────────────────────
@@ -24,9 +25,22 @@ interface TPost {
   user_trust: { tier: string; is_shadow_banned: boolean } | null
 }
 
+interface QABottle {
+  id:             string
+  message:        string
+  created_at:     string
+  is_resolved:    boolean
+  sender_user_id: string | null
+  reply_count:    number
+  village:        { id: string; name: string; icon: string } | null
+}
+
+type FeedItem =
+  | { type: 'post'; data: TPost }
+  | { type: 'qa';   data: QABottle }
+
 const PAGE_SIZE = 20
 
-// ── 今日のお題（曜日別・職業なし）────────────────────────────
 const DAILY_PROMPTS = [
   { q: '最近、心があたたかくなった瞬間は？',        hint: '小さなことでも話してみて' },
   { q: '今週、誰かに感謝したいことは？',             hint: '言えてなかった感謝を' },
@@ -37,7 +51,6 @@ const DAILY_PROMPTS = [
   { q: '最近、変わってきたと思うことは？',            hint: '自分でも気づいてる変化' },
 ]
 
-// ── カテゴリカラー ──────────────────────────────────────────────
 const CAT_COLOR: Record<string, string> = {
   '雑談':           '#8b7355',
   '相談':           '#1a9ec8',
@@ -50,14 +63,139 @@ const CAT_COLOR: Record<string, string> = {
   '笑い':           '#d97706',
 }
 
-// ── タブ定義 ───────────────────────────────────────────────────
 const TAB_CONFIG: { key: Tab; label: string; icon: React.ElementType }[] = [
-  { key: 'myvillage', label: 'マイ村',    icon: Home  },
+  { key: 'myvillage', label: 'マイ村',   icon: Home  },
   { key: 'all',       label: 'みんな',   icon: Globe },
   { key: 'following', label: 'フォロー', icon: Users },
 ]
 
-// ── 投稿カード ─────────────────────────────────────────────────
+// ── Q&Aカード ──────────────────────────────────────────────────
+function QACard({
+  bottle, userId, canReply, onAnswered,
+}: {
+  bottle:     QABottle
+  userId:     string | null
+  canReply:   boolean
+  onAnswered: (bottleId: string) => void
+}) {
+  const [open,      setOpen]      = useState(false)
+  const [text,      setText]      = useState('')
+  const [sending,   setSending]   = useState(false)
+  const [done,      setDone]      = useState(false)
+  const [errMsg,    setErrMsg]    = useState('')
+
+  const isMyBottle = bottle.sender_user_id === userId
+
+  async function submit() {
+    if (!text.trim() || sending || !userId) return
+    const ng = detectNgWords(text)
+    if (ng) { setErrMsg(`「${ng}」は使えません`); return }
+    setSending(true)
+    const supabase = createClient()
+    await supabase.from('drift_bottle_replies').insert({
+      bottle_id:  bottle.id,
+      village_id: bottle.village?.id ?? null,
+      user_id:    userId,
+      message:    text.trim(),
+    })
+    setSending(false)
+    setDone(true)
+    setText('')
+    onAnswered(bottle.id)
+  }
+
+  return (
+    <div className="rounded-2xl overflow-hidden shadow-sm"
+      style={{
+        background: 'linear-gradient(135deg,#0c1445 0%,#0a2540 100%)',
+        border: bottle.is_resolved ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(100,140,255,0.25)',
+      }}>
+
+      {/* ヘッダー */}
+      <div className="px-4 pt-3 pb-2 flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          <HelpCircle size={13} className={bottle.is_resolved ? 'text-emerald-400' : 'text-amber-400'} />
+          <span className="text-[10px] font-extrabold"
+            style={{ color: bottle.is_resolved ? '#86efac' : '#fbbf24' }}>
+            {bottle.is_resolved ? '✅ 解決済み' : '❓ 匿名質問'}
+          </span>
+          {bottle.village && (
+            <>
+              <span className="text-white/20 text-[10px]">·</span>
+              <span className="text-[10px] text-blue-400/60 truncate">
+                {bottle.village.icon} {bottle.village.name}
+              </span>
+            </>
+          )}
+        </div>
+        <span className="text-[10px] text-blue-400/40 flex-shrink-0">{timeAgo(bottle.created_at)}</span>
+      </div>
+
+      {/* 質問本文 */}
+      <div className="px-4 pb-3">
+        <p className="text-sm text-white/90 leading-relaxed font-medium">{bottle.message}</p>
+      </div>
+
+      {/* フッター */}
+      <div className="px-4 py-2.5 border-t border-white/5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] text-blue-300/50">
+            💬 {bottle.reply_count > 0 ? `${bottle.reply_count}件の回答` : 'まだ回答なし'}
+          </span>
+        </div>
+
+        {done ? (
+          <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
+            <CheckCircle size={11} /> 回答しました
+          </span>
+        ) : isMyBottle ? (
+          <span className="text-[10px] text-blue-400/30">自分の質問</span>
+        ) : bottle.is_resolved ? (
+          <span className="text-[10px] text-emerald-400/50">解決済み</span>
+        ) : canReply ? (
+          <button onClick={() => setOpen(o => !o)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold active:scale-95 transition-all"
+            style={{ background: 'rgba(100,140,255,0.2)', border: '1px solid rgba(100,140,255,0.3)', color: '#93c5fd' }}>
+            {open ? '閉じる' : '回答する →'}
+          </button>
+        ) : (
+          <span className="text-[10px] text-blue-400/30">常連以上が回答可</span>
+        )}
+      </div>
+
+      {/* インライン回答フォーム */}
+      {open && !done && (
+        <div className="px-4 pb-4 pt-1 border-t border-white/5 space-y-2">
+          <textarea
+            value={text}
+            onChange={e => { setText(e.target.value); setErrMsg('') }}
+            placeholder="回答を書く（名前が表示されます）"
+            rows={2} maxLength={300} autoFocus
+            className="w-full px-3 py-2 rounded-xl text-xs resize-none focus:outline-none text-white placeholder-blue-400/30"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(100,140,255,0.2)' }}
+          />
+          {errMsg && <p className="text-[10px] text-red-400">⚠️ {errMsg}</p>}
+          <div className="flex gap-2">
+            <button onClick={() => setOpen(false)}
+              className="flex-1 py-2 rounded-xl text-xs font-bold border"
+              style={{ borderColor: 'rgba(100,140,255,0.2)', color: '#60a5fa', background: 'transparent' }}>
+              キャンセル
+            </button>
+            <button onClick={submit} disabled={!text.trim() || sending}
+              className="flex-1 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-1"
+              style={{ background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)' }}>
+              {sending
+                ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <><Send size={10} /> 送信</>}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── 通常投稿カード ─────────────────────────────────────────────
 function PostCard({
   post, userId, likedIds, onToggleLike, showVillage = true,
 }: {
@@ -79,17 +217,16 @@ function PostCard({
 
   return (
     <div className="bg-white border border-stone-100 rounded-2xl shadow-sm overflow-hidden">
-      {/* 投稿者 */}
       <div className="px-4 pt-3.5 pb-2 flex items-start gap-2.5">
         <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)' }}>
-          {post.profiles?.display_name?.[0] ?? '?'}
+          style={{ background: 'linear-gradient(135deg,#6366f1,#4f46e5)' }}>
+          {post.profiles?.avatar_url
+            ? <img src={post.profiles.avatar_url} alt="" className="w-full h-full object-cover rounded-full" />
+            : post.profiles?.display_name?.[0] ?? '?'}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm font-bold text-stone-900">
-              {post.profiles?.display_name ?? '名無し'}
-            </span>
+            <span className="text-sm font-bold text-stone-900">{post.profiles?.display_name ?? '名無し'}</span>
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border whitespace-nowrap ${tier.color}`}>
               {tier.icon} {tier.label}
             </span>
@@ -104,44 +241,30 @@ function PostCard({
         </div>
       </div>
 
-      {/* 本文 */}
       <div className="px-4 pb-3">
         <p className="text-sm text-stone-800 leading-relaxed">{post.content}</p>
       </div>
 
-      {/* フッター */}
       <div className="flex items-center justify-between px-4 py-2.5 border-t border-stone-50">
         {showVillage && post.villages ? (
-          <Link href={`/villages/${post.village_id}`}
-            onClick={e => e.stopPropagation()}
+          <Link href={`/villages/${post.village_id}`} onClick={e => e.stopPropagation()}
             className="flex items-center gap-1.5 active:opacity-70 transition-opacity">
             <span className="text-sm">{post.villages.icon}</span>
-            <span className="text-[11px] font-bold text-stone-500 truncate max-w-[120px]">
-              {post.villages.name}
-            </span>
+            <span className="text-[11px] font-bold text-stone-500 truncate max-w-[120px]">{post.villages.name}</span>
             <ChevronRight size={11} className="text-stone-300 flex-shrink-0" />
           </Link>
-        ) : (
-          <span />
-        )}
+        ) : <span />}
         <div className="flex items-center gap-1.5">
-          <button
-            onClick={shareToX}
+          <button onClick={shareToX}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-90"
             style={{ background: '#f5f5f4', color: '#a8a29e' }}>
             <Share2 size={12} />
           </button>
-          <button
-            onClick={() => onToggleLike(post.id)}
+          <button onClick={() => onToggleLike(post.id)}
             className="flex items-center gap-1 px-3 py-1.5 rounded-xl transition-all active:scale-90"
-            style={liked
-              ? { background: '#fff1f2', color: '#f43f5e' }
-              : { background: '#f5f5f4', color: '#a8a29e' }
-            }>
+            style={liked ? { background: '#fff1f2', color: '#f43f5e' } : { background: '#f5f5f4', color: '#a8a29e' }}>
             <Heart size={13} fill={liked ? '#f43f5e' : 'none'} strokeWidth={liked ? 0 : 1.8} />
-            {post.reaction_count > 0 && (
-              <span className="text-[11px] font-bold">{post.reaction_count}</span>
-            )}
+            {post.reaction_count > 0 && <span className="text-[11px] font-bold">{post.reaction_count}</span>}
           </button>
         </div>
       </div>
@@ -172,22 +295,44 @@ function Skeleton() {
   )
 }
 
+// ── フィード合成（投稿4件ごとにQ&Aを1件挿入）─────────────────
+function buildFeed(posts: TPost[], qaBottles: QABottle[]): FeedItem[] {
+  const feed: FeedItem[] = []
+  let qaIdx = 0
+  posts.forEach((post, i) => {
+    feed.push({ type: 'post', data: post })
+    // 4件ごとにQ&Aを挟む
+    if ((i + 1) % 4 === 0 && qaIdx < qaBottles.length) {
+      feed.push({ type: 'qa', data: qaBottles[qaIdx++] })
+    }
+  })
+  // 残りのQ&Aを末尾に追加
+  while (qaIdx < qaBottles.length) {
+    feed.push({ type: 'qa', data: qaBottles[qaIdx++] })
+  }
+  return feed
+}
+
 // ── メインページ ───────────────────────────────────────────────
 export default function TimelinePage() {
   const router = useRouter()
 
   const [tab,          setTab]          = useState<Tab>('myvillage')
   const [posts,        setPosts]        = useState<TPost[]>([])
+  const [qaBottles,    setQaBottles]    = useState<QABottle[]>([])
   const [loading,      setLoading]      = useState(true)
   const [loadingMore,  setLoadingMore]  = useState(false)
   const [hasMore,      setHasMore]      = useState(true)
   const [userId,       setUserId]       = useState<string | null>(null)
+  const [userTier,     setUserTier]     = useState<string>('visitor')
   const [myVillageIds, setMyVillageIds] = useState<string[]>([])
   const [followingIds, setFollowingIds] = useState<string[]>([])
   const [likedIds,     setLikedIds]     = useState<Set<string>>(new Set())
 
   const offsetRef   = useRef(0)
   const todayPrompt = DAILY_PROMPTS[new Date().getDay()]
+
+  const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
 
   // ── 初期化 ──────────────────────────────────────────────────
   useEffect(() => {
@@ -198,21 +343,81 @@ export default function TimelinePage() {
         if (!user) { router.push('/login'); return }
         setUserId(user.id)
 
-        const [{ data: memberships }, { data: follows }, { data: reactions }] = await Promise.all([
+        const [{ data: memberships }, { data: follows }, { data: reactions }, { data: trust }] = await Promise.all([
           supabase.from('village_members').select('village_id').eq('user_id', user.id),
           supabase.from('user_follows').select('following_id').eq('follower_id', user.id),
           supabase.from('village_reactions').select('post_id').eq('user_id', user.id),
+          supabase.from('user_trust').select('tier').eq('user_id', user.id).single(),
         ])
 
         setMyVillageIds((memberships || []).map((m: any) => m.village_id))
         setFollowingIds((follows || []).map((f: any) => f.following_id))
         setLikedIds(new Set((reactions || []).map((r: any) => r.post_id)))
+        if (trust?.tier) setUserTier(trust.tier)
       } catch (e) {
         console.error('timeline init error:', e)
       }
     }
     init()
   }, [router])
+
+  // ── Q&A瓶フェッチ ────────────────────────────────────────────
+  const fetchQA = useCallback(async (uid: string, villageIds: string[]) => {
+    if (villageIds.length === 0) return
+    const supabase = createClient()
+
+    // 自分の参加村宛の未解決Q&A（自分が送ったもの以外）
+    const { data: bottles } = await supabase
+      .from('drift_bottles')
+      .select('id, message, created_at, is_resolved, sender_user_id, recipient_village:recipient_village_id(id, name, icon)')
+      .eq('is_question', true)
+      .in('recipient_village_id', villageIds)
+      .in('status', ['delivered', 'replied'])
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (!bottles) return
+
+    // 各瓶の回答数を取得
+    const ids = bottles.map(b => b.id)
+    const { data: replyCounts } = ids.length
+      ? await supabase
+          .from('drift_bottle_replies')
+          .select('bottle_id')
+          .in('bottle_id', ids)
+      : { data: [] }
+
+    const countMap: Record<string, number> = {}
+    for (const r of replyCounts ?? []) {
+      countMap[r.bottle_id] = (countMap[r.bottle_id] ?? 0) + 1
+    }
+
+    // 自分が既に回答済みの瓶IDを取得
+    const { data: myReplies } = ids.length
+      ? await supabase
+          .from('drift_bottle_replies')
+          .select('bottle_id')
+          .eq('user_id', uid)
+          .in('bottle_id', ids)
+      : { data: [] }
+    const myRepliedIds = new Set((myReplies ?? []).map((r: any) => r.bottle_id))
+
+    setQaBottles(
+      bottles
+        .filter(b => !myRepliedIds.has(b.id)) // 回答済みは非表示
+        .map(b => ({
+          id:             b.id,
+          message:        b.message,
+          created_at:     b.created_at,
+          is_resolved:    b.is_resolved ?? false,
+          sender_user_id: b.sender_user_id,
+          reply_count:    countMap[b.id] ?? 0,
+          village:        Array.isArray(b.recipient_village)
+            ? (b.recipient_village[0] ?? null)
+            : (b.recipient_village as any ?? null),
+        }))
+    )
+  }, [])
 
   // ── 投稿フェッチ ─────────────────────────────────────────────
   const fetchPosts = useCallback(async (reset = false) => {
@@ -236,11 +441,8 @@ export default function TimelinePage() {
         .order('created_at', { ascending: false })
         .range(from, from + PAGE_SIZE - 1)
 
-      if (tab === 'myvillage') {
-        q = q.in('village_id', myVillageIds)
-      } else if (tab === 'following') {
-        q = q.in('user_id', followingIds)
-      }
+      if (tab === 'myvillage') q = q.in('village_id', myVillageIds)
+      else if (tab === 'following') q = q.in('user_id', followingIds)
 
       const { data } = await q
       const filtered = (data || [])
@@ -269,8 +471,11 @@ export default function TimelinePage() {
   }, [userId, tab, myVillageIds, followingIds])
 
   useEffect(() => {
-    if (userId) fetchPosts(true)
-  }, [userId, tab, fetchPosts])
+    if (userId) {
+      fetchPosts(true)
+      if (tab === 'myvillage') fetchQA(userId, myVillageIds)
+    }
+  }, [userId, tab, fetchPosts, fetchQA, myVillageIds])
 
   // ── いいね ──────────────────────────────────────────────────
   function toggleLike(postId: string) {
@@ -287,19 +492,29 @@ export default function TimelinePage() {
     }
   }
 
+  // 回答後: その瓶をフィードから消す
+  function handleAnswered(bottleId: string) {
+    setQaBottles(prev => prev.filter(b => b.id !== bottleId))
+  }
+
+  // フィード合成（マイ村タブのみQ&A混在）
+  const feed: FeedItem[] = tab === 'myvillage' && qaBottles.length > 0
+    ? buildFeed(posts, qaBottles)
+    : posts.map(p => ({ type: 'post' as const, data: p }))
+
   // ── レンダリング ─────────────────────────────────────────────
   return (
     <div className="max-w-md mx-auto min-h-screen bg-birch">
 
-      {/* ── ヘッダー ── */}
+      {/* ヘッダー */}
       <div className="px-4 pt-12 pb-0"
-        style={{ background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)' }}>
+        style={{ background: 'linear-gradient(160deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%)' }}>
         <div className="flex items-end justify-between mb-3">
           <div>
             <h1 className="font-extrabold text-white text-2xl leading-tight">タイムライン</h1>
             <p className="text-xs text-white/50 mt-0.5">みんなの声が流れる場所</p>
           </div>
-          <button onClick={() => fetchPosts(true)}
+          <button onClick={() => { fetchPosts(true); if (userId) fetchQA(userId, myVillageIds) }}
             className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
             style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
             <RefreshCw size={15} className="text-white/70" />
@@ -317,6 +532,12 @@ export default function TimelinePage() {
               <span className={`text-[10px] font-bold whitespace-nowrap ${tab === key ? 'text-white' : 'text-white/40'}`}>
                 {label}
               </span>
+              {/* マイ村タブにQ&Aバッジ */}
+              {key === 'myvillage' && qaBottles.length > 0 && (
+                <span className="absolute top-1.5 right-2 min-w-[14px] h-[14px] bg-amber-400 rounded-full flex items-center justify-center px-0.5">
+                  <span className="text-[8px] font-black text-stone-900">{qaBottles.length}</span>
+                </span>
+              )}
               {tab === key && (
                 <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-white rounded-full" />
               )}
@@ -325,35 +546,42 @@ export default function TimelinePage() {
         </div>
       </div>
 
-      {/* ── コンテンツ ── */}
+      {/* コンテンツ */}
       <div className="px-4 pt-4 pb-28 space-y-3">
 
-        {/* 今日のお題カード（みんなタブのみ） */}
+        {/* 回答待ちバナー（マイ村タブ・Q&Aあり） */}
+        {tab === 'myvillage' && qaBottles.length > 0 && !loading && (
+          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl"
+            style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)' }}>
+            <HelpCircle size={14} className="text-amber-400 flex-shrink-0" />
+            <p className="text-xs font-bold text-amber-300">
+              あなたの村に{qaBottles.length}件の質問が届いています
+            </p>
+          </div>
+        )}
+
+        {/* 今日のお題カード */}
         {tab === 'all' && (
           <div className="rounded-2xl overflow-hidden shadow-sm"
-            style={{ background: 'linear-gradient(135deg, #1f3526 0%, #2d4d37 100%)', border: '1px solid rgba(74,124,89,0.3)' }}>
+            style={{ background: 'linear-gradient(135deg,#1f3526 0%,#2d4d37 100%)', border: '1px solid rgba(74,124,89,0.3)' }}>
             <div className="px-4 py-2.5 flex items-center gap-2"
               style={{ background: 'rgba(74,124,89,0.25)' }}>
               <Sparkles size={14} className="text-brand-300" />
               <p className="text-[10px] font-extrabold text-brand-300 uppercase tracking-widest">今日のお題</p>
             </div>
             <div className="px-4 py-3.5">
-              <p className="text-sm font-bold text-white leading-relaxed">
-                「{todayPrompt.q}」
-              </p>
+              <p className="text-sm font-bold text-white leading-relaxed">「{todayPrompt.q}」</p>
               <p className="text-[10px] text-brand-300/70 mt-1">{todayPrompt.hint}</p>
             </div>
           </div>
         )}
 
-        {/* 村に参加していない（マイ村タブ） */}
+        {/* 村に参加していない */}
         {tab === 'myvillage' && myVillageIds.length === 0 && !loading && (
           <div className="bg-white border border-stone-100 rounded-2xl p-5 text-center shadow-sm">
             <p className="text-2xl mb-2">🏕️</p>
             <p className="text-sm font-extrabold text-stone-800 mb-1">まだ村に参加していません</p>
-            <p className="text-xs text-stone-500 leading-relaxed mb-4">
-              村に参加すると、村の投稿がここに流れます。
-            </p>
+            <p className="text-xs text-stone-500 leading-relaxed mb-4">村に参加すると、投稿とQ&Aがここに流れます。</p>
             <button onClick={() => router.push('/villages')}
               className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-brand-500 text-white rounded-2xl text-sm font-bold active:scale-95 transition-all">
               村を探す →
@@ -361,14 +589,12 @@ export default function TimelinePage() {
           </div>
         )}
 
-        {/* フォロー0人（フォロータブ） */}
+        {/* フォロー0人 */}
         {tab === 'following' && followingIds.length === 0 && !loading && (
           <div className="bg-white border border-stone-100 rounded-2xl p-5 text-center shadow-sm">
             <p className="text-2xl mb-2">👥</p>
             <p className="text-sm font-extrabold text-stone-800 mb-1">まだ誰もフォローしていません</p>
-            <p className="text-xs text-stone-500 leading-relaxed mb-4">
-              村の住民をフォローすると、ここに投稿が流れます。
-            </p>
+            <p className="text-xs text-stone-500 leading-relaxed mb-4">村の住民をフォローすると、ここに投稿が流れます。</p>
             <button onClick={() => router.push('/villages')}
               className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-brand-500 text-white rounded-2xl text-sm font-bold active:scale-95 transition-all">
               村を探す →
@@ -379,15 +605,30 @@ export default function TimelinePage() {
         {/* ローディング */}
         {loading && <Skeleton />}
 
-        {/* 投稿リスト */}
-        {!loading && posts.map(post => (
-          <PostCard key={post.id} post={post} userId={userId}
-            likedIds={likedIds} onToggleLike={toggleLike}
-            showVillage={tab !== 'myvillage'} />
-        ))}
+        {/* フィード（投稿 + Q&Aカード混在） */}
+        {!loading && feed.map((item, idx) =>
+          item.type === 'qa' ? (
+            <QACard
+              key={`qa-${item.data.id}`}
+              bottle={item.data}
+              userId={userId}
+              canReply={canReply}
+              onAnswered={handleAnswered}
+            />
+          ) : (
+            <PostCard
+              key={`post-${item.data.id}`}
+              post={item.data}
+              userId={userId}
+              likedIds={likedIds}
+              onToggleLike={toggleLike}
+              showVillage={tab !== 'myvillage'}
+            />
+          )
+        )}
 
         {/* 空状態 */}
-        {!loading && posts.length === 0 && (
+        {!loading && feed.length === 0 && (
           (tab === 'all') ||
           (tab === 'myvillage' && myVillageIds.length > 0) ||
           (tab === 'following' && followingIds.length > 0)
