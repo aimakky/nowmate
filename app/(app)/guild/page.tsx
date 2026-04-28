@@ -143,12 +143,18 @@ export default function GuildPage() {
               <h1 className="font-extrabold text-white text-2xl leading-tight">⚔️ ギルド</h1>
               <p className="text-indigo-200/50 text-[11px] mt-0.5">同じ業界の本音が集まる場所</p>
             </div>
-            {ind && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold flex-shrink-0"
-                style={{ background: `${ind.color}25`, border: `1px solid ${ind.color}40`, color: ind.color }}>
-                {ind.emoji} {myIndustry}
-              </div>
-            )}
+            <button
+              onClick={() => canPost ? router.push('/guild/create') : router.push('/mypage')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-extrabold text-white flex-shrink-0 active:scale-95 transition-all"
+              style={{
+                background: canPost
+                  ? (ind ? ind.gradient : 'linear-gradient(135deg,#6366f1,#4f46e5)')
+                  : 'rgba(255,255,255,0.12)',
+                border: canPost ? 'none' : '1px solid rgba(255,255,255,0.2)',
+              }}
+            >
+              {canPost ? <><Plus size={13} /> 投稿する</> : '🔒 認証して投稿'}
+            </button>
           </div>
 
           {/* フィードモード */}
@@ -206,6 +212,22 @@ export default function GuildPage() {
             <p className="text-[10px] text-indigo-400/60 mt-0.5">設定 → 業界を選択してください</p>
           </div>
           <span className="text-indigo-400/60 text-xs">›</span>
+        </div>
+      )}
+
+      {/* ── 未認証バナー（業界設定済みだが電話未認証） ── */}
+      {myIndustry && !canPost && (
+        <div
+          onClick={() => router.push('/mypage')}
+          className="mx-4 mt-3 flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer active:scale-[0.99] transition-all"
+          style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)' }}
+        >
+          <span className="text-xl">📱</span>
+          <div className="flex-1">
+            <p className="text-xs font-bold text-amber-300">電話認証するとギルドに投稿できます</p>
+            <p className="text-[10px] text-amber-400/60 mt-0.5">マイページ → 電話番号認証</p>
+          </div>
+          <span className="text-amber-400/60 text-xs">›</span>
         </div>
       )}
 
