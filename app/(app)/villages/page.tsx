@@ -212,8 +212,13 @@ export default function VillagesPage() {
 
   const featured  = displayed[0]
   const rest      = displayed.slice(1)
-  const showLanes = category === 'all' && !subFilter && !search
+  const showLanes = category === 'all' && !subFilter && !search && commStyle === 'all'
   const activeCat = CATEGORIES.find(c => c.id === category)
+
+  const COMM_STYLE_META = {
+    text:  { icon: '💬', label: 'チャット村', color: '#3b82f6', bg: '#eff6ff' },
+    voice: { icon: '🎙️', label: '通話村',     color: '#f97316', bg: '#fff7ed' },
+  }
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-birch">
@@ -363,6 +368,38 @@ export default function VillagesPage() {
 
       {/* ── Content ── */}
       <div className="pb-32">
+
+        {/* ══ コミュスタイルフィルター中バナー ══ */}
+        {commStyle !== 'all' && (() => {
+          const meta = COMM_STYLE_META[commStyle as 'text' | 'voice']
+          return (
+            <div className="px-4 pt-4 pb-1">
+              <div
+                className="flex items-center justify-between px-4 py-3 rounded-2xl"
+                style={{ background: meta.bg, border: `1px solid ${meta.color}25` }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{meta.icon}</span>
+                  <div>
+                    <p className="text-sm font-extrabold" style={{ color: meta.color }}>
+                      {meta.label}を表示中
+                    </p>
+                    <p className="text-[10px]" style={{ color: `${meta.color}99` }}>
+                      {loading ? '読み込み中…' : `${displayed.length}件の村`}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setCommStyle('all')}
+                  className="text-[10px] font-bold px-3 py-1.5 rounded-xl"
+                  style={{ background: meta.color, color: '#fff' }}
+                >
+                  × 解除
+                </button>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* ══ おすすめレーン（all・サブフィルターなし・非検索時）══ */}
         {showLanes && (
