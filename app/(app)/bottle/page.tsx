@@ -137,9 +137,10 @@ export default function BottlePage() {
   const [selected, setSelected] = useState<any>(null)
 
   // Q&A（質問する）
-  const [questions,  setQuestions]  = useState<Question[]>([])
-  const [qaLoading,  setQaLoading]  = useState(false)
-  const [qaCategory, setQaCategory] = useState('all')
+  const [questions,    setQuestions]    = useState<Question[]>([])
+  const [qaLoading,    setQaLoading]    = useState(false)
+  const [qaCategory,   setQaCategory]   = useState('all')
+  const [qaUnanswered, setQaUnanswered] = useState(false)
 
   // Q&A（答える）
   const [answerTargets,  setAnswerTargets]  = useState<Question[]>([])
@@ -182,6 +183,7 @@ export default function BottlePage() {
       .order('created_at', { ascending: false })
       .limit(30)
     if (qaCategory !== 'all') q = q.eq('category', qaCategory)
+    if (qaUnanswered) q = q.eq('answer_count', 0)
     const { data } = await q
     setQuestions((data || []).map((item: any) => ({
       ...item,
@@ -190,7 +192,7 @@ export default function BottlePage() {
       villages:   Array.isArray(item.villages)   ? item.villages[0]   ?? null : item.villages,
     })) as Question[])
     setQaLoading(false)
-  }, [qaCategory])
+  }, [qaCategory, qaUnanswered])
 
   // ─── 回答ターゲット取得 ────────────────────────────────────
   const fetchAnswerTargets = useCallback(async () => {
@@ -379,6 +381,25 @@ export default function BottlePage() {
                 </button>
               ))}
             </div>
+
+            {/* 未回答フィルター（browseタブのみ） */}
+            {qaMode === 'browse' && (
+              <div className="px-4 pb-3">
+                <button
+                  onClick={() => setQaUnanswered(v => !v)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition-all active:scale-95"
+                  style={qaUnanswered
+                    ? { background: '#fef3c7', color: '#d97706', borderColor: '#fde68a' }
+                    : { background: '#fff', color: '#a8a29e', borderColor: '#e7e5e4' }
+                  }
+                >
+                  🔥 未回答のみ表示
+                  {qaUnanswered && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 見習いバナー */}
