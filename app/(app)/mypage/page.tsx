@@ -262,8 +262,7 @@ export default function MyPage() {
         <MissionsCard userId={profile.id} />
 
         {/* ── フォロー・フォロワー ── */}
-        {(followingCount > 0 || followersCount > 0) && (
-          <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
             {/* タブ */}
             <div className="flex">
               {([
@@ -358,8 +357,7 @@ export default function MyPage() {
                 })
               )}
             </div>
-          </div>
-        )}
+        </div>
 
         {/* ── 成長ポートフォリオ ── */}
         <GrowthPortfolio

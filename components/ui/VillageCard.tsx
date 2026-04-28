@@ -188,22 +188,22 @@ export const COMM_STYLE_CONFIG: Record<string, {
   text: {
     icon:      '💬',
     label:     'チャット村',
-    topBar:    'linear-gradient(90deg, #22d3ee 0%, #06b6d4 100%)',
-    badgeBg:   '#06b6d4',
+    topBar:    'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
+    badgeBg:   '#3b82f6',
     badgeText: '#fff',
   },
   voice: {
     icon:      '🎙️',
     label:     '通話村',
-    topBar:    'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
-    badgeBg:   '#3b82f6',
+    topBar:    'linear-gradient(90deg, #fb923c 0%, #ea580c 100%)',
+    badgeBg:   '#f97316',
     badgeText: '#fff',
   },
   both: {
     icon:      '🔀',
     label:     '両方OK',
-    topBar:    'linear-gradient(90deg, #22d3ee 0%, #3b82f6 100%)',
-    badgeBg:   '#60a5fa',
+    topBar:    'linear-gradient(90deg, #3b82f6 0%, #f97316 100%)',
+    badgeBg:   '#8b5cf6',
     badgeText: '#fff',
   },
 }

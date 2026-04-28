@@ -271,14 +271,14 @@ export default function VillagesPage() {
         {/* コミュスタイルフィルター */}
         <div className="flex gap-2 mb-3">
           {([
-            { id: 'all',   icon: '🔀', label: 'すべて' },
-            { id: 'text',  icon: '📝', label: 'チャット村' },
-            { id: 'voice', icon: '🎙️', label: '通話村' },
-          ] as { id: 'all' | 'text' | 'voice'; icon: string; label: string }[]).map(opt => (
+            { id: 'all',   icon: '🏕️', label: 'すべて',    activeBg: 'rgba(255,255,255,0.95)', activeColor: '#1c1917' },
+            { id: 'text',  icon: '💬',  label: 'チャット村', activeBg: '#3b82f6',                activeColor: '#fff'    },
+            { id: 'voice', icon: '🎙️', label: '通話村',     activeBg: '#f97316',                activeColor: '#fff'    },
+          ] as { id: 'all' | 'text' | 'voice'; icon: string; label: string; activeBg: string; activeColor: string }[]).map(opt => (
             <button key={opt.id} onClick={() => setCommStyle(opt.id)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold transition-all active:scale-95 flex-shrink-0"
               style={commStyle === opt.id
-                ? { background: 'rgba(255,255,255,0.95)', color: '#1c1917' }
+                ? { background: opt.activeBg, color: opt.activeColor, boxShadow: opt.id !== 'all' ? `0 4px 12px ${opt.activeBg}60` : 'none' }
                 : { background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.15)' }
               }>
               <span>{opt.icon}</span>

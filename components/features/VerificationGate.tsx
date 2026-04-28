@@ -26,7 +26,7 @@ const GATE_CONFIG: Record<GateType, {
     title:   '投稿するには安心認証が必要です',
     body:    'sameeは本物の大人が話す場所です。\n認証は30秒で完了します。',
     cta:     '安心認証をする',
-    accent:  '#06b6d4',
+    accent:  '#3b82f6',
     benefits: ['チャット村への投稿・返信', '漂流瓶の送受信', '通話村の聴き専参加', '安心認証バッジ獲得'],
   },
   voice_join: {
@@ -89,8 +89,8 @@ export default function VerificationGate({ type, villageCommStyle, villageName, 
           className="h-1 w-full"
           style={{
             background: isVoice
-              ? 'linear-gradient(90deg, #f97316 0%, #ea580c 100%)'
-              : 'linear-gradient(90deg, #22d3ee 0%, #06b6d4 100%)',
+              ? 'linear-gradient(90deg, #fb923c 0%, #ea580c 100%)'
+              : 'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
           }}
         />
 
@@ -100,14 +100,14 @@ export default function VerificationGate({ type, villageCommStyle, villageName, 
           style={{
             background: isVoice
               ? 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)'
-              : 'linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)',
+              : 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
           }}
         >
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3">
               <div
                 className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl shadow-sm"
-                style={{ background: isVoice ? '#fff7ed' : '#ecfeff', border: `1px solid ${cfg.accent}30` }}
+                style={{ background: isVoice ? '#fff7ed' : '#eff6ff', border: `1px solid ${cfg.accent}30` }}
               >
                 {cfg.icon}
               </div>
@@ -175,7 +175,7 @@ export default function VerificationGate({ type, villageCommStyle, villageName, 
             style={{
               background: isVoice
                 ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)'
-                : 'linear-gradient(135deg, #22d3ee 0%, #06b6d4 100%)',
+                : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
               boxShadow: isVoice
                 ? '0 8px 24px rgba(249,115,22,0.35)'
                 : '0 8px 24px rgba(6,182,212,0.35)',
