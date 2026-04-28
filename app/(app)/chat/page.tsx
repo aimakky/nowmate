@@ -7,7 +7,7 @@ import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
-import { MessageCircle } from 'lucide-react'
+import { Edit2, Plus } from 'lucide-react'
 
 interface DirectChat {
   matchId: string
@@ -21,11 +21,18 @@ interface DirectChat {
   lastMessage: { content: string; created_at: string; sender_id: string } | null
 }
 
+interface OnlineUser {
+  id: string
+  display_name: string
+  avatar_url: string | null
+}
+
 export default function ChatListPage() {
   const router = useRouter()
   const [directs, setDirects] = useState<DirectChat[]>([])
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const [loading, setLoading] = useState(true)
-  const [userId,  setUserId]  = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -94,6 +101,13 @@ export default function ChatListPage() {
         })
 
         setDirects(directData)
+
+        // オンラインユーザーを抽出
+        const online = (profileData || [])
+          .filter((p: any) => p.is_online && otherIds.includes(p.id))
+          .map((p: any) => ({ id: p.id, display_name: p.display_name, avatar_url: p.avatar_url }))
+        setOnlineUsers(online)
+
       } catch (e) {
         console.error('chat load error:', e)
       } finally {
@@ -104,86 +118,148 @@ export default function ChatListPage() {
   }, [router])
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-birch">
+    <div className="max-w-md mx-auto min-h-screen bg-white">
 
       {/* ヘッダー */}
-      <div className="px-4 pt-12 pb-4"
-        style={{ background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)' }}>
-        <h1 className="font-extrabold text-white text-2xl">チャット</h1>
-        <p className="text-xs text-white/50 mt-0.5">ダイレクトメッセージ</p>
+      <div className="sticky top-0 z-10 bg-white border-b border-stone-100 px-4 pt-12 pb-3 flex items-center justify-between">
+        <h1 className="font-extrabold text-stone-900 text-xl">チャット</h1>
+        <button className="text-sm font-semibold text-brand-500 active:opacity-60 transition-opacity">
+          編集
+        </button>
       </div>
 
-      <div className="px-4 pt-4 pb-28">
-        {loading ? (
-          <div className="space-y-3">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-stone-100 p-4 animate-pulse flex gap-3">
-                <div className="w-12 h-12 bg-stone-200 rounded-2xl flex-shrink-0" />
-                <div className="flex-1 space-y-2 pt-1">
-                  <div className="h-3.5 bg-stone-200 rounded w-1/3" />
-                  <div className="h-3 bg-stone-100 rounded w-2/3" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : directs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-20 h-20 rounded-3xl bg-stone-100 flex items-center justify-center mb-4">
-              <MessageCircle size={36} className="text-stone-300" />
-            </div>
-            <p className="font-extrabold text-stone-700 text-base">まだチャットがありません</p>
-            <p className="text-sm text-stone-400 mt-1.5 leading-relaxed max-w-[220px]">
-              村で話した人とDMができます
+      <div className="pb-28">
+
+        {/* オンライン中フレンド */}
+        {!loading && onlineUsers.length > 0 && (
+          <div className="px-4 pt-4 pb-3">
+            <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">
+              オンライン中
             </p>
-            <button onClick={() => router.push('/villages')}
-              className="mt-5 px-6 py-3 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-md shadow-brand-200 active:scale-95 transition-all">
-              村を探す →
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {directs.map(c => {
-              const isMine = c.lastMessage?.sender_id === userId
-              return (
-                <Link key={c.matchId} href={`/chat/${c.matchId}`}>
-                  <div className="bg-white border border-stone-100 rounded-2xl p-4 flex items-center gap-3 active:bg-stone-50 transition-all shadow-sm">
-                    <div className="flex-shrink-0">
-                      <Avatar
-                        src={c.other.avatar_url}
-                        name={c.other.display_name}
-                        size="md"
-                        isOnline={c.other.is_online}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="font-bold text-stone-900 text-sm truncate">
-                            {c.other.display_name}
+            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-1">
+              {onlineUsers.map(u => (
+                <div key={u.id} className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-full overflow-hidden bg-stone-100 ring-2 ring-white">
+                      {u.avatar_url ? (
+                        <img src={u.avatar_url} alt={u.display_name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-brand-100">
+                          <span className="text-xl font-bold text-brand-500">
+                            {u.display_name.charAt(0).toUpperCase()}
                           </span>
-                          {c.other.trust_tier && (
-                            <TrustBadge tierId={c.other.trust_tier} size="xs" showLabel={false} />
-                          )}
                         </div>
-                        {c.lastMessage && (
-                          <span className="text-[10px] text-stone-400 flex-shrink-0 ml-2">
-                            {timeAgo(c.lastMessage.created_at)}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-stone-500 truncate">
-                        {c.lastMessage
-                          ? `${isMine ? 'あなた: ' : ''}${c.lastMessage.content}`
-                          : '👋 最初のメッセージを送ってみよう'}
-                      </p>
+                      )}
                     </div>
+                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white" />
                   </div>
-                </Link>
-              )
-            })}
+                  <span className="text-[10px] font-medium text-stone-600 max-w-[52px] truncate text-center">
+                    {u.display_name}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
+
+        {/* 区切り */}
+        {!loading && onlineUsers.length > 0 && (
+          <div className="h-px bg-stone-100 mx-4" />
+        )}
+
+        {/* チャットリスト */}
+        <div className="pt-2">
+          {loading ? (
+            <div className="space-y-0">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="px-4 py-3 flex items-center gap-3 animate-pulse">
+                  <div className="w-14 h-14 bg-stone-100 rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 bg-stone-100 rounded w-1/4" />
+                    <div className="h-3 bg-stone-50 rounded w-2/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : directs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
+              <div className="w-20 h-20 rounded-full bg-stone-50 flex items-center justify-center mb-4">
+                <span className="text-4xl">💬</span>
+              </div>
+              <p className="font-extrabold text-stone-700 text-base">まだチャットがありません</p>
+              <p className="text-sm text-stone-400 mt-1.5 leading-relaxed max-w-[220px]">
+                村で話した人とDMができます
+              </p>
+              <button onClick={() => router.push('/villages')}
+                className="mt-5 px-6 py-3 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-md shadow-brand-200 active:scale-95 transition-all">
+                村を探す →
+              </button>
+            </div>
+          ) : (
+            <div>
+              {directs.map(c => {
+                const isMine = c.lastMessage?.sender_id === userId
+                return (
+                  <Link key={c.matchId} href={`/chat/${c.matchId}`}>
+                    <div className="px-4 py-3 flex items-center gap-3 active:bg-stone-50 transition-colors">
+                      {/* アバター */}
+                      <div className="relative flex-shrink-0">
+                        <div className="w-14 h-14 rounded-full overflow-hidden bg-stone-100">
+                          {c.other.avatar_url ? (
+                            <img src={c.other.avatar_url} alt={c.other.display_name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-brand-100">
+                              <span className="text-xl font-bold text-brand-500">
+                                {c.other.display_name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        {c.other.is_online && (
+                          <span className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white" />
+                        )}
+                      </div>
+
+                      {/* テキスト */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="font-bold text-stone-900 text-sm truncate">
+                              {c.other.display_name}
+                            </span>
+                            {c.other.trust_tier && (
+                              <TrustBadge tierId={c.other.trust_tier} size="xs" showLabel={false} />
+                            )}
+                          </div>
+                          {c.lastMessage && (
+                            <span className="text-[11px] text-stone-400 flex-shrink-0 ml-2">
+                              {timeAgo(c.lastMessage.created_at)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-stone-400 truncate">
+                          {c.lastMessage
+                            ? `${isMine ? 'あなた: ' : ''}${c.lastMessage.content}`
+                            : '👋 最初のメッセージを送ってみよう'}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* FAB */}
+      <button
+        onClick={() => router.push('/villages')}
+        className="fixed bottom-24 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-brand-200 active:scale-90 transition-all z-20"
+        style={{ background: 'linear-gradient(135deg, #ec4899 0%, #d946ef 100%)' }}
+      >
+        <Plus size={24} className="text-white" strokeWidth={2.5} />
+      </button>
     </div>
   )
 }
