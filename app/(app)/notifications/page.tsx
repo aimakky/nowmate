@@ -19,13 +19,15 @@ type Notif = {
 }
 
 const TYPE_CONFIG: Record<string, { emoji: string; label: string; section: 'reaction' | 'voice' | 'other' }> = {
-  like:               { emoji: '💡', label: 'あなたの考えに共感しました',       section: 'reaction' },
-  reply:              { emoji: '💬', label: 'あなたの考えに返しました',          section: 'reaction' },
-  follow:             { emoji: '📖', label: 'あなたから学ぶことにしました',      section: 'reaction' },
-  new_member_post:    { emoji: '🌱', label: '村に初投稿しました — 返してみよう', section: 'reaction' },
-  voice_room_started: { emoji: '🎙️', label: '通話を始めました',                 section: 'voice'    },
-  comment:            { emoji: '🏕️', label: '村の議題にコメントしました',        section: 'other'    },
-  bottle_reply:       { emoji: '🍶', label: '相談に返信しました',                section: 'other'    },
+  like:               { emoji: '🌱', label: 'あなたの言葉、ちゃんと届いてます',           section: 'reaction' },
+  reply:              { emoji: '💬', label: 'あなたの話に返事を書いてくれました',          section: 'reaction' },
+  follow:             { emoji: '✨', label: 'あなたのことが気になっているようです',        section: 'reaction' },
+  new_member_post:    { emoji: '🌱', label: '村に初めての言葉を残しました — 迎えてあげて', section: 'reaction' },
+  voice_room_started: { emoji: '🎙️', label: '今夜の広場、少しだけ顔出してみませんか？',   section: 'voice'    },
+  comment:            { emoji: '🏕️', label: '村の話題にそっとコメントしました',           section: 'other'    },
+  bottle_reply:       { emoji: '🍶', label: '波の向こうから、返事が来ました',              section: 'other'    },
+  tier_up:            { emoji: '🌿', label: '村のみんなが、あなたを信頼し始めています',    section: 'other'    },
+  bottle_found:       { emoji: '🍶', label: 'あなたの瓶を、誰かが大切に拾ってくれました', section: 'other'    },
 }
 
 export default function NotificationsPage() {

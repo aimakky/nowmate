@@ -16,6 +16,7 @@ import MoodWeather from '@/components/features/MoodWeather'
 import DriftBottle from '@/components/features/DriftBottle'
 import { getUserTrust, getTierById, awardPoints } from '@/lib/trust'
 import CulturalCharter, { shouldShowCharter, markCharterShown } from '@/components/features/CulturalCharter'
+import FirstPostPrompt from '@/components/features/FirstPostPrompt'
 
 // ─── AutoMod: NGワードリスト ─────────────────────────────────
 const NG_WORDS = [
@@ -673,8 +674,10 @@ export default function VillageDetailPage() {
   const [generatingDiary, setGeneratingDiary] = useState(false)
   const [kickingUser,     setKickingUser]     = useState<string | null>(null)
 
-  const [showPhoneVerify, setShowPhoneVerify] = useState(false)
-  const [resolvePost,     setResolvePost]     = useState<any>(null)
+  const [showPhoneVerify,   setShowPhoneVerify]   = useState(false)
+  const [resolvePost,       setResolvePost]       = useState<any>(null)
+  const [showFirstPrompt,   setShowFirstPrompt]   = useState(false)
+  const [userVillagePosts,  setUserVillagePosts]  = useState(0) // ユーザーのこの村での投稿数
 
   // ── 民度設計 ─────────────────────────────────────────────────
   const [showCharter,      setShowCharter]      = useState(false)
@@ -738,8 +741,16 @@ export default function VillageDetailPage() {
       setUserId(user.id)
       const trust = await getUserTrust(user.id)
       setUserTrust(trust)
+      // この村でのユーザー投稿数を確認 → 0件なら初投稿プロンプト表示
+      const { count } = await createClient()
+        .from('village_posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('village_id', id)
+        .eq('user_id', user.id)
+      setUserVillagePosts(count ?? 0)
+      if ((count ?? 0) === 0) setShowFirstPrompt(true)
     })
-  }, [])
+  }, [id])
 
   // ── Fetchers ─────────────────────────────────────────────
   const fetchVillage = useCallback(async () => {
@@ -1128,7 +1139,7 @@ export default function VillageDetailPage() {
       setShowRevival(true)
       setTimeout(() => setShowRevival(false), 5000)
     }
-    setNewPost(''); setNgWarning(''); setNewPostDeadline(null); await fetchPosts(); setPosting(false)
+    setNewPost(''); setNgWarning(''); setNewPostDeadline(null); setShowFirstPrompt(false); setUserVillagePosts(p => p + 1); await fetchPosts(); setPosting(false)
   }
 
   // charter同意後に呼ばれる
@@ -1580,6 +1591,18 @@ export default function VillageDetailPage() {
             isMember={isMember}
             canPost={tier.canPost}
           />
+
+          {/* 初投稿プロンプト（メンバーで未投稿の場合） */}
+          {isMember && showFirstPrompt && userVillagePosts === 0 && (
+            <FirstPostPrompt
+              villageName={village?.name ?? ''}
+              onSelectTemplate={text => {
+                setNewPost(text)
+                setShowFirstPrompt(false)
+              }}
+              onDismiss={() => setShowFirstPrompt(false)}
+            />
+          )}
 
           {/* 今日のお題カード（メンバーのみ表示） */}
           {isMember && (

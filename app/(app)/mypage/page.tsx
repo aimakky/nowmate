@@ -12,6 +12,8 @@ import { Settings, LogOut, ChevronRight, Crown, Users } from 'lucide-react'
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 import MissionsCard from '@/components/features/MissionsCard'
 import GrowthPortfolio from '@/components/features/GrowthPortfolio'
+import ThirtyDayJourney from '@/components/features/ThirtyDayJourney'
+import DailyCheckIn from '@/components/features/DailyCheckIn'
 
 export default function MyPage() {
   const router = useRouter()
@@ -186,6 +188,18 @@ export default function MyPage() {
       </div>
 
       <div className="px-4 pt-4 pb-32 space-y-4">
+
+        {/* ── デイリーチェックイン ── */}
+        <DailyCheckIn userId={profile.id} />
+
+        {/* ── 30日の村旅 ── */}
+        {profile.created_at && (
+          <ThirtyDayJourney
+            tierProgress={tierProgress}
+            postCount={postCount}
+            joinedAt={profile.created_at}
+          />
+        )}
 
         {/* ── 7日間ミッション ── */}
         <MissionsCard userId={profile.id} />

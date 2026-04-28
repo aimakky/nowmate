@@ -7,6 +7,7 @@ import { timeAgo } from '@/lib/utils'
 import { getOccupationBadge } from '@/lib/occupation'
 import { Send, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import DailyCheckIn from '@/components/features/DailyCheckIn'
 
 // 時間帯別あいさつ
 function getGreeting(hour: number, name: string): { text: string; emoji: string } {
@@ -189,6 +190,13 @@ export default function HomePage() {
           </Link>
         )}
       </div>
+
+      {/* ── デイリーチェックイン ── */}
+      {profile?.id && (
+        <div className="px-4 mt-3">
+          <DailyCheckIn userId={profile.id} />
+        </div>
+      )}
 
       {/* ── 新着バナー ── */}
       {totalUnread > 0 && (
