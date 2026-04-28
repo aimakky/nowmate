@@ -1036,15 +1036,15 @@ export default function TimelinePage() {
               <Skeleton />
             ) : tweetFeed.length === 0 ? (
               <div className="text-center py-16 px-4">
-                <div className="w-16 h-16 rounded-full bg-white/15 flex items-center justify-center mx-auto mb-4">
-                  <Pencil size={28} className="text-white/60" />
+                <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-4">
+                  <Pencil size={28} className="text-stone-400" />
                 </div>
-                <p className="text-sm font-bold text-white/90">まだ投稿がありません</p>
-                <p className="text-xs text-white/55 mt-1.5">フォローした人の投稿が流れます</p>
+                <p className="text-sm font-bold text-stone-800">まだ投稿がありません</p>
+                <p className="text-xs text-stone-400 mt-1.5">フォローした人の投稿が流れます</p>
                 <button
                   onClick={() => setShowTweetCompose(true)}
                   className="mt-5 px-5 py-2.5 rounded-full text-sm font-bold text-white active:scale-95 transition-all"
-                  style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.35)' }}
+                  style={{ background: 'linear-gradient(135deg,#1c1917,#3c3836)' }}
                 >
                   最初の投稿をする
                 </button>
