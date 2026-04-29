@@ -3,9 +3,25 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, ChevronRight } from 'lucide-react'
+import { Plus, Search, ChevronRight, Moon, Mic, MicOff, X, Check } from 'lucide-react'
 import { INDUSTRIES } from '@/lib/guild'
 import VillageCard, { type Village, VILLAGE_TYPE_STYLES, getFireStatus } from '@/components/ui/VillageCard'
+
+// ── 型定義 ──────────────────────────────────────────────────────
+type TonightSlot = {
+  id: string
+  user_id: string
+  game: string
+  time_slot: string
+  skill_level: string
+  has_voice: boolean
+  note: string | null
+  created_at: string
+  profiles: { display_name: string; avatar_url: string | null } | null
+}
+
+const TIME_SLOTS = ['19-21時', '20-22時', '21-23時', '22-24時', '23時〜']
+const SKILL_LEVELS = ['問わない', 'ビギナー', '中級', '上級']
 
 // ── ゲームジャンルカテゴリ ──────────────────────────────────────
 const GENRE_TABS = [
@@ -72,20 +88,90 @@ function GuildSmallCard({ village, isMember, onJoin }: {
 // ── メインページ ────────────────────────────────────────────────
 export default function GuildPage() {
   const router = useRouter()
-  const [villages,   setVillages]   = useState<Village[]>([])
-  const [laneData,   setLaneData]   = useState<Record<string, Village[]>>({})
-  const [loading,    setLoading]    = useState(true)
-  const [genre,      setGenre]      = useState('all')
-  const [subFilter,  setSubFilter]  = useState<string | null>(null)
-  const [search,     setSearch]     = useState('')
-  const [userId,     setUserId]     = useState<string | null>(null)
-  const [memberIds,  setMemberIds]  = useState<Set<string>>(new Set())
+  const [villages,      setVillages]      = useState<Village[]>([])
+  const [laneData,      setLaneData]      = useState<Record<string, Village[]>>({})
+  const [loading,       setLoading]       = useState(true)
+  const [genre,         setGenre]         = useState('all')
+  const [subFilter,     setSubFilter]     = useState<string | null>(null)
+  const [search,        setSearch]        = useState('')
+  const [userId,        setUserId]        = useState<string | null>(null)
+  const [memberIds,     setMemberIds]     = useState<Set<string>>(new Set())
+
+  // 今夜マッチング state
+  const [tonightSlots,  setTonightSlots]  = useState<TonightSlot[]>([])
+  const [mySlot,        setMySlot]        = useState<TonightSlot | null>(null)
+  const [showForm,      setShowForm]      = useState(false)
+  const [tGame,         setTGame]         = useState('')
+  const [tTimeSlot,     setTTimeSlot]     = useState('21-23時')
+  const [tSkill,        setTSkill]        = useState('問わない')
+  const [tVoice,        setTVoice]        = useState(true)
+  const [tNote,         setTNote]         = useState('')
+  const [tSaving,       setTSaving]       = useState(false)
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id)
     })
   }, [])
+
+  // 今夜スロット取得
+  const fetchTonightSlots = useCallback(async () => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('tonight_slots')
+      .select('*, profiles(display_name, avatar_url)')
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(20)
+    setTonightSlots((data ?? []) as TonightSlot[])
+  }, [])
+
+  // 自分のスロット取得
+  const fetchMySlot = useCallback(async () => {
+    if (!userId) return
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('tonight_slots')
+      .select('*, profiles(display_name, avatar_url)')
+      .eq('user_id', userId)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle()
+    setMySlot(data as TonightSlot | null)
+  }, [userId])
+
+  useEffect(() => { fetchTonightSlots() }, [fetchTonightSlots])
+  useEffect(() => { fetchMySlot() }, [fetchMySlot])
+
+  // 今夜登録
+  async function handleTonightRegister() {
+    if (!userId || !tGame.trim() || tSaving) return
+    setTSaving(true)
+    const supabase = createClient()
+    // upsert（1ユーザー1スロット）
+    await supabase.from('tonight_slots').upsert({
+      user_id:     userId,
+      game:        tGame.trim(),
+      time_slot:   tTimeSlot,
+      skill_level: tSkill,
+      has_voice:   tVoice,
+      note:        tNote.trim() || null,
+      expires_at:  new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString(),
+    }, { onConflict: 'user_id' })
+    await Promise.all([fetchTonightSlots(), fetchMySlot()])
+    setShowForm(false)
+    setTGame('')
+    setTNote('')
+    setTSaving(false)
+  }
+
+  // 今夜登録解除
+  async function handleTonightCancel() {
+    if (!userId) return
+    const supabase = createClient()
+    await supabase.from('tonight_slots').delete().eq('user_id', userId)
+    setMySlot(null)
+    setTonightSlots(prev => prev.filter(s => s.user_id !== userId))
+  }
 
   const fetchLanes = useCallback(async () => {
     const supabase = createClient()
@@ -237,6 +323,175 @@ export default function GuildPage() {
 
       {/* ── コンテンツ ── */}
       <div className="pb-32">
+
+        {/* ══ 今夜マッチング ══ */}
+        {showLanes && (
+          <div className="px-4 pt-4 pb-2">
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: 'linear-gradient(135deg,rgba(15,15,26,0.95),rgba(26,16,53,0.95))', border: '1px solid rgba(139,92,246,0.25)', boxShadow: '0 4px 24px rgba(139,92,246,0.1)' }}>
+
+              {/* ヘッダー */}
+              <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
+                <div className="flex items-center gap-2">
+                  <Moon size={15} style={{ color: '#a78bfa' }} />
+                  <span className="text-sm font-extrabold text-white">今夜あそぶ人を探す</span>
+                  {tonightSlots.length > 0 && (
+                    <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      {tonightSlots.length}人待機中
+                    </span>
+                  )}
+                </div>
+                {mySlot ? (
+                  <button onClick={handleTonightCancel}
+                    className="text-[10px] font-bold px-2.5 py-1 rounded-xl transition-all active:scale-95"
+                    style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
+                    登録解除
+                  </button>
+                ) : (
+                  <button onClick={() => setShowForm(v => !v)}
+                    className="text-[10px] font-bold px-2.5 py-1 rounded-xl transition-all active:scale-95"
+                    style={showForm
+                      ? { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)' }
+                      : { background: 'rgba(139,92,246,0.25)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.4)' }
+                    }>
+                    {showForm ? 'とじる' : '+ 今夜参加を登録'}
+                  </button>
+                )}
+              </div>
+
+              {/* 自分の登録済み表示 */}
+              {mySlot && !showForm && (
+                <div className="mx-3 mb-3 px-3 py-2.5 rounded-xl flex items-center gap-2"
+                  style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)' }}>
+                  <Check size={12} style={{ color: '#a78bfa', flexShrink: 0 }} />
+                  <span className="text-xs font-bold text-white truncate">{mySlot.game}</span>
+                  <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>{mySlot.time_slot}</span>
+                  {mySlot.has_voice
+                    ? <Mic size={11} style={{ color: '#4ade80', flexShrink: 0 }} />
+                    : <MicOff size={11} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+                  }
+                </div>
+              )}
+
+              {/* 登録フォーム */}
+              {showForm && (
+                <div className="mx-3 mb-3 p-3 rounded-2xl space-y-2.5"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  {/* ゲーム名 */}
+                  <input
+                    value={tGame}
+                    onChange={e => setTGame(e.target.value)}
+                    placeholder="ゲーム名（例: Apex、ヴァロ、原神…）"
+                    maxLength={40}
+                    className="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
+                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', caretColor: '#8b5cf6' }}
+                  />
+                  {/* 時間帯 + スキル */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <select value={tTimeSlot} onChange={e => setTTimeSlot(e.target.value)}
+                      className="px-3 py-2 rounded-xl text-xs font-bold focus:outline-none"
+                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}>
+                      {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <select value={tSkill} onChange={e => setTSkill(e.target.value)}
+                      className="px-3 py-2 rounded-xl text-xs font-bold focus:outline-none"
+                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}>
+                      {SKILL_LEVELS.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  {/* ボイチャ + ひとこと */}
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setTVoice(v => !v)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold flex-shrink-0 transition-all active:scale-95"
+                      style={tVoice
+                        ? { background: 'rgba(74,222,128,0.2)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }
+                        : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)' }
+                      }>
+                      {tVoice ? <Mic size={11} /> : <MicOff size={11} />}
+                      ボイチャ{tVoice ? 'あり' : 'なし'}
+                    </button>
+                    <input
+                      value={tNote}
+                      onChange={e => setTNote(e.target.value)}
+                      placeholder="ひとこと（任意）"
+                      maxLength={30}
+                      className="flex-1 px-3 py-1.5 rounded-xl text-xs focus:outline-none"
+                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', caretColor: '#8b5cf6' }}
+                    />
+                  </div>
+                  {/* 登録ボタン */}
+                  <button onClick={handleTonightRegister}
+                    disabled={!tGame.trim() || tSaving}
+                    className="w-full py-2.5 rounded-xl text-sm font-extrabold text-white transition-all active:scale-[0.98] disabled:opacity-40"
+                    style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', boxShadow: '0 4px 14px rgba(139,92,246,0.4)' }}>
+                    {tSaving ? '登録中…' : '今夜の参加を登録する 🎮'}
+                  </button>
+                </div>
+              )}
+
+              {/* 待機中の人リスト */}
+              {tonightSlots.length > 0 ? (
+                <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                  {tonightSlots.map(slot => {
+                    const isMe = slot.user_id === userId
+                    const prof = slot.profiles as any
+                    return (
+                      <div key={slot.id} className="flex items-center gap-3 px-4 py-3">
+                        {/* アバター */}
+                        <div className="relative flex-shrink-0">
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-extrabold text-white overflow-hidden"
+                            style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
+                            {prof?.avatar_url
+                              ? <img src={prof.avatar_url} alt="" className="w-full h-full object-cover" />
+                              : (prof?.display_name?.[0] ?? '?')}
+                          </div>
+                          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400"
+                            style={{ border: '2px solid #0f0f1a' }} />
+                        </div>
+                        {/* 情報 */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                            <span className="text-xs font-extrabold text-white truncate">
+                              {prof?.display_name ?? '名無し'}
+                            </span>
+                            {isMe && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                                style={{ color: '#818cf8', background: 'rgba(129,140,248,0.15)', border: '1px solid rgba(129,140,248,0.25)' }}>
+                                あなた
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold" style={{ color: '#c4b5fd' }}>{slot.game}</span>
+                            <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{slot.time_slot}</span>
+                            <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{slot.skill_level}</span>
+                            {slot.has_voice
+                              ? <Mic size={10} style={{ color: '#4ade80' }} />
+                              : <MicOff size={10} style={{ color: 'rgba(255,255,255,0.25)' }} />
+                            }
+                          </div>
+                          {slot.note && (
+                            <p className="text-[10px] mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                              {slot.note}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="px-4 pb-4 pt-1 text-center">
+                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                    今夜の参加者がまだいません。最初に登録してみよう！
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ══ おすすめレーン ══ */}
         {showLanes && (
