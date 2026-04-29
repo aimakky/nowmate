@@ -256,7 +256,7 @@ export default function GuildPage() {
         <div className="relative">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div>
-              <p className="text-purple-400/60 text-[10px] font-bold tracking-widest uppercase mb-0.5">GAME ROOM</p>
+              <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5 text-purple-400/60">GAME ROOM</p>
               <h1 className="font-extrabold text-white text-2xl leading-tight">🎮 ゲーム村</h1>
               <p className="text-white/40 text-xs mt-0.5">今すぐ仲間を募集・通話ルームを開こう</p>
             </div>
@@ -331,7 +331,7 @@ export default function GuildPage() {
         {showLanes && (
           <div className="px-4 pt-4 pb-2">
             <div className="rounded-2xl overflow-hidden"
-              style={{ background: 'linear-gradient(135deg,rgba(15,15,26,0.95),rgba(26,16,53,0.95))', border: '1px solid rgba(139,92,246,0.25)', boxShadow: '0 4px 24px rgba(139,92,246,0.1)' }}>
+              style={{ background: 'linear-gradient(135deg,rgba(26,16,53,0.95),rgba(26,16,53,0.95))', border: '1px solid rgba(139,92,246,0.25)', boxShadow: '0 4px 24px rgba(139,92,246,0.1)' }}>
 
               {/* ヘッダー */}
               <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
@@ -340,7 +340,7 @@ export default function GuildPage() {
                   <span className="text-sm font-extrabold text-white">今夜あそぶ人を探す</span>
                   {tonightSlots.length > 0 && (
                     <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}>
+                      style={{ background: 'rgba(157,92,255,0.15)', color: '#a78bfa', border: '1px solid rgba(157,92,255,0.25)' }}>
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       {tonightSlots.length}人待機中
                     </span>
@@ -367,12 +367,12 @@ export default function GuildPage() {
               {/* 自分の登録済み表示 */}
               {mySlot && !showForm && (
                 <div className="mx-3 mb-3 px-3 py-2.5 rounded-xl flex items-center gap-2"
-                  style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)' }}>
+                  style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)' }}>
                   <Check size={12} style={{ color: '#a78bfa', flexShrink: 0 }} />
                   <span className="text-xs font-bold text-white truncate">{mySlot.game}</span>
                   <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>{mySlot.time_slot}</span>
                   {mySlot.has_voice
-                    ? <Mic size={11} style={{ color: '#4ade80', flexShrink: 0 }} />
+                    ? <Mic size={11} style={{ color: '#a78bfa', flexShrink: 0 }} />
                     : <MicOff size={11} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
                   }
                 </div>
@@ -409,7 +409,7 @@ export default function GuildPage() {
                     <button onClick={() => setTVoice(v => !v)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold flex-shrink-0 transition-all active:scale-95"
                       style={tVoice
-                        ? { background: 'rgba(74,222,128,0.2)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }
+                        ? { background: 'rgba(157,92,255,0.2)', color: '#a78bfa', border: '1px solid rgba(157,92,255,0.3)' }
                         : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)' }
                       }>
                       {tVoice ? <Mic size={11} /> : <MicOff size={11} />}
@@ -428,7 +428,7 @@ export default function GuildPage() {
                   <button onClick={handleTonightRegister}
                     disabled={!tGame.trim() || tSaving}
                     className="w-full py-2.5 rounded-xl text-sm font-extrabold text-white transition-all active:scale-[0.98] disabled:opacity-40"
-                    style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', boxShadow: '0 4px 14px rgba(139,92,246,0.4)' }}>
+                    style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', boxShadow: '0 4px 14px rgba(139,92,246,0.4)', color: 'white' }}>
                     {tSaving ? '登録中…' : '今夜の参加を登録する 🎮'}
                   </button>
                 </div>
@@ -444,8 +444,8 @@ export default function GuildPage() {
                       <div key={slot.id} className="flex items-center gap-3 px-4 py-3">
                         {/* アバター */}
                         <div className="relative flex-shrink-0">
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-extrabold text-white overflow-hidden"
-                            style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-extrabold overflow-hidden"
+                            style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', color: 'white' }}>
                             {prof?.avatar_url
                               ? <img src={prof.avatar_url} alt="" className="w-full h-full object-cover" />
                               : (prof?.display_name?.[0] ?? '?')}
@@ -471,7 +471,7 @@ export default function GuildPage() {
                             <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{slot.time_slot}</span>
                             <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{slot.skill_level}</span>
                             {slot.has_voice
-                              ? <Mic size={10} style={{ color: '#4ade80' }} />
+                              ? <Mic size={10} style={{ color: '#a78bfa' }} />
                               : <MicOff size={10} style={{ color: 'rgba(255,255,255,0.25)' }} />
                             }
                           </div>
@@ -570,8 +570,8 @@ export default function GuildPage() {
                   className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
                   style={{
                     background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)',
-                    boxShadow: '0 8px 24px rgba(157,92,255,0.4)',
-                    border: '1px solid rgba(157,92,255,0.3)',
+                    boxShadow: '0 8px 24px rgba(139,92,246,0.4)',
+                    border: '1px solid rgba(139,92,246,0.3)',
                   }}
                 >🎮 ゲーム村を立てる</button>
               )}
