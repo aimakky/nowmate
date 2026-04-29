@@ -10,6 +10,7 @@ import TrustBadge from '@/components/ui/TrustBadge'
 import Link from 'next/link'
 import { getCategoryStyle, getTitleName, TITLE_LEVEL_STYLE } from '@/lib/qa'
 import ReportModal from '@/components/features/ReportModal'
+import { getGenreTitles, getIndustry } from '@/lib/guild'
 
 interface VillagePost {
   id: string
@@ -50,6 +51,7 @@ export default function UserProfilePage() {
   const [answers, setAnswers] = useState<QAAnswerWithQ[]>([])
   const [showAnswersTab, setShowAnswersTab] = useState(true)
   const [qaTitles, setQaTitles] = useState<any[]>([])
+  const [genreTitles, setGenreTitles] = useState<{ genre: string; awarded_at: string }[]>([])
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -84,6 +86,9 @@ export default function UserProfilePage() {
       setProfile(p)
       setShowAnswersTab(p?.show_answers !== false)
       setQaTitles(titlesData ?? [])
+      // ジャンルマスター称号
+      const gt = await getGenreTitles(userId as string)
+      setGenreTitles(gt)
       const normalized = (posts || []).map((post: any) => ({
         ...post,
         villages: Array.isArray(post.villages) ? post.villages[0] ?? null : post.villages,
@@ -200,7 +205,7 @@ if (loading) return (
         </div>
 
         {/* ── 称号バッジ ── */}
-        {qaTitles.length > 0 && (
+        {(qaTitles.length > 0 || genreTitles.length > 0) && (
           <div className="flex flex-wrap gap-1.5 mb-3">
             {qaTitles.map((t: any) => {
               const cs      = getCategoryStyle(t.category)
@@ -213,6 +218,19 @@ if (loading) return (
                 >
                   <span>{lvStyle?.badge}</span>
                   <span>{getTitleName(t.category, t.level)}</span>
+                </div>
+              )
+            })}
+            {genreTitles.map(gt => {
+              const ind = getIndustry(gt.genre)
+              return (
+                <div
+                  key={gt.genre}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold"
+                  style={{ background: ind.bg, border: `1px solid ${ind.border}`, color: ind.color }}
+                >
+                  <span>{ind.emoji}</span>
+                  <span>{gt.genre}マスター</span>
                 </div>
               )
             })}

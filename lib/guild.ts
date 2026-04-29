@@ -32,6 +32,30 @@ export const REACTIONS = [
   { id: 'helpful', emoji: '💡', label: '参考になった' },
 ]
 
+// ─── ジャンルマスター称号 ────────────────────────────────────────
+export const GENRE_MASTER_THRESHOLD = 3  // 同ジャンル村に3つ参加で称号付与
+
+/** 村参加後に呼ぶ。新たに取得した称号を返す（空配列なら未達成） */
+export async function checkGenreMastery(userId: string): Promise<{ genre: string; is_new: boolean }[]> {
+  const { createClient } = await import('./supabase/client')
+  const supabase = createClient()
+  const { data, error } = await supabase.rpc('check_genre_mastery', { p_user_id: userId })
+  if (error || !data) return []
+  return data as { genre: string; is_new: boolean }[]
+}
+
+/** ユーザーの全称号を取得 */
+export async function getGenreTitles(userId: string) {
+  const { createClient } = await import('./supabase/client')
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('genre_titles')
+    .select('genre, awarded_at')
+    .eq('user_id', userId)
+    .order('awarded_at', { ascending: false })
+  return data ?? []
+}
+
 // ─── ヘルパー ───────────────────────────────────────────────────
 export function getIndustry(id: string) {
   return INDUSTRIES.find(i => i.id === id) ?? INDUSTRIES[9]

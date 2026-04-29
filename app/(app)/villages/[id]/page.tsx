@@ -16,6 +16,7 @@ import VerificationGate, { type GateType } from '@/components/features/Verificat
 import MoodWeather from '@/components/features/MoodWeather'
 import DriftBottle from '@/components/features/DriftBottle'
 import { getUserTrust, getTierById, awardPoints } from '@/lib/trust'
+import { checkGenreMastery, getIndustry, INDUSTRIES } from '@/lib/guild'
 import CulturalCharter, { shouldShowCharter, markCharterShown } from '@/components/features/CulturalCharter'
 import FirstPostPrompt from '@/components/features/FirstPostPrompt'
 
@@ -638,6 +639,7 @@ export default function VillageDetailPage() {
   const [userTrust,   setUserTrust]   = useState<any>(null)
   const [diary,       setDiary]       = useState<any[]>([])
   const [pinnedPost,  setPinnedPost]  = useState<any>(null)
+  const [newTitle,    setNewTitle]    = useState<{ genre: string } | null>(null)
 
   const [tab,       setTab]       = useState<'posts' | 'voice' | 'bottle' | 'members' | 'diary' | 'diplo' | 'admin' | 'more'>('posts')
   const [showMoreMenu, setShowMoreMenu] = useState(false)
@@ -1065,6 +1067,14 @@ export default function VillageDetailPage() {
         setWelcomeText(`はじめまして！${prof?.display_name ?? ''}です。よろしくお願いします🌱`)
         setShowWelcome(true)
       }
+      // ── ジャンルマスター称号チェック ──────────────────────────
+      const isGameVillage = INDUSTRIES.some(i => i.id === village?.category)
+      if (isGameVillage && userId) {
+        const results = await checkGenreMastery(userId)
+        const earned = results.find(r => r.is_new && r.genre === village?.category)
+        if (earned) setNewTitle({ genre: earned.genre })
+      }
+
       // Milestone check
       const { data: v } = await supabase.from('villages').select('member_count, milestone_reached').eq('id', id).single()
       if (v) {
@@ -2672,6 +2682,40 @@ export default function VillageDetailPage() {
           </div>
         </div>
       )}
+
+      {/* ── ジャンルマスター称号獲得トースト ── */}
+      {newTitle && (() => {
+        const ind = getIndustry(newTitle.genre)
+        return (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center px-6">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setNewTitle(null)} />
+            <div className="relative bg-white rounded-3xl shadow-2xl p-7 w-full max-w-sm text-center border border-amber-200"
+              style={{ boxShadow: '0 8px 40px rgba(245,158,11,0.3)' }}>
+              <div className="relative inline-block mb-2">
+                <span className="text-6xl">{ind.emoji}</span>
+                <span className="absolute -top-1 -right-2 text-2xl animate-bounce">✨</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold mb-3"
+                style={{ background: ind.bg, color: ind.color, border: `1px solid ${ind.border}` }}>
+                🏆 称号獲得！
+              </div>
+              <p className="text-xl font-extrabold text-stone-900 mb-1">
+                {ind.emoji} {newTitle.genre}マスター
+              </p>
+              <p className="text-sm text-stone-400 leading-relaxed mb-6">
+                {newTitle.genre}ジャンルの村に3つ参加！<br />
+                プロフィールに称号が表示されます。
+              </p>
+              <button
+                onClick={() => setNewTitle(null)}
+                className="w-full py-3.5 rounded-2xl text-white font-extrabold text-sm active:scale-95 transition-all"
+                style={{ background: ind.gradient }}>
+                やった！🎉
+              </button>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
