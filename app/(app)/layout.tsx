@@ -14,7 +14,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   // ページ自体にヘッダーがある場合は重複を避けるため非表示にするパス
-  const hideAvatar = pathname.startsWith('/villages/') || pathname.startsWith('/chat/')
+  const hideAvatar = pathname.startsWith('/villages/') || pathname.startsWith('/chat/') || pathname === '/mypage'
 
   useEffect(() => {
     async function fetchAvatar() {
