@@ -146,13 +146,13 @@ export default function ChatListPage() {
 
       {/* ヘッダー */}
       <div className="sticky top-0 z-10 px-4 pt-12 pb-0 backdrop-blur-md"
-        style={{ background: 'rgba(8,8,18,0.96)', borderBottom: '1px solid rgba(157,92,255,0.15)' }}>
+        style={{ background: 'rgba(8,8,18,0.96)', borderBottom: '1px solid rgba(245,158,11,0.2)' }}>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(157,92,255,0.6)' }}>MESSAGES</p>
+            <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(245,158,11,0.7)' }}>MESSAGES</p>
             <h1 className="font-extrabold text-xl" style={{ color: '#F0EEFF' }}>チャット</h1>
           </div>
-          <button className="text-sm font-semibold active:opacity-60 transition-opacity" style={{ color: '#9D5CFF' }}>
+          <button className="text-sm font-semibold active:opacity-60 transition-opacity" style={{ color: '#F59E0B' }}>
             編集
           </button>
         </div>
@@ -171,13 +171,13 @@ export default function ChatListPage() {
               {t.label}
               {t.count > 0 && (
                 <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-extrabold text-white"
-                  style={{ background: 'linear-gradient(135deg,#9D5CFF,#FF4D90)', boxShadow: '0 2px 8px rgba(255,77,144,0.4)' }}>
+                  style={{ background: 'linear-gradient(135deg,#F59E0B,#D97706)', boxShadow: '0 2px 8px rgba(245,158,11,0.4)' }}>
                   {t.count}
                 </span>
               )}
               {tab === t.id && (
                 <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
-                  style={{ background: 'linear-gradient(90deg,#9D5CFF,#FF4D90)' }} />
+                  style={{ background: '#F59E0B' }} />
               )}
             </button>
           ))}
@@ -192,8 +192,8 @@ export default function ChatListPage() {
             {requests.length === 0 ? (
               <div className="text-center py-20">
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                  style={{ background: 'rgba(157,92,255,0.08)', border: '1px solid rgba(157,92,255,0.2)' }}>
-                  <MessageSquareDashed size={28} style={{ color: 'rgba(157,92,255,0.4)' }} />
+                  style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                  <MessageSquareDashed size={28} style={{ color: 'rgba(245,158,11,0.5)' }} />
                 </div>
                 <p className="font-bold" style={{ color: 'rgba(240,238,255,0.5)' }}>リクエストはありません</p>
                 <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.3)' }}>知らない人からのDMはここに届きます</p>
@@ -201,13 +201,13 @@ export default function ChatListPage() {
             ) : (
               requests.map(r => (
                 <div key={r.matchId} className="rounded-2xl overflow-hidden"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)' }}>
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(245,158,11,0.2)' }}>
                   {/* ユーザー情報 */}
                   <div className="flex items-center gap-3 px-4 py-3">
                     <div className="w-12 h-12 rounded-full flex-shrink-0 overflow-hidden"
                       style={{
-                        background: 'linear-gradient(135deg,#9D5CFF,#7B3FE4)',
-                        boxShadow: '0 0 0 2px rgba(157,92,255,0.35)',
+                        background: 'linear-gradient(135deg,#F59E0B,#D97706)',
+                        boxShadow: '0 0 0 2px rgba(245,158,11,0.4)',
                       }}>
                       {r.other.avatar_url
                         ? <img src={r.other.avatar_url} className="w-full h-full object-cover" />
@@ -226,16 +226,16 @@ export default function ChatListPage() {
                   {/* 注意書き */}
                   <div className="px-4 pb-2">
                     <p className="text-[10px] rounded-xl px-3 py-2"
-                      style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(240,238,255,0.3)', border: '1px solid rgba(157,92,255,0.1)' }}>
+                      style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(240,238,255,0.3)', border: '1px solid rgba(245,158,11,0.1)' }}>
                       🔒 承認するまで相手に既読はつきません。拒否しても相手には通知されません。
                     </p>
                   </div>
                   {/* アクション */}
-                  <div className="grid grid-cols-2" style={{ borderTop: '1px solid rgba(157,92,255,0.12)' }}>
+                  <div className="grid grid-cols-2" style={{ borderTop: '1px solid rgba(245,158,11,0.12)' }}>
                     <button
                       onClick={() => handleRequest(r.matchId, false)}
                       className="flex items-center justify-center gap-1.5 py-3 text-sm font-bold active:opacity-60 transition-all"
-                      style={{ color: 'rgba(240,238,255,0.35)', borderRight: '1px solid rgba(157,92,255,0.12)' }}
+                      style={{ color: 'rgba(240,238,255,0.35)', borderRight: '1px solid rgba(245,158,11,0.12)' }}
                     >
                       <X size={15} /> 拒否
                     </button>
@@ -267,12 +267,12 @@ export default function ChatListPage() {
                   <div className="relative">
                     {/* Purple ring for online users */}
                     <div className="w-14 h-14 rounded-full overflow-hidden"
-                      style={{ border: '2px solid rgba(157,92,255,0.6)', boxShadow: '0 0 10px rgba(157,92,255,0.3)' }}>
+                      style={{ border: '2px solid rgba(245,158,11,0.6)', boxShadow: '0 0 10px rgba(245,158,11,0.3)' }}>
                       {u.avatar_url ? (
                         <img src={u.avatar_url} alt={u.display_name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center"
-                          style={{ background: 'linear-gradient(135deg,#9D5CFF,#7B3FE4)' }}>
+                          style={{ background: 'linear-gradient(135deg,#F59E0B,#D97706)' }}>
                           <span className="text-xl font-bold text-white">
                             {u.display_name.charAt(0).toUpperCase()}
                           </span>
@@ -299,7 +299,7 @@ export default function ChatListPage() {
 
         {/* 区切り */}
         {!loading && onlineUsers.length > 0 && (
-          <div className="h-px mx-4" style={{ background: 'rgba(157,92,255,0.1)' }} />
+          <div className="h-px mx-4" style={{ background: 'rgba(245,158,11,0.1)' }} />
         )}
 
         {/* チャットリスト */}
@@ -308,11 +308,11 @@ export default function ChatListPage() {
             <div className="space-y-2 px-4 pt-4">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="flex items-center gap-3 p-3.5 rounded-2xl animate-pulse"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.08)' }}>
-                  <div className="w-12 h-12 rounded-full flex-shrink-0" style={{ background: 'rgba(157,92,255,0.12)' }} />
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(245,158,11,0.08)' }}>
+                  <div className="w-12 h-12 rounded-full flex-shrink-0" style={{ background: 'rgba(245,158,11,0.1)' }} />
                   <div className="flex-1 space-y-2">
-                    <div className="h-3.5 rounded w-1/4" style={{ background: 'rgba(157,92,255,0.1)' }} />
-                    <div className="h-3 rounded w-2/3" style={{ background: 'rgba(157,92,255,0.07)' }} />
+                    <div className="h-3.5 rounded w-1/4" style={{ background: 'rgba(245,158,11,0.1)' }} />
+                    <div className="h-3 rounded w-2/3" style={{ background: 'rgba(245,158,11,0.07)' }} />
                   </div>
                 </div>
               ))}
@@ -321,15 +321,15 @@ export default function ChatListPage() {
             <div className="flex flex-col items-center justify-center px-6" style={{ minHeight: 'calc(100vh - 200px)' }}>
               {/* Chat bubble icon with sparkles */}
               <div className="relative mb-6">
-                <span className="absolute -top-2 -right-1 text-[10px] font-bold" style={{ color: 'rgba(157,92,255,0.6)' }}>+</span>
-                <span className="absolute -bottom-1 -left-3 text-[10px] font-bold" style={{ color: 'rgba(157,92,255,0.4)' }}>+</span>
-                <span className="absolute top-2 -left-4 text-[8px] font-bold" style={{ color: 'rgba(73,225,255,0.5)' }}>+</span>
+                <span className="absolute -top-2 -right-1 text-[10px] font-bold" style={{ color: 'rgba(245,158,11,0.7)' }}>+</span>
+                <span className="absolute -bottom-1 -left-3 text-[10px] font-bold" style={{ color: 'rgba(245,158,11,0.5)' }}>+</span>
+                <span className="absolute top-2 -left-4 text-[8px] font-bold" style={{ color: 'rgba(245,158,11,0.5)' }}>+</span>
                 <div
                   className="w-[80px] h-[80px] rounded-[22px] flex items-center justify-center"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(157,92,255,0.2) 0%, rgba(73,225,255,0.1) 100%)',
-                    border: '1px solid rgba(157,92,255,0.25)',
-                    boxShadow: '0 0 30px rgba(157,92,255,0.15)',
+                    background: 'linear-gradient(135deg, rgba(245,158,11,0.2) 0%, rgba(217,119,6,0.1) 100%)',
+                    border: '1px solid rgba(245,158,11,0.3)',
+                    boxShadow: '0 0 30px rgba(245,158,11,0.2)',
                   }}
                 >
                   <span className="text-5xl">💬</span>
@@ -348,10 +348,10 @@ export default function ChatListPage() {
                 onClick={() => router.push('/guilds')}
                 className="relative w-full max-w-xs py-4 rounded-2xl font-bold text-base active:scale-[0.98] transition-all"
                 style={{
-                  background: 'rgba(157,92,255,0.12)',
-                  border: '1px solid rgba(157,92,255,0.5)',
+                  background: 'rgba(245,158,11,0.12)',
+                  border: '1px solid rgba(245,158,11,0.6)',
                   color: '#F0EEFF',
-                  boxShadow: '0 0 20px rgba(157,92,255,0.2), inset 0 0 20px rgba(157,92,255,0.05)',
+                  boxShadow: '0 0 20px rgba(245,158,11,0.2), inset 0 0 20px rgba(245,158,11,0.05)',
                 }}
               >
                 ギルドを探す →
@@ -364,18 +364,18 @@ export default function ChatListPage() {
                 return (
                   <Link key={c.matchId} href={`/chat/${c.matchId}`}>
                     <div className="px-4 py-3 flex items-center gap-3 transition-all"
-                      style={{ borderBottom: '1px solid rgba(157,92,255,0.08)' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(157,92,255,0.05)')}
+                      style={{ borderBottom: '1px solid rgba(245,158,11,0.08)' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(245,158,11,0.05)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                       {/* アバター with purple ring for online users */}
                       <div className="relative flex-shrink-0">
                         <div className="w-[52px] h-[52px] rounded-full overflow-hidden"
                           style={{
-                            background: 'linear-gradient(135deg,#9D5CFF,#7B3FE4)',
+                            background: 'linear-gradient(135deg,#F59E0B,#D97706)',
                             border: c.other.is_online
-                              ? '2px solid rgba(157,92,255,0.6)'
-                              : '2px solid rgba(157,92,255,0.2)',
-                            boxShadow: c.other.is_online ? '0 0 10px rgba(157,92,255,0.3)' : 'none',
+                              ? '2px solid rgba(245,158,11,0.6)'
+                              : '2px solid rgba(245,158,11,0.2)',
+                            boxShadow: c.other.is_online ? '0 0 10px rgba(245,158,11,0.25)' : 'none',
                           }}>
                           {c.other.avatar_url ? (
                             <img src={c.other.avatar_url} alt={c.other.display_name} className="w-full h-full object-cover" />

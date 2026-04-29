@@ -377,7 +377,7 @@ function PostCard({
       className="rounded-2xl overflow-hidden"
       style={{
         background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(157,92,255,0.15)',
+        border: '1px solid rgba(73,225,255,0.15)',
         boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
       }}
     >
@@ -389,8 +389,8 @@ function PostCard({
             <div
               className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold text-white"
               style={{
-                background: 'linear-gradient(135deg,#9D5CFF,#7B3FE4)',
-                boxShadow: '0 0 0 2px rgba(157,92,255,0.35)',
+                background: 'linear-gradient(135deg,#0891b2,#0e7490)',
+                boxShadow: '0 0 0 2px rgba(73,225,255,0.3)',
               }}
             >
               {post.profiles?.avatar_url
@@ -405,9 +405,9 @@ function PostCard({
                 <span
                   className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
                   style={{
-                    background: 'rgba(157,92,255,0.15)',
-                    color: '#9D5CFF',
-                    border: '1px solid rgba(157,92,255,0.3)',
+                    background: 'rgba(73,225,255,0.12)',
+                    color: '#49E1FF',
+                    border: '1px solid rgba(73,225,255,0.3)',
                   }}
                 >
                   {roleLabel}
@@ -433,7 +433,7 @@ function PostCard({
         {/* アクション */}
         <div
           className="flex items-center gap-4 mt-3 pt-2.5"
-          style={{ borderTop: '1px solid rgba(157,92,255,0.1)' }}
+          style={{ borderTop: '1px solid rgba(73,225,255,0.1)' }}
         >
           <button
             onClick={() => onToggleLike(post.id)}
@@ -470,17 +470,17 @@ function Skeleton() {
     <div className="space-y-3">
       {[...Array(5)].map((_, i) => (
         <div key={i} className="rounded-2xl p-4 animate-pulse"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.1)' }}>
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(73,225,255,0.1)' }}>
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-9 h-9 rounded-full flex-shrink-0" style={{ background: 'rgba(157,92,255,0.15)' }} />
+            <div className="w-9 h-9 rounded-full flex-shrink-0" style={{ background: 'rgba(73,225,255,0.12)' }} />
             <div className="flex-1 space-y-1.5">
-              <div className="h-3 rounded w-1/3" style={{ background: 'rgba(157,92,255,0.1)' }} />
-              <div className="h-2.5 rounded w-1/4" style={{ background: 'rgba(157,92,255,0.07)' }} />
+              <div className="h-3 rounded w-1/3" style={{ background: 'rgba(73,225,255,0.1)' }} />
+              <div className="h-2.5 rounded w-1/4" style={{ background: 'rgba(73,225,255,0.07)' }} />
             </div>
           </div>
           <div className="space-y-1.5">
-            <div className="h-3.5 rounded w-full" style={{ background: 'rgba(157,92,255,0.07)' }} />
-            <div className="h-3.5 rounded w-4/5" style={{ background: 'rgba(157,92,255,0.07)' }} />
+            <div className="h-3.5 rounded w-full" style={{ background: 'rgba(73,225,255,0.07)' }} />
+            <div className="h-3.5 rounded w-4/5" style={{ background: 'rgba(73,225,255,0.07)' }} />
           </div>
         </div>
       ))}
@@ -1126,29 +1126,29 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       {/* ヘッダー */}
       <div className="px-4 pt-12 pb-0"
         style={{
-          background: 'linear-gradient(160deg,rgba(8,8,18,0.98) 0%,rgba(20,10,40,0.98) 60%,rgba(30,12,60,0.95) 100%)',
-          borderBottom: '1px solid rgba(157,92,255,0.15)',
+          background: 'linear-gradient(160deg,rgba(8,8,18,0.98) 0%,rgba(8,20,26,0.98) 60%,rgba(10,24,32,0.95) 100%)',
+          borderBottom: '1px solid rgba(73,225,255,0.15)',
         }}>
         <div className="flex items-end justify-between mb-3">
           <div>
-            <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(157,92,255,0.6)' }}>TIMELINE</p>
+            <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(73,225,255,0.65)' }}>TIMELINE</p>
             <h1 className="font-extrabold text-2xl leading-tight" style={{ color: '#F0EEFF' }}>タイムライン</h1>
             <p className="text-xs mt-0.5" style={{ color: 'rgba(240,238,255,0.3)' }}>みんなの声が流れる場所</p>
           </div>
           <button onClick={() => { fetchPosts(true); fetchVoiceRooms(); if (userId) fetchQA(userId, myVillageIds); if (tab === 'all') fetchTweets() }}
             className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
-            style={{ background: 'rgba(157,92,255,0.1)', border: '1px solid rgba(157,92,255,0.25)' }}>
-            <RefreshCw size={15} style={{ color: 'rgba(157,92,255,0.7)' }} />
+            style={{ background: 'rgba(73,225,255,0.1)', border: '1px solid rgba(73,225,255,0.25)' }}>
+            <RefreshCw size={15} style={{ color: 'rgba(73,225,255,0.7)' }} />
           </button>
         </div>
 
         {/* タブ */}
-        <div className="flex" style={{ borderBottom: '1px solid rgba(157,92,255,0.15)' }}>
+        <div className="flex" style={{ borderBottom: '1px solid rgba(73,225,255,0.15)' }}>
           {TAB_CONFIG.map(({ key, label, icon: Icon }) => (
             <button key={key} onClick={() => setTab(key)}
               className="flex-1 flex flex-col items-center gap-0.5 pt-2 pb-3 transition-all relative">
               <Icon size={16}
-                style={{ color: tab === key ? '#9D5CFF' : 'rgba(240,238,255,0.3)' }}
+                style={{ color: tab === key ? '#49E1FF' : 'rgba(240,238,255,0.3)' }}
                 strokeWidth={tab === key ? 2.5 : 1.8} />
               <span className="text-[10px] font-bold whitespace-nowrap"
                 style={{ color: tab === key ? '#F0EEFF' : 'rgba(240,238,255,0.3)' }}>
@@ -1157,13 +1157,13 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
               {/* マイ村タブにQ&Aバッジ */}
               {key === 'myvillage' && qaBottles.length > 0 && (
                 <span className="absolute top-1.5 right-2 min-w-[14px] h-[14px] rounded-full flex items-center justify-center px-0.5"
-                  style={{ background: 'linear-gradient(135deg,#9D5CFF,#FF4D90)' }}>
+                  style={{ background: 'linear-gradient(135deg,#49E1FF,#0891b2)' }}>
                   <span className="text-[8px] font-black text-white">{qaBottles.length}</span>
                 </span>
               )}
               {tab === key && (
                 <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                  style={{ background: 'linear-gradient(90deg,#9D5CFF,#FF4D90)' }} />
+                  style={{ background: 'linear-gradient(90deg,#49E1FF,#0891b2)' }} />
               )}
             </button>
           ))}
@@ -1176,9 +1176,9 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         {/* 回答待ちバナー（マイ村タブ・Q&Aあり） */}
         {tab === 'myvillage' && qaBottles.length > 0 && !loading && (
           <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl"
-            style={{ background: 'rgba(157,92,255,0.08)', border: '1px solid rgba(157,92,255,0.25)' }}>
-            <HelpCircle size={14} style={{ color: '#9D5CFF' }} className="flex-shrink-0" />
-            <p className="text-xs font-bold" style={{ color: 'rgba(157,92,255,0.9)' }}>
+            style={{ background: 'rgba(73,225,255,0.08)', border: '1px solid rgba(73,225,255,0.25)' }}>
+            <HelpCircle size={14} style={{ color: '#49E1FF' }} className="flex-shrink-0" />
+            <p className="text-xs font-bold" style={{ color: 'rgba(73,225,255,0.9)' }}>
               あなたの村に{qaBottles.length}件の質問が届いています
             </p>
           </div>
@@ -1187,13 +1187,13 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         {/* 村に参加していない */}
         {tab === 'myvillage' && myVillageIds.length === 0 && !loading && (
           <div className="rounded-2xl p-6 text-center"
-            style={{ background: 'rgba(157,92,255,0.06)', border: '1px solid rgba(157,92,255,0.2)' }}>
+            style={{ background: 'rgba(73,225,255,0.06)', border: '1px solid rgba(73,225,255,0.2)' }}>
             <p className="text-3xl mb-3">🛡️</p>
             <p className="text-sm font-extrabold mb-1" style={{ color: '#F0EEFF' }}>まだギルドに参加していません</p>
             <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(240,238,255,0.35)' }}>ギルドに参加すると、仲間の投稿がここに流れます。</p>
             <button onClick={() => router.push('/guilds')}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
-              style={{ background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}>
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold active:scale-95 transition-all"
+              style={{ background: 'linear-gradient(135deg,#49E1FF 0%,#0891b2 100%)', boxShadow: '0 4px 20px rgba(73,225,255,0.4)', color: '#0a1f2e' }}>
               ギルドを探す →
             </button>
           </div>
@@ -1202,13 +1202,13 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         {/* フォロー0人 */}
         {tab === 'following' && followingIds.length === 0 && !loading && (
           <div className="rounded-2xl p-6 text-center"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)' }}>
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(73,225,255,0.2)' }}>
             <p className="text-3xl mb-3">👥</p>
             <p className="text-sm font-extrabold mb-1" style={{ color: '#F0EEFF' }}>まだ誰もフォローしていません</p>
             <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(240,238,255,0.35)' }}>ゲーム仲間をフォローすると、ここに投稿が流れます。</p>
             <button onClick={() => router.push('/guilds')}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
-              style={{ background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}>
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold active:scale-95 transition-all"
+              style={{ background: 'linear-gradient(135deg,#49E1FF 0%,#0891b2 100%)', boxShadow: '0 4px 20px rgba(73,225,255,0.4)', color: '#0a1f2e' }}>
               ギルドを探す →
             </button>
           </div>
@@ -1235,7 +1235,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
             />
           ) : item.type === 'tweet' ? (
             <div key={`tweet-${item.data.id}`} className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)', boxShadow: '0 4px 24px rgba(0,0,0,0.35)' }}>
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(73,225,255,0.2)', boxShadow: '0 4px 24px rgba(0,0,0,0.35)' }}>
               <TweetCard
                 tweet={item.data}
                 myId={userId}
@@ -1264,7 +1264,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         ) && (
           <div className="text-center py-12">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-              style={{ background: 'rgba(157,92,255,0.1)', border: '1px solid rgba(157,92,255,0.2)' }}>
+              style={{ background: 'rgba(73,225,255,0.1)', border: '1px solid rgba(73,225,255,0.2)' }}>
               <span className="text-3xl">🎮</span>
             </div>
             <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.4)' }}>まだ投稿がありません</p>
@@ -1275,9 +1275,9 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         {!loading && hasMore && posts.length > 0 && (
           <button onClick={() => fetchPosts(false)} disabled={loadingMore}
             className="w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
-            style={{ background: 'rgba(157,92,255,0.08)', border: '1px solid rgba(157,92,255,0.2)', color: 'rgba(157,92,255,0.8)' }}>
+            style={{ background: 'rgba(73,225,255,0.08)', border: '1px solid rgba(73,225,255,0.2)', color: 'rgba(73,225,255,0.8)' }}>
             {loadingMore
-              ? <span className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgba(157,92,255,0.6)', borderTopColor: 'transparent' }} />
+              ? <span className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgba(73,225,255,0.6)', borderTopColor: 'transparent' }} />
               : '続きを読む'}
           </button>
         )}
@@ -1287,9 +1287,9 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       <button
         onClick={() => setShowCompose(true)}
         className="fixed bottom-24 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
-        style={{ background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', boxShadow: '0 8px 28px rgba(157,92,255,0.5)' }}
+        style={{ background: 'linear-gradient(135deg,#49E1FF 0%,#0891b2 100%)', boxShadow: '0 8px 28px rgba(73,225,255,0.5)' }}
       >
-        <Plus size={24} className="text-white" strokeWidth={2.5} />
+        <Plus size={24} strokeWidth={2.5} style={{ color: '#0a1f2e' }} />
       </button>
 
       {/* ── 村投稿モーダル ── */}

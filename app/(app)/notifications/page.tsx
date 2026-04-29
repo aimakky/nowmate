@@ -92,7 +92,7 @@ export default function NotificationsPage() {
         onClick={() => handleTap(n)}
         className="w-full flex items-start gap-3 px-4 py-3.5 text-left transition-all active:scale-[0.99]"
         style={unread ? {
-          background: glowColor ? `${glowColor}10` : 'rgba(139,92,246,0.08)',
+          background: glowColor ? `${glowColor}10` : 'rgba(255,132,176,0.08)',
         } : {}}
       >
         <div className="relative flex-shrink-0">
@@ -109,7 +109,7 @@ export default function NotificationsPage() {
         </div>
         {unread && (
           <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
-            style={{ background: glowColor ?? '#8b5cf6', boxShadow: `0 0 6px ${glowColor ?? '#8b5cf6'}` }} />
+            style={{ background: glowColor ?? '#FF84B0', boxShadow: `0 0 6px ${glowColor ?? '#FF84B0'}` }} />
         )}
       </button>
     )
@@ -120,22 +120,22 @@ export default function NotificationsPage() {
 
       {/* ── ヘッダー ── */}
       <div className="sticky top-0 z-10 px-4 pt-12 pb-3 backdrop-blur-md"
-        style={{ background: 'rgba(8,8,18,0.92)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        style={{ background: 'rgba(8,8,18,0.92)', borderBottom: '1px solid rgba(255,132,176,0.2)' }}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ border: '2px solid rgba(157,92,255,0.5)', background: 'rgba(157,92,255,0.1)' }}>
-              <User size={16} style={{ color: '#9D5CFF' }} />
+              style={{ border: '2px solid rgba(255,132,176,0.6)', background: 'rgba(255,132,176,0.1)' }}>
+              <User size={16} style={{ color: '#FF84B0' }} />
             </div>
             <div>
-              <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#9D5CFF' }}>NOTIFICATIONS</p>
+              <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#FF84B0' }}>NOTIFICATIONS</p>
               <h1 className="font-extrabold text-2xl leading-tight" style={{ color: '#F0EEFF' }}>通知</h1>
             </div>
           </div>
           {unreadCount > 0 && (
             <span className="flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-full"
-              style={{ background: 'rgba(139,92,246,0.15)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.3)' }}>
-              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+              style={{ background: 'rgba(255,132,176,0.15)', color: '#FF84B0', border: '1px solid rgba(255,132,176,0.35)' }}>
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#FF84B0' }} />
               {unreadCount}件未読
             </span>
           )}
@@ -158,20 +158,20 @@ export default function NotificationsPage() {
       ) : notifs.length === 0 ? (
         <div className="flex flex-col items-center justify-center px-6" style={{ minHeight: 'calc(100vh - 120px)' }}>
           <div className="w-full max-w-xs rounded-3xl p-8 flex flex-col items-center text-center"
-            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(157,92,255,0.12)' }}>
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,132,176,0.18)' }}>
             {/* Bell icon with sparkles */}
             <div className="relative mb-6">
               {/* Sparkle dots */}
-              <span className="absolute -top-2 -right-2 text-[10px] font-bold" style={{ color: 'rgba(157,92,255,0.6)' }}>+</span>
-              <span className="absolute -bottom-1 -left-3 text-[10px] font-bold" style={{ color: 'rgba(157,92,255,0.4)' }}>+</span>
-              <span className="absolute top-1 -left-4 text-[8px] font-bold" style={{ color: 'rgba(157,92,255,0.5)' }}>+</span>
-              <span className="absolute -top-3 left-3 text-[8px] font-bold" style={{ color: 'rgba(157,92,255,0.3)' }}>+</span>
+              <span className="absolute -top-2 -right-2 text-[10px] font-bold" style={{ color: 'rgba(255,132,176,0.6)' }}>+</span>
+              <span className="absolute -bottom-1 -left-3 text-[10px] font-bold" style={{ color: 'rgba(255,132,176,0.4)' }}>+</span>
+              <span className="absolute top-1 -left-4 text-[8px] font-bold" style={{ color: 'rgba(255,132,176,0.5)' }}>+</span>
+              <span className="absolute -top-3 left-3 text-[8px] font-bold" style={{ color: 'rgba(255,132,176,0.3)' }}>+</span>
               <div
                 className="w-[72px] h-[72px] rounded-2xl flex items-center justify-center"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(157,92,255,0.25) 0%, rgba(255,77,144,0.15) 100%)',
-                  border: '1px solid rgba(157,92,255,0.3)',
-                  boxShadow: '0 0 30px rgba(157,92,255,0.2)',
+                  background: 'linear-gradient(135deg, rgba(255,132,176,0.25) 0%, rgba(255,77,144,0.2) 100%)',
+                  border: '1px solid rgba(255,132,176,0.4)',
+                  boxShadow: '0 0 30px rgba(255,132,176,0.25)',
                 }}
               >
                 <span className="text-4xl">🔔</span>
@@ -191,15 +191,15 @@ export default function NotificationsPage() {
             <div className="px-4 mb-4">
               <div className="flex items-center gap-2 py-3">
                 <div className="w-1.5 h-1.5 bg-rose-400 rounded-full animate-pulse" />
-                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(251,113,133,0.8)' }}>
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,132,176,0.9)' }}>
                   返信・反応
                 </span>
               </div>
               <div className="rounded-2xl overflow-hidden"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(251,113,133,0.18)', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,132,176,0.2)', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
                 <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                   {reactionNotifs.map(n => (
-                    <NotifRow key={n.id} n={n} glowColor="#f43f5e" />
+                    <NotifRow key={n.id} n={n} glowColor="#FF84B0" />
                   ))}
                 </div>
               </div>
@@ -210,13 +210,13 @@ export default function NotificationsPage() {
           {voiceNotifs.length > 0 && (
             <div className="px-4 mb-4">
               <div className="flex items-center gap-2 py-3">
-                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(167,139,250,0.8)' }}>🎙️ ゲーム村通話</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,132,176,0.8)' }}>🎙️ ゲーム村通話</span>
               </div>
               <div className="rounded-2xl overflow-hidden"
-                style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.25)', boxShadow: '0 4px 24px rgba(139,92,246,0.15)' }}>
-                <div className="divide-y" style={{ borderColor: 'rgba(139,92,246,0.12)' }}>
+                style={{ background: 'rgba(255,132,176,0.06)', border: '1px solid rgba(255,132,176,0.25)', boxShadow: '0 4px 24px rgba(255,132,176,0.15)' }}>
+                <div className="divide-y" style={{ borderColor: 'rgba(255,132,176,0.12)' }}>
                   {voiceNotifs.map(n => (
-                    <NotifRow key={n.id} n={n} glowColor="#8b5cf6" />
+                    <NotifRow key={n.id} n={n} glowColor="#FF84B0" />
                   ))}
                 </div>
               </div>
@@ -232,7 +232,7 @@ export default function NotificationsPage() {
                 </span>
               </div>
               <div className="rounded-2xl overflow-hidden"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                style={{ background: 'rgba(255,132,176,0.03)', border: '1px solid rgba(255,132,176,0.1)' }}>
                 <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                   {otherNotifs.map(n => (
                     <NotifRow key={n.id} n={n} />
