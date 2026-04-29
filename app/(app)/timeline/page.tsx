@@ -90,11 +90,11 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
   const slots = slotsMatch?.[1]?.trim() ?? ''
 
   const GAME_COLORS: Record<string, string> = {
-    'FPS': '#FF4D90', 'MOBA': '#f97316', 'RPG': '#9D5CFF',
+    'FPS': '#FF4D90', 'MOBA': '#f97316', 'RPG': '#39FF88',
     'スポーツ': '#39FF88', 'カードゲーム': '#39FF88', 'パズル': '#FF4D90',
-    'サバイバル': '#7CFF82', 'その他': '#9D5CFF',
+    'サバイバル': '#7CFF82', 'その他': '#39FF88',
   }
-  const color = GAME_COLORS[room.category] ?? '#9D5CFF'
+  const color = GAME_COLORS[room.category] ?? '#39FF88'
 
   // 全参加者（ホスト + メンバー）
   const allParticipants = [
@@ -131,7 +131,7 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
         </div>
         {/* LIVE badge */}
         <div className="flex items-center gap-1 px-2 py-0.5 rounded-full flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg,#9D5CFF,#FF4D90)', boxShadow: '0 2px 8px rgba(157,92,255,0.4)' }}>
+          style={{ background: 'linear-gradient(135deg,#39FF88,#FF4D90)', boxShadow: '0 2px 8px rgba(57,255,136,0.25)' }}>
           <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
           <span className="text-[9px] font-extrabold text-white">LIVE</span>
         </div>
@@ -154,7 +154,7 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
                   className="relative w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold text-white overflow-hidden"
                   style={{
                     background: p.avatar_url ? undefined : `linear-gradient(135deg,${color},${color}80)`,
-                    border: i % 3 === 0 ? `2px solid ${color}` : '2px solid rgba(157,92,255,0.2)',
+                    border: i % 3 === 0 ? `2px solid ${color}` : '2px solid rgba(57,255,136,0.12)',
                     boxShadow: i % 3 === 0 ? `0 0 14px ${color}70` : 'none',
                   }}
                 >
@@ -182,7 +182,7 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
             <div className="flex flex-col items-center gap-1">
               <div
                 className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-extrabold"
-                style={{ background: 'rgba(157,92,255,0.1)', color: 'rgba(240,238,255,0.4)', border: '2px solid rgba(157,92,255,0.2)' }}
+                style={{ background: 'rgba(57,255,136,0.07)', color: 'rgba(240,238,255,0.4)', border: '2px solid rgba(57,255,136,0.12)' }}
               >
                 +{allParticipants.length - 8}
               </div>
@@ -203,8 +203,8 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
           onClick={() => router.push(`/villages/${room.id}`)}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-extrabold text-white active:scale-95 transition-all"
           style={{
-            background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)',
-            boxShadow: '0 4px 20px rgba(157,92,255,0.4)',
+            background: 'linear-gradient(135deg,#39FF88 0%,#059669 100%)',
+            boxShadow: '0 4px 20px rgba(57,255,136,0.25)',
           }}
         >
           <Mic size={14} />
@@ -285,7 +285,7 @@ function QACard({
 
       {/* フッター */}
       <div className="px-4 py-2.5 flex items-center justify-between gap-2"
-        style={{ borderTop: '1px solid rgba(157,92,255,0.1)' }}>
+        style={{ borderTop: '1px solid rgba(57,255,136,0.07)' }}>
         <div className="flex items-center gap-1.5">
           <span className="text-[11px]" style={{ color: 'rgba(57,255,136,0.4)' }}>
             💬 {bottle.reply_count > 0 ? `${bottle.reply_count}件の回答` : 'まだ回答なし'}
@@ -313,7 +313,7 @@ function QACard({
 
       {/* インライン回答フォーム */}
       {open && !done && (
-        <div className="px-4 pb-4 pt-1 space-y-2" style={{ borderTop: '1px solid rgba(157,92,255,0.1)' }}>
+        <div className="px-4 pb-4 pt-1 space-y-2" style={{ borderTop: '1px solid rgba(57,255,136,0.07)' }}>
           <textarea
             value={text}
             onChange={e => { setText(e.target.value); setErrMsg('') }}
@@ -322,21 +322,21 @@ function QACard({
             className="w-full px-3 py-2 rounded-xl text-xs resize-none focus:outline-none"
             style={{
               background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(157,92,255,0.2)',
+              border: '1px solid rgba(57,255,136,0.12)',
               color: '#F0EEFF',
-              caretColor: '#9D5CFF',
+              caretColor: '#39FF88',
             }}
           />
           {errMsg && <p className="text-[10px] text-red-400">⚠️ {errMsg}</p>}
           <div className="flex gap-2">
             <button onClick={() => setOpen(false)}
               className="flex-1 py-2 rounded-xl text-xs font-bold border"
-              style={{ borderColor: 'rgba(157,92,255,0.2)', color: 'rgba(240,238,255,0.55)', background: 'transparent' }}>
+              style={{ borderColor: 'rgba(57,255,136,0.12)', color: 'rgba(240,238,255,0.55)', background: 'transparent' }}>
               キャンセル
             </button>
             <button onClick={submit} disabled={!text.trim() || sending}
               className="flex-1 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-1"
-              style={{ background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}>
+              style={{ background: 'linear-gradient(135deg,#39FF88 0%,#059669 100%)', boxShadow: '0 4px 20px rgba(57,255,136,0.25)' }}>
               {sending
                 ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 : <><Send size={10} /> 送信</>}
@@ -623,7 +623,7 @@ function ComposeModal({
               </button>
               <button onClick={() => { setShowCrisis(false); doSendBottle() }}
                 className="flex-1 py-2.5 rounded-2xl text-xs font-bold text-white"
-                style={{ background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}>
+                style={{ background: 'linear-gradient(135deg,#39FF88 0%,#059669 100%)', boxShadow: '0 4px 20px rgba(57,255,136,0.25)' }}>
                 それでも流す
               </button>
             </div>
@@ -633,21 +633,21 @@ function ComposeModal({
 
       <div
         className="relative rounded-t-3xl w-full max-w-md mx-auto overflow-hidden"
-        style={{ background: '#080812', border: '1px solid rgba(157,92,255,0.2)', borderBottom: 'none' }}
+        style={{ background: '#080812', border: '1px solid rgba(57,255,136,0.12)', borderBottom: 'none' }}
         onClick={e => e.stopPropagation()}
       >
         {/* ドラッグハンドル */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(157,92,255,0.3)' }} />
+          <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(57,255,136,0.18)' }} />
         </div>
 
         {/* モード切替タブ */}
         <div className="flex mx-5 mt-1 mb-3 rounded-2xl overflow-hidden"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.15)' }}>
+          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(57,255,136,0.1)' }}>
           <button onClick={() => switchMode('post')}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold transition-all rounded-2xl"
             style={!isBottle
-              ? { background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', color: '#fff', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }
+              ? { background: 'linear-gradient(135deg,#39FF88 0%,#059669 100%)', color: '#fff', boxShadow: '0 4px 20px rgba(57,255,136,0.25)' }
               : { color: 'rgba(240,238,255,0.4)' }
             }>
             <span>✍️</span> 投稿
@@ -674,8 +674,8 @@ function ComposeModal({
             disabled={!canSubmit}
             className="px-5 py-1.5 rounded-full text-sm font-extrabold text-white disabled:opacity-40 active:scale-95 transition-all flex items-center gap-1.5"
             style={{
-              background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)',
-              boxShadow: '0 4px 20px rgba(157,92,255,0.4)',
+              background: 'linear-gradient(135deg,#39FF88 0%,#059669 100%)',
+              boxShadow: '0 4px 20px rgba(57,255,136,0.25)',
             }}
           >
             {sending
@@ -693,7 +693,7 @@ function ComposeModal({
             <>
               <div className="flex gap-3 pt-2 pb-3">
                 <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold text-white"
-                  style={{ background: 'linear-gradient(135deg,#9D5CFF,#7B3FE4)', boxShadow: '0 0 0 2px rgba(157,92,255,0.4)' }}>
+                  style={{ background: 'linear-gradient(135deg,#39FF88,#059669)', boxShadow: '0 0 0 2px rgba(57,255,136,0.25)' }}>
                   {userProfile?.avatar_url
                     ? <img src={userProfile.avatar_url} alt="" className="w-full h-full object-cover" />
                     : avatarLetter}
@@ -705,17 +705,17 @@ function ComposeModal({
                     placeholder="いまどうしてる？"
                     rows={4} autoFocus
                     className="w-full text-[17px] leading-relaxed resize-none focus:outline-none bg-transparent"
-                    style={{ color: '#F0EEFF', caretColor: '#9D5CFF' }}
+                    style={{ color: '#F0EEFF', caretColor: '#39FF88' }}
                   />
                 </div>
               </div>
-              <div className="flex gap-1.5 flex-wrap pb-3" style={{ borderBottom: '1px solid rgba(157,92,255,0.15)' }}>
+              <div className="flex gap-1.5 flex-wrap pb-3" style={{ borderBottom: '1px solid rgba(57,255,136,0.1)' }}>
                 {POST_CATEGORIES.map(c => (
                   <button key={c.id} onClick={() => setCategory(c.id)}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all active:scale-95"
                     style={category === c.id
-                      ? { background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', color: '#fff', borderColor: '#9D5CFF', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }
-                      : { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.55)', borderColor: 'rgba(157,92,255,0.2)' }
+                      ? { background: 'linear-gradient(135deg,#39FF88 0%,#059669 100%)', color: '#fff', borderColor: '#39FF88', boxShadow: '0 4px 20px rgba(57,255,136,0.25)' }
+                      : { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.55)', borderColor: 'rgba(57,255,136,0.12)' }
                     }>
                     {c.emoji} {c.id}
                   </button>
@@ -728,9 +728,9 @@ function ComposeModal({
                 }
                 <div className="flex items-center gap-2">
                   <svg width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
-                    <circle cx="11" cy="11" r="9" fill="none" stroke="rgba(157,92,255,0.2)" strokeWidth="2.5" />
+                    <circle cx="11" cy="11" r="9" fill="none" stroke="rgba(57,255,136,0.12)" strokeWidth="2.5" />
                     <circle cx="11" cy="11" r="9" fill="none"
-                      stroke={text.length > MAX * 0.9 ? '#FF4D90' : '#9D5CFF'}
+                      stroke={text.length > MAX * 0.9 ? '#FF4D90' : '#39FF88'}
                       strokeWidth="2.5" strokeLinecap="round"
                       strokeDasharray={`${2 * Math.PI * 9}`}
                       strokeDashoffset={`${2 * Math.PI * 9 * (1 - text.length / MAX)}`}
@@ -763,7 +763,7 @@ function ComposeModal({
                         className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95"
                         style={targetVil?.id === v.id
                           ? { background: 'rgba(57,255,136,0.15)', color: '#39FF88', border: '1px solid rgba(57,255,136,0.35)' }
-                          : { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)', border: '1px solid rgba(157,92,255,0.15)' }
+                          : { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)', border: '1px solid rgba(57,255,136,0.1)' }
                         }>
                         <span>{v.icon}</span>
                         <span className="truncate max-w-[70px]">{v.name}</span>
@@ -1309,4 +1309,5 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
     </div>
   )
 }
+
 
