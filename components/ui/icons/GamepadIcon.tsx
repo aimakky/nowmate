@@ -9,34 +9,30 @@ export default function GamepadIcon({ size = 22, active = false }: Props) {
     <svg
       width={size}
       height={size}
-      viewBox="0 0 100 82"
+      viewBox="0 0 100 78"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       style={{ opacity }}
     >
       <defs>
-        <linearGradient id="gp-body" x1="0.25" y1="0" x2="0.75" y2="1">
-          <stop offset="0%" stopColor="#9B72F5" />
-          <stop offset="50%" stopColor="#6B38D4" />
-          <stop offset="100%" stopColor="#3D1A90" />
+        <linearGradient id="gp-body" x1="0.3" y1="0" x2="0.7" y2="1">
+          <stop offset="0%" stopColor="#A07AFF" />
+          <stop offset="55%" stopColor="#6B38D4" />
+          <stop offset="100%" stopColor="#3B1888" />
         </linearGradient>
-        <linearGradient id="gp-top" x1="0.5" y1="0" x2="0.5" y2="1">
-          <stop offset="0%" stopColor="#B090FF" />
-          <stop offset="100%" stopColor="#7848E0" />
-        </linearGradient>
-        <radialGradient id="gp-shine" cx="0.38" cy="0.22" r="0.55">
-          <stop offset="0%" stopColor="rgba(220,195,255,0.32)" />
-          <stop offset="100%" stopColor="rgba(220,195,255,0)" />
+        <radialGradient id="gp-shine" cx="0.38" cy="0.18" r="0.52">
+          <stop offset="0%" stopColor="rgba(210,185,255,0.38)" />
+          <stop offset="100%" stopColor="rgba(210,185,255,0)" />
         </radialGradient>
-        <filter id="gp-glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation={active ? "7" : "2.5"} result="blur" />
+        <filter id="gp-glow" x="-45%" y="-45%" width="190%" height="190%">
+          <feGaussianBlur stdDeviation={active ? "8" : "3"} result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
-        <filter id="gp-soft-glow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation={active ? "4" : "1.5"} result="blur" />
+        <filter id="btn-glow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="2.5" result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
@@ -44,100 +40,84 @@ export default function GamepadIcon({ size = 22, active = false }: Props) {
         </filter>
       </defs>
 
-      {/* Controller body — Xbox-style with two grips */}
+      {/*
+        Controller shape:
+        Two bumper humps arching up from left and right,
+        with a dip in the center top, then a wide rounded body.
+      */}
       <path
         d="
-          M 14 22
-          Q 14 12 22 12
-          L 40 12
-          Q 46 10 50 10
-          Q 54 10 60 12
-          L 78 12
-          Q 86 12 86 22
-          L 86 50
-          Q 86 58 80 60
-          L 74 62
-          Q 73 68 72 73
-          Q 70 80 63 80
-          Q 56 80 54 73
-          L 51 64
-          L 49 64
-          L 46 73
-          Q 44 80 37 80
-          Q 30 80 28 73
-          Q 27 68 26 62
-          L 20 60
-          Q 14 58 14 50
+          M 6 44
+          C 6 26, 16 14, 30 13
+          L 43 13
+          Q 50 9, 57 13
+          L 70 13
+          C 84 14, 94 26, 94 44
+          L 94 56
+          Q 94 66, 84 66
+          L 72 66
+          Q 68 72, 66 72
+          L 34 72
+          Q 32 72, 28 66
+          L 16 66
+          Q 6 66, 6 56
           Z
         "
         fill="url(#gp-body)"
         filter="url(#gp-glow)"
       />
 
-      {/* Bumpers */}
-      <path
-        d="M 14 22 Q 14 14 20 13 L 40 12 Q 46 10 50 10 L 14 10 Q 8 10 8 18 L 8 24 Z"
-        fill="url(#gp-top)"
-        opacity="0.7"
-      />
-      <path
-        d="M 86 22 Q 86 14 80 13 L 60 12 Q 54 10 50 10 L 86 10 Q 92 10 92 18 L 92 24 Z"
-        fill="url(#gp-top)"
-        opacity="0.7"
-      />
-
       {/* Shine overlay */}
       <path
         d="
-          M 14 22 Q 14 12 22 12 L 40 12 Q 46 10 50 10 Q 54 10 60 12 L 78 12
-          Q 86 12 86 22 L 86 50 Q 86 58 80 60 L 74 62 Q 73 68 72 73
-          Q 70 80 63 80 Q 56 80 54 73 L 51 64 L 49 64 L 46 73 Q 44 80 37 80
-          Q 30 80 28 73 Q 27 68 26 62 L 20 60 Q 14 58 14 50 Z
+          M 6 44 C 6 26, 16 14, 30 13 L 43 13 Q 50 9, 57 13 L 70 13
+          C 84 14, 94 26, 94 44 L 94 56 Q 94 66, 84 66 L 72 66
+          Q 68 72, 66 72 L 34 72 Q 32 72, 28 66 L 16 66 Q 6 66, 6 56 Z
         "
         fill="url(#gp-shine)"
       />
 
-      {/* Top edge highlight */}
+      {/* Top rim highlight */}
       <path
-        d="M 24 14 Q 50 10 76 14"
-        stroke="rgba(210,185,255,0.28)"
-        strokeWidth="1.8"
+        d="M 22 18 C 26 14, 36 13, 43 13 Q 50 9, 57 13 C 64 13, 74 14, 78 18"
+        stroke="rgba(215,190,255,0.30)"
+        strokeWidth="2"
         strokeLinecap="round"
         fill="none"
       />
 
       {/* D-pad */}
-      <rect x="23" y="31" width="14" height="5.5" rx="2.2" fill="rgba(255,255,255,0.18)" />
-      <rect x="27.5" y="26.5" width="5.5" height="14" rx="2.2" fill="rgba(255,255,255,0.18)" />
+      <rect x="20" y="38" width="15" height="5.5" rx="2.2" fill="rgba(255,255,255,0.20)" />
+      <rect x="25.2" y="33" width="5.5" height="15" rx="2.2" fill="rgba(255,255,255,0.20)" />
 
       {/* Left analog stick */}
-      <circle cx="30" cy="50" r="6" fill="rgba(40,15,110,0.75)" stroke="rgba(180,145,255,0.28)" strokeWidth="1.2" />
-      <circle cx="30" cy="50" r="2.2" fill="rgba(255,255,255,0.1)" />
+      <circle cx="32" cy="55" r="7" fill="rgba(35,12,100,0.78)" stroke="rgba(175,140,255,0.30)" strokeWidth="1.5" />
+      <circle cx="32" cy="55" r="2.8" fill="rgba(255,255,255,0.10)" />
 
       {/* Right analog stick */}
-      <circle cx="60" cy="50" r="6" fill="rgba(40,15,110,0.75)" stroke="rgba(180,145,255,0.28)" strokeWidth="1.2" />
-      <circle cx="60" cy="50" r="2.2" fill="rgba(255,255,255,0.1)" />
+      <circle cx="62" cy="55" r="7" fill="rgba(35,12,100,0.78)" stroke="rgba(175,140,255,0.30)" strokeWidth="1.5" />
+      <circle cx="62" cy="55" r="2.8" fill="rgba(255,255,255,0.10)" />
 
-      {/* Face buttons (diamond) */}
+      {/* Face buttons — diamond */}
       {/* Top — yellow */}
-      <circle cx="70" cy="28" r="4.5" fill="#F5C518" filter="url(#gp-soft-glow)" />
-      <circle cx="70" cy="28" r="1.8" fill="rgba(255,255,255,0.3)" />
+      <circle cx="74" cy="33" r="5" fill="#F5C518" filter="url(#btn-glow)" />
+      <circle cx="74" cy="33" r="2" fill="rgba(255,255,255,0.32)" />
       {/* Right — blue */}
-      <circle cx="79" cy="37" r="4.5" fill="#4B9EF5" filter="url(#gp-soft-glow)" />
-      <circle cx="79" cy="37" r="1.8" fill="rgba(255,255,255,0.3)" />
+      <circle cx="83" cy="42" r="5" fill="#4B9EF5" filter="url(#btn-glow)" />
+      <circle cx="83" cy="42" r="2" fill="rgba(255,255,255,0.32)" />
       {/* Bottom — green */}
-      <circle cx="70" cy="46" r="4.5" fill="#48D560" filter="url(#gp-soft-glow)" />
-      <circle cx="70" cy="46" r="1.8" fill="rgba(255,255,255,0.3)" />
+      <circle cx="74" cy="51" r="5" fill="#3DD660" filter="url(#btn-glow)" />
+      <circle cx="74" cy="51" r="2" fill="rgba(255,255,255,0.32)" />
       {/* Left — red */}
-      <circle cx="61" cy="37" r="4.5" fill="#F04848" filter="url(#gp-soft-glow)" />
-      <circle cx="61" cy="37" r="1.8" fill="rgba(255,255,255,0.3)" />
+      <circle cx="65" cy="42" r="5" fill="#F04848" filter="url(#btn-glow)" />
+      <circle cx="65" cy="42" r="2" fill="rgba(255,255,255,0.32)" />
 
-      {/* Center / home button */}
-      <circle cx="50" cy="37" r="4.8" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.22)" strokeWidth="1.2" />
+      {/* Center home button */}
+      <circle cx="50" cy="40" r="5" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.25)" strokeWidth="1.4" />
 
-      {/* Select / Start mini */}
-      <rect x="41" y="35" width="5" height="3.5" rx="1.75" fill="rgba(255,255,255,0.25)" />
-      <rect x="54" y="35" width="5" height="3.5" rx="1.75" fill="rgba(255,255,255,0.25)" />
+      {/* Select / Start */}
+      <rect x="40" y="38" width="5.5" height="3.5" rx="1.75" fill="rgba(255,255,255,0.26)" />
+      <rect x="54.5" y="38" width="5.5" height="3.5" rx="1.75" fill="rgba(255,255,255,0.26)" />
     </svg>
   )
 }
