@@ -56,8 +56,41 @@ export default function BottomNav() {
       <div className="max-w-[430px] mx-auto flex items-center h-16">
 
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + '/')
-          const badge  = badges[href] ?? 0
+          const active  = pathname === href || pathname.startsWith(href + '/')
+          const badge   = badges[href] ?? 0
+          const isGame  = href === '/guild'
+
+          if (isGame) {
+            return (
+              <Link key={href} href={href}
+                className="flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-all">
+                {/* 光るピル背景 */}
+                <div className={cn(
+                  'relative flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-2xl transition-all',
+                  active
+                    ? 'text-white shadow-lg'
+                    : 'text-violet-500'
+                )}
+                  style={active ? { background: 'linear-gradient(135deg,#7c3aed,#a855f7)' } : {}}>
+                  <div className="relative">
+                    <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
+                    {/* NEW バッジ */}
+                    {!active && (
+                      <span className="absolute -top-2 -right-3 text-[8px] font-extrabold text-white bg-violet-500 rounded-full px-1 leading-4">
+                        NEW
+                      </span>
+                    )}
+                  </div>
+                  <span className={cn('text-[9px] font-extrabold tracking-wide',
+                    active ? 'text-white' : 'text-violet-500')}>
+                    {label}
+                  </span>
+                </div>
+                {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" style={{ background: '#7c3aed' }} />}
+              </Link>
+            )
+          }
+
           return (
             <Link key={href} href={href}
               className={cn('flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-colors',
