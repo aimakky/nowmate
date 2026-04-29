@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Users, Send, Heart, MessageSquare, MoreHorizontal, Info, FileText } from 'lucide-react'
+import { ArrowLeft, Users, Send, Heart, MessageSquare, MoreHorizontal, Info, FileText, Hash, Crown, Mic, Shield } from 'lucide-react'
 import { INDUSTRIES } from '@/lib/guild'
 import { startDM } from '@/lib/dm'
 
@@ -35,75 +35,101 @@ function isOnline(lastSeen: string | null) {
   if (!lastSeen) return false
   return Date.now() - new Date(lastSeen).getTime() < 5 * 60 * 1000
 }
-function tierColor(tier: number) {
-  if (tier >= 5) return '#f59e0b'
-  if (tier >= 4) return '#8b5cf6'
-  if (tier >= 3) return '#3b82f6'
-  return '#9ca3af'
+function tierLabel(tier: number): { label: string; color: string; bg: string } {
+  if (tier >= 5) return { label: 'レジェンド', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)' }
+  if (tier >= 4) return { label: 'エース',     color: '#a78bfa', bg: 'rgba(167,139,250,0.15)' }
+  if (tier >= 3) return { label: '常連',       color: '#60a5fa', bg: 'rgba(96,165,250,0.15)' }
+  if (tier >= 2) return { label: 'メンバー',   color: '#4ade80', bg: 'rgba(74,222,128,0.12)' }
+  return           { label: '新入り',          color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' }
 }
 
-// ─── PostCard ────────────────────────────────────────────────────
-function PostCard({ post, currentUserId, genre }: { post: Post; currentUserId: string | null; genre: typeof INDUSTRIES[0] | null }) {
+// ─── PostCard (Discordスタイル) ────────────────────────────────
+function PostCard({
+  post, currentUserId, genre,
+}: { post: Post; currentUserId: string | null; genre: typeof INDUSTRIES[0] | null }) {
   const [liked,     setLiked]     = useState(false)
   const [likeCount, setLikeCount] = useState(Math.floor(Math.random() * 8))
+  const tier  = post.profiles?.trust_tier ?? 1
+  const tInfo = tierLabel(tier)
+  const isOwn = post.user_id === currentUserId
 
   return (
-    <div className="bg-white border-b border-stone-100 px-4 py-3.5">
-      <div className="flex gap-3">
-        {/* アバター */}
-        <div className="flex-shrink-0 relative">
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-extrabold text-white"
-            style={{ background: genre?.gradient ?? 'linear-gradient(135deg,#7c3aed,#a855f7)' }}
+    <div className="flex gap-3 px-4 py-3 group transition-colors hover:bg-white/[0.02]">
+      {/* アバター */}
+      <div className="flex-shrink-0 relative mt-0.5">
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-extrabold text-white overflow-hidden"
+          style={{ background: genre?.gradient ?? 'linear-gradient(135deg,#7c3aed,#a855f7)' }}
+        >
+          {post.profiles?.avatar_url
+            ? <img src={post.profiles.avatar_url} className="w-full h-full object-cover" alt="" />
+            : (post.profiles?.display_name?.[0] ?? '?')}
+        </div>
+      </div>
+
+      {/* 本文エリア */}
+      <div className="flex-1 min-w-0">
+        {/* ネームライン */}
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <span className="text-sm font-extrabold" style={{ color: 'rgba(255,255,255,0.9)' }}>
+            {post.profiles?.display_name ?? '名無し'}
+          </span>
+          {/* Discordロール風ティアバッジ */}
+          <span
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none"
+            style={{ color: tInfo.color, background: tInfo.bg, border: `1px solid ${tInfo.color}40` }}
           >
-            {post.profiles?.avatar_url
-              ? <img src={post.profiles.avatar_url} className="w-full h-full rounded-full object-cover" />
-              : (post.profiles?.display_name?.[0] ?? '?')}
-          </div>
-          <div
-            className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white"
-            style={{ background: tierColor(post.profiles?.trust_tier ?? 1) }}
-          />
+            {tInfo.label}
+          </span>
+          {isOwn && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none"
+              style={{ color: '#818cf8', background: 'rgba(129,140,248,0.12)', border: '1px solid rgba(129,140,248,0.25)' }}>
+              あなた
+            </span>
+          )}
+          <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+            {timeAgo(post.created_at)}
+          </span>
         </div>
 
         {/* 本文 */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2 mb-1">
-            <span className="text-xs font-extrabold text-stone-800 truncate">
-              {post.profiles?.display_name ?? '名無し'}
-            </span>
-            <span className="text-[10px] text-stone-400 flex-shrink-0">{timeAgo(post.created_at)}</span>
-          </div>
-          <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+        <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.8)' }}>
+          {post.content}
+        </p>
 
-          {/* アクション */}
-          <div className="flex items-center gap-4 mt-2.5">
-            <button
-              onClick={() => { setLiked(v => !v); setLikeCount(c => liked ? c - 1 : c + 1) }}
-              className="flex items-center gap-1 transition-all active:scale-90"
-            >
-              <Heart
-                size={14}
-                className="transition-colors"
-                fill={liked ? '#ef4444' : 'none'}
-                color={liked ? '#ef4444' : '#d6d3d1'}
-                strokeWidth={2}
-              />
-              {likeCount > 0 && (
-                <span className={`text-[10px] font-bold ${liked ? 'text-red-400' : 'text-stone-400'}`}>{likeCount}</span>
-              )}
-            </button>
-            <button className="flex items-center gap-1 active:scale-90">
-              <MessageSquare size={14} color="#d6d3d1" strokeWidth={2} />
-              <span className="text-[10px] text-stone-400 font-bold">返信</span>
-            </button>
-          </div>
+        {/* リアクションバー */}
+        <div className="flex items-center gap-3 mt-2">
+          <button
+            onClick={() => { setLiked(v => !v); setLikeCount(c => liked ? c - 1 : c + 1) }}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg transition-all active:scale-90"
+            style={liked
+              ? { background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)' }
+              : { background: 'rgba(255,255,255,0.05)', border: '1px solid transparent' }}
+          >
+            <Heart
+              size={12}
+              fill={liked ? '#ef4444' : 'none'}
+              color={liked ? '#ef4444' : 'rgba(255,255,255,0.35)'}
+              strokeWidth={2}
+            />
+            {likeCount > 0 && (
+              <span className="text-[10px] font-bold" style={{ color: liked ? '#f87171' : 'rgba(255,255,255,0.35)' }}>
+                {likeCount}
+              </span>
+            )}
+          </button>
+          <button className="flex items-center gap-1 px-2 py-1 rounded-lg transition-all active:scale-90"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid transparent' }}>
+            <MessageSquare size={12} color="rgba(255,255,255,0.35)" strokeWidth={2} />
+            <span className="text-[10px] font-bold" style={{ color: 'rgba(255,255,255,0.35)' }}>返信</span>
+          </button>
         </div>
-
-        <button className="flex-shrink-0 text-stone-300 self-start mt-0.5">
-          <MoreHorizontal size={16} />
-        </button>
       </div>
+
+      <button className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity self-start mt-0.5"
+        style={{ color: 'rgba(255,255,255,0.3)' }}>
+        <MoreHorizontal size={14} />
+      </button>
     </div>
   )
 }
@@ -123,6 +149,7 @@ export default function GuildDetailPage() {
   const [text,     setText]     = useState('')
   const [posting,  setPosting]  = useState(false)
   const [loading,  setLoading]  = useState(true)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const genre = guild ? (INDUSTRIES.find(g => g.id === guild.category) ?? null) : null
 
@@ -133,19 +160,16 @@ export default function GuildDetailPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) setUserId(user.id)
 
-      // ギルド情報
       const { data: g } = await supabase.from('villages').select('*').eq('id', id).single()
       if (!g) { router.push('/guilds'); return }
       setGuild(g)
 
-      // メンバーシップ確認
       if (user) {
         const { data: m } = await supabase
           .from('village_members').select('user_id').eq('village_id', id).eq('user_id', user.id).maybeSingle()
         setIsMember(!!m)
       }
 
-      // 投稿
       const { data: p } = await supabase
         .from('village_posts')
         .select('*, profiles(display_name, avatar_url, trust_tier)')
@@ -154,7 +178,6 @@ export default function GuildDetailPage() {
         .limit(50)
       setPosts((p ?? []) as Post[])
 
-      // メンバー一覧
       const { data: mb } = await supabase
         .from('village_members')
         .select('user_id, role, profiles(display_name, avatar_url, last_seen_at)')
@@ -203,104 +226,141 @@ export default function GuildDetailPage() {
   }
 
   if (loading) return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9] flex items-center justify-center">
+    <div className="max-w-md mx-auto min-h-screen flex items-center justify-center" style={{ background: '#0f0f1a' }}>
       <div className="w-8 h-8 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
     </div>
   )
   if (!guild) return null
 
-  const onlineCount = members.filter(m => isOnline(m.profiles?.last_seen_at ?? null)).length
+  const onlineMembers  = members.filter(m => isOnline(m.profiles?.last_seen_at ?? null))
+  const offlineMembers = members.filter(m => !isOnline(m.profiles?.last_seen_at ?? null))
+  const onlineCount    = onlineMembers.length
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
+    <div className="max-w-md mx-auto min-h-screen flex flex-col" style={{ background: '#0f0f1a' }}>
 
       {/* ── スティッキーヘッダー ── */}
       <div
-        className="sticky top-0 z-20 flex items-center gap-3 px-4 h-12"
-        style={{ background: genre?.color ?? '#7c3aed', boxShadow: '0 1px 8px rgba(0,0,0,0.15)' }}
+        className="sticky top-0 z-20 flex items-center gap-3 px-4 h-12 flex-shrink-0"
+        style={{
+          background: 'rgba(15,15,26,0.95)',
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          backdropFilter: 'blur(12px)',
+        }}
       >
-        <button onClick={() => router.back()} className="p-1 -ml-1 text-white/80">
+        <button onClick={() => router.back()} className="p-1 -ml-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
           <ArrowLeft size={20} />
         </button>
-        <p className="font-extrabold text-white text-sm truncate flex-1">{guild.name}</p>
-        <div className="flex items-center gap-1 text-white/70 text-[11px] font-bold">
-          <Users size={12} />
-          {guild.member_count}
+        {/* Discordサーバー名 + チャンネル名 */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="text-xl flex-shrink-0">{guild.icon}</span>
+          <div className="min-w-0">
+            <p className="font-extrabold text-white text-sm truncate leading-tight">{guild.name}</p>
+            <p className="text-[10px] flex items-center gap-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              <Hash size={9} />
+              <span>雑談</span>
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {onlineCount > 0 && (
+            <div className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[10px] font-bold text-emerald-400">{onlineCount}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
+            <Users size={13} />
+            <span className="text-[11px] font-bold">{guild.member_count}</span>
+          </div>
         </div>
       </div>
 
       {/* ── バナー ── */}
       <div
-        className="relative flex items-end justify-start px-4 pb-4"
-        style={{ height: 180, background: genre?.gradient ?? 'linear-gradient(135deg,#7c3aed,#a855f7)' }}
+        className="relative flex-shrink-0"
+        style={{ height: 120, background: genre?.gradient ?? 'linear-gradient(135deg,#7c3aed,#a855f7)' }}
       >
-        {/* ノイズテクスチャ */}
         <div className="absolute inset-0 opacity-[0.08]"
           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }}
         />
-        {/* 大きいアイコン（中央） */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span style={{ fontSize: '5rem', filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))' }}>
+        {/* 下グラデーション */}
+        <div className="absolute inset-x-0 bottom-0 h-12"
+          style={{ background: 'linear-gradient(to bottom, transparent, #0f0f1a)' }} />
+        {/* アイコン + バッジ */}
+        <div className="absolute bottom-0 left-4 flex items-end gap-3 pb-2 translate-y-1/3">
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
+            style={{
+              background: 'rgba(15,15,26,0.9)',
+              border: `3px solid #0f0f1a`,
+              boxShadow: `0 0 0 1px ${genre?.color ?? '#7c3aed'}60`,
+            }}
+          >
             {guild.icon}
-          </span>
-        </div>
-        {/* 右下：メンバー数バッジ */}
-        <div className="absolute bottom-3 right-4 flex items-center gap-1 bg-black/30 backdrop-blur-sm rounded-full px-2.5 py-1">
-          <Users size={11} className="text-white/80" />
-          <span className="text-[11px] font-bold text-white">{guild.member_count.toLocaleString()}メンバー</span>
-        </div>
-      </div>
-
-      {/* ── ギルド情報バー ── */}
-      <div className="bg-white px-4 py-3 border-b border-stone-100 flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <h1 className="font-extrabold text-stone-900 text-lg leading-tight">{guild.name}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <span
-              className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
-              style={{ background: genre?.color ?? '#7c3aed' }}
-            >
-              {genre?.emoji} {guild.category}
-            </span>
-            {onlineCount > 0 && (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {onlineCount}人オンライン
-              </span>
-            )}
           </div>
         </div>
-        <button
-          onClick={handleJoin}
-          disabled={joining}
-          className="flex-shrink-0 px-4 py-2 rounded-full text-xs font-extrabold transition-all active:scale-95 disabled:opacity-50"
-          style={isMember
-            ? { background: '#f3f4f6', color: '#6b7280', border: '1.5px solid #e5e7eb' }
-            : { background: genre?.color ?? '#7c3aed', color: '#fff', boxShadow: `0 4px 12px ${genre?.color ?? '#7c3aed'}55` }
-          }
-        >
-          {joining ? '...' : isMember ? '参加中' : '参加する'}
-        </button>
+        {/* 参加ボタン */}
+        <div className="absolute bottom-3 right-4">
+          <button
+            onClick={handleJoin}
+            disabled={joining}
+            className="px-4 py-1.5 rounded-full text-xs font-extrabold transition-all active:scale-95 disabled:opacity-50"
+            style={isMember
+              ? { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', border: '1.5px solid rgba(255,255,255,0.12)' }
+              : { background: genre?.color ?? '#7c3aed', color: '#fff', boxShadow: `0 4px 14px ${genre?.color ?? '#7c3aed'}60` }
+            }
+          >
+            {joining ? '...' : isMember ? '参加中' : '参加する'}
+          </button>
+        </div>
       </div>
 
-      {/* ── タブバー ── */}
-      <div className="bg-white border-b border-stone-100 flex sticky z-10" style={{ top: 48 }}>
+      {/* アイコン分のスペース */}
+      <div className="h-8 flex-shrink-0" />
+
+      {/* ── ギルド名 + ジャンル ── */}
+      <div className="px-4 pb-3 flex-shrink-0">
+        <h1 className="font-extrabold text-white text-lg leading-tight mb-1">{guild.name}</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          {genre && (
+            <span
+              className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{ background: `${genre.color}20`, color: genre.color, border: `1px solid ${genre.color}40` }}
+            >
+              <Shield size={9} /> {genre.emoji} {guild.category}
+            </span>
+          )}
+          {onlineCount > 0 && (
+            <span className="flex items-center gap-1 text-[10px] font-bold" style={{ color: '#4ade80' }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              {onlineCount}人オンライン
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ── タブバー（Discordチャンネル風） ── */}
+      <div
+        className="flex-shrink-0 flex border-b sticky z-10"
+        style={{ top: 48, background: 'rgba(15,15,26,0.95)', borderColor: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(12px)' }}
+      >
         {[
-          { id: 'post', label: '投稿', icon: FileText },
-          { id: 'info', label: '情報', icon: Info },
+          { id: 'post', label: '# 投稿', icon: Hash },
+          { id: 'info', label: 'メンバー', icon: Users },
         ].map(({ id: tid, label, icon: Icon }) => (
           <button
             key={tid}
             onClick={() => setTab(tid as 'post' | 'info')}
             className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-bold transition-colors relative"
-            style={{ color: tab === tid ? (genre?.color ?? '#7c3aed') : '#a8a29e' }}
+            style={{ color: tab === tid ? (genre?.color ?? '#8b5cf6') : 'rgba(255,255,255,0.35)' }}
           >
-            <Icon size={14} />
+            <Icon size={13} />
             {label}
             {tab === tid && (
               <span
                 className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
-                style={{ background: genre?.color ?? '#7c3aed' }}
+                style={{ background: genre?.color ?? '#8b5cf6' }}
               />
             )}
           </button>
@@ -309,147 +369,231 @@ export default function GuildDetailPage() {
 
       {/* ══ 投稿タブ ══ */}
       {tab === 'post' && (
-        <div className="pb-32">
+        <div className="flex-1 flex flex-col">
 
-          {/* 投稿ボックス */}
-          {isMember && (
-            <div className="bg-white border-b border-stone-100 px-4 py-3">
-              <div className="flex gap-3 items-end">
-                <div
-                  className="w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center text-xs font-extrabold text-white"
-                  style={{ background: genre?.gradient ?? 'linear-gradient(135deg,#7c3aed,#a855f7)' }}
-                >
-                  ✦
-                </div>
-                <div className="flex-1 relative">
-                  <textarea
-                    value={text}
-                    onChange={e => setText(e.target.value)}
-                    placeholder="みんなに伝えたいことを書こう..."
-                    rows={2}
-                    maxLength={400}
-                    className="w-full px-3 py-2 rounded-2xl text-sm resize-none focus:outline-none text-stone-800 placeholder-stone-300 bg-stone-50 border border-stone-200 focus:border-stone-300 transition-colors"
-                  />
-                </div>
+          {/* チャンネルヘッダー（Discordの#チャンネル説明） */}
+          <div className="px-4 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center"
+                style={{ background: genre ? `${genre.color}20` : 'rgba(139,92,246,0.2)', border: `1px solid ${genre?.color ?? '#8b5cf6'}40` }}>
+                <Hash size={14} style={{ color: genre?.color ?? '#8b5cf6' }} />
+              </div>
+              <span className="font-extrabold text-white text-sm">雑談チャンネルへようこそ！</span>
+            </div>
+            <p className="text-xs leading-relaxed pl-10" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              {guild.description || 'みんな自由に話しかけてね。'}
+            </p>
+          </div>
+
+          {/* 投稿リスト */}
+          <div className="flex-1 pb-4">
+            {posts.length === 0 ? (
+              <div className="text-center py-16 px-8">
+                <div className="text-4xl mb-3">{guild.icon}</div>
+                <p className="font-bold text-white mb-1">まだ投稿がありません</p>
+                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  {isMember ? '最初のメッセージを送ろう！' : '参加して投稿しよう'}
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.03)' }}>
+                {[...posts].reverse().map(p => (
+                  <PostCard key={p.id} post={p} currentUserId={userId} genre={genre} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Discordスタイルのメッセージ入力ボックス */}
+          {isMember ? (
+            <div className="flex-shrink-0 px-4 pb-4 pt-2 sticky bottom-0"
+              style={{ background: 'rgba(15,15,26,0.95)', backdropFilter: 'blur(12px)', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div
+                className="flex items-end gap-2 px-3 py-2 rounded-2xl"
+                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                <textarea
+                  ref={textareaRef}
+                  value={text}
+                  onChange={e => setText(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePost() }
+                  }}
+                  placeholder={`#雑談 にメッセージを送信`}
+                  rows={1}
+                  maxLength={400}
+                  className="flex-1 bg-transparent text-sm resize-none focus:outline-none leading-relaxed"
+                  style={{ color: 'rgba(255,255,255,0.9)', caretColor: genre?.color ?? '#8b5cf6' }}
+                />
                 <button
                   onClick={handlePost}
                   disabled={!text.trim() || posting}
-                  className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 disabled:opacity-40"
-                  style={{ background: genre?.color ?? '#7c3aed' }}
+                  className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 disabled:opacity-40"
+                  style={{ background: text.trim() ? (genre?.color ?? '#8b5cf6') : 'rgba(255,255,255,0.1)' }}
                 >
                   {posting
-                    ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    : <Send size={15} className="text-white" />
+                    ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    : <Send size={13} className="text-white" />
                   }
                 </button>
               </div>
-            </div>
-          )}
-
-          {/* 投稿リスト */}
-          {posts.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="text-4xl mb-3">{guild.icon}</div>
-              <p className="font-bold text-stone-700 mb-1">まだ投稿がありません</p>
-              <p className="text-sm text-stone-400">
-                {isMember ? '最初の投稿をしてみよう！' : '集いに参加して投稿しよう'}
+              <p className="text-[9px] mt-1 text-center" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                Enter で送信 · Shift+Enter で改行
               </p>
             </div>
           ) : (
-            posts.map(p => (
-              <PostCard key={p.id} post={p} currentUserId={userId} genre={genre} />
-            ))
+            <div className="flex-shrink-0 px-4 py-3 border-t text-center"
+              style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(15,15,26,0.95)' }}>
+              <button
+                onClick={handleJoin}
+                disabled={joining}
+                className="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-95"
+                style={{ background: genre?.color ?? '#8b5cf6', boxShadow: `0 4px 14px ${genre?.color ?? '#8b5cf6'}50` }}
+              >
+                参加してメッセージを送る
+              </button>
+            </div>
           )}
         </div>
       )}
 
-      {/* ══ 情報タブ ══ */}
+      {/* ══ メンバータブ（Discord風オンライン/オフライン分け） ══ */}
       {tab === 'info' && (
-        <div className="pb-32 space-y-3 pt-3 px-4">
+        <div className="flex-1 pb-32">
 
-          {/* 説明 */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-stone-100">
-            <p className="text-[11px] font-extrabold text-stone-400 uppercase tracking-wider mb-2">この集いについて</p>
-            <p className="text-sm text-stone-700 leading-relaxed">
-              {guild.description || 'まだ説明がありません。'}
-            </p>
-          </div>
-
-          {/* ステータス */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-stone-100">
-            <p className="text-[11px] font-extrabold text-stone-400 uppercase tracking-wider mb-3">ステータス</p>
+          {/* サーバー概要 */}
+          <div className="mx-4 mt-4 mb-2 rounded-2xl p-4"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="grid grid-cols-3 gap-3">
               {[
                 { label: 'メンバー', value: guild.member_count.toLocaleString(), emoji: '👥' },
                 { label: 'オンライン', value: onlineCount, emoji: '🟢' },
-                { label: 'ジャンル', value: guild.category.split('・')[0], emoji: genre?.emoji ?? '🎮' },
+                { label: 'ジャンル', value: (guild.category ?? '').split('・')[0], emoji: genre?.emoji ?? '🎮' },
               ].map(s => (
-                <div key={s.label} className="flex flex-col items-center gap-1 p-2 rounded-xl bg-stone-50">
+                <div key={s.label} className="flex flex-col items-center gap-1 p-2 rounded-xl"
+                  style={{ background: 'rgba(255,255,255,0.04)' }}>
                   <span className="text-lg">{s.emoji}</span>
-                  <span className="text-xs font-extrabold text-stone-800">{s.value}</span>
-                  <span className="text-[9px] text-stone-400">{s.label}</span>
+                  <span className="text-xs font-extrabold text-white">{s.value}</span>
+                  <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{s.label}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* メンバー一覧 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-stone-100 overflow-hidden">
-            <p className="text-[11px] font-extrabold text-stone-400 uppercase tracking-wider px-4 pt-4 pb-2">メンバー</p>
-            {members.map(m => {
-              const online = isOnline(m.profiles?.last_seen_at ?? null)
-              const isHost = m.role === 'host'
-              return (
-                <div key={m.user_id} className="flex items-center gap-3 px-4 py-2.5 border-t border-stone-50">
-                  <div className="relative flex-shrink-0">
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-extrabold text-white"
-                      style={{ background: genre?.gradient ?? 'linear-gradient(135deg,#7c3aed,#a855f7)' }}
-                    >
-                      {m.profiles?.avatar_url
-                        ? <img src={m.profiles.avatar_url} className="w-full h-full rounded-full object-cover" />
-                        : (m.profiles?.display_name?.[0] ?? '?')}
-                    </div>
-                    <span
-                      className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white"
-                      style={{ background: online ? '#22c55e' : '#d1d5db' }}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-stone-800 truncate">
-                      {m.profiles?.display_name ?? '名無し'}
-                    </p>
-                    <p className="text-[10px] text-stone-400">
-                      {online ? 'オンライン' : 'オフライン'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {isHost && (
-                      <span
-                        className="text-[9px] font-extrabold px-2 py-0.5 rounded-full text-white"
-                        style={{ background: genre?.color ?? '#7c3aed' }}
-                      >
-                        GM
-                      </span>
-                    )}
-                    {m.user_id !== userId && userId && (
-                      <button
-                        onClick={async () => {
-                          const result = await startDM(userId, m.user_id)
-                          if (result.status !== 'blocked') router.push(`/chat/${result.matchId}`)
-                        }}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-90 bg-stone-50 border border-stone-200 text-stone-500"
-                        title="DM を送る"
-                      >
-                        <MessageSquare size={12} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          {/* ── オンラインメンバー ── */}
+          {onlineMembers.length > 0 && (
+            <div className="mt-4">
+              <div className="px-4 pb-1.5 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <p className="text-[10px] font-extrabold uppercase tracking-widest"
+                  style={{ color: 'rgba(74,222,128,0.7)' }}>
+                  オンライン — {onlineMembers.length}
+                </p>
+              </div>
+              {onlineMembers.map(m => (
+                <MemberRow key={m.user_id} m={m} online genre={genre} userId={userId} router={router} />
+              ))}
+            </div>
+          )}
+
+          {/* ── オフラインメンバー ── */}
+          {offlineMembers.length > 0 && (
+            <div className="mt-4">
+              <div className="px-4 pb-1.5">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest"
+                  style={{ color: 'rgba(255,255,255,0.2)' }}>
+                  オフライン — {offlineMembers.length}
+                </p>
+              </div>
+              {offlineMembers.map(m => (
+                <MemberRow key={m.user_id} m={m} online={false} genre={genre} userId={userId} router={router} />
+              ))}
+            </div>
+          )}
         </div>
+      )}
+    </div>
+  )
+}
+
+// ─── MemberRow ────────────────────────────────────────────────────
+function MemberRow({
+  m, online, genre, userId, router,
+}: {
+  m: Member
+  online: boolean
+  genre: typeof INDUSTRIES[0] | null
+  userId: string | null
+  router: ReturnType<typeof useRouter>
+}) {
+  const isHost  = m.role === 'host'
+  const isOwn   = m.user_id === userId
+  const opacity = online ? 1 : 0.4
+
+  return (
+    <div
+      className="flex items-center gap-3 px-4 py-2 transition-colors hover:bg-white/[0.03] cursor-default"
+      style={{ opacity }}
+    >
+      <div className="relative flex-shrink-0">
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-extrabold text-white overflow-hidden"
+          style={{ background: genre?.gradient ?? 'linear-gradient(135deg,#7c3aed,#a855f7)' }}
+        >
+          {m.profiles?.avatar_url
+            ? <img src={m.profiles.avatar_url} className="w-full h-full rounded-full object-cover" alt="" />
+            : (m.profiles?.display_name?.[0] ?? '?')}
+        </div>
+        {/* オンライン状態ドット */}
+        <span
+          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
+          style={{
+            background: online ? '#22c55e' : '#44475a',
+            border: '2px solid #0f0f1a',
+          }}
+        >
+          {online && <span className="w-1.5 h-1.5 rounded-full bg-emerald-200 animate-pulse" />}
+        </span>
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {isHost && (
+            <Crown size={10} style={{ color: genre?.color ?? '#8b5cf6', flexShrink: 0 }} />
+          )}
+          <p className="text-sm font-bold truncate" style={{ color: online ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)' }}>
+            {m.profiles?.display_name ?? '名無し'}
+          </p>
+          {isOwn && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none flex-shrink-0"
+              style={{ color: '#818cf8', background: 'rgba(129,140,248,0.12)', border: '1px solid rgba(129,140,248,0.2)' }}>
+              あなた
+            </span>
+          )}
+          {isHost && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none flex-shrink-0"
+              style={{ color: genre?.color ?? '#8b5cf6', background: `${genre?.color ?? '#8b5cf6'}20`, border: `1px solid ${genre?.color ?? '#8b5cf6'}40` }}>
+              GM
+            </span>
+          )}
+        </div>
+        <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+          {online ? 'オンライン' : 'オフライン'}
+        </p>
+      </div>
+
+      {m.user_id !== userId && userId && (
+        <button
+          onClick={async () => {
+            const result = await startDM(userId, m.user_id)
+            if (result.status !== 'blocked') router.push(`/chat/${result.matchId}`)
+          }}
+          className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-90"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+          title="DMを送る"
+        >
+          <MessageSquare size={11} style={{ color: 'rgba(255,255,255,0.4)' }} />
+        </button>
       )}
     </div>
   )

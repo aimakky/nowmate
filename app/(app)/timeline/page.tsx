@@ -82,17 +82,15 @@ const TAB_CONFIG: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: 'following', label: 'フォロー', icon: Users },
 ]
 
-// ── 通話ルームカード ────────────────────────────────────────────
+// ── 通話ルームカード（Discordスタイル） ────────────────────────
 function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId: string | null }) {
   const router = useRouter()
   const isHost = room.host.id === currentUserId
 
-  // description から募集情報をパース: 【レベル不問】【カジュアル】あと2人
   const tagMatches = room.description.match(/【([^】]+)】/g)?.map(t => t.slice(1, -1)) ?? []
   const slotsMatch = room.description.match(/【[^】]+】【[^】]+】(.+)/)
   const slots = slotsMatch?.[1]?.trim() ?? ''
 
-  // ゲームジャンルの色
   const GAME_COLORS: Record<string, string> = {
     'FPS': '#ef4444', 'MOBA': '#f97316', 'RPG': '#8b5cf6',
     'スポーツ': '#10b981', 'カードゲーム': '#3b82f6', 'パズル': '#ec4899',
@@ -100,98 +98,119 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
   }
   const color = GAME_COLORS[room.category] ?? '#6366f1'
 
+  // 全参加者（ホスト + メンバー）
+  const allParticipants = [
+    { user_id: room.host.id, display_name: room.host.display_name, avatar_url: room.host.avatar_url, isHost: true },
+    ...room.members.map(m => ({ ...m, isHost: false })),
+  ]
+
   return (
-    <div className="rounded-2xl overflow-hidden backdrop-blur-sm"
-      style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
-      {/* ── ホスト行 ── */}
-      <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
-        <div className="relative flex-shrink-0">
-          <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold text-white"
-            style={{ background: `linear-gradient(135deg,${color},${color}99)` }}>
-            {room.host.avatar_url
-              ? <img src={room.host.avatar_url} alt="" className="w-full h-full object-cover" />
-              : room.host.display_name[0]}
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{
+        background: 'linear-gradient(135deg,rgba(15,15,26,0.95) 0%,rgba(26,16,53,0.95) 100%)',
+        border: `1px solid ${color}30`,
+        boxShadow: `0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px ${color}15`,
+      }}
+    >
+      {/* ── チャンネルヘッダー（Discord風） ── */}
+      <div
+        className="flex items-center gap-3 px-4 py-2.5"
+        style={{ background: `${color}18`, borderBottom: `1px solid ${color}20` }}
+      >
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          {/* スピーカーアイコン風 */}
+          <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
+            style={{ background: `${color}30` }}>
+            <Waves size={11} style={{ color }} />
           </div>
-          {/* LIVEドット */}
-          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
-            style={{ background: '#8b5cf6', border: '2px solid #0f0f1a' }}>
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-          </span>
+          <span className="text-xs font-extrabold text-white truncate">{room.name}</span>
+          {tagMatches.map((tag, i) => (
+            <span key={i} className="text-[8px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+              style={{ background: `${color}25`, color, border: `1px solid ${color}35` }}>
+              {tag}
+            </span>
+          ))}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm font-extrabold text-white truncate">{room.host.display_name}</span>
-            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>が通話ルームを開きました</span>
-          </div>
-          <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>{timeAgo(room.created_at)}</span>
-        </div>
+        {/* LIVE badge */}
         <div className="flex items-center gap-1 px-2 py-0.5 rounded-full flex-shrink-0"
-          style={{ background: '#ef444415', border: '1px solid #ef444430' }}>
+          style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)' }}>
           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-[10px] font-extrabold text-red-500">LIVE</span>
+          <span className="text-[9px] font-extrabold text-red-400">LIVE</span>
         </div>
       </div>
 
-      {/* ── ルームカード ── */}
-      <div className="mx-4 mb-3 rounded-2xl overflow-hidden border border-stone-100"
-        style={{ background: 'linear-gradient(135deg,#0f0f1a 0%,#1a1035 100%)' }}>
-        <div className="flex items-center gap-3 px-3.5 py-3">
-          {/* ゲームアイコン */}
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 text-2xl"
-            style={{ background: `${color}25`, border: `1px solid ${color}40` }}>
-            {room.icon}
-          </div>
-
-          {/* 情報 */}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-extrabold text-white truncate leading-tight mb-1">{room.name}</p>
-            <div className="flex flex-wrap gap-1">
-              {tagMatches.map((tag, i) => (
-                <span key={i} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ background: `${color}30`, color: `${color}`, border: `1px solid ${color}40` }}>
-                  {tag}
-                </span>
-              ))}
-              {slots && (
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.12)' }}>
-                  {slots}
-                </span>
-              )}
+      {/* ── 参加者グリッド（Discord voice channel style） ── */}
+      <div className="p-3">
+        <div className="grid grid-cols-4 gap-2">
+          {allParticipants.slice(0, 8).map((p, i) => (
+            <div key={p.user_id} className="flex flex-col items-center gap-1">
+              {/* アバター + speaking ring */}
+              <div className="relative">
+                {/* speaking animation ring（ランダムに光らせる） */}
+                {i % 3 === 0 && (
+                  <div
+                    className="absolute inset-0 rounded-full animate-ping opacity-40"
+                    style={{ background: `${color}60`, transform: 'scale(1.3)' }}
+                  />
+                )}
+                <div
+                  className="relative w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold text-white overflow-hidden"
+                  style={{
+                    background: p.avatar_url ? undefined : `linear-gradient(135deg,${color},${color}80)`,
+                    border: i % 3 === 0 ? `2px solid ${color}` : '2px solid rgba(255,255,255,0.1)',
+                    boxShadow: i % 3 === 0 ? `0 0 12px ${color}60` : 'none',
+                  }}
+                >
+                  {p.avatar_url
+                    ? <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                    : p.display_name[0]}
+                </div>
+                {/* ホストクラウン */}
+                {p.isHost && (
+                  <span
+                    className="absolute -top-1.5 -right-1.5 text-[10px] w-4 h-4 rounded-full flex items-center justify-center"
+                    style={{ background: '#fbbf24', boxShadow: '0 0 6px rgba(251,191,36,0.6)' }}
+                  >
+                    👑
+                  </span>
+                )}
+              </div>
+              <p className="text-[9px] font-bold text-center truncate w-full"
+                style={{ color: 'rgba(255,255,255,0.7)' }}>
+                {p.display_name.split(/[_\s]/)[0]}
+              </p>
             </div>
-          </div>
-
-          {/* 参加ボタン */}
-          <button
-            onClick={() => router.push(`/villages/${room.id}`)}
-            className="flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-extrabold text-white active:scale-90 transition-all"
-            style={{ background: color, boxShadow: `0 4px 12px ${color}60` }}
-          >
-            <Mic size={11} />
-            {isHost ? 'ルームへ' : '参加'}
-          </button>
+          ))}
+          {allParticipants.length > 8 && (
+            <div className="flex flex-col items-center gap-1">
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-extrabold"
+                style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', border: '2px solid rgba(255,255,255,0.1)' }}
+              >
+                +{allParticipants.length - 8}
+              </div>
+              <p className="text-[9px]" style={{ color: 'rgba(255,255,255,0.3)' }}>他</p>
+            </div>
+          )}
         </div>
 
-        {/* ── 参加者アバター ── */}
-        {room.members.length > 0 && (
-          <div className="flex items-center gap-2 px-3.5 py-2.5 border-t border-white/5">
-            <div className="flex -space-x-2">
-              {room.members.slice(0, 5).map((m, i) => (
-                <div key={m.user_id}
-                  className="w-7 h-7 rounded-full border-2 border-[#1a1035] overflow-hidden flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
-                  style={{ background: `${color}80`, zIndex: 5 - i }}>
-                  {m.avatar_url
-                    ? <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
-                    : m.display_name[0]}
-                </div>
-              ))}
-            </div>
-            <p className="text-[10px] text-white/50">
-              {room.members.length}人が通話中
-              {room.members.length > 5 && ` (+${room.members.length - 5})`}
-            </p>
-          </div>
+        {/* スロット情報 */}
+        {slots && (
+          <p className="text-[10px] mt-2 text-center" style={{ color: 'rgba(255,255,255,0.4)' }}>{slots}</p>
         )}
+      </div>
+
+      {/* ── フッター：参加ボタン ── */}
+      <div className="px-3 pb-3">
+        <button
+          onClick={() => router.push(`/villages/${room.id}`)}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-extrabold text-white active:scale-95 transition-all"
+          style={{ background: `linear-gradient(135deg,${color},${color}cc)`, boxShadow: `0 4px 14px ${color}50` }}
+        >
+          <Mic size={14} />
+          {isHost ? 'ルームに戻る' : `通話に参加 · ${allParticipants.length}人通話中`}
+        </button>
       </div>
     </div>
   )
