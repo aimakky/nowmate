@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, ChevronRight } from 'lucide-react'
 import { INDUSTRIES } from '@/lib/guild'
 import { type Village, getFireStatus } from '@/components/ui/VillageCard'
+import GuildShieldIcon from '@/components/ui/icons/GuildShieldIcon'
 
 const GENRE_TABS = [
   { id: 'all', emoji: '🎮', label: 'すべて' },
@@ -385,7 +386,7 @@ export default function GuildsPage() {
                     className="w-28 h-28 flex items-center justify-center"
                     style={{ filter: 'drop-shadow(0 0 24px rgba(39,223,255,0.5)) drop-shadow(0 0 48px rgba(39,223,255,0.3))' }}
                   >
-                    <span className="text-8xl">🛡️</span>
+                    <GuildShieldIcon size={112} active={true} />
                   </div>
                 </div>
               </div>
