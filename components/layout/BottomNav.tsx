@@ -2,16 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Compass, Layers, Bell, Briefcase } from 'lucide-react'
+import { Compass, Layers, Bell, Gamepad2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
-  { href: '/timeline',      label: 'TL',   icon: Layers    },
-  { href: '/villages',      label: '自由村', icon: Compass  },
-  { href: '/guild',         label: 'ギルド', icon: Briefcase },
-  { href: '/notifications', label: '通知',  icon: Bell      },
+  { href: '/timeline',      label: 'TL',   icon: Layers   },
+  { href: '/villages',      label: '村',    icon: Compass  },
+  { href: '/guild',         label: 'ゲーム', icon: Gamepad2 },
+  { href: '/notifications', label: '通知',  icon: Bell     },
 ]
 
 export default function BottomNav() {

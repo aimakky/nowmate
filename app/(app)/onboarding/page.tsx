@@ -276,19 +276,56 @@ export default function OnboardingPage() {
                   )}
                 </div>
 
-                {/* サービス紹介 */}
-                <div className="bg-white border border-stone-100 rounded-2xl p-4 space-y-3">
-                  {[
-                    { icon: '🎮', text: '荒らしゼロのゲームコミュニティ' },
-                    { icon: '🏕️', text: '好きなゲームの村で顔なじみができる' },
-                    { icon: '🛡️', text: '電話認証・Trust Tier制度で民度を設計' },
-                    { icon: '🌊', text: '匿名で話せるギルド掲示板' },
-                  ].map(({ icon, text }) => (
-                    <div key={text} className="flex items-center gap-3">
-                      <span className="text-xl">{icon}</span>
-                      <span className="text-sm text-stone-700 font-medium">{text}</span>
+                {/* 2つの場所の説明 */}
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest px-1">sameeの2つの場所</p>
+                  {/* 村 */}
+                  <div className="bg-white border border-stone-100 rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xl">🏕️</span>
+                      <div>
+                        <p className="text-sm font-extrabold text-stone-900">村</p>
+                        <p className="text-[10px] text-stone-400">話す場所・気持ちを整理する場所</p>
+                      </div>
                     </div>
-                  ))}
+                    <div className="space-y-1.5">
+                      {[
+                        '雑談・悩み・仕事終わりのゆるい繋がり',
+                        '同じテーマで顔なじみができるコミュニティ',
+                        'ゲームしない日でも毎日使える',
+                      ].map(t => (
+                        <div key={t} className="flex items-start gap-1.5">
+                          <span className="text-indigo-400 mt-0.5 text-xs flex-shrink-0">·</span>
+                          <span className="text-xs text-stone-600">{t}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* ゲーム */}
+                  <div className="rounded-2xl p-4" style={{ background: '#f5f3ff', border: '1px solid #ddd6fe' }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xl">🎮</span>
+                      <div>
+                        <p className="text-sm font-extrabold text-purple-900">ゲーム（ギルド）</p>
+                        <p className="text-[10px] text-purple-400">ゲーム仲間を作る場所</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      {[
+                        'FPS・RPG・スマホゲームなどジャンル別ギルド',
+                        '荒らしゼロ・20歳以上限定の高民度設計',
+                        'ゲームする日に深く繋がれる',
+                      ].map(t => (
+                        <div key={t} className="flex items-start gap-1.5">
+                          <span className="text-purple-400 mt-0.5 text-xs flex-shrink-0">·</span>
+                          <span className="text-xs text-purple-800">{t}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                    <p className="text-[11px] text-amber-700">🛡️ 電話認証・Trust Tier制度で民度を設計しています</p>
+                  </div>
                 </div>
 
                 <button onClick={() => setAgeConfirmed(v => !v)}
