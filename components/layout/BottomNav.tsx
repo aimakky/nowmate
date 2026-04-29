@@ -8,11 +8,11 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
-  { href: '/timeline',      label: 'TL',      icon: Layers,        live: false, activeColor: '#49E1FF' },
-  { href: '/guilds',        label: 'ギルド',   icon: Shield,        live: false, activeColor: '#4ADE80' },
-  { href: '/guild',         label: 'ゲーム村', icon: Gamepad2,      live: true,  activeColor: '#9D5CFF' },
-  { href: '/chat',          label: 'チャット', icon: MessageSquare, live: false, activeColor: '#F59E0B' },
-  { href: '/notifications', label: '通知',    icon: Bell,          live: false, activeColor: '#FF84B0' },
+  { href: '/timeline',      label: 'TL',      icon: Layers,        live: false, activeColor: '#39FF88' },
+  { href: '/guilds',        label: 'ギルド',   icon: Shield,        live: false, activeColor: '#27DFFF' },
+  { href: '/guild',         label: 'ゲーム村', icon: Gamepad2,      live: true,  activeColor: '#8B5CF6' },
+  { href: '/chat',          label: 'チャット', icon: MessageSquare, live: false, activeColor: '#FFC928' },
+  { href: '/notifications', label: '通知',    icon: Bell,          live: false, activeColor: '#FF4FD8' },
 ]
 
 export default function BottomNav() {
@@ -81,7 +81,7 @@ export default function BottomNav() {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-40"
                       style={{ background: activeColor }} />
                     <span className="relative text-[7px] font-extrabold tracking-widest px-1 py-px rounded-full leading-none"
-                      style={{ background: 'linear-gradient(135deg,#9D5CFF,#FF4D90)', color: '#fff' }}>
+                      style={{ background: 'linear-gradient(135deg,#8B5CF6,#FF4D90)', color: '#fff' }}>
                       LIVE
                     </span>
                   </span>

@@ -389,8 +389,8 @@ function PostCard({
             <div
               className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold text-white"
               style={{
-                background: 'linear-gradient(135deg,#0891b2,#0e7490)',
-                boxShadow: '0 0 0 2px rgba(73,225,255,0.3)',
+                background: 'linear-gradient(135deg,#059669,#047857)',
+                boxShadow: '0 0 0 2px rgba(57,255,136,0.3)',
               }}
             >
               {post.profiles?.avatar_url
@@ -405,9 +405,9 @@ function PostCard({
                 <span
                   className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
                   style={{
-                    background: 'rgba(73,225,255,0.12)',
-                    color: '#49E1FF',
-                    border: '1px solid rgba(73,225,255,0.3)',
+                    background: 'rgba(57,255,136,0.12)',
+                    color: '#39FF88',
+                    border: '1px solid rgba(57,255,136,0.3)',
                   }}
                 >
                   {roleLabel}
@@ -433,7 +433,7 @@ function PostCard({
         {/* アクション */}
         <div
           className="flex items-center gap-4 mt-3 pt-2.5"
-          style={{ borderTop: '1px solid rgba(73,225,255,0.1)' }}
+          style={{ borderTop: '1px solid rgba(57,255,136,0.1)' }}
         >
           <button
             onClick={() => onToggleLike(post.id)}
@@ -470,17 +470,17 @@ function Skeleton() {
     <div className="space-y-3">
       {[...Array(5)].map((_, i) => (
         <div key={i} className="rounded-2xl p-4 animate-pulse"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(73,225,255,0.1)' }}>
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(57,255,136,0.1)' }}>
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-9 h-9 rounded-full flex-shrink-0" style={{ background: 'rgba(73,225,255,0.12)' }} />
+            <div className="w-9 h-9 rounded-full flex-shrink-0" style={{ background: 'rgba(57,255,136,0.12)' }} />
             <div className="flex-1 space-y-1.5">
-              <div className="h-3 rounded w-1/3" style={{ background: 'rgba(73,225,255,0.1)' }} />
-              <div className="h-2.5 rounded w-1/4" style={{ background: 'rgba(73,225,255,0.07)' }} />
+              <div className="h-3 rounded w-1/3" style={{ background: 'rgba(57,255,136,0.1)' }} />
+              <div className="h-2.5 rounded w-1/4" style={{ background: 'rgba(57,255,136,0.07)' }} />
             </div>
           </div>
           <div className="space-y-1.5">
-            <div className="h-3.5 rounded w-full" style={{ background: 'rgba(73,225,255,0.07)' }} />
-            <div className="h-3.5 rounded w-4/5" style={{ background: 'rgba(73,225,255,0.07)' }} />
+            <div className="h-3.5 rounded w-full" style={{ background: 'rgba(57,255,136,0.07)' }} />
+            <div className="h-3.5 rounded w-4/5" style={{ background: 'rgba(57,255,136,0.07)' }} />
           </div>
         </div>
       ))}
@@ -609,16 +609,16 @@ function ComposeModal({
           <div className="w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl"
             style={{
               background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(73,225,255,0.3)',
+              border: '1px solid rgba(57,255,136,0.3)',
               backdropFilter: 'blur(20px)',
             }}>
             <p className="text-2xl mb-3">💙</p>
             <p className="font-bold text-sm leading-relaxed mb-2" style={{ color: '#F0EEFF' }}>つらい気持ちを感じているようです</p>
-            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(73,225,255,0.6)' }}>よりそいホットライン: 0120-279-338（24時間）</p>
+            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(57,255,136,0.6)' }}>よりそいホットライン: 0120-279-338（24時間）</p>
             <div className="flex gap-2">
               <button onClick={() => { setShowCrisis(false); onClose() }}
                 className="flex-1 py-2.5 rounded-2xl text-xs font-bold"
-                style={{ border: '1px solid rgba(73,225,255,0.3)', color: '#49E1FF', background: 'transparent' }}>
+                style={{ border: '1px solid rgba(57,255,136,0.3)', color: '#39FF88', background: 'transparent' }}>
                 閉じる
               </button>
               <button onClick={() => { setShowCrisis(false); doSendBottle() }}
@@ -655,7 +655,7 @@ function ComposeModal({
           <button onClick={() => switchMode('bottle')}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold transition-all rounded-2xl"
             style={isBottle
-              ? { background: 'rgba(73,225,255,0.15)', color: '#49E1FF', border: '1px solid rgba(73,225,255,0.3)' }
+              ? { background: 'rgba(57,255,136,0.15)', color: '#39FF88', border: '1px solid rgba(57,255,136,0.3)' }
               : { color: 'rgba(240,238,255,0.4)' }
             }>
             <Waves size={12} /> 漂流瓶
@@ -756,13 +756,13 @@ function ComposeModal({
                 </div>
               ) : (
                 <div className="mb-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'rgba(73,225,255,0.4)' }}>どの村に流す？</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'rgba(57,255,136,0.4)' }}>どの村に流す？</p>
                   <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
                     {villages.map(v => (
                       <button key={v.id} onClick={() => setTargetVil(v)}
                         className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95"
                         style={targetVil?.id === v.id
-                          ? { background: 'rgba(73,225,255,0.15)', color: '#49E1FF', border: '1px solid rgba(73,225,255,0.35)' }
+                          ? { background: 'rgba(57,255,136,0.15)', color: '#39FF88', border: '1px solid rgba(57,255,136,0.35)' }
                           : { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)', border: '1px solid rgba(157,92,255,0.15)' }
                         }>
                         <span>{v.icon}</span>

@@ -299,26 +299,26 @@ export default function MyPage() {
 
       {/* 紫ラジアルグロー（右上） */}
       <div className="absolute top-0 right-0 w-80 h-80 pointer-events-none z-0"
-        style={{ background: 'radial-gradient(circle at 80% 15%, rgba(139,92,246,0.5) 0%, rgba(109,40,217,0.25) 35%, transparent 65%)' }} />
+        style={{ background: 'radial-gradient(circle at 80% 15%, rgba(47,255,210,0.35) 0%, rgba(0,217,184,0.2) 35%, transparent 65%)' }} />
 
       {/* ── ヘッダー行 ── */}
       <div className="relative z-10 flex items-center justify-between px-5 pt-12 pb-0">
         {/* 左：人アイコン（円形） */}
         <div className="w-10 h-10 rounded-full flex items-center justify-center"
-          style={{ border: '1.5px solid rgba(157,92,255,0.65)', background: 'rgba(157,92,255,0.08)' }}>
-          <User size={18} style={{ color: '#9D5CFF' }} />
+          style={{ border: '1.5px solid rgba(47,255,210,0.65)', background: 'rgba(47,255,210,0.08)' }}>
+          <User size={18} style={{ color: '#2FFFD2' }} />
         </div>
         {/* 右：設定アイコン（六角形） */}
         <Link
           href="/settings"
           className="w-10 h-10 flex items-center justify-center active:scale-90 transition-all"
           style={{
-            border: '1.5px solid rgba(157,92,255,0.65)',
-            background: 'rgba(157,92,255,0.08)',
+            border: '1.5px solid rgba(47,255,210,0.65)',
+            background: 'rgba(47,255,210,0.08)',
             clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
           }}
         >
-          <Settings size={16} style={{ color: '#9D5CFF' }} />
+          <Settings size={16} style={{ color: '#2FFFD2' }} />
         </Link>
       </div>
 
@@ -329,11 +329,11 @@ export default function MyPage() {
           <div
             className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center"
             style={{
-              border: '2px solid rgba(157,92,255,0.7)',
+              border: '2px solid rgba(47,255,210,0.7)',
               boxShadow: trust?.tier === 'pillar'
                 ? '0 0 30px rgba(255,77,144,0.6), 0 0 60px rgba(255,77,144,0.2)'
-                : '0 0 30px rgba(157,92,255,0.6), 0 0 60px rgba(157,92,255,0.2)',
-              background: 'rgba(157,92,255,0.12)',
+                : '0 0 30px rgba(47,255,210,0.5), 0 0 60px rgba(47,255,210,0.2)',
+              background: 'rgba(47,255,210,0.12)',
             }}
           >
             {profile.avatar_url
@@ -384,7 +384,7 @@ export default function MyPage() {
 
       {/* ── 統計カード ── */}
       <div className="relative z-10 mx-4 mb-3 rounded-2xl overflow-hidden"
-        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(157,92,255,0.18)' }}>
+        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(47,255,210,0.2)' }}>
         <div className="flex">
           {[
             { count: followingCount, label: 'フォロー中' },

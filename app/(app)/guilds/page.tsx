@@ -34,7 +34,7 @@ function GuildListCard({ village, isMember, onJoin }: {
       className="rounded-2xl overflow-hidden active:scale-[0.98] transition-all cursor-pointer"
       style={{
         background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(74,222,128,0.2)',
+        border: '1px solid rgba(39,223,255,0.2)',
       }}
       onClick={() => router.push(`/guilds/${village.id}`)}
     >
@@ -42,8 +42,8 @@ function GuildListCard({ village, isMember, onJoin }: {
         <div
           className="w-14 h-14 flex-shrink-0 rounded-2xl flex items-center justify-center"
           style={{
-            background: 'linear-gradient(135deg, #4ADE80 0%, #16A34A 100%)',
-            boxShadow: '0 0 16px rgba(74,222,128,0.4)',
+            background: 'linear-gradient(135deg, #27DFFF 0%, #0891B2 100%)',
+            boxShadow: '0 0 16px rgba(39,223,255,0.4)',
           }}
         >
           <span className="text-2xl">{village.icon}</span>
@@ -55,15 +55,15 @@ function GuildListCard({ village, isMember, onJoin }: {
           </div>
           <p className="text-[11px] line-clamp-1 leading-relaxed" style={{ color: 'rgba(240,238,255,0.55)' }}>{village.description}</p>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-[10px] font-bold" style={{ color: '#4ADE80' }}>👥 {village.member_count}</span>
+            <span className="text-[10px] font-bold" style={{ color: '#27DFFF' }}>👥 {village.member_count}</span>
           </div>
         </div>
         <button
           onClick={e => { e.stopPropagation(); onJoin() }}
           className="flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold active:scale-90 transition-all text-white"
           style={isMember
-            ? { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(74,222,128,0.3)', color: 'rgba(240,238,255,0.55)' }
-            : { background: 'linear-gradient(135deg, #4ADE80 0%, #16A34A 100%)', boxShadow: '0 4px 20px rgba(74,222,128,0.4)', color: '#051005' }
+            ? { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(39,223,255,0.3)', color: 'rgba(240,238,255,0.55)' }
+            : { background: 'linear-gradient(135deg, #27DFFF 0%, #0891B2 100%)', boxShadow: '0 4px 20px rgba(39,223,255,0.4)', color: '#051020' }
           }
         >{isMember ? '参加中' : '参加'}</button>
       </div>
@@ -82,15 +82,15 @@ function GuildSmallCard({ village, isMember, onJoin }: {
       className="flex-shrink-0 w-44 rounded-2xl overflow-hidden cursor-pointer active:scale-[0.97] transition-all"
       style={{
         background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(74,222,128,0.2)',
+        border: '1px solid rgba(39,223,255,0.2)',
       }}
       onClick={() => router.push(`/guilds/${village.id}`)}
     >
       <div
         className="h-16 flex items-center justify-center relative"
-        style={{ background: 'linear-gradient(135deg, #4ADE80 0%, #16A34A 60%, #22c55e 100%)' }}
+        style={{ background: 'linear-gradient(135deg, #27DFFF 0%, #0891B2 60%, #22d3ee 100%)' }}
       >
-        <span className="text-3xl" style={{ filter: 'drop-shadow(0 1px 8px rgba(74,222,128,0.6))' }}>
+        <span className="text-3xl" style={{ filter: 'drop-shadow(0 1px 8px rgba(39,223,255,0.6))' }}>
           {village.icon}
         </span>
         <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5"
@@ -103,13 +103,13 @@ function GuildSmallCard({ village, isMember, onJoin }: {
         <p className="font-bold text-xs truncate leading-snug mb-0.5" style={{ color: '#F0EEFF' }}>{village.name}</p>
         <p className="text-[10px] line-clamp-2 leading-relaxed" style={{ color: 'rgba(240,238,255,0.55)' }}>{village.description}</p>
         <div className="flex items-center justify-between mt-2">
-          <span className="text-[9px] font-bold" style={{ color: '#4ADE80' }}>👥 {village.member_count}</span>
+          <span className="text-[9px] font-bold" style={{ color: '#27DFFF' }}>👥 {village.member_count}</span>
           <button
             onClick={e => { e.stopPropagation(); onJoin() }}
             className="text-[9px] font-bold px-2 py-0.5 rounded-full text-white active:scale-90 transition-all"
             style={isMember
-              ? { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(74,222,128,0.3)', color: 'rgba(240,238,255,0.55)' }
-              : { background: 'linear-gradient(135deg, #4ADE80 0%, #16A34A 100%)', boxShadow: '0 2px 10px rgba(74,222,128,0.4)', color: '#051005' }
+              ? { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(39,223,255,0.3)', color: 'rgba(240,238,255,0.55)' }
+              : { background: 'linear-gradient(135deg, #27DFFF 0%, #0891B2 100%)', boxShadow: '0 2px 10px rgba(39,223,255,0.4)', color: '#051020' }
             }
           >{isMember ? '参加中' : '参加'}</button>
         </div>
@@ -223,7 +223,7 @@ export default function GuildsPage() {
       {/* ── ヘッダー ── */}
       <div
         className="sticky top-0 z-10 px-4 pt-12 pb-0"
-        style={{ background: 'linear-gradient(160deg, #0a1a0a 0%, #0d1f0d 60%, #0d1f0d 100%)', borderBottom: '1px solid rgba(74,222,128,0.1)' }}
+        style={{ background: 'linear-gradient(160deg, #081a26 0%, #0a1824 60%, #0a1824 100%)', borderBottom: '1px solid rgba(39,223,255,0.1)' }}
       >
         {/* 背景グロー */}
         <div className="absolute inset-0 opacity-30 pointer-events-none"
