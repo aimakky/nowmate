@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, ChevronRight } from 'lucide-react'
 import { INDUSTRIES } from '@/lib/guild'
-import VillageCard, { type Village, getFireStatus } from '@/components/ui/VillageCard'
+import { type Village, getFireStatus } from '@/components/ui/VillageCard'
 
 // ゲーム以外のカテゴリ
 const GAME_CATEGORIES = new Set(INDUSTRIES.map(i => i.id))
@@ -31,6 +31,42 @@ const LANES = [
   { id: 'new', emoji: '✨', label: '新しいギルド',     orderBy: 'created_at'    as const, ascending: false },
 ]
 
+// ── 縦長リストカード ────────────────────────────────────────────
+function GuildListCard({ village, isMember, onJoin }: {
+  village: Village; isMember: boolean; onJoin: () => void
+}) {
+  const router = useRouter()
+  const fire   = getFireStatus(village.last_post_at ?? null)
+  return (
+    <div
+      className="bg-white rounded-2xl overflow-hidden shadow-sm border border-stone-100 active:scale-[0.98] transition-all cursor-pointer"
+      onClick={() => router.push(`/guilds/${village.id}`)}
+    >
+      <div className="flex items-center gap-3 p-3.5">
+        <div className="w-14 h-14 flex-shrink-0 rounded-2xl flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-100 border border-orange-100">
+          <span className="text-2xl">{village.icon}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <p className="font-extrabold text-stone-800 text-sm truncate">{village.name}</p>
+            <span className={`text-[10px] flex-shrink-0 ${fire.animate ? 'animate-pulse' : ''}`}>{fire.emoji}</span>
+          </div>
+          <p className="text-[11px] text-stone-400 line-clamp-1 leading-relaxed">{village.description}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[10px] text-stone-400">👥 {village.member_count}</span>
+          </div>
+        </div>
+        <button
+          onClick={e => { e.stopPropagation(); onJoin() }}
+          className="flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold active:scale-90 transition-all text-white"
+          style={{ background: isMember ? '#9ca3af' : '#f97316' }}
+        >{isMember ? '参加中' : '参加'}</button>
+      </div>
+    </div>
+  )
+}
+
+// ── 横スクロール小カード ────────────────────────────────────────
 function GuildSmallCard({ village, isMember, onJoin }: {
   village: Village; isMember: boolean; onJoin: () => void
 }) {
@@ -39,7 +75,7 @@ function GuildSmallCard({ village, isMember, onJoin }: {
   return (
     <div
       className="flex-shrink-0 w-44 rounded-2xl overflow-hidden cursor-pointer active:scale-[0.97] transition-all bg-white shadow-sm border border-stone-100"
-      onClick={() => router.push(`/villages/${village.id}`)}
+      onClick={() => router.push(`/guilds/${village.id}`)}
     >
       <div className="h-16 flex items-center justify-center relative bg-gradient-to-br from-amber-50 to-orange-50">
         <span className="text-3xl" style={{ filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.12))' }}>
@@ -305,13 +341,13 @@ export default function GuildsPage() {
                     <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest">おすすめ · Featured</span>
                     <div className="flex-1 h-px bg-stone-100" />
                   </div>
-                  <VillageCard village={featured} isMember={memberIds.has(featured.id)} onJoin={() => handleJoin(featured.id)} featured={true} />
+                  <GuildListCard village={featured} isMember={memberIds.has(featured.id)} onJoin={() => handleJoin(featured.id)} />
                 </div>
               )}
               {(search ? displayed : rest).length > 0 && (
                 <div className="space-y-3">
                   {(search ? displayed : rest).map(v => (
-                    <VillageCard key={v.id} village={v} isMember={memberIds.has(v.id)} onJoin={() => handleJoin(v.id)} />
+                    <GuildListCard key={v.id} village={v} isMember={memberIds.has(v.id)} onJoin={() => handleJoin(v.id)} />
                   ))}
                 </div>
               )}
