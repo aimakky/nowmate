@@ -20,8 +20,8 @@ const SUB_FILTERS = [
 ]
 
 const LANES = [
-  { id: 'hot',  emoji: '🔥', label: '今週活発なギルド',  orderBy: 'post_count_7d' as const, ascending: false },
-  { id: 'new',  emoji: '✨', label: '新しいギルド',       orderBy: 'created_at'    as const, ascending: false },
+  { id: 'hot',  emoji: '🔥', label: '今週にぎわってるゲーム村',  orderBy: 'post_count_7d' as const, ascending: false },
+  { id: 'new',  emoji: '✨', label: '新しいゲーム村',      orderBy: 'created_at'    as const, ascending: false },
 ]
 
 // ゲーム関連カテゴリ（villagesテーブルで使用）
@@ -171,9 +171,9 @@ export default function GuildPage() {
         <div className="relative">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div>
-              <p className="text-purple-400/60 text-[10px] font-bold tracking-widest uppercase mb-0.5">GAME GUILD</p>
-              <h1 className="font-extrabold text-white text-2xl leading-tight">🎮 ギルドを探す</h1>
-              <p className="text-white/40 text-xs mt-0.5">ゲーム仲間が集まるギルドに参加しよう</p>
+              <p className="text-purple-400/60 text-[10px] font-bold tracking-widest uppercase mb-0.5">GAME ROOM</p>
+              <h1 className="font-extrabold text-white text-2xl leading-tight">🎮 ゲーム村</h1>
+              <p className="text-white/40 text-xs mt-0.5">今すぐ仲間を募集・通話ルームを開こう</p>
             </div>
             <button
               onClick={() => router.push('/guild/create')}
@@ -190,7 +190,7 @@ export default function GuildPage() {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="ギルドを検索..."
+              placeholder="ゲーム村を検索..."
               className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-sm focus:outline-none text-white placeholder-white/25"
               style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
             />
@@ -271,7 +271,7 @@ export default function GuildPage() {
 
             <div className="px-4 flex items-center gap-2 pt-1">
               <div className="flex-1 h-px bg-stone-100" />
-              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">すべてのギルド</span>
+              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">すべてのゲーム村</span>
               <div className="flex-1 h-px bg-stone-100" />
             </div>
           </div>
@@ -297,17 +297,17 @@ export default function GuildPage() {
                 {subFilter === 'member' ? '🏠' : '🎮'}
               </div>
               <p className="font-extrabold text-stone-800 text-base mb-1.5">
-                {subFilter === 'member' ? 'まだギルドに参加していません' : 'このジャンルのギルドはまだありません'}
+                {subFilter === 'member' ? 'まだゲーム村に参加していません' : 'このジャンルのゲーム村はまだありません'}
               </p>
               <p className="text-sm text-stone-400 mb-6">
-                {subFilter === 'member' ? '気に入ったギルドに参加しよう' : '最初のギルドを作ってみましょう'}
+                {subFilter === 'member' ? '気に入ったゲーム村に参加しよう' : '最初のゲーム村を立ててみましょう'}
               </p>
               {subFilter !== 'member' && (
                 <button
                   onClick={() => router.push('/guild/create')}
                   className="px-6 py-3 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
                   style={{ background: 'linear-gradient(135deg,#8b5cf6 0%,#6d28d9 100%)', boxShadow: '0 8px 24px rgba(139,92,246,0.4)' }}
-                >🎮 ギルドを作る</button>
+                >🎮 ゲーム村を立てる</button>
               )}
             </div>
           ) : (
@@ -335,8 +335,8 @@ export default function GuildPage() {
                         {subFilter === 'popular' ? '今週活発'  :
                          subFilter === 'new'     ? '新着'       :
                          subFilter === 'member'  ? '参加中'     :
-                         genre !== 'all'         ? `${activeGenre?.label}のギルド` :
-                         'その他のギルド'}
+                         genre !== 'all'         ? `${activeGenre?.label}のゲーム村` :
+                         'その他のゲーム村'}
                       </span>
                       <div className="flex-1 h-px bg-stone-100" />
                     </div>
