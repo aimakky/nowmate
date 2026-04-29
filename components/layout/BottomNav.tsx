@@ -8,11 +8,11 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
-  { href: '/timeline',      label: 'TL',      icon: Layers        },
-  { href: '/guild',         label: 'ゲーム村', icon: Gamepad2      },
-  { href: '/guilds',        label: 'ギルド',   icon: Shield        },
-  { href: '/chat',          label: 'チャット', icon: MessageSquare },
-  { href: '/notifications', label: '通知',    icon: Bell          },
+  { href: '/timeline',      label: 'TL',      icon: Layers,        live: false },
+  { href: '/guilds',        label: 'ギルド',   icon: Shield,        live: false },
+  { href: '/guild',         label: 'ゲーム村', icon: Gamepad2,      live: true  },
+  { href: '/chat',          label: 'チャット', icon: MessageSquare, live: false },
+  { href: '/notifications', label: '通知',    icon: Bell,          live: false },
 ]
 
 export default function BottomNav() {
@@ -56,9 +56,47 @@ export default function BottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-stone-100 safe-area-pb">
       <div className="max-w-[430px] mx-auto flex items-center h-16">
 
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active  = pathname === href || pathname.startsWith(href + '/')
-          const badge   = badges[href] ?? 0
+        {NAV_ITEMS.map(({ href, label, icon: Icon, live }) => {
+          const active = pathname === href || pathname.startsWith(href + '/')
+          const badge  = badges[href] ?? 0
+
+          if (live) {
+            // ── ゲーム村: LIVEエフェクト付き特別タブ ──
+            return (
+              <Link key={href} href={href}
+                className="flex-1 flex flex-col items-center justify-center py-1 gap-0 relative">
+                {/* 背景グロー（常時） */}
+                <div className={cn(
+                  'absolute inset-x-1 inset-y-0.5 rounded-2xl transition-all',
+                  active
+                    ? 'opacity-100'
+                    : 'opacity-60'
+                )}
+                  style={{ background: 'linear-gradient(135deg,#ef444420,#f9731620)' }}
+                />
+                {/* アイコン + LIVEドット */}
+                <div className="relative z-10">
+                  <Gamepad2
+                    size={20}
+                    strokeWidth={active ? 2.5 : 1.8}
+                    className={active ? 'text-red-500' : 'text-red-400'}
+                  />
+                  {/* 右上に赤パルスドット */}
+                  <span className="absolute -top-1 -right-1.5 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+                  </span>
+                </div>
+                {/* LIVE バッジ */}
+                <div className="flex items-center gap-0.5 mt-0.5 z-10">
+                  <span className={cn('text-[9px] font-extrabold tracking-wide',
+                    active ? 'text-red-500' : 'text-red-400')}>{label}</span>
+                </div>
+                {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-red-500" />}
+              </Link>
+            )
+          }
+
           return (
             <Link key={href} href={href}
               className={cn('flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-colors',
