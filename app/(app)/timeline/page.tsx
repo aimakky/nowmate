@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -91,7 +91,7 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
 
   const GAME_COLORS: Record<string, string> = {
     'FPS': '#FF4D90', 'MOBA': '#f97316', 'RPG': '#9D5CFF',
-    'スポーツ': '#49E1FF', 'カードゲーム': '#49E1FF', 'パズル': '#FF4D90',
+    'スポーツ': '#39FF88', 'カードゲーム': '#39FF88', 'パズル': '#FF4D90',
     'サバイバル': '#7CFF82', 'その他': '#9D5CFF',
   }
   const color = GAME_COLORS[room.category] ?? '#9D5CFF'
@@ -254,22 +254,22 @@ function QACard({
     <div className="rounded-2xl overflow-hidden"
       style={{
         background: 'rgba(255,255,255,0.04)',
-        border: bottle.is_resolved ? '1px solid rgba(124,255,130,0.25)' : '1px solid rgba(73,225,255,0.2)',
+        border: bottle.is_resolved ? '1px solid rgba(124,255,130,0.25)' : '1px solid rgba(57,255,136,0.2)',
         boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
       }}>
 
       {/* ヘッダー */}
       <div className="px-4 pt-3 pb-2 flex items-center gap-2">
         <div className="flex items-center gap-1.5 flex-1 min-w-0">
-          <HelpCircle size={13} style={{ color: bottle.is_resolved ? '#7CFF82' : '#49E1FF' }} />
+          <HelpCircle size={13} style={{ color: bottle.is_resolved ? '#7CFF82' : '#39FF88' }} />
           <span className="text-[10px] font-extrabold"
-            style={{ color: bottle.is_resolved ? '#7CFF82' : '#49E1FF' }}>
+            style={{ color: bottle.is_resolved ? '#7CFF82' : '#39FF88' }}>
             {bottle.is_resolved ? '✅ 解決済み' : '❓ 匿名質問'}
           </span>
           {bottle.village && (
             <>
               <span className="text-[10px]" style={{ color: 'rgba(240,238,255,0.2)' }}>·</span>
-              <span className="text-[10px] truncate" style={{ color: 'rgba(73,225,255,0.5)' }}>
+              <span className="text-[10px] truncate" style={{ color: 'rgba(57,255,136,0.5)' }}>
                 {bottle.village.icon} {bottle.village.name}
               </span>
             </>
@@ -287,7 +287,7 @@ function QACard({
       <div className="px-4 py-2.5 flex items-center justify-between gap-2"
         style={{ borderTop: '1px solid rgba(157,92,255,0.1)' }}>
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px]" style={{ color: 'rgba(73,225,255,0.4)' }}>
+          <span className="text-[11px]" style={{ color: 'rgba(57,255,136,0.4)' }}>
             💬 {bottle.reply_count > 0 ? `${bottle.reply_count}件の回答` : 'まだ回答なし'}
           </span>
         </div>
@@ -297,17 +297,17 @@ function QACard({
             <CheckCircle size={11} /> 回答しました
           </span>
         ) : isMyBottle ? (
-          <span className="text-[10px]" style={{ color: 'rgba(73,225,255,0.3)' }}>自分の質問</span>
+          <span className="text-[10px]" style={{ color: 'rgba(57,255,136,0.3)' }}>自分の質問</span>
         ) : bottle.is_resolved ? (
           <span className="text-[10px]" style={{ color: 'rgba(124,255,130,0.4)' }}>解決済み</span>
         ) : canReply ? (
           <button onClick={() => setOpen(o => !o)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold active:scale-95 transition-all"
-            style={{ background: 'rgba(73,225,255,0.12)', border: '1px solid rgba(73,225,255,0.25)', color: '#49E1FF' }}>
+            style={{ background: 'rgba(57,255,136,0.12)', border: '1px solid rgba(57,255,136,0.25)', color: '#39FF88' }}>
             {open ? '閉じる' : '回答する →'}
           </button>
         ) : (
-          <span className="text-[10px]" style={{ color: 'rgba(73,225,255,0.3)' }}>常連以上が回答可</span>
+          <span className="text-[10px]" style={{ color: 'rgba(57,255,136,0.3)' }}>常連以上が回答可</span>
         )}
       </div>
 
@@ -377,7 +377,7 @@ function PostCard({
       className="rounded-2xl overflow-hidden"
       style={{
         background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(73,225,255,0.15)',
+        border: '1px solid rgba(57,255,136,0.15)',
         boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
       }}
     >
@@ -752,7 +752,7 @@ function ComposeModal({
               {/* 村セレクター */}
               {villages.length === 0 ? (
                 <div className="py-4 text-center">
-                  <p className="text-xs" style={{ color: 'rgba(73,225,255,0.5)' }}>村に参加するとここから漂流瓶を流せます</p>
+                  <p className="text-xs" style={{ color: 'rgba(57,255,136,0.5)' }}>村に参加するとここから漂流瓶を流せます</p>
                 </div>
               ) : (
                 <div className="mb-3">
@@ -783,9 +783,9 @@ function ComposeModal({
                   className="w-full px-4 py-3.5 rounded-2xl text-sm resize-none focus:outline-none leading-relaxed"
                   style={{
                     background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(73,225,255,0.2)',
+                    border: '1px solid rgba(57,255,136,0.2)',
                     color: 'rgba(240,238,255,0.9)',
-                    caretColor: '#49E1FF',
+                    caretColor: '#39FF88',
                   }}
                 />
               </div>
@@ -794,13 +794,13 @@ function ComposeModal({
               <div className="flex items-center justify-between">
                 {errMsg
                   ? <p className="text-xs text-red-400 font-bold">⚠️ {errMsg}</p>
-                  : <p className="text-[11px]" style={{ color: 'rgba(73,225,255,0.35)' }}>🔒 完全匿名 · {targetVil?.icon}{targetVil?.name ?? '村未選択'}へ届きます</p>
+                  : <p className="text-[11px]" style={{ color: 'rgba(57,255,136,0.35)' }}>🔒 完全匿名 · {targetVil?.icon}{targetVil?.name ?? '村未選択'}へ届きます</p>
                 }
                 <div className="flex items-center gap-2">
                   <svg width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
-                    <circle cx="11" cy="11" r="9" fill="none" stroke="rgba(73,225,255,0.1)" strokeWidth="2.5" />
+                    <circle cx="11" cy="11" r="9" fill="none" stroke="rgba(57,255,136,0.1)" strokeWidth="2.5" />
                     <circle cx="11" cy="11" r="9" fill="none"
-                      stroke={text.length > MAX_BOTTLE * 0.9 ? '#FF4D90' : '#49E1FF'}
+                      stroke={text.length > MAX_BOTTLE * 0.9 ? '#FF4D90' : '#39FF88'}
                       strokeWidth="2.5" strokeLinecap="round"
                       strokeDasharray={`${2 * Math.PI * 9}`}
                       strokeDashoffset={`${2 * Math.PI * 9 * (1 - text.length / MAX_BOTTLE)}`}
@@ -808,7 +808,7 @@ function ComposeModal({
                     />
                   </svg>
                   <span className="text-[11px] font-bold"
-                    style={{ color: text.length > MAX_BOTTLE * 0.9 ? '#FF4D90' : 'rgba(73,225,255,0.35)' }}>
+                    style={{ color: text.length > MAX_BOTTLE * 0.9 ? '#FF4D90' : 'rgba(57,255,136,0.35)' }}>
                     {MAX_BOTTLE - text.length}
                   </span>
                 </div>
@@ -1126,29 +1126,29 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       {/* ヘッダー */}
       <div className="px-4 pt-12 pb-0"
         style={{
-          background: 'linear-gradient(160deg,rgba(8,8,18,0.98) 0%,rgba(8,20,26,0.98) 60%,rgba(10,24,32,0.95) 100%)',
-          borderBottom: '1px solid rgba(73,225,255,0.15)',
+          background: 'linear-gradient(160deg,rgba(8,8,18,0.98) 0%,rgba(8,18,12,0.98) 60%,rgba(9,20,14,0.95) 100%)',
+          borderBottom: '1px solid rgba(57,255,136,0.15)',
         }}>
         <div className="flex items-end justify-between mb-3">
           <div>
-            <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(73,225,255,0.65)' }}>TIMELINE</p>
+            <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(57,255,136,0.65)' }}>TIMELINE</p>
             <h1 className="font-extrabold text-2xl leading-tight" style={{ color: '#F0EEFF' }}>タイムライン</h1>
             <p className="text-xs mt-0.5" style={{ color: 'rgba(240,238,255,0.3)' }}>みんなの声が流れる場所</p>
           </div>
           <button onClick={() => { fetchPosts(true); fetchVoiceRooms(); if (userId) fetchQA(userId, myVillageIds); if (tab === 'all') fetchTweets() }}
             className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
-            style={{ background: 'rgba(73,225,255,0.1)', border: '1px solid rgba(73,225,255,0.25)' }}>
-            <RefreshCw size={15} style={{ color: 'rgba(73,225,255,0.7)' }} />
+            style={{ background: 'rgba(57,255,136,0.1)', border: '1px solid rgba(57,255,136,0.25)' }}>
+            <RefreshCw size={15} style={{ color: 'rgba(57,255,136,0.7)' }} />
           </button>
         </div>
 
         {/* タブ */}
-        <div className="flex" style={{ borderBottom: '1px solid rgba(73,225,255,0.15)' }}>
+        <div className="flex" style={{ borderBottom: '1px solid rgba(57,255,136,0.15)' }}>
           {TAB_CONFIG.map(({ key, label, icon: Icon }) => (
             <button key={key} onClick={() => setTab(key)}
               className="flex-1 flex flex-col items-center gap-0.5 pt-2 pb-3 transition-all relative">
               <Icon size={16}
-                style={{ color: tab === key ? '#49E1FF' : 'rgba(240,238,255,0.3)' }}
+                style={{ color: tab === key ? '#39FF88' : 'rgba(240,238,255,0.3)' }}
                 strokeWidth={tab === key ? 2.5 : 1.8} />
               <span className="text-[10px] font-bold whitespace-nowrap"
                 style={{ color: tab === key ? '#F0EEFF' : 'rgba(240,238,255,0.3)' }}>
@@ -1157,13 +1157,13 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
               {/* マイ村タブにQ&Aバッジ */}
               {key === 'myvillage' && qaBottles.length > 0 && (
                 <span className="absolute top-1.5 right-2 min-w-[14px] h-[14px] rounded-full flex items-center justify-center px-0.5"
-                  style={{ background: 'linear-gradient(135deg,#49E1FF,#0891b2)' }}>
+                  style={{ background: 'linear-gradient(135deg,#39FF88,#059669)' }}>
                   <span className="text-[8px] font-black text-white">{qaBottles.length}</span>
                 </span>
               )}
               {tab === key && (
                 <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                  style={{ background: 'linear-gradient(90deg,#49E1FF,#0891b2)' }} />
+                  style={{ background: 'linear-gradient(90deg,#39FF88,#059669)' }} />
               )}
             </button>
           ))}
@@ -1176,9 +1176,9 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         {/* 回答待ちバナー（マイ村タブ・Q&Aあり） */}
         {tab === 'myvillage' && qaBottles.length > 0 && !loading && (
           <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl"
-            style={{ background: 'rgba(73,225,255,0.08)', border: '1px solid rgba(73,225,255,0.25)' }}>
-            <HelpCircle size={14} style={{ color: '#49E1FF' }} className="flex-shrink-0" />
-            <p className="text-xs font-bold" style={{ color: 'rgba(73,225,255,0.9)' }}>
+            style={{ background: 'rgba(57,255,136,0.08)', border: '1px solid rgba(57,255,136,0.25)' }}>
+            <HelpCircle size={14} style={{ color: '#39FF88' }} className="flex-shrink-0" />
+            <p className="text-xs font-bold" style={{ color: 'rgba(57,255,136,0.9)' }}>
               あなたの村に{qaBottles.length}件の質問が届いています
             </p>
           </div>
@@ -1187,13 +1187,13 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         {/* 村に参加していない */}
         {tab === 'myvillage' && myVillageIds.length === 0 && !loading && (
           <div className="rounded-2xl p-6 text-center"
-            style={{ background: 'rgba(73,225,255,0.06)', border: '1px solid rgba(73,225,255,0.2)' }}>
+            style={{ background: 'rgba(57,255,136,0.06)', border: '1px solid rgba(57,255,136,0.2)' }}>
             <p className="text-3xl mb-3">🛡️</p>
             <p className="text-sm font-extrabold mb-1" style={{ color: '#F0EEFF' }}>まだギルドに参加していません</p>
             <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(240,238,255,0.35)' }}>ギルドに参加すると、仲間の投稿がここに流れます。</p>
             <button onClick={() => router.push('/guilds')}
               className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold active:scale-95 transition-all"
-              style={{ background: 'linear-gradient(135deg,#49E1FF 0%,#0891b2 100%)', boxShadow: '0 4px 20px rgba(73,225,255,0.4)', color: '#0a1f2e' }}>
+              style={{ background: 'linear-gradient(135deg,#39FF88 0%,#059669 100%)', boxShadow: '0 4px 20px rgba(57,255,136,0.4)', color: '#051a0e' }}>
               ギルドを探す →
             </button>
           </div>
@@ -1202,13 +1202,13 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         {/* フォロー0人 */}
         {tab === 'following' && followingIds.length === 0 && !loading && (
           <div className="rounded-2xl p-6 text-center"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(73,225,255,0.2)' }}>
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(57,255,136,0.2)' }}>
             <p className="text-3xl mb-3">👥</p>
             <p className="text-sm font-extrabold mb-1" style={{ color: '#F0EEFF' }}>まだ誰もフォローしていません</p>
             <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(240,238,255,0.35)' }}>ゲーム仲間をフォローすると、ここに投稿が流れます。</p>
             <button onClick={() => router.push('/guilds')}
               className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold active:scale-95 transition-all"
-              style={{ background: 'linear-gradient(135deg,#49E1FF 0%,#0891b2 100%)', boxShadow: '0 4px 20px rgba(73,225,255,0.4)', color: '#0a1f2e' }}>
+              style={{ background: 'linear-gradient(135deg,#39FF88 0%,#059669 100%)', boxShadow: '0 4px 20px rgba(57,255,136,0.4)', color: '#051a0e' }}>
               ギルドを探す →
             </button>
           </div>
@@ -1235,7 +1235,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
             />
           ) : item.type === 'tweet' ? (
             <div key={`tweet-${item.data.id}`} className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(73,225,255,0.2)', boxShadow: '0 4px 24px rgba(0,0,0,0.35)' }}>
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(57,255,136,0.2)', boxShadow: '0 4px 24px rgba(0,0,0,0.35)' }}>
               <TweetCard
                 tweet={item.data}
                 myId={userId}
@@ -1264,7 +1264,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         ) && (
           <div className="text-center py-12">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-              style={{ background: 'rgba(73,225,255,0.1)', border: '1px solid rgba(73,225,255,0.2)' }}>
+              style={{ background: 'rgba(57,255,136,0.1)', border: '1px solid rgba(57,255,136,0.2)' }}>
               <span className="text-3xl">🎮</span>
             </div>
             <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.4)' }}>まだ投稿がありません</p>
@@ -1275,9 +1275,9 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         {!loading && hasMore && posts.length > 0 && (
           <button onClick={() => fetchPosts(false)} disabled={loadingMore}
             className="w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
-            style={{ background: 'rgba(73,225,255,0.08)', border: '1px solid rgba(73,225,255,0.2)', color: 'rgba(73,225,255,0.8)' }}>
+            style={{ background: 'rgba(57,255,136,0.08)', border: '1px solid rgba(57,255,136,0.2)', color: 'rgba(57,255,136,0.8)' }}>
             {loadingMore
-              ? <span className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgba(73,225,255,0.6)', borderTopColor: 'transparent' }} />
+              ? <span className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgba(57,255,136,0.6)', borderTopColor: 'transparent' }} />
               : '続きを読む'}
           </button>
         )}
@@ -1287,9 +1287,9 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       <button
         onClick={() => setShowCompose(true)}
         className="fixed bottom-24 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
-        style={{ background: 'linear-gradient(135deg,#49E1FF 0%,#0891b2 100%)', boxShadow: '0 8px 28px rgba(73,225,255,0.5)' }}
+        style={{ background: 'linear-gradient(135deg,#39FF88 0%,#059669 100%)', boxShadow: '0 8px 28px rgba(57,255,136,0.5)' }}
       >
-        <Plus size={24} strokeWidth={2.5} style={{ color: '#0a1f2e' }} />
+        <Plus size={24} strokeWidth={2.5} style={{ color: '#051a0e' }} />
       </button>
 
       {/* ── 村投稿モーダル ── */}
@@ -1309,3 +1309,4 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
     </div>
   )
 }
+
