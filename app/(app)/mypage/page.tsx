@@ -404,8 +404,8 @@ export default function MyPage() {
         {([
           { id: 'tweets',          label: '投稿' },
           { id: 'images',          label: '画像' },
-          { id: 'joined_villages', label: 'フォロー村' },
-          { id: 'hosted_villages', label: 'オーナー村' },
+          { id: 'joined_villages', label: '参加中' },
+          { id: 'hosted_villages', label: '作った村' },
         ] as { id: ProfileTab; label: string }[]).map(tab => (
           <button
             key={tab.id}
@@ -505,90 +505,182 @@ export default function MyPage() {
           </div>
         )}
 
-        {/* フォロー村タブ */}
-        {activeTab === 'joined_villages' && (
-          <div>
-            {joinedVillages.length === 0 ? (
-              <div className="flex flex-col items-center py-16 text-center">
-                <span className="text-4xl mb-3">🏘️</span>
-                <p className="text-sm font-bold text-stone-600">まだ村に参加していません</p>
-                <button
-                  onClick={() => router.push('/villages')}
-                  className="mt-4 px-5 py-2.5 bg-brand-500 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
-                >
-                  村を探す
-                </button>
-              </div>
-            ) : (
-              <div className="divide-y divide-stone-100 bg-white">
-                {joinedVillages.map((v: any) => {
-                  const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
-                  return (
-                    <Link key={v.id} href={`/villages/${v.id}`}
-                      className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
-                      <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
-                        style={{ background: vs.gradient }}>
-                        {v.icon}
+        {/* 参加中タブ */}
+        {activeTab === 'joined_villages' && (() => {
+          const gameCats = new Set(INDUSTRIES.map(i => i.id))
+          const myVillages = joinedVillages.filter((v: any) => !gameCats.has(v.category))
+          const myGuilds   = joinedVillages.filter((v: any) =>  gameCats.has(v.category))
+          return (
+            <div>
+              {joinedVillages.length === 0 ? (
+                <div className="flex flex-col items-center py-16 text-center">
+                  <span className="text-4xl mb-3">🏘️</span>
+                  <p className="text-sm font-bold text-stone-600">まだ村・ギルドに参加していません</p>
+                  <div className="flex gap-2 mt-4">
+                    <button onClick={() => router.push('/villages')}
+                      className="px-4 py-2.5 bg-stone-900 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
+                    >🏕️ 村を探す</button>
+                    <button onClick={() => router.push('/guild')}
+                      className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
+                      style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}
+                    >🎮 ギルドを探す</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white divide-y divide-stone-100">
+                  {/* 🏕️ 村セクション */}
+                  {myVillages.length > 0 && (
+                    <>
+                      <div className="px-4 py-2 bg-stone-50">
+                        <p className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest">🏕️ 村</p>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
-                        <p className="text-[11px] text-stone-400">
-                          <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
-                        </p>
+                      {myVillages.map((v: any) => {
+                        const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
+                        return (
+                          <Link key={v.id} href={`/villages/${v.id}`}
+                            className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
+                              style={{ background: vs.gradient }}>{v.icon}</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
+                              <p className="text-[11px] text-stone-400">
+                                <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
+                              </p>
+                            </div>
+                            <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                          </Link>
+                        )
+                      })}
+                    </>
+                  )}
+                  {/* 🎮 ギルドセクション */}
+                  {myGuilds.length > 0 && (
+                    <>
+                      <div className="px-4 py-2" style={{ background: '#f5f3ff' }}>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#7c3aed' }}>🎮 ギルド</p>
                       </div>
-                      <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
+                      {myGuilds.map((v: any) => {
+                        const genreInfo = INDUSTRIES.find(i => i.id === v.category)
+                        return (
+                          <Link key={v.id} href={`/villages/${v.id}`}
+                            className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
+                              style={{ background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>{v.icon}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
+                                {genreInfo && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                                    style={{ background: `${genreInfo.color}18`, color: genreInfo.color }}>
+                                    {genreInfo.emoji}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-stone-400">
+                                <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
+                              </p>
+                            </div>
+                            <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                          </Link>
+                        )
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
-        {/* オーナー村タブ */}
-        {activeTab === 'hosted_villages' && (
-          <div>
-            {hostedVillages.length === 0 ? (
-              <div className="flex flex-col items-center py-16 text-center">
-                <Crown size={36} className="text-stone-200 mb-3" />
-                <p className="text-sm font-bold text-stone-600">まだ村を作っていません</p>
-                <button
-                  onClick={() => router.push('/villages/create')}
-                  className="mt-4 px-5 py-2.5 bg-brand-500 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
-                >
-                  村を作る
-                </button>
-              </div>
-            ) : (
-              <div className="divide-y divide-stone-100 bg-white">
-                {hostedVillages.map((v: any) => {
-                  const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
-                  return (
-                    <Link key={v.id} href={`/villages/${v.id}`}
-                      className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
-                      <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
-                        style={{ background: vs.gradient }}>
-                        {v.icon}
+        {/* 作った村タブ */}
+        {activeTab === 'hosted_villages' && (() => {
+          const gameCats = new Set(INDUSTRIES.map(i => i.id))
+          const ownedVillages = hostedVillages.filter((v: any) => !gameCats.has(v.category))
+          const ownedGuilds   = hostedVillages.filter((v: any) =>  gameCats.has(v.category))
+          return (
+            <div>
+              {hostedVillages.length === 0 ? (
+                <div className="flex flex-col items-center py-16 text-center">
+                  <Crown size={36} className="text-stone-200 mb-3" />
+                  <p className="text-sm font-bold text-stone-600">まだ村・ギルドを作っていません</p>
+                  <div className="flex gap-2 mt-4">
+                    <button onClick={() => router.push('/villages/create')}
+                      className="px-4 py-2.5 bg-stone-900 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
+                    >🏕️ 村を作る</button>
+                    <button onClick={() => router.push('/guild/create')}
+                      className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
+                      style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}
+                    >🎮 ギルドを作る</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white divide-y divide-stone-100">
+                  {/* 🏕️ オーナー村セクション */}
+                  {ownedVillages.length > 0 && (
+                    <>
+                      <div className="px-4 py-2 bg-stone-50">
+                        <p className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest">🏕️ オーナー村</p>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
-                          <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex-shrink-0">
-                            <Crown size={8} /> 村長
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-stone-400">
-                          <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
-                        </p>
+                      {ownedVillages.map((v: any) => {
+                        const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
+                        return (
+                          <Link key={v.id} href={`/villages/${v.id}`}
+                            className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
+                              style={{ background: vs.gradient }}>{v.icon}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
+                                <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex-shrink-0">
+                                  <Crown size={8} /> 村長
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-stone-400">
+                                <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
+                              </p>
+                            </div>
+                            <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                          </Link>
+                        )
+                      })}
+                    </>
+                  )}
+                  {/* 🎮 オーナーギルドセクション */}
+                  {ownedGuilds.length > 0 && (
+                    <>
+                      <div className="px-4 py-2" style={{ background: '#f5f3ff' }}>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#7c3aed' }}>🎮 オーナーギルド</p>
                       </div>
-                      <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
+                      {ownedGuilds.map((v: any) => {
+                        const genreInfo = INDUSTRIES.find(i => i.id === v.category)
+                        return (
+                          <Link key={v.id} href={`/villages/${v.id}`}
+                            className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
+                              style={{ background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>{v.icon}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
+                                <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                                  style={{ background: '#ede9fe', color: '#7c3aed', border: '1px solid #ddd6fe' }}>
+                                  <Crown size={8} /> 団長
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-stone-400">
+                                <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
+                              </p>
+                            </div>
+                            <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                          </Link>
+                        )
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* ── 下部コンテンツ（全タブ共通） ── */}
         <div className="px-4 pt-4 space-y-3">
