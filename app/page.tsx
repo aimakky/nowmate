@@ -106,7 +106,7 @@ export default async function TopPage() {
             background: 'rgba(255,255,255,0.04)' }}>
           すでにアカウントがある
         </Link>
-        <p className="text-xs mt-3" style={{ color: '#475569' }}>無料 · クレジットカード不要 · 18歳以上</p>
+        <p className="text-xs mt-3" style={{ color: '#475569' }}>無料 · クレジットカード不要 · 20歳以上</p>
       </section>
 
       {/* ── ジャンル一覧 ── */}

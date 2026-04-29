@@ -135,7 +135,7 @@ export default function SettingsPage() {
           <input
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder="村でのあなたの名前"
+            placeholder="ゲームコミュニティでの名前"
             maxLength={20}
             className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm focus:outline-none focus:border-indigo-400 bg-white"
           />

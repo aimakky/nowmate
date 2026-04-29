@@ -107,8 +107,8 @@ export default function BottlePage() {
         >
           <span className="text-xl">⚔️</span>
           <div className="flex-1 text-left">
-            <p className="text-xs font-bold text-indigo-700">本音で話すなら → 仕事村</p>
-            <p className="text-[10px] text-indigo-400">業界別・匿名で仕事の話ができます</p>
+            <p className="text-xs font-bold text-indigo-700">仲間を探すなら → ゲーム村</p>
+            <p className="text-[10px] text-indigo-400">同じゲームを語れる仲間がいます</p>
           </div>
           <span className="text-indigo-300 text-xs">→</span>
         </button>

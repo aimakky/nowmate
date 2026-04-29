@@ -411,7 +411,7 @@ export default function MyPage() {
           { id: 'tweets',          label: '投稿' },
           { id: 'images',          label: '画像' },
           { id: 'joined_villages', label: '参加中' },
-          { id: 'hosted_villages', label: '村長' },
+          { id: 'hosted_villages', label: 'ホスト' },
         ] as { id: ProfileTab; label: string }[]).map(tab => (
           <button
             key={tab.id}
@@ -489,7 +489,7 @@ export default function MyPage() {
                   <span className="text-3xl">🖼️</span>
                 </div>
                 <p className="font-bold text-stone-600 text-sm">まだ画像投稿がありません</p>
-                <p className="text-xs text-stone-400 mt-1.5">仕事村に画像付きで投稿しよう</p>
+                <p className="text-xs text-stone-400 mt-1.5">ギルドに画像付きで投稿しよう</p>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-0.5 bg-stone-100">
@@ -521,7 +521,7 @@ export default function MyPage() {
               {joinedVillages.length === 0 ? (
                 <div className="flex flex-col items-center py-16 text-center">
                   <span className="text-4xl mb-3">🏘️</span>
-                  <p className="text-sm font-bold text-stone-600">まだギルドに参加していません</p>
+                  <p className="text-sm font-bold text-stone-600">まだギルド・ゲーム村に参加していません</p>
                   <div className="flex gap-2 mt-4">
                     <button onClick={() => router.push('/guilds')}
                       className="px-4 py-2.5 bg-stone-900 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
@@ -608,15 +608,15 @@ export default function MyPage() {
               {hostedVillages.length === 0 ? (
                 <div className="flex flex-col items-center py-16 text-center">
                   <Crown size={36} className="text-stone-200 mb-3" />
-                  <p className="text-sm font-bold text-stone-600">まだ村・ギルドを作っていません</p>
+                  <p className="text-sm font-bold text-stone-600">まだギルド・ゲーム村を作っていません</p>
                   <div className="flex gap-2 mt-4">
-                    <button onClick={() => router.push('/villages/create')}
+                    <button onClick={() => router.push('/guilds/create')}
                       className="px-4 py-2.5 bg-stone-900 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
-                    >🏕️ 村を作る</button>
+                    >🛡️ ギルドを作る</button>
                     <button onClick={() => router.push('/guild/create')}
                       className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
                       style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}
-                    >🎮 ギルドを作る</button>
+                    >🎮 ゲーム村を作る</button>
                   </div>
                 </div>
               ) : (

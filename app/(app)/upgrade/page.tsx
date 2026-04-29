@@ -4,12 +4,12 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Zap } from 'lucide-react'
 
 const BENEFITS = [
-  { icon: '🏘️', label: '村への参加が無制限になる' },
+  { icon: '🛡️', label: 'ギルドへの参加が無制限になる' },
   { icon: '📝', label: '1日の投稿数が無制限になる' },
   { icon: '👀', label: '自分の投稿を見た人がわかる' },
   { icon: '🔝', label: 'フィードで優先表示される' },
   { icon: '⚡', label: 'プロフィールにプレミアムバッジ' },
-  { icon: '✨', label: '村の柱になると輝くバッジエフェクト' },
+  { icon: '✨', label: 'コミュニティの柱になると輝くバッジエフェクト' },
 ]
 
 export default function UpgradePage() {
@@ -31,9 +31,9 @@ export default function UpgradePage() {
           <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-200">
             <Zap size={36} className="text-white" />
           </div>
-          <h1 className="text-2xl font-black text-stone-900 mb-2">自由村 プレミアム</h1>
+          <h1 className="text-2xl font-black text-stone-900 mb-2">samee プレミアム</h1>
           <p className="text-stone-500 text-sm leading-relaxed">
-            自由村をもっと使いこなす。<br />制限なしで、村をつくろう。
+            sameeをもっと使いこなす。<br />ギルドを制限なしで楽しもう。
           </p>
         </div>
 
