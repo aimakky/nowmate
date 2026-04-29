@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getTierById } from '@/lib/trust'
 import { timeAgo } from '@/lib/utils'
 import { detectNgWords } from '@/lib/moderation'
-import { Heart, RefreshCw, ChevronRight, Users, Globe, Home, Share2, Sparkles, HelpCircle, Send, CheckCircle, X, Plus, Waves } from 'lucide-react'
+import { Heart, RefreshCw, ChevronRight, Users, Globe, Home, Share2, Sparkles, HelpCircle, Send, CheckCircle, X, Plus, Waves, Mic } from 'lucide-react'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import { detectCrisisKeywords } from '@/lib/moderation'
 import Link from 'next/link'
@@ -43,10 +43,23 @@ interface QABottle {
   village:        { id: string; name: string; icon: string } | null
 }
 
+interface VoiceRoom {
+  id:          string
+  name:        string
+  icon:        string
+  description: string
+  category:    string
+  created_at:  string
+  member_count: number
+  host: { id: string; display_name: string; avatar_url: string | null }
+  members: { user_id: string; display_name: string; avatar_url: string | null }[]
+}
+
 type FeedItem =
   | { type: 'post';  data: TPost }
   | { type: 'qa';    data: QABottle }
   | { type: 'tweet'; data: TweetData }
+  | { type: 'voice'; data: VoiceRoom }
 
 const PAGE_SIZE = 20
 
@@ -77,6 +90,120 @@ const TAB_CONFIG: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: 'all',       label: 'みんな',   icon: Globe },
   { key: 'following', label: 'フォロー', icon: Users },
 ]
+
+// ── 通話ルームカード ────────────────────────────────────────────
+function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId: string | null }) {
+  const router = useRouter()
+  const isHost = room.host.id === currentUserId
+
+  // description から募集情報をパース: 【レベル不問】【カジュアル】あと2人
+  const tagMatches = room.description.match(/【([^】]+)】/g)?.map(t => t.slice(1, -1)) ?? []
+  const slotsMatch = room.description.match(/【[^】]+】【[^】]+】(.+)/)
+  const slots = slotsMatch?.[1]?.trim() ?? ''
+
+  // ゲームジャンルの色
+  const GAME_COLORS: Record<string, string> = {
+    'FPS': '#ef4444', 'MOBA': '#f97316', 'RPG': '#8b5cf6',
+    'スポーツ': '#10b981', 'カードゲーム': '#3b82f6', 'パズル': '#ec4899',
+    'サバイバル': '#78716c', 'その他': '#6366f1',
+  }
+  const color = GAME_COLORS[room.category] ?? '#6366f1'
+
+  return (
+    <div className="bg-white border border-stone-100 rounded-2xl shadow-sm overflow-hidden">
+      {/* ── ホスト行 ── */}
+      <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
+        <div className="relative flex-shrink-0">
+          <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold text-white"
+            style={{ background: `linear-gradient(135deg,${color},${color}99)` }}>
+            {room.host.avatar_url
+              ? <img src={room.host.avatar_url} alt="" className="w-full h-full object-cover" />
+              : room.host.display_name[0]}
+          </div>
+          {/* LIVEドット */}
+          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white flex items-center justify-center"
+            style={{ background: '#ef4444' }}>
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+          </span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-sm font-extrabold text-stone-900 truncate">{room.host.display_name}</span>
+            <span className="text-xs text-stone-400">が通話ルームを開きました</span>
+          </div>
+          <span className="text-[10px] text-stone-400">{timeAgo(room.created_at)}</span>
+        </div>
+        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full flex-shrink-0"
+          style={{ background: '#ef444415', border: '1px solid #ef444430' }}>
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+          <span className="text-[10px] font-extrabold text-red-500">LIVE</span>
+        </div>
+      </div>
+
+      {/* ── ルームカード ── */}
+      <div className="mx-4 mb-3 rounded-2xl overflow-hidden border border-stone-100"
+        style={{ background: 'linear-gradient(135deg,#0f0f1a 0%,#1a1035 100%)' }}>
+        <div className="flex items-center gap-3 px-3.5 py-3">
+          {/* ゲームアイコン */}
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 text-2xl"
+            style={{ background: `${color}25`, border: `1px solid ${color}40` }}>
+            {room.icon}
+          </div>
+
+          {/* 情報 */}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-extrabold text-white truncate leading-tight mb-1">{room.name}</p>
+            <div className="flex flex-wrap gap-1">
+              {tagMatches.map((tag, i) => (
+                <span key={i} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: `${color}30`, color: `${color}`, border: `1px solid ${color}40` }}>
+                  {tag}
+                </span>
+              ))}
+              {slots && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  {slots}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* 参加ボタン */}
+          <button
+            onClick={() => router.push(`/villages/${room.id}`)}
+            className="flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-extrabold text-white active:scale-90 transition-all"
+            style={{ background: color, boxShadow: `0 4px 12px ${color}60` }}
+          >
+            <Mic size={11} />
+            {isHost ? 'ルームへ' : '参加'}
+          </button>
+        </div>
+
+        {/* ── 参加者アバター ── */}
+        {room.members.length > 0 && (
+          <div className="flex items-center gap-2 px-3.5 py-2.5 border-t border-white/5">
+            <div className="flex -space-x-2">
+              {room.members.slice(0, 5).map((m, i) => (
+                <div key={m.user_id}
+                  className="w-7 h-7 rounded-full border-2 border-[#1a1035] overflow-hidden flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
+                  style={{ background: `${color}80`, zIndex: 5 - i }}>
+                  {m.avatar_url
+                    ? <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
+                    : m.display_name[0]}
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-white/50">
+              {room.members.length}人が通話中
+              {room.members.length > 5 && ` (+${room.members.length - 5})`}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // ── Q&Aカード ──────────────────────────────────────────────────
 function QACard({
@@ -304,18 +431,27 @@ function Skeleton() {
   )
 }
 
-// ── フィード合成（投稿4件ごとにQ&Aを1件挿入）─────────────────
-function buildFeed(posts: TPost[], qaBottles: QABottle[]): FeedItem[] {
+// ── フィード合成（投稿3件ごとにQ&A or 通話ルームを挿入）─────
+function buildFeed(posts: TPost[], qaBottles: QABottle[], voiceRooms: VoiceRoom[] = []): FeedItem[] {
   const feed: FeedItem[] = []
-  let qaIdx = 0
+  let qaIdx    = 0
+  let voiceIdx = 0
+
   posts.forEach((post, i) => {
     feed.push({ type: 'post', data: post })
-    // 4件ごとにQ&Aを挟む
-    if ((i + 1) % 4 === 0 && qaIdx < qaBottles.length) {
-      feed.push({ type: 'qa', data: qaBottles[qaIdx++] })
+    // 3件ごと: 通話ルームを優先、なければQ&Aを挿入
+    if ((i + 1) % 3 === 0) {
+      if (voiceIdx < voiceRooms.length) {
+        feed.push({ type: 'voice', data: voiceRooms[voiceIdx++] })
+      } else if (qaIdx < qaBottles.length) {
+        feed.push({ type: 'qa', data: qaBottles[qaIdx++] })
+      }
     }
   })
-  // 残りのQ&Aを末尾に追加
+  // 残りを末尾に
+  while (voiceIdx < voiceRooms.length) {
+    feed.push({ type: 'voice', data: voiceRooms[voiceIdx++] })
+  }
   while (qaIdx < qaBottles.length) {
     feed.push({ type: 'qa', data: qaBottles[qaIdx++] })
   }
@@ -639,6 +775,7 @@ export default function TimelinePage() {
   const [myVillages,     setMyVillages]     = useState<Village[]>([])
   const [tweetFeed,      setTweetFeed]      = useState<TweetData[]>([])
   const [tweetLoading,   setTweetLoading]   = useState(false)
+  const [voiceRooms,     setVoiceRooms]     = useState<VoiceRoom[]>([])
 
   const offsetRef   = useRef(0)
   const todayPrompt = DAILY_PROMPTS[new Date().getDay()]
@@ -788,6 +925,67 @@ export default function TimelinePage() {
     }
   }, [userId, tab, myVillageIds, followingIds])
 
+  // ── 通話ルームフェッチ（直近3時間のLIVEルーム）────────────────
+  const fetchVoiceRooms = useCallback(async () => {
+    const supabase = createClient()
+    const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
+
+    const { data: rooms } = await supabase
+      .from('villages')
+      .select('id, name, icon, description, category, created_at, member_count, host_id')
+      .eq('comm_style', 'voice')
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    if (!rooms || rooms.length === 0) return
+
+    const hostIds    = [...new Set(rooms.map((r: any) => r.host_id))]
+    const roomIds    = rooms.map((r: any) => r.id)
+
+    const [{ data: hostProfiles }, { data: membersData }] = await Promise.all([
+      supabase.from('profiles').select('id, display_name, avatar_url').in('id', hostIds),
+      supabase
+        .from('village_members')
+        .select('village_id, user_id, profiles(display_name, avatar_url)')
+        .in('village_id', roomIds),
+    ])
+
+    const hostMap = new Map((hostProfiles || []).map((p: any) => [p.id, p]))
+
+    const membersByRoom: Record<string, VoiceRoom['members']> = {}
+    for (const m of membersData || []) {
+      const prof = Array.isArray((m as any).profiles) ? (m as any).profiles[0] : (m as any).profiles
+      if (!prof) continue
+      if (!membersByRoom[m.village_id]) membersByRoom[m.village_id] = []
+      membersByRoom[m.village_id].push({
+        user_id:      m.user_id,
+        display_name: prof.display_name,
+        avatar_url:   prof.avatar_url,
+      })
+    }
+
+    const result: VoiceRoom[] = rooms
+      .map((r: any) => {
+        const host = hostMap.get(r.host_id)
+        if (!host) return null
+        return {
+          id:           r.id,
+          name:         r.name,
+          icon:         r.icon,
+          description:  r.description ?? '',
+          category:     r.category ?? 'その他',
+          created_at:   r.created_at,
+          member_count: r.member_count ?? 0,
+          host:         { id: r.host_id, display_name: host.display_name, avatar_url: host.avatar_url },
+          members:      membersByRoom[r.id] ?? [],
+        }
+      })
+      .filter(Boolean) as VoiceRoom[]
+
+    setVoiceRooms(result)
+  }, [])
+
   // ── ツイートフェッチ（みんなタブ用・全ユーザー） ────────────────
   const fetchTweets = useCallback(async () => {
     setTweetLoading(true)
@@ -806,10 +1004,11 @@ export default function TimelinePage() {
   useEffect(() => {
     if (userId) {
       fetchPosts(true)
+      fetchVoiceRooms()
       if (tab === 'myvillage') fetchQA(userId, myVillageIds)
       if (tab === 'all') fetchTweets()
     }
-  }, [userId, tab, fetchPosts, fetchQA, fetchTweets, myVillageIds])
+  }, [userId, tab, fetchPosts, fetchQA, fetchTweets, fetchVoiceRooms, myVillageIds])
 
   // ── いいね ──────────────────────────────────────────────────
   function toggleLike(postId: string) {
@@ -831,21 +1030,29 @@ export default function TimelinePage() {
     setQaBottles(prev => prev.filter(b => b.id !== bottleId))
   }
 
-  // フィード合成
+  // フィード合成（通話ルームは全タブで混在）
   const feed: FeedItem[] = (() => {
-    if (tab === 'myvillage' && qaBottles.length > 0) {
-      return buildFeed(posts, qaBottles)
-    }
     if (tab === 'all' && tweetFeed.length > 0) {
       const combined: FeedItem[] = [
         ...posts.map(p => ({ type: 'post' as const, data: p })),
         ...tweetFeed.map(t => ({ type: 'tweet' as const, data: t })),
       ]
-      return combined.sort((a, b) =>
+      combined.sort((a, b) =>
         new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
       )
+      // 通話ルームを先頭から3件ごとに挿入
+      const withVoice: FeedItem[] = []
+      let vi = 0
+      combined.forEach((item, i) => {
+        withVoice.push(item)
+        if ((i + 1) % 3 === 0 && vi < voiceRooms.length) {
+          withVoice.push({ type: 'voice', data: voiceRooms[vi++] })
+        }
+      })
+      while (vi < voiceRooms.length) withVoice.push({ type: 'voice', data: voiceRooms[vi++] })
+      return withVoice
     }
-    return posts.map(p => ({ type: 'post' as const, data: p }))
+    return buildFeed(posts, qaBottles, voiceRooms)
   })()
 
   // ── レンダリング ─────────────────────────────────────────────
@@ -860,7 +1067,7 @@ export default function TimelinePage() {
             <h1 className="font-extrabold text-white text-2xl leading-tight">タイムライン</h1>
             <p className="text-xs text-white/50 mt-0.5">みんなの声が流れる場所</p>
           </div>
-          <button onClick={() => { fetchPosts(true); if (userId) fetchQA(userId, myVillageIds); if (tab === 'all') fetchTweets() }}
+          <button onClick={() => { fetchPosts(true); fetchVoiceRooms(); if (userId) fetchQA(userId, myVillageIds); if (tab === 'all') fetchTweets() }}
             className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
             style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
             <RefreshCw size={15} className="text-white/70" />
@@ -951,9 +1158,15 @@ export default function TimelinePage() {
         {/* ローディング */}
         {loading && <Skeleton />}
 
-        {/* フィード（投稿 + Q&Aカード + ツイート混在） */}
+        {/* フィード（投稿 + Q&A + ツイート + 通話ルーム混在） */}
         {!loading && feed.map((item) =>
-          item.type === 'qa' ? (
+          item.type === 'voice' ? (
+            <VoiceRoomCard
+              key={`voice-${item.data.id}`}
+              room={item.data}
+              currentUserId={userId}
+            />
+          ) : item.type === 'qa' ? (
             <QACard
               key={`qa-${item.data.id}`}
               bottle={item.data}
