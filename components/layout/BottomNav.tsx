@@ -64,29 +64,30 @@ export default function BottomNav() {
             return (
               <Link key={href} href={href}
                 className="flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-all">
-
-                {/* LIVE 強調バッジ（タブ上部中央） */}
-                {!active && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center justify-center w-9 h-5 rounded-full z-10"
-                    style={{ background: 'linear-gradient(135deg,#ef4444,#dc2626)', boxShadow: '0 0 8px rgba(239,68,68,0.7)' }}>
-                    <span className="absolute inset-0 rounded-full animate-ping opacity-50"
-                      style={{ background: 'linear-gradient(135deg,#ef4444,#dc2626)' }} />
-                    <span className="relative text-[8px] font-extrabold text-white tracking-widest">LIVE</span>
-                  </span>
-                )}
-
-                {/* 光るピル背景 */}
-                <div className={cn(
-                  'relative flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-2xl transition-all',
-                  active ? 'text-white shadow-lg' : 'text-violet-500'
-                )}
-                  style={active ? { background: 'linear-gradient(135deg,#7c3aed,#a855f7)' } : {}}>
-                  <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
-                  <span className={cn('text-[9px] font-extrabold tracking-wide',
-                    active ? 'text-white' : 'text-violet-500')}>
-                    {label}
-                  </span>
+                {/* 円形アイコン */}
+                <div
+                  className="flex items-center justify-center rounded-full transition-all"
+                  style={{
+                    width: 44,
+                    height: 44,
+                    background: active
+                      ? 'linear-gradient(135deg,#7c3aed,#a855f7)'
+                      : 'linear-gradient(135deg,#ede9fe,#ddd6fe)',
+                    boxShadow: active
+                      ? '0 4px 16px rgba(124,58,237,0.5)'
+                      : '0 2px 8px rgba(124,58,237,0.2)',
+                  }}
+                >
+                  <Icon
+                    size={22}
+                    strokeWidth={active ? 2.5 : 2}
+                    color={active ? '#fff' : '#7c3aed'}
+                  />
                 </div>
+                <span className={cn('text-[9px] font-extrabold tracking-wide mt-1',
+                  active ? 'text-violet-700' : 'text-violet-400')}>
+                  {label}
+                </span>
                 {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" style={{ background: '#7c3aed' }} />}
               </Link>
             )
