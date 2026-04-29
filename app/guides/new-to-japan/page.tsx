@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import ArticleJsonLd from '@/components/seo/ArticleJsonLd'
 
 export const metadata: Metadata = {
-  title: 'New to Japan — Survival Guide for Foreigners | 自由村',
+  title: 'New to Japan — Survival Guide for Foreigners | 休憩村',
   description: 'Just moved to Japan? This survival guide covers everything you need in your first weeks: residence card, bank account, phone, health insurance, and making friends.',
   keywords: ['new to japan', 'just moved to japan', 'japan survival guide', 'foreigner japan first steps', 'moving to japan checklist', 'japan expat guide'],
   openGraph: {
@@ -41,7 +41,7 @@ const SECTIONS = [
   {
     emoji: '👥',
     title: 'Making friends — the real talk',
-    content: `Making friends in Japan as a foreigner is genuinely hard. Here's what actually works:\n\n**What doesn't work:** Hoping it happens naturally. Waiting for Japanese colleagues to invite you. Assuming your coworkers will become close friends.\n\n**What works:**\n- **Language exchange** — Find a Japanese person who wants to learn your language. You meet regularly, you both benefit, friendships form naturally.\n- **Hobby groups** — Sports teams, hiking clubs, cooking classes. Shared activity removes the awkwardness of "we're just meeting because we're both foreigners."\n- **Expat communities** — Other foreigners understand what you're going through. Build this network first, then expand.\n- **自由村** — Match with people at the same arrival stage as you, or find locals who specifically want to meet foreigners.\n\nPlan to invest 3–6 months before you feel like you have a real social circle. That's normal.`,
+    content: `Making friends in Japan as a foreigner is genuinely hard. Here's what actually works:\n\n**What doesn't work:** Hoping it happens naturally. Waiting for Japanese colleagues to invite you. Assuming your coworkers will become close friends.\n\n**What works:**\n- **Language exchange** — Find a Japanese person who wants to learn your language. You meet regularly, you both benefit, friendships form naturally.\n- **Hobby groups** — Sports teams, hiking clubs, cooking classes. Shared activity removes the awkwardness of "we're just meeting because we're both foreigners."\n- **Expat communities** — Other foreigners understand what you're going through. Build this network first, then expand.\n- **休憩村** — Match with people at the same arrival stage as you, or find locals who specifically want to meet foreigners.\n\nPlan to invest 3–6 months before you feel like you have a real social circle. That's normal.`,
   },
 ]
 
@@ -51,14 +51,14 @@ export default function NewToJapan() {
       <ArticleJsonLd
         title="New to Japan: Your Survival Guide"
         description="Everything you need to know in your first weeks in Japan. From the ward office to making your first friend."
-        url="https://自由村japan.com/guides/new-to-japan"
+        url="https://休憩村japan.com/guides/new-to-japan"
       />
       <header className="flex items-center justify-between px-5 pt-5 pb-3">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm">
             <span className="text-white font-black text-sm">N</span>
           </div>
-          <span className="font-extrabold text-gray-900 text-lg tracking-tight">自由村</span>
+          <span className="font-extrabold text-gray-900 text-lg tracking-tight">休憩村</span>
         </Link>
       </header>
 
@@ -76,7 +76,7 @@ export default function NewToJapan() {
 
       <div className="mx-5 mb-8 bg-brand-500 rounded-2xl p-4 text-center">
         <p className="text-white font-bold text-sm mb-1">You just landed. We've got you.</p>
-        <p className="text-blue-100 text-xs mb-3">Find friends at the same stage as you on 自由村</p>
+        <p className="text-blue-100 text-xs mb-3">Find friends at the same stage as you on 休憩村</p>
         <Link href="/signup" className="inline-block px-6 py-2.5 bg-white text-brand-600 rounded-xl font-bold text-sm active:scale-95 transition-all">
           Join free →
         </Link>
@@ -97,7 +97,7 @@ export default function NewToJapan() {
       <section className="bg-blue-50 mx-5 rounded-3xl p-6 mb-10 text-center">
         <div className="text-4xl mb-3">✈️</div>
         <h2 className="font-extrabold text-gray-900 text-lg mb-2">Find your people in Japan</h2>
-        <p className="text-gray-500 text-sm mb-5 leading-relaxed">Join 自由村 free. Match with other new arrivals and locals who get it.</p>
+        <p className="text-gray-500 text-sm mb-5 leading-relaxed">Join 休憩村 free. Match with other new arrivals and locals who get it.</p>
         <Link href="/signup" className="block w-full py-4 bg-brand-500 text-white rounded-2xl font-bold text-sm text-center shadow-md shadow-brand-200 active:scale-[0.98] transition-all">
           Get Started — It's Free
         </Link>

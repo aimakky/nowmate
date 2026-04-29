@@ -117,7 +117,7 @@ function TweetComposeSheet({
 
         {/* フッター */}
         <div className="flex items-center justify-between px-5 py-3 border-t border-stone-100">
-          <p className="text-[11px] text-stone-400">自由村全体に公開されます</p>
+          <p className="text-[11px] text-stone-400">休憩村全体に公開されます</p>
           <div className="flex items-center gap-2.5">
             {/* 残り文字数リング */}
             <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">

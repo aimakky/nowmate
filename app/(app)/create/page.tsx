@@ -120,8 +120,8 @@ export default function CreatePage() {
   }
 
   const phrases = tag ? QUICK_PHRASES[tag] || [] : []
-  const shareText = encodeURIComponent(`${TAG_EMOJIS[tag] || '✨'} "${content}" — Join me on 自由村! 🌏 #自由村 #Japan #Expats`)
-  const shareUrl = encodeURIComponent('https://自由村japan.com')
+  const shareText = encodeURIComponent(`${TAG_EMOJIS[tag] || '✨'} "${content}" — Join me on 休憩村! 🌏 #休憩村 #Japan #Expats`)
+  const shareUrl = encodeURIComponent('https://休憩村japan.com')
 
   // Location gate
   if (locationStatus === 'checking') return (
@@ -203,7 +203,7 @@ export default function CreatePage() {
             </a>
             <button
               onClick={() => {
-                navigator.clipboard.writeText(`https://自由村japan.com/post/${postedId}`)
+                navigator.clipboard.writeText(`https://休憩村japan.com/post/${postedId}`)
                   .catch(() => {})
               }}
               className="w-full py-3.5 bg-stone-100 text-stone-700 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-stone-200 active:scale-[0.98] transition-all">

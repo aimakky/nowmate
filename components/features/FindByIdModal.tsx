@@ -46,7 +46,7 @@ export default function FindByIdModal({ currentUserId, onClose }: Props) {
       <div className="w-full max-w-md bg-white rounded-3xl p-5 shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="font-extrabold text-gray-900">🔍 Find by 自由村 ID</div>
+            <div className="font-extrabold text-gray-900">🔍 Find by 休憩村 ID</div>
             <div className="text-xs text-gray-400 mt-0.5">Enter their 8-character ID</div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
