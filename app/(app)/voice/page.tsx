@@ -108,10 +108,20 @@ export default function VoicePage() {
       title:    newTitle.trim(),
       category: newCat,
       is_open:  newIsOpen,
+      room_type: 'open_voice_room',
+      access_mode: 'age_verified_only',
+      allow_unverified_listeners: false,
+      safety_level: 3,
       ...(newAgenda.trim() ? { agenda: newAgenda.trim() } : {}),
     }).select().single()
     if (data) {
-      await supabase.from('voice_participants').insert({ room_id: data.id, user_id: userId })
+      await supabase.from('voice_participants').insert({
+        room_id: data.id,
+        user_id: userId,
+        is_listener: false,
+        join_mode: 'speaker',
+        role: 'host',
+      })
       setShowCreate(false)
       setNewTitle('')
       setNewAgenda('')
