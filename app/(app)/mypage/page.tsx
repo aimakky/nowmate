@@ -280,7 +280,7 @@ export default function MyPage() {
 
   if (loading || !profile) {
     return (
-      <div className="flex items-center justify-center h-screen" style={{ background: '#080812' }}>
+      <div className="flex items-center justify-center h-screen" style={{ background: '#0d0b1f' }}>
         <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }} />
       </div>
     )
@@ -295,49 +295,50 @@ export default function MyPage() {
     : 'linear-gradient(135deg, #0d0820 0%, #1a0a40 50%, #0a0a30 100%)'
 
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
+    <div className="max-w-md mx-auto min-h-screen relative overflow-x-hidden" style={{ background: '#0d0b1f' }}>
 
-      {/* ── バナー + アバター ── */}
-      <div className="relative">
-        <div className="h-32 w-full" style={{ background: bannerGradient }} />
+      {/* 紫ラジアルグロー（右上） */}
+      <div className="absolute top-0 right-0 w-80 h-80 pointer-events-none z-0"
+        style={{ background: 'radial-gradient(circle at 80% 15%, rgba(139,92,246,0.5) 0%, rgba(109,40,217,0.25) 35%, transparent 65%)' }} />
 
-        {/* 左上：プロフィールアイコン */}
-        <div
-          className="absolute top-3 left-3 w-9 h-9 rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(8,8,18,0.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(157,92,255,0.3)' }}
-        >
-          <User size={16} className="text-white" />
+      {/* ── ヘッダー行 ── */}
+      <div className="relative z-10 flex items-center justify-between px-5 pt-12 pb-0">
+        {/* 左：人アイコン（円形） */}
+        <div className="w-10 h-10 rounded-full flex items-center justify-center"
+          style={{ border: '1.5px solid rgba(157,92,255,0.65)', background: 'rgba(157,92,255,0.08)' }}>
+          <User size={18} style={{ color: '#9D5CFF' }} />
         </div>
-
-        {/* 設定ボタン（六角形） */}
+        {/* 右：設定アイコン（六角形） */}
         <Link
           href="/settings"
-          className="absolute top-3 right-3 w-10 h-10 flex items-center justify-center active:scale-90 transition-all"
+          className="w-10 h-10 flex items-center justify-center active:scale-90 transition-all"
           style={{
-            background: 'rgba(8,8,18,0.5)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(157,92,255,0.3)',
+            border: '1.5px solid rgba(157,92,255,0.65)',
+            background: 'rgba(157,92,255,0.08)',
             clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
           }}
         >
-          <Settings size={16} className="text-white" />
+          <Settings size={16} style={{ color: '#9D5CFF' }} />
         </Link>
+      </div>
 
+      {/* ── プロフィール行（アバター左 + 名前右） ── */}
+      <div className="relative z-10 flex items-center gap-5 px-5 pt-6 pb-5">
         {/* アバター */}
-        <div className="absolute left-4" style={{ bottom: -36 }}>
+        <div className="relative flex-shrink-0">
           <div
-            className={`w-20 h-20 rounded-full border-4 overflow-hidden flex items-center justify-center ${trust?.tier === 'pillar' ? 'ring-2 ring-offset-1' : ''}`}
+            className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center"
             style={{
-              borderColor: '#080812',
-              background: 'rgba(157,92,255,0.15)',
+              border: '2px solid rgba(157,92,255,0.7)',
               boxShadow: trust?.tier === 'pillar'
-                ? '0 0 20px rgba(255,77,144,0.5), 0 0 0 2px #FF4D90'
-                : '0 0 20px rgba(157,92,255,0.4)',
+                ? '0 0 30px rgba(255,77,144,0.6), 0 0 60px rgba(255,77,144,0.2)'
+                : '0 0 30px rgba(157,92,255,0.6), 0 0 60px rgba(157,92,255,0.2)',
+              background: 'rgba(157,92,255,0.12)',
             }}
           >
             {profile.avatar_url
               ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-              : <span className="text-3xl">🙂</span>
+              : <span className="text-4xl">🙂</span>
             }
           </div>
           {trust?.tier === 'pillar' && (
@@ -345,43 +346,66 @@ export default function MyPage() {
           )}
           {profile.is_online && (
             <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full border-2"
-              style={{ background: '#7CFF82', borderColor: '#080812' }} />
+              style={{ background: '#7CFF82', borderColor: '#0d0b1f' }} />
           )}
         </div>
 
-        {/* 信頼ティアバッジ */}
-        <div className="absolute right-4" style={{ bottom: -28 }}>
-          {trust && <TrustBadge tierId={trust.tier} size="sm" showLabel={true} />}
+        {/* 名前・ID・bio */}
+        <div className="flex-1 min-w-0">
+          <h2 className="font-extrabold text-2xl leading-tight truncate" style={{ color: '#F0EEFF' }}>
+            {profile.display_name}
+          </h2>
+          {profile.VILLIA_id && (
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(profile.VILLIA_id!)
+                setIdCopied(true)
+                setTimeout(() => setIdCopied(false), 2000)
+              }}
+              className="flex items-center gap-1 mt-0.5 active:opacity-60 transition-opacity"
+            >
+              <span className="text-xs font-mono" style={{ color: 'rgba(240,238,255,0.3)' }}>#{profile.VILLIA_id}</span>
+              {idCopied
+                ? <Check size={11} style={{ color: '#7CFF82' }} />
+                : <Copy size={11} style={{ color: 'rgba(240,238,255,0.3)' }} />
+              }
+            </button>
+          )}
+          {profile.bio && (
+            <p className="text-sm mt-1.5 leading-relaxed" style={{ color: 'rgba(240,238,255,0.6)' }}>{profile.bio}</p>
+          )}
+          {trust && (
+            <div className="mt-2">
+              <TrustBadge tierId={trust.tier} size="sm" showLabel={true} />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── プロフ情報 ── */}
-      <div className="pt-14 px-4 pb-3" style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(157,92,255,0.15)' }}>
-        <h2 className="font-extrabold text-xl leading-tight truncate" style={{ color: '#F0EEFF' }}>
-          {profile.display_name}
-        </h2>
-        {profile.VILLIA_id && (
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(profile.VILLIA_id!)
-              setIdCopied(true)
-              setTimeout(() => setIdCopied(false), 2000)
-            }}
-            className="flex items-center gap-1 mt-0.5 active:opacity-60 transition-opacity"
-          >
-            <span className="text-xs font-mono" style={{ color: 'rgba(240,238,255,0.3)' }}>#{profile.VILLIA_id}</span>
-            {idCopied
-              ? <Check size={11} style={{ color: '#7CFF82' }} />
-              : <Copy size={11} style={{ color: 'rgba(240,238,255,0.3)' }} />
-            }
-          </button>
-        )}
+      {/* ── 統計カード ── */}
+      <div className="relative z-10 mx-4 mb-3 rounded-2xl overflow-hidden"
+        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(157,92,255,0.18)' }}>
+        <div className="flex">
+          {[
+            { count: followingCount, label: 'フォロー中' },
+            { count: followersCount, label: 'フォロワー' },
+            { count: tweets.length,  label: '投稿' },
+          ].map((stat, i) => (
+            <div key={i} className="flex-1 flex flex-col items-center py-4 relative">
+              {i > 0 && (
+                <div className="absolute left-0 top-3 bottom-3 w-px"
+                  style={{ background: 'rgba(157,92,255,0.2)' }} />
+              )}
+              <span className="font-extrabold text-xl" style={{ color: '#9D5CFF' }}>{stat.count}</span>
+              <span className="text-xs mt-0.5" style={{ color: 'rgba(240,238,255,0.45)' }}>{stat.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
 
-        {profile.bio && (
-          <p className="text-sm mt-2 leading-relaxed" style={{ color: 'rgba(240,238,255,0.7)' }}>{profile.bio}</p>
-        )}
-
-        <div className="flex flex-wrap items-center gap-2 mt-2.5">
+      {/* 職業・入会日 */}
+      {(industryInfo || profile.created_at) && (
+        <div className="relative z-10 flex flex-wrap items-center gap-2 px-4 mb-3">
           {industryInfo && (
             <div className="flex items-center gap-1.5">
               {showIndustry ? (
@@ -419,63 +443,38 @@ export default function MyPage() {
             </span>
           )}
         </div>
+      )}
 
-        {/* フォロー / フォロワー / 投稿 */}
-        <div className="flex gap-5 mt-3">
-          <div className="flex items-center gap-1.5">
-            <span className="font-extrabold text-sm" style={{
-              background: 'linear-gradient(135deg, #9D5CFF, #FF4D90)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}>{followingCount}</span>
-            <span className="text-xs" style={{ color: 'rgba(240,238,255,0.55)' }}>フォロー中</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-extrabold text-sm" style={{
-              background: 'linear-gradient(135deg, #9D5CFF, #FF4D90)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}>{followersCount}</span>
-            <span className="text-xs" style={{ color: 'rgba(240,238,255,0.55)' }}>フォロワー</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-extrabold text-sm" style={{
-              background: 'linear-gradient(135deg, #9D5CFF, #FF4D90)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}>{tweets.length}</span>
-            <span className="text-xs" style={{ color: 'rgba(240,238,255,0.55)' }}>投稿</span>
-          </div>
+      {/* ── タブ ── */}
+      <div className="relative z-10 mx-4 mb-1 rounded-2xl overflow-hidden sticky top-2"
+        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(157,92,255,0.15)' }}>
+        <div className="flex">
+          {([
+            { id: 'tweets',          label: '投稿' },
+            { id: 'images',          label: '画像' },
+            { id: 'joined_villages', label: '参加中' },
+            { id: 'hosted_villages', label: 'ホスト' },
+          ] as { id: ProfileTab; label: string }[]).map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className="flex-1 py-3.5 text-xs font-bold transition-colors relative"
+              style={{ color: activeTab === tab.id ? '#F0EEFF' : 'rgba(240,238,255,0.35)' }}
+            >
+              {tab.label}
+              {activeTab === tab.id && (
+                <span
+                  className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full"
+                  style={{ background: 'linear-gradient(90deg, #9D5CFF, #FF4D90)' }}
+                />
+              )}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ── タブ ── */}
-      <div className="flex sticky top-0 z-10" style={{ background: '#080812', borderBottom: '1px solid rgba(157,92,255,0.15)' }}>
-        {([
-          { id: 'tweets',          label: '投稿' },
-          { id: 'images',          label: '画像' },
-          { id: 'joined_villages', label: '参加中' },
-          { id: 'hosted_villages', label: 'ホスト' },
-        ] as { id: ProfileTab; label: string }[]).map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className="flex-1 py-3 text-xs font-bold transition-colors relative"
-            style={{ color: activeTab === tab.id ? '#9D5CFF' : 'rgba(240,238,255,0.3)' }}
-          >
-            {tab.label}
-            {activeTab === tab.id && (
-              <span
-                className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full"
-                style={{ background: 'linear-gradient(90deg, #9D5CFF, #FF4D90)' }}
-              />
-            )}
-          </button>
-        ))}
-      </div>
-
       {/* ── タブコンテンツ ── */}
-      <div className="pb-32">
+      <div className="pb-32 relative z-10">
 
         {/* 投稿タブ */}
         {activeTab === 'tweets' && (
