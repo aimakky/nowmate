@@ -15,81 +15,77 @@ export default function GamepadIcon({ size = 22, active = false }: Props) {
       style={{ opacity }}
     >
       <defs>
-        <linearGradient id="gp-body" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#3A3A3A" />
-          <stop offset="100%" stopColor="#1C1C1C" />
+        <linearGradient id="gp-body" x1="0.2" y1="0" x2="0.8" y2="1">
+          <stop offset="0%" stopColor="#7B52D4" />
+          <stop offset="100%" stopColor="#4A2490" />
         </linearGradient>
         <linearGradient id="gp-bump" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#4A4A4A" />
-          <stop offset="100%" stopColor="#2A2A2A" />
+          <stop offset="0%" stopColor="#6A44C0" />
+          <stop offset="100%" stopColor="#3D1E80" />
         </linearGradient>
-        <linearGradient id="gp-grip-l" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#2E2E2E" />
-          <stop offset="100%" stopColor="#141414" />
+        <linearGradient id="gp-stick" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#9880CC" />
+          <stop offset="100%" stopColor="#6655A8" />
         </linearGradient>
-        <linearGradient id="gp-grip-r" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#2E2E2E" />
-          <stop offset="100%" stopColor="#141414" />
-        </linearGradient>
-        {active && (
-          <filter id="gp-glow">
-            <feGaussianBlur stdDeviation="1.2" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        )}
+        <filter id="gp-glow">
+          <feGaussianBlur stdDeviation={active ? "1.5" : "0.6"} result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
 
-      {/* Bumpers */}
-      <rect x="3.5" y="6" width="6.5" height="2" rx="1" fill="url(#gp-bump)" />
-      <rect x="14" y="6" width="6.5" height="2" rx="1" fill="url(#gp-bump)" />
+      {/* Bumper left */}
+      <rect x="3.2" y="6" width="7" height="2.2" rx="1.1" fill="url(#gp-bump)" />
+      {/* Bumper right */}
+      <rect x="13.8" y="6" width="7" height="2.2" rx="1.1" fill="url(#gp-bump)" />
 
       {/* Main body */}
       <path
-        d="M5 8C3.3 8 2 9.5 2 11.5C2 13.8 3.2 15.6 5 17L7 19.2C7.8 20.1 8.9 20.5 10 20.5C11.1 20.5 11.8 19.6 12 18.8C12.2 19.6 12.9 20.5 14 20.5C15.1 20.5 16.2 20.1 17 19.2L19 17C20.8 15.6 22 13.8 22 11.5C22 9.5 20.7 8 19 8H5Z"
+        d="M5 8.2C3.2 8.2 2 9.8 2 11.8C2 14 3.1 16 5 17.4L7.2 19.5C8 20.3 9.1 20.8 10.3 20.8C11.4 20.8 12 19.9 12 19.1C12 19.9 12.6 20.8 13.7 20.8C14.9 20.8 16 20.3 16.8 19.5L19 17.4C20.9 16 22 14 22 11.8C22 9.8 20.8 8.2 19 8.2H5Z"
         fill="url(#gp-body)"
-        filter={active ? 'url(#gp-glow)' : undefined}
+        filter="url(#gp-glow)"
       />
 
-      {/* Body highlight top edge */}
+      {/* Top body highlight */}
       <path
-        d="M6 8.5C7.5 8.2 9.5 8 12 8C14.5 8 16.5 8.2 18 8.5"
-        stroke="rgba(255,255,255,0.12)"
+        d="M6.5 8.8C8 8.45 10 8.2 12 8.2C14 8.2 16 8.45 17.5 8.8"
+        stroke="rgba(200,170,255,0.3)"
         strokeWidth="0.7"
         strokeLinecap="round"
         fill="none"
       />
 
-      {/* D-pad — left side */}
-      {/* horizontal */}
-      <rect x="5.2" y="11.4" width="4.2" height="1.6" rx="0.6" fill="#555555" />
-      {/* vertical */}
-      <rect x="6.7" y="9.9" width="1.6" height="4.6" rx="0.6" fill="#555555" />
+      {/* D-pad horizontal */}
+      <rect x="5.0" y="11.3" width="4.4" height="1.7" rx="0.65" fill="rgba(255,255,255,0.22)" />
+      {/* D-pad vertical */}
+      <rect x="6.5" y="9.8" width="1.7" height="4.7" rx="0.65" fill="rgba(255,255,255,0.22)" />
 
       {/* Analog stick left */}
-      <circle cx="8.5" cy="15.5" r="1.4" fill="#404040" stroke="#2A2A2A" strokeWidth="0.5" />
+      <circle cx="8.6" cy="15.8" r="1.5" fill="url(#gp-stick)" />
+      <circle cx="8.6" cy="15.8" r="0.6" fill="rgba(255,255,255,0.15)" />
 
       {/* Analog stick right */}
-      <circle cx="15.5" cy="15.5" r="1.4" fill="#404040" stroke="#2A2A2A" strokeWidth="0.5" />
+      <circle cx="15.4" cy="15.8" r="1.5" fill="url(#gp-stick)" />
+      <circle cx="15.4" cy="15.8" r="0.6" fill="rgba(255,255,255,0.15)" />
 
-      {/* Face buttons (right side) — orange/amber */}
-      {/* Top */}
-      <circle cx="17.2" cy="10.2" r="1.05" fill="#E87820" />
-      {/* Right */}
-      <circle cx="18.9" cy="11.9" r="1.05" fill="#E87820" />
-      {/* Bottom */}
-      <circle cx="17.2" cy="13.6" r="1.05" fill="#D06010" />
-      {/* Left */}
-      <circle cx="15.5" cy="11.9" r="1.05" fill="#E87820" />
+      {/* Face buttons */}
+      {/* Top — yellow */}
+      <circle cx="17.1" cy="10.1" r="1.05" fill="#F5C518" />
+      {/* Right — blue */}
+      <circle cx="18.75" cy="11.75" r="1.05" fill="#4B9EF5" />
+      {/* Bottom — green */}
+      <circle cx="17.1" cy="13.4" r="1.05" fill="#48D560" />
+      {/* Left — red */}
+      <circle cx="15.45" cy="11.75" r="1.05" fill="#F04848" />
 
-      {/* Center logo button */}
-      <circle cx="12" cy="12" r="1.3" fill="#303030" stroke="rgba(255,255,255,0.15)" strokeWidth="0.5" />
+      {/* Center button */}
+      <circle cx="12" cy="11.75" r="1.25" fill="rgba(255,255,255,0.14)" stroke="rgba(255,255,255,0.28)" strokeWidth="0.5" />
 
-      {/* Menu buttons */}
-      <rect x="9.8" y="11.5" width="1.3" height="0.9" rx="0.45" fill="rgba(255,255,255,0.2)" />
-      <rect x="12.9" y="11.5" width="1.3" height="0.9" rx="0.45" fill="rgba(255,255,255,0.2)" />
+      {/* Select / Start mini buttons */}
+      <rect x="9.8" y="11.25" width="1.3" height="0.85" rx="0.42" fill="rgba(255,255,255,0.28)" />
+      <rect x="12.9" y="11.25" width="1.3" height="0.85" rx="0.42" fill="rgba(255,255,255,0.28)" />
     </svg>
   )
 }
