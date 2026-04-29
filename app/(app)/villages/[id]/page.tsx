@@ -2352,7 +2352,8 @@ export default function VillageDetailPage() {
                       onClick={async () => {
                         if (!userId) return
                         const result = await startDM(userId, m.user_id)
-                        if (result.status === 'ok' || result.status === 'exists' || result.status === 'request') {
+                        if (result.status === 'age_required') { alert('DMを送るには年齢確認が必要です。'); return }
+                        if ((result.status === 'ok' || result.status === 'exists' || result.status === 'request') && 'matchId' in result) {
                           router.push(`/chat/${result.matchId}`)
                         }
                       }}

@@ -5,12 +5,14 @@
  */
 
 import { createClient } from '@/lib/supabase/client'
+import { canSendDM } from '@/lib/permissions'
 
 export type DMResult =
   | { status: 'ok';      matchId: string }   // すぐ会話できる
   | { status: 'request'; matchId: string }   // リクエストとして送信
   | { status: 'blocked' }                    // 送信不可（none 設定等）
   | { status: 'exists';  matchId: string }   // すでにマッチ済み
+  | { status: 'age_required' }               // 年齢確認が必要
 
 /**
  * ユーザー B に DM を開始する
@@ -21,7 +23,23 @@ export type DMResult =
 export async function startDM(fromUserId: string, toUserId: string): Promise<DMResult> {
   const supabase = createClient()
 
-  // ① すでにマッチが存在するか確認
+  // ① 送信者の年齢確認チェック
+  const { data: senderProfile } = await supabase
+    .from('profiles')
+    .select('age_verified, age_verification_status')
+    .eq('id', fromUserId)
+    .single()
+
+  const permCheck = canSendDM({
+    id: fromUserId,
+    age_verified: senderProfile?.age_verified ?? false,
+    age_verification_status: (senderProfile?.age_verification_status ?? 'unverified') as any,
+  })
+  if (!permCheck.allowed) {
+    return { status: 'age_required' }
+  }
+
+  // ② すでにマッチが存在するか確認
   const u1 = fromUserId < toUserId ? fromUserId : toUserId
   const u2 = fromUserId < toUserId ? toUserId : fromUserId
   const { data: existing } = await supabase

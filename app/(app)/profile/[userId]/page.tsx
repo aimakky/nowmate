@@ -153,12 +153,15 @@ export default function UserProfilePage() {
     setDmLoading(true)
     const result = await startDM(myId, userId as string)
     setDmLoading(false)
-    if (result.status === 'ok' || result.status === 'exists') {
+    if (result.status === 'age_required') {
+      setDmToast('DMを送るには年齢確認が必要です')
+      setTimeout(() => setDmToast(null), 3000)
+    } else if (result.status === 'ok' || result.status === 'exists') {
       router.push(`/chat/${result.matchId}`)
     } else if (result.status === 'request') {
       setDmToast('リクエストを送りました 📨')
       setTimeout(() => setDmToast(null), 3000)
-      router.push(`/chat/${result.matchId}`)
+      if ('matchId' in result) router.push(`/chat/${result.matchId}`)
     } else {
       setDmToast('このユーザーはDMを受け付けていません')
       setTimeout(() => setDmToast(null), 3000)

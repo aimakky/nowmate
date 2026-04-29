@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Mic, Users, Radio } from 'lucide-react'
+import { Mic, Users, Radio, ShieldCheck, Lock } from 'lucide-react'
 import Header from '@/components/layout/Header'
+import { canCreateVoiceRoom } from '@/lib/permissions'
 
 const CATEGORIES = ['雑談', '夜話', '相談', '悩み', '笑い', '趣味']
 
@@ -32,16 +33,29 @@ export default function VoicePage() {
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set())
-  const [showCreate, setShowCreate] = useState(false)
-  const [newTitle,   setNewTitle]   = useState('')
-  const [newCat,     setNewCat]     = useState('雑談')
-  const [newIsOpen,  setNewIsOpen]  = useState(true)
-  const [newAgenda,  setNewAgenda]  = useState('')
-  const [creating,   setCreating]   = useState(false)
+  const [showCreate,    setShowCreate]    = useState(false)
+  const [newTitle,      setNewTitle]      = useState('')
+  const [newCat,        setNewCat]        = useState('雑談')
+  const [newIsOpen,     setNewIsOpen]     = useState(true)
+  const [newAgenda,     setNewAgenda]     = useState('')
+  const [creating,      setCreating]      = useState(false)
+  const [myAgeVerified, setMyAgeVerified] = useState(false)
+  const [myAgeStatus,   setMyAgeStatus]   = useState<string>('unverified')
+  const [showAgeGate,   setShowAgeGate]   = useState(false)
 
   useEffect(() => {
-    createClient().auth.getUser().then(({ data: { user } }) => {
-      if (user) setUserId(user.id)
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return
+      setUserId(user.id)
+      const { data: p } = await supabase
+        .from('profiles')
+        .select('age_verified, age_verification_status')
+        .eq('id', user.id)
+        .single()
+      const verified = p?.age_verified === true && p?.age_verification_status === 'age_verified'
+      setMyAgeVerified(verified)
+      setMyAgeStatus(p?.age_verification_status ?? 'unverified')
     })
   }, [])
 
@@ -81,6 +95,12 @@ export default function VoicePage() {
 
   async function handleCreate() {
     if (!userId || !newTitle.trim() || creating) return
+    const perm = canCreateVoiceRoom({ id: userId, age_verified: myAgeVerified, age_verification_status: myAgeStatus as any })
+    if (!perm.allowed) {
+      setShowCreate(false)
+      setShowAgeGate(true)
+      return
+    }
     setCreating(true)
     const supabase = createClient()
     const { data } = await supabase.from('voice_rooms').insert({
@@ -251,10 +271,52 @@ export default function VoicePage() {
 
       {/* フローティングボタン */}
       <button
-        onClick={() => setShowCreate(true)}
+        onClick={() => myAgeVerified ? setShowCreate(true) : setShowAgeGate(true)}
         className="fixed bottom-24 right-5 w-14 h-14 bg-brand-500 rounded-2xl flex items-center justify-center shadow-xl shadow-brand-200 hover:bg-brand-600 active:scale-90 transition-all z-30">
-        <Mic size={22} className="text-white" />
+        {myAgeVerified ? <Mic size={22} className="text-white" /> : <Lock size={22} className="text-white" />}
       </button>
+
+      {/* 年齢確認ゲートモーダル */}
+      {showAgeGate && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAgeGate(false)} />
+          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl">
+            <div className="flex flex-col items-center text-center mb-5">
+              <div className="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center mb-3">
+                <ShieldCheck size={32} className="text-brand-500" />
+              </div>
+              <h3 className="font-extrabold text-stone-900 text-lg mb-1.5">通話機能は年齢確認が必要です</h3>
+              <p className="text-sm text-stone-500 leading-relaxed">
+                sameeの通話ルーム作成・参加は、<br />
+                <span className="font-bold text-stone-700">20歳以上</span>であることの確認が必要です。<br />
+                免許証・パスポート等の公的書類で確認します。
+              </p>
+            </div>
+            {myAgeStatus === 'pending' ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-4 text-center">
+                <p className="text-sm font-bold text-amber-700">⏳ 確認処理中</p>
+                <p className="text-xs text-amber-600 mt-1">通常1〜2営業日でご連絡します</p>
+              </div>
+            ) : myAgeStatus === 'rejected' ? (
+              <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4 text-center">
+                <p className="text-sm font-bold text-red-700">❌ 確認が却下されました</p>
+                <p className="text-xs text-red-600 mt-1">別の書類で再度お試しください</p>
+              </div>
+            ) : null}
+            <div className="space-y-2.5">
+              <button
+                onClick={() => { setShowAgeGate(false); router.push('/verify-age') }}
+                className="w-full py-3.5 bg-brand-500 text-white rounded-2xl font-extrabold text-sm shadow-lg shadow-brand-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                <ShieldCheck size={16} /> 年齢確認をする
+              </button>
+              <button onClick={() => setShowAgeGate(false)}
+                className="w-full py-3 text-stone-400 text-sm font-medium">
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ルーム作成モーダル */}
       {showCreate && (

@@ -586,7 +586,8 @@ function MemberRow({
         <button
           onClick={async () => {
             const result = await startDM(userId, m.user_id)
-            if (result.status !== 'blocked') router.push(`/chat/${result.matchId}`)
+            if (result.status === 'age_required') { alert('DMを送るには年齢確認が必要です。設定から確認してください。'); return }
+            if (result.status !== 'blocked' && 'matchId' in result) router.push(`/chat/${result.matchId}`)
           }}
           className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-90"
           style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}

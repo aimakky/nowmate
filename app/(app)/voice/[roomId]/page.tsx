@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag } from '@/lib/utils'
-import { ArrowLeft, Mic, MicOff, Radio, LogOut, Send, ChevronUp, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Mic, MicOff, Radio, LogOut, Send, ChevronUp, ChevronDown, ShieldCheck, Lock } from 'lucide-react'
 import { awardPoints, getTierById } from '@/lib/trust'
+import { canSpeakInVoiceRoom, type AgeVerificationStatus } from '@/lib/permissions'
 
 // ─── 定数 ────────────────────────────────────────────────────
 const CAT_EMOJI: Record<string, string> = {
@@ -113,7 +114,10 @@ export default function VoiceRoomPage() {
   const [isMuted,        setIsMuted]        = useState(false)
   const [isListener,     setIsListener]     = useState(false)
   const [micError,       setMicError]       = useState(false)
-  const [myTier,         setMyTier]         = useState<string>('visitor')
+  const [myTier,            setMyTier]            = useState<string>('visitor')
+  const [myAgeVerified,     setMyAgeVerified]     = useState(false)
+  const [myAgeStatus,       setMyAgeStatus]       = useState<AgeVerificationStatus>('unverified')
+  const [showAgeGate,       setShowAgeGate]       = useState(false)
   const MAX_SPEAKERS = 8  // 広場トークは最大8名まで登壇可能
 
   // ── 広場トーク: 挙手・昇格 ───────────────────────────────
@@ -165,14 +169,17 @@ export default function VoiceRoomPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
       setUserId(user.id)
-      // プロフィール + 信頼ティアを同時取得
+      // プロフィール + 信頼ティア + 年齢確認を同時取得
       Promise.all([
-        supabase.from('profiles').select('display_name, nationality').eq('id', user.id).single(),
+        supabase.from('profiles').select('display_name, nationality, age_verified, age_verification_status').eq('id', user.id).single(),
         supabase.from('user_trust').select('tier').eq('user_id', user.id).maybeSingle(),
       ]).then(([{ data: p }, { data: t }]) => {
         if (p) {
           setMyName(p.display_name ?? '')
           setMyFlag(getNationalityFlag(p.nationality ?? ''))
+          const verified = p.age_verified === true && p.age_verification_status === 'age_verified'
+          setMyAgeVerified(verified)
+          setMyAgeStatus((p.age_verification_status ?? 'unverified') as AgeVerificationStatus)
         }
         if (t?.tier) setMyTier(t.tier)
       })
@@ -318,6 +325,16 @@ export default function VoiceRoomPage() {
 
   async function joinRoom(mode: 'speaker' | 'listener' | 'silent') {
     if (!userId || !roomId || joining) return
+
+    // スピーカーモードは年齢確認必須
+    if (mode === 'speaker') {
+      const { allowed } = canSpeakInVoiceRoom({ id: userId, age_verified: myAgeVerified, age_verification_status: myAgeStatus })
+      if (!allowed) {
+        setShowAgeGate(true)
+        return
+      }
+    }
+
     setJoining(true)
     const asListener = mode !== 'speaker'
     setIsListener(asListener)
@@ -705,7 +722,31 @@ export default function VoiceRoomPage() {
               </div>
             )}
 
-            {/* スピーカー上限（4名） */}
+            {/* 年齢確認バナー（未確認） */}
+            {!myAgeVerified && (
+              <div className="bg-brand-50 border border-brand-200 rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2">
+                <ShieldCheck size={16} className="text-brand-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] text-brand-700 font-bold">
+                    {myAgeStatus === 'pending' ? '⏳ 年齢確認処理中…' : '年齢確認で話せるようになります'}
+                  </p>
+                  <p className="text-[10px] text-brand-500 mt-0.5">
+                    {myAgeStatus === 'pending'
+                      ? '確認完了後に登壇できます'
+                      : '免許証・パスポートで確認できます（聴くだけなら今すぐOK）'}
+                  </p>
+                </div>
+                {myAgeStatus !== 'pending' && (
+                  <button
+                    onClick={() => setShowAgeGate(true)}
+                    className="flex-shrink-0 text-[10px] font-bold px-2.5 py-1.5 bg-brand-500 text-white rounded-xl active:scale-95 transition-all">
+                    確認する
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* スピーカー上限 */}
             {speakers.length >= MAX_SPEAKERS && (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2">
                 <span className="text-base flex-shrink-0">🔒</span>
@@ -721,19 +762,25 @@ export default function VoiceRoomPage() {
                 onClick={() => joinRoom('speaker')}
                 disabled={joining || speakers.length >= MAX_SPEAKERS || myTier === 'visitor'}
                 className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 active:scale-[0.98] transition-all text-left disabled:opacity-40"
-                style={speakers.length >= MAX_SPEAKERS || myTier === 'visitor'
+                style={!myAgeVerified || speakers.length >= MAX_SPEAKERS || myTier === 'visitor'
                   ? { borderColor: '#e7e5e4', background: '#f5f5f4' }
                   : { borderColor: '#6366f1', background: '#eef2ff' }}>
-                <span className="text-2xl flex-shrink-0">🎙️</span>
+                <span className="text-2xl flex-shrink-0">
+                  {!myAgeVerified ? '🔒' : '🎙️'}
+                </span>
                 <div>
-                  <p className="font-extrabold text-sm" style={{ color: speakers.length >= MAX_SPEAKERS || myTier === 'visitor' ? '#a8a29e' : '#4338ca' }}>
-                    {myTier === 'visitor'
-                      ? '登壇する（住民以上で解放）'
-                      : speakers.length >= MAX_SPEAKERS
-                        ? `登壇する（上限${MAX_SPEAKERS}名）`
-                        : `登壇する（残り${MAX_SPEAKERS - speakers.length}枠）`}
+                  <p className="font-extrabold text-sm" style={{ color: !myAgeVerified || speakers.length >= MAX_SPEAKERS || myTier === 'visitor' ? '#a8a29e' : '#4338ca' }}>
+                    {!myAgeVerified
+                      ? '登壇する（年齢確認が必要）'
+                      : myTier === 'visitor'
+                        ? '登壇する（住民以上で解放）'
+                        : speakers.length >= MAX_SPEAKERS
+                          ? `登壇する（上限${MAX_SPEAKERS}名）`
+                          : `登壇する（残り${MAX_SPEAKERS - speakers.length}枠）`}
                   </p>
-                  <p className="text-[10px] text-stone-400">マイクをオンにしてステージへ</p>
+                  <p className="text-[10px] text-stone-400">
+                    {!myAgeVerified ? '年齢確認済みユーザーのみ話せます' : 'マイクをオンにしてステージへ'}
+                  </p>
                 </div>
                 {joining && <span className="ml-auto w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />}
               </button>
@@ -849,14 +896,22 @@ export default function VoiceRoomPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* 登壇者: ミュートボタン */}
+              {/* 登壇者: ミュートボタン（未確認は鍵アイコン） */}
               {!isListener && (
-                <button onClick={toggleMute}
-                  className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90 ${
-                    isMuted ? 'bg-red-100 text-red-500' : 'bg-emerald-100 text-emerald-600'
-                  }`}>
-                  {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
-                </button>
+                myAgeVerified ? (
+                  <button onClick={toggleMute}
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90 ${
+                      isMuted ? 'bg-red-100 text-red-500' : 'bg-emerald-100 text-emerald-600'
+                    }`}>
+                    {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
+                  </button>
+                ) : (
+                  <button onClick={() => setShowAgeGate(true)}
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center bg-stone-100 text-stone-400 transition-all active:scale-90"
+                    title="年齢確認が必要です">
+                    <Lock size={20} />
+                  </button>
+                )
               )}
               {/* 観客: 手を挙げるボタン */}
               {isListener && joined && (
@@ -878,6 +933,44 @@ export default function VoiceRoomPage() {
 
             <div className="text-right">
               {isHost && <span className="text-[10px] text-stone-400 bg-stone-100 px-2 py-1 rounded-full">Host 👑</span>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 年齢確認ゲートモーダル ── */}
+      {showAgeGate && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAgeGate(false)} />
+          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl">
+            <div className="flex flex-col items-center text-center mb-5">
+              <div className="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center mb-3">
+                <ShieldCheck size={32} className="text-brand-500" />
+              </div>
+              <h3 className="font-extrabold text-stone-900 text-lg mb-1.5">通話で話すには年齢確認が必要</h3>
+              <p className="text-sm text-stone-500 leading-relaxed">
+                sameeは<span className="font-bold text-stone-700">20歳以上</span>限定のコミュニティです。<br />
+                免許証・マイナンバーカード・パスポートで確認できます。
+              </p>
+            </div>
+            {myAgeStatus === 'pending' && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-4 text-center">
+                <p className="text-sm font-bold text-amber-700">⏳ 確認処理中</p>
+                <p className="text-xs text-amber-600 mt-1">通常1〜2営業日でご連絡します</p>
+              </div>
+            )}
+            <div className="space-y-2.5">
+              {myAgeStatus !== 'pending' && (
+                <button
+                  onClick={() => { setShowAgeGate(false); router.push('/verify-age') }}
+                  className="w-full py-3.5 bg-brand-500 text-white rounded-2xl font-extrabold text-sm shadow-lg shadow-brand-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                  <ShieldCheck size={16} /> 年齢確認をする（無料）
+                </button>
+              )}
+              <button onClick={() => setShowAgeGate(false)}
+                className="w-full py-3 text-stone-400 text-sm font-medium">
+                閉じる（聴くだけで参加）
+              </button>
             </div>
           </div>
         </div>

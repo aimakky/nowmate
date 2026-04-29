@@ -36,16 +36,32 @@ export async function GET(req: NextRequest) {
     }
 
     if (age >= 20) {
-      // DB を更新
+      // DB を更新（age_verification_status も同期）
       await supabase.from('profiles').update({
         age_verified: true,
         age_verified_at: new Date().toISOString(),
+        age_verification_status: 'age_verified',
+        age_verification_provider: 'stripe_identity',
         age,
       }).eq('id', user.id)
       return NextResponse.json({ status: 'verified', age })
     } else {
+      // 未成年 → rejected に更新
+      await supabase.from('profiles').update({
+        age_verified: false,
+        age_verification_status: 'rejected',
+        age_verification_provider: 'stripe_identity',
+      }).eq('id', user.id)
       return NextResponse.json({ status: 'underage', age })
     }
+  }
+
+  // requires_input / processing 等 → pending に更新
+  if (session.status === 'requires_input' || session.status === 'processing') {
+    await supabase.from('profiles').update({
+      age_verification_status: 'pending',
+      age_verification_provider: 'stripe_identity',
+    }).eq('id', user.id)
   }
 
   return NextResponse.json({ status: session.status })
