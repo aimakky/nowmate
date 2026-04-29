@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, ChevronRight, Mic } from 'lucide-react'
 import VillageCard, { type Village, getCurrentWeeklyEvent, VILLAGE_TYPE_STYLES, getFireStatus, COMM_STYLE_CONFIG } from '@/components/ui/VillageCard'
 import VillageOnboarding from '@/components/features/VillageOnboarding'
-import TonightInput from '@/components/features/TonightInput'
 
 // ── カテゴリ定義 ────────────────────────────────────────────────
 const CATEGORIES = [
@@ -346,12 +345,8 @@ export default function VillagesPage() {
         )
       })()}
 
-      {/* ── 今夜の一言 ── */}
-      <div className="pt-3">
-        <TonightInput userId={userId} />
-      </div>
 
-      {/* ── Content ── */}
+{/* ── Content ── */}
       <div className="pb-32">
 
         {/* ══ コミュスタイルフィルター中バナー ══ */}
