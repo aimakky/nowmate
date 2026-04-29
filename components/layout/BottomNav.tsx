@@ -2,17 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Compass, Layers, Bell, Gamepad2, Users } from 'lucide-react'
+import { Layers, Bell, Gamepad2, Shield, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
-  { href: '/timeline',      label: 'TL',    icon: Layers   },
-  { href: '/villages',      label: '自由村', icon: Compass  },
-  { href: '/guild',         label: 'ゲーム村', icon: Gamepad2 },
-  { href: '/guilds',        label: '集い',   icon: Users    },
-  { href: '/notifications', label: '通知',  icon: Bell     },
+  { href: '/timeline',      label: 'TL',      icon: Layers        },
+  { href: '/guild',         label: 'ゲーム村', icon: Gamepad2      },
+  { href: '/guilds',        label: 'ギルド',   icon: Shield        },
+  { href: '/chat',          label: 'チャット', icon: MessageSquare },
+  { href: '/notifications', label: '通知',    icon: Bell          },
 ]
 
 export default function BottomNav() {
@@ -59,21 +59,6 @@ export default function BottomNav() {
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active  = pathname === href || pathname.startsWith(href + '/')
           const badge   = badges[href] ?? 0
-          const isGame  = href === '/guild'
-
-          if (isGame) {
-            return (
-              <Link key={href} href={href}
-                className={cn('flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-colors',
-                  active ? 'text-stone-900' : 'text-stone-400')}>
-                <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
-                <span className={cn('text-[9px] font-bold tracking-wide mt-0.5',
-                  active ? 'text-stone-900' : 'text-stone-400')}>{label}</span>
-                {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-stone-900 rounded-full" />}
-              </Link>
-            )
-          }
-
           return (
             <Link key={href} href={href}
               className={cn('flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-colors',

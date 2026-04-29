@@ -4,22 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft } from 'lucide-react'
-
-// ── 集いジャンル一覧 ─────────────────────────────────────────────
-const CIRCLE_GENRES = [
-  { id: '読書',         emoji: '📖', color: '#8b5cf6', gradient: 'linear-gradient(135deg,#a78bfa,#8b5cf6)', desc: '本・小説・ビジネス書' },
-  { id: '映画・アニメ', emoji: '🎬', color: '#ec4899', gradient: 'linear-gradient(135deg,#f472b6,#ec4899)', desc: '映画鑑賞・アニメ・ドラマ' },
-  { id: '音楽',         emoji: '🎵', color: '#f97316', gradient: 'linear-gradient(135deg,#fb923c,#f97316)', desc: 'バンド・DTM・音楽好き' },
-  { id: '料理・グルメ', emoji: '🍳', color: '#ef4444', gradient: 'linear-gradient(135deg,#f87171,#ef4444)', desc: 'レシピ・外食・グルメ' },
-  { id: 'スポーツ',     emoji: '🏃', color: '#10b981', gradient: 'linear-gradient(135deg,#34d399,#10b981)', desc: 'スポーツ・筋トレ・ランニング' },
-  { id: '旅行',         emoji: '✈️', color: '#0ea5e9', gradient: 'linear-gradient(135deg,#38bdf8,#0ea5e9)', desc: '国内外の旅行・旅先情報' },
-  { id: '仕事・副業',   emoji: '💼', color: '#6366f1', gradient: 'linear-gradient(135deg,#818cf8,#6366f1)', desc: 'キャリア・副業・転職' },
-  { id: '勉強・資格',   emoji: '📚', color: '#0891b2', gradient: 'linear-gradient(135deg,#22d3ee,#0891b2)', desc: '資格・英語・学習習慣' },
-  { id: '育児・家族',   emoji: '👨‍👩‍👧', color: '#f59e0b', gradient: 'linear-gradient(135deg,#fbbf24,#f59e0b)', desc: '子育て・家族・ライフスタイル' },
-  { id: '健康・美容',   emoji: '💪', color: '#84cc16', gradient: 'linear-gradient(135deg,#a3e635,#84cc16)', desc: 'ダイエット・美容・メンタル' },
-  { id: '地域・ご近所', emoji: '📍', color: '#64748b', gradient: 'linear-gradient(135deg,#94a3b8,#64748b)', desc: '地元・地域コミュニティ' },
-  { id: '雑談・なんでも',emoji: '☕', color: '#78716c', gradient: 'linear-gradient(135deg,#a8a29e,#78716c)', desc: 'テーマなし・なんでもOK' },
-]
+import { INDUSTRIES } from '@/lib/guild'
 
 // ── 公開設定 ─────────────────────────────────────────────────────
 const VISIBILITY_OPTIONS = [
@@ -30,11 +15,11 @@ const VISIBILITY_OPTIONS = [
 
 type Visibility = 'public' | 'approval' | 'invite'
 
-export default function CreateCirclePage() {
+export default function CreateGuildPage() {
   const router = useRouter()
 
   const [step,        setStep]        = useState<'genre' | 'detail'>('genre')
-  const [genre,       setGenre]       = useState<typeof CIRCLE_GENRES[0] | null>(null)
+  const [genre,       setGenre]       = useState<typeof INDUSTRIES[0] | null>(null)
   const [name,        setName]        = useState('')
   const [description, setDescription] = useState('')
   const [visibility,  setVisibility]  = useState<Visibility>('public')
@@ -74,31 +59,32 @@ export default function CreateCirclePage() {
   // ── STEP 1: ジャンル選択 ────────────────────────────────────────
   if (step === 'genre') {
     return (
-      <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
-        <div className="sticky top-0 z-10 bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-1 -ml-1 text-stone-500">
+      <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0f0f1a' }}>
+        <div className="sticky top-0 z-10 px-4 pt-4 pb-3 flex items-center gap-3 border-b border-white/5"
+          style={{ background: '#0f0f1a' }}>
+          <button onClick={() => router.back()} className="p-1 -ml-1 text-white/50">
             <ArrowLeft size={20} />
           </button>
           <div>
-            <p className="font-extrabold text-stone-900 text-base">✨ 集いを作る</p>
-            <p className="text-[11px] text-stone-400">まずジャンルを選んでください</p>
+            <p className="font-extrabold text-white text-base">🛡️ ギルドを作る</p>
+            <p className="text-[11px] text-white/40">まずゲームジャンルを選んでください</p>
           </div>
         </div>
 
         <div className="px-4 pt-5 pb-32">
           <div className="grid grid-cols-2 gap-3">
-            {CIRCLE_GENRES.map(g => (
+            {INDUSTRIES.map(g => (
               <button
                 key={g.id}
                 onClick={() => { setGenre(g); setStep('detail') }}
-                className="flex flex-col items-start gap-2 p-4 rounded-2xl bg-white border-2 border-stone-100 text-left active:scale-[0.97] transition-all shadow-sm hover:border-stone-200"
+                className="flex flex-col items-start gap-2 p-4 rounded-2xl text-left active:scale-[0.97] transition-all"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(255,255,255,0.08)' }}
               >
                 {/* カラーバー */}
                 <div className="w-full h-1 rounded-full mb-1" style={{ background: g.gradient }} />
                 <span className="text-3xl">{g.emoji}</span>
                 <div>
-                  <p className="text-sm font-extrabold text-stone-800">{g.id}</p>
-                  <p className="text-[10px] text-stone-400 mt-0.5 leading-relaxed">{g.desc}</p>
+                  <p className="text-sm font-extrabold text-white">{g.id}</p>
                 </div>
               </button>
             ))}
@@ -110,16 +96,17 @@ export default function CreateCirclePage() {
 
   // ── STEP 2: 詳細入力 ────────────────────────────────────────────
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#FAFAF9]">
-      <div className="sticky top-0 z-10 bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex items-center gap-3">
-        <button onClick={() => setStep('genre')} className="p-1 -ml-1 text-stone-500">
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0f0f1a' }}>
+      <div className="sticky top-0 z-10 px-4 pt-4 pb-3 flex items-center gap-3 border-b border-white/5"
+        style={{ background: '#0f0f1a' }}>
+        <button onClick={() => setStep('genre')} className="p-1 -ml-1 text-white/50">
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-center gap-2 flex-1">
           <span className="text-xl">{genre!.emoji}</span>
           <div>
-            <p className="font-extrabold text-stone-900 text-base leading-tight">{genre!.id}の集い</p>
-            <p className="text-[11px] text-stone-400">集いの詳細を設定してください</p>
+            <p className="font-extrabold text-white text-base leading-tight">{genre!.id}ギルド</p>
+            <p className="text-[11px] text-white/40">ギルドの詳細を設定してください</p>
           </div>
         </div>
       </div>
@@ -127,70 +114,72 @@ export default function CreateCirclePage() {
       <div className="px-4 pt-5 pb-32 space-y-5">
 
         {/* プレビュー */}
-        <div className="rounded-3xl overflow-hidden shadow-sm border border-stone-100">
+        <div className="rounded-3xl overflow-hidden border border-white/10">
           <div className="relative flex items-center justify-center h-24"
             style={{ background: genre!.gradient }}>
             <div className="absolute inset-0 opacity-[0.07]"
               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }} />
-            <span style={{ fontSize: '2.5rem', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.2))' }}>
+            <span style={{ fontSize: '2.5rem', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.4))' }}>
               {genre!.emoji}
             </span>
           </div>
-          <div className="bg-white px-4 py-3">
-            <p className="font-extrabold text-stone-900 text-sm truncate">{name || '集いの名前'}</p>
-            <p className="text-xs text-stone-400 mt-0.5 line-clamp-1">{description || '説明がここに表示されます'}</p>
+          <div className="px-4 py-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
+            <p className="font-extrabold text-white text-sm truncate">{name || 'ギルドの名前'}</p>
+            <p className="text-xs text-white/40 mt-0.5 line-clamp-1">{description || '説明がここに表示されます'}</p>
           </div>
         </div>
 
         {/* 名前 */}
         <div>
-          <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
-            集いの名前 <span className="text-rose-400">*</span>
+          <p className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2">
+            ギルド名 <span className="text-rose-400">*</span>
           </p>
           <input
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder={`例：${genre!.id}好き集まれ　週1読書クラブ`}
+            placeholder={`例：${genre!.id}上級者集まれ　毎週${genre!.id}クラン`}
             maxLength={30}
-            className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm focus:outline-none focus:border-stone-400 bg-white"
+            className="w-full px-4 py-3 rounded-2xl text-sm focus:outline-none text-white placeholder-white/25"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1.5px solid rgba(255,255,255,0.12)' }}
           />
-          <p className="text-right text-[10px] text-stone-400 mt-1">{name.length}/30</p>
+          <p className="text-right text-[10px] text-white/30 mt-1">{name.length}/30</p>
         </div>
 
         {/* 説明 */}
         <div>
-          <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">説明</p>
+          <p className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2">説明</p>
           <textarea
             value={description}
             onChange={e => setDescription(e.target.value)}
-            placeholder={`どんな人に来てほしいか、どんなことを話す集いかを書いてください。`}
+            placeholder={`どんなギルドか、どんな人に来てほしいか書いてください`}
             maxLength={100}
             rows={3}
-            className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-stone-400 bg-white"
+            className="w-full px-4 py-3 rounded-2xl text-sm resize-none focus:outline-none text-white placeholder-white/25"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1.5px solid rgba(255,255,255,0.12)' }}
           />
-          <p className="text-right text-[10px] text-stone-400 mt-1">{description.length}/100</p>
+          <p className="text-right text-[10px] text-white/30 mt-1">{description.length}/100</p>
         </div>
 
         {/* 公開設定 */}
         <div>
-          <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">公開設定</p>
+          <p className="text-xs font-bold text-white/40 uppercase tracking-wider mb-3">公開設定</p>
           <div className="space-y-2">
             {VISIBILITY_OPTIONS.map(opt => (
               <button
                 key={opt.id}
                 onClick={() => setVisibility(opt.id)}
-                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 text-left transition-all active:scale-[0.98]"
+                className="w-full flex items-center gap-3 p-3.5 rounded-2xl text-left transition-all active:scale-[0.98]"
                 style={visibility === opt.id
-                  ? { background: `${opt.color}10`, borderColor: opt.color }
-                  : { background: '#fff', borderColor: '#e7e5e4' }
+                  ? { background: `${opt.color}18`, border: `1.5px solid ${opt.color}60` }
+                  : { background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(255,255,255,0.08)' }
                 }
               >
                 <span className="text-xl flex-shrink-0">{opt.icon}</span>
                 <div className="flex-1">
-                  <p className="text-sm font-extrabold" style={{ color: visibility === opt.id ? opt.color : '#1c1917' }}>
+                  <p className="text-sm font-extrabold" style={{ color: visibility === opt.id ? opt.color : '#fff' }}>
                     {opt.label}
                   </p>
-                  <p className="text-[10px] text-stone-400">{opt.desc}</p>
+                  <p className="text-[10px] text-white/40">{opt.desc}</p>
                 </div>
                 {visibility === opt.id && (
                   <span className="text-[9px] font-bold px-2 py-0.5 rounded-full text-white"
@@ -213,7 +202,7 @@ export default function CreateCirclePage() {
         >
           {creating
             ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            : <>{genre!.emoji} 集いを作る</>
+            : <>{genre!.emoji} ギルドを作る</>
           }
         </button>
 
