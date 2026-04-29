@@ -1202,8 +1202,11 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         {/* フォロー0人 */}
         {tab === 'following' && followingIds.length === 0 && !loading && (
           <div className="rounded-2xl p-6 text-center"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(57,255,136,0.2)' }}>
-            <p className="text-3xl mb-3">👥</p>
+            style={{ background: 'rgba(57,255,136,0.04)', border: '1px solid rgba(57,255,136,0.2)' }}>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{ background: 'rgba(57,255,136,0.1)', border: '1px solid rgba(57,255,136,0.25)' }}>
+              <Users size={26} style={{ color: '#39FF88' }} />
+            </div>
             <p className="text-sm font-extrabold mb-1" style={{ color: '#F0EEFF' }}>まだ誰もフォローしていません</p>
             <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(240,238,255,0.35)' }}>ゲーム仲間をフォローすると、ここに投稿が流れます。</p>
             <button onClick={() => router.push('/guilds')}
