@@ -3,13 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getTierById } from '@/lib/trust'
 import { timeAgo } from '@/lib/utils'
 import { detectNgWords } from '@/lib/moderation'
-import { Heart, RefreshCw, ChevronRight, Users, Globe, Home, Share2, HelpCircle, Send, CheckCircle, X, Plus, Waves, Mic } from 'lucide-react'
+import { Heart, RefreshCw, Users, Globe, Home, Share2, HelpCircle, Send, CheckCircle, X, Plus, Waves, Mic, MessageCircle } from 'lucide-react'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import { detectCrisisKeywords } from '@/lib/moderation'
-import Link from 'next/link'
 
 // ── 型定義 ──────────────────────────────────────────────────────
 type Tab = 'myvillage' | 'all' | 'following'
@@ -352,7 +350,7 @@ function QACard({
 
 // ── 通常投稿カード ─────────────────────────────────────────────
 function PostCard({
-  post, userId, likedIds, onToggleLike, showVillage = true,
+  post, userId, likedIds, onToggleLike,
 }: {
   post: TPost
   userId: string | null
@@ -360,9 +358,13 @@ function PostCard({
   onToggleLike: (id: string) => void
   showVillage?: boolean
 }) {
-  const liked    = likedIds.has(post.id)
-  const catColor = CAT_COLOR[post.category] ?? '#8b7355'
-  const tier     = getTierById(post.user_trust?.tier ?? 'visitor')
+  const liked = likedIds.has(post.id)
+  const roleLabel = {
+    visitor:  'メンバー',
+    regular:  'ギルドメンバー',
+    trusted:  '常連メンバー',
+    pillar:   'ギルドマスター',
+  }[post.user_trust?.tier ?? 'visitor'] ?? 'メンバー'
 
   function shareToX() {
     const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'samee'
@@ -371,70 +373,90 @@ function PostCard({
   }
 
   return (
-    <div className="rounded-2xl overflow-hidden"
+    <div
+      className="rounded-2xl overflow-hidden"
       style={{
         background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(157,92,255,0.2)',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
-      }}>
-      <div className="px-4 pt-3.5 pb-2 flex items-start gap-2.5">
-        {/* Avatar with purple ring */}
-        <div
-          className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 overflow-hidden"
-          style={{
-            background: 'linear-gradient(135deg,#9D5CFF,#7B3FE4)',
-            boxShadow: '0 0 0 2px rgba(157,92,255,0.5)',
-          }}>
-          {post.profiles?.avatar_url
-            ? <img src={post.profiles.avatar_url} alt="" className="w-full h-full object-cover rounded-full" />
-            : post.profiles?.display_name?.[0] ?? '?'}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm font-bold" style={{ color: '#F0EEFF' }}>{post.profiles?.display_name ?? '名無し'}</span>
-            {/* Tier badge neon style */}
-            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border whitespace-nowrap ${tier.color}`}
-              style={{ boxShadow: '0 0 6px rgba(157,92,255,0.3)' }}>
-              {tier.icon} {tier.label}
-            </span>
+        border: '1px solid rgba(157,92,255,0.15)',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+      }}
+    >
+      <div className="px-4 pt-3.5 pb-3">
+        {/* ヘッダー */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            {/* アバター */}
+            <div
+              className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold text-white"
+              style={{
+                background: 'linear-gradient(135deg,#9D5CFF,#7B3FE4)',
+                boxShadow: '0 0 0 2px rgba(157,92,255,0.35)',
+              }}
+            >
+              {post.profiles?.avatar_url
+                ? <img src={post.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                : post.profiles?.display_name?.[0] ?? '?'}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-sm font-bold leading-tight" style={{ color: '#F0EEFF' }}>
+                  {post.profiles?.display_name ?? '名無し'}
+                </span>
+                <span
+                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                  style={{
+                    background: 'rgba(157,92,255,0.15)',
+                    color: '#9D5CFF',
+                    border: '1px solid rgba(157,92,255,0.3)',
+                  }}
+                >
+                  {roleLabel}
+                </span>
+              </div>
+              <span className="text-[10px]" style={{ color: 'rgba(240,238,255,0.3)' }}>
+                {timeAgo(post.created_at)}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-              style={{ background: `${catColor}20`, color: catColor, border: `1px solid ${catColor}35` }}>
-              {post.category}
-            </span>
-            <span className="text-[10px]" style={{ color: 'rgba(240,238,255,0.3)' }}>{timeAgo(post.created_at)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-4 pb-3">
-        <p className="text-sm leading-relaxed" style={{ color: 'rgba(240,238,255,0.85)' }}>{post.content}</p>
-      </div>
-
-      <div className="flex items-center justify-between px-4 py-2.5"
-        style={{ borderTop: '1px solid rgba(157,92,255,0.1)' }}>
-        {showVillage && post.villages ? (
-          <Link href={`/villages/${post.village_id}`} onClick={e => e.stopPropagation()}
-            className="flex items-center gap-1.5 active:opacity-70 transition-opacity">
-            <span className="text-sm">{post.villages.icon}</span>
-            <span className="text-[11px] font-bold truncate max-w-[120px]" style={{ color: 'rgba(240,238,255,0.4)' }}>{post.villages.name}</span>
-            <ChevronRight size={11} style={{ color: 'rgba(157,92,255,0.4)' }} className="flex-shrink-0" />
-          </Link>
-        ) : <span />}
-        <div className="flex items-center gap-1.5">
-          <button onClick={shareToX}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-90"
-            style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)' }}>
-            <Share2 size={12} />
+          {/* ... ボタン */}
+          <button className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full active:bg-white/5 transition-all"
+            style={{ color: 'rgba(240,238,255,0.25)' }}>
+            <span className="text-xs tracking-widest leading-none">•••</span>
           </button>
-          <button onClick={() => onToggleLike(post.id)}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl transition-all active:scale-90"
-            style={liked
-              ? { background: 'rgba(255,77,144,0.15)', color: '#FF4D90', border: '1px solid rgba(255,77,144,0.3)' }
-              : { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)' }}>
-            <Heart size={13} fill={liked ? '#FF4D90' : 'none'} strokeWidth={liked ? 0 : 1.8} />
-            {post.reaction_count > 0 && <span className="text-[11px] font-bold">{post.reaction_count}</span>}
+        </div>
+
+        {/* 本文 */}
+        <p className="text-sm leading-relaxed mt-3" style={{ color: 'rgba(240,238,255,0.85)' }}>
+          {post.content}
+        </p>
+
+        {/* アクション */}
+        <div
+          className="flex items-center gap-4 mt-3 pt-2.5"
+          style={{ borderTop: '1px solid rgba(157,92,255,0.1)' }}
+        >
+          <button
+            onClick={() => onToggleLike(post.id)}
+            className="flex items-center gap-1.5 active:scale-90 transition-all"
+            style={{ color: liked ? '#FF4D90' : 'rgba(240,238,255,0.35)' }}
+          >
+            <Heart size={15} fill={liked ? '#FF4D90' : 'none'} strokeWidth={liked ? 0 : 1.8} />
+            {post.reaction_count > 0 && (
+              <span className="text-xs font-semibold">{post.reaction_count}</span>
+            )}
+          </button>
+          <button
+            className="flex items-center gap-1.5 active:scale-90 transition-all"
+            style={{ color: 'rgba(240,238,255,0.35)' }}
+          >
+            <MessageCircle size={15} strokeWidth={1.8} />
+          </button>
+          <button
+            onClick={shareToX}
+            className="flex items-center gap-1.5 active:scale-90 transition-all ml-auto"
+            style={{ color: 'rgba(240,238,255,0.35)' }}
+          >
+            <Share2 size={14} strokeWidth={1.8} />
           </button>
         </div>
       </div>

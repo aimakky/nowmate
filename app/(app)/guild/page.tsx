@@ -52,32 +52,31 @@ function GuildSmallCard({ village, isMember, onJoin }: {
   const fire    = getFireStatus(village.last_post_at ?? null)
   return (
     <div
-      className="flex-shrink-0 w-44 rounded-2xl overflow-hidden cursor-pointer active:scale-[0.97] transition-all bg-white shadow-sm"
-      style={{ border: '1px solid #e9d5ff' }}
+      className="flex-shrink-0 w-44 rounded-2xl overflow-hidden cursor-pointer active:scale-[0.97] transition-all"
+      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(157,92,255,0.2)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}
       onClick={() => router.push(`/villages/${village.id}`)}
     >
-      {/* カラーバー */}
       {genre && <div className="h-[3px]" style={{ background: genre.gradient }} />}
-      {/* バナー */}
       <div className="h-16 flex items-center justify-center relative"
-        style={{ background: genre ? `${genre.color}15` : '#f5f3ff' }}>
-        <span className="text-3xl" style={{ filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.15))' }}>
+        style={{ background: genre ? `${genre.color}18` : 'rgba(157,92,255,0.08)' }}>
+        <span className="text-3xl" style={{ filter: 'drop-shadow(0 2px 8px rgba(157,92,255,0.4))' }}>
           {village.icon}
         </span>
-        <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 bg-black/20 rounded-full px-1.5 py-0.5">
+        <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5"
+          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
           <span className={`text-[10px] ${fire.animate ? 'animate-pulse' : ''}`}>{fire.emoji}</span>
           <span className="text-[8px] font-bold text-white">{fire.label}</span>
         </div>
       </div>
       <div className="p-2.5">
-        <p className="font-bold text-stone-800 text-xs truncate leading-snug mb-0.5">{village.name}</p>
-        <p className="text-[10px] text-stone-400 line-clamp-2 leading-relaxed">{village.description}</p>
+        <p className="font-bold text-xs truncate leading-snug mb-0.5" style={{ color: '#F0EEFF' }}>{village.name}</p>
+        <p className="text-[10px] line-clamp-2 leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>{village.description}</p>
         <div className="flex items-center justify-between mt-2">
-          <span className="text-[9px] text-stone-400">👥 {village.member_count}</span>
+          <span className="text-[9px]" style={{ color: 'rgba(240,238,255,0.35)' }}>👥 {village.member_count}</span>
           <button
             onClick={e => { e.stopPropagation(); onJoin() }}
             className="text-[9px] font-bold px-2 py-0.5 rounded-full text-white active:scale-90 transition-all"
-            style={{ background: isMember ? '#9ca3af' : (genre?.color ?? '#8b5cf6') }}
+            style={{ background: isMember ? 'rgba(157,92,255,0.3)' : (genre?.color ?? '#9D5CFF') }}
           >{isMember ? '参加中' : '参加'}</button>
         </div>
       </div>
@@ -244,7 +243,7 @@ export default function GuildPage() {
   const activeGenre = GENRES.find(g => g.id === genre)
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-birch">
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
 
       {/* ── ヘッダー ── */}
       <div className="sticky top-0 z-10 px-4 pt-12 pb-0"
@@ -306,19 +305,23 @@ export default function GuildPage() {
       </div>
 
       {/* ── サブフィルター ── */}
-      <div className="bg-white border-b border-stone-100 shadow-sm px-4 py-2 flex gap-2 overflow-x-auto scrollbar-none">
-        {SUB_FILTERS.map(sf => (
-          <button key={sf.id}
-            onClick={() => setSubFilter(prev => prev === sf.id ? null : sf.id)}
-            className="flex-shrink-0 flex items-center gap-1 px-3 py-1 rounded-xl text-[11px] font-bold border transition-all"
-            style={subFilter === sf.id
-              ? { background: '#1c1917', color: '#fff', borderColor: '#1c1917' }
-              : { background: '#fafaf9', color: '#78716c', borderColor: '#e7e5e4' }
-            }
-          >
-            <span>{sf.emoji}</span><span>{sf.label}</span>
-          </button>
-        ))}
+      <div className="px-4 py-2 flex gap-2 overflow-x-auto scrollbar-none" style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(157,92,255,0.1)' }}>
+        {SUB_FILTERS.map(sf => {
+          const ACTIVE_STYLES: Record<string, React.CSSProperties> = {
+            popular: { background: 'rgba(251,146,60,0.2)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.4)' },
+            new:     { background: 'rgba(157,92,255,0.2)', color: '#9D5CFF', border: '1px solid rgba(157,92,255,0.4)' },
+            member:  { background: 'rgba(73,225,255,0.15)', color: '#49E1FF', border: '1px solid rgba(73,225,255,0.35)' },
+          }
+          const INACTIVE: React.CSSProperties = { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }
+          return (
+            <button key={sf.id}
+              onClick={() => setSubFilter(prev => prev === sf.id ? null : sf.id)}
+              className="flex-shrink-0 flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold transition-all"
+              style={subFilter === sf.id ? ACTIVE_STYLES[sf.id] : INACTIVE}>
+              <span>{sf.emoji}</span><span>{sf.label}</span>
+            </button>
+          )
+        })}
       </div>
 
       {/* ── コンテンツ ── */}
@@ -504,11 +507,12 @@ export default function GuildPage() {
                   <div className="px-4 flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-1.5">
                       <span className="text-base">{lane.emoji}</span>
-                      <p className="text-xs font-extrabold text-stone-800">{lane.label}</p>
+                      <p className="text-xs font-extrabold" style={{ color: '#F0EEFF' }}>{lane.label}</p>
                     </div>
                     <button
                       onClick={() => setSubFilter(lane.id === 'hot' ? 'popular' : 'new')}
-                      className="flex items-center gap-0.5 text-[10px] text-stone-400 font-medium"
+                      className="flex items-center gap-0.5 text-[10px] font-medium"
+                      style={{ color: 'rgba(240,238,255,0.4)' }}
                     >
                       すべて <ChevronRight size={11} />
                     </button>
@@ -525,9 +529,9 @@ export default function GuildPage() {
             })}
 
             <div className="px-4 flex items-center gap-2 pt-1">
-              <div className="flex-1 h-px bg-stone-100" />
-              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">すべてのゲーム村</span>
-              <div className="flex-1 h-px bg-stone-100" />
+              <div className="flex-1 h-px" style={{ background: 'rgba(157,92,255,0.2)' }} />
+              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(240,238,255,0.4)' }}>すべてのゲーム村</span>
+              <div className="flex-1 h-px" style={{ background: 'rgba(157,92,255,0.2)' }} />
             </div>
           </div>
         )}
@@ -537,31 +541,38 @@ export default function GuildPage() {
           {loading ? (
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="bg-white rounded-3xl overflow-hidden shadow-sm animate-pulse border border-stone-100">
-                  <div className={`${i === 0 ? 'h-[120px]' : 'h-24'} bg-stone-100`} />
+                <div key={i} className="rounded-3xl overflow-hidden animate-pulse" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.1)' }}>
+                  <div className={`${i === 0 ? 'h-[120px]' : 'h-24'}`} style={{ background: 'rgba(157,92,255,0.1)' }} />
                   <div className="p-4 space-y-2">
-                    <div className="h-4 bg-stone-100 rounded-full w-2/3" />
-                    <div className="h-3 bg-stone-100 rounded-full w-full" />
+                    <div className="h-4 rounded-full w-2/3" style={{ background: 'rgba(157,92,255,0.1)' }} />
+                    <div className="h-3 rounded-full w-full" style={{ background: 'rgba(157,92,255,0.1)' }} />
                   </div>
                 </div>
               ))}
             </div>
           ) : displayed.length === 0 ? (
             <div className="text-center py-20">
-              <div className="text-5xl mb-4">
-                {subFilter === 'member' ? '🏠' : '🎮'}
+              <div className="relative w-36 h-36 mx-auto mb-6">
+                <div className="absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle, rgba(157,92,255,0.3) 0%, transparent 70%)', filter: 'blur(20px)' }} />
+                <div className="relative w-full h-full flex items-center justify-center text-8xl" style={{ filter: 'drop-shadow(0 0 20px rgba(157,92,255,0.6))' }}>
+                  🎮
+                </div>
               </div>
-              <p className="font-extrabold text-stone-800 text-base mb-1.5">
+              <p className="font-extrabold text-base mb-1.5" style={{ color: '#F0EEFF' }}>
                 {subFilter === 'member' ? 'まだゲーム村に参加していません' : 'このジャンルのゲーム村はまだありません'}
               </p>
-              <p className="text-sm text-stone-400 mb-6">
+              <p className="text-sm mb-6" style={{ color: 'rgba(240,238,255,0.4)' }}>
                 {subFilter === 'member' ? '気に入ったゲーム村に参加しよう' : '最初のゲーム村を立ててみましょう'}
               </p>
               {subFilter !== 'member' && (
                 <button
                   onClick={() => router.push('/guild/create')}
-                  className="px-6 py-3 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
-                  style={{ background: 'linear-gradient(135deg,#8b5cf6 0%,#6d28d9 100%)', boxShadow: '0 8px 24px rgba(139,92,246,0.4)' }}
+                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
+                  style={{
+                    background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)',
+                    boxShadow: '0 8px 24px rgba(157,92,255,0.4)',
+                    border: '1px solid rgba(157,92,255,0.3)',
+                  }}
                 >🎮 ゲーム村を立てる</button>
               )}
             </div>
@@ -570,8 +581,8 @@ export default function GuildPage() {
               {featured && !search && (
                 <div className="mb-4">
                   <div className="flex items-center gap-2 mb-2.5">
-                    <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest">おすすめ · Featured</span>
-                    <div className="flex-1 h-px bg-stone-100" />
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: 'rgba(240,238,255,0.4)' }}>おすすめ · Featured</span>
+                    <div className="flex-1 h-px" style={{ background: 'rgba(157,92,255,0.2)' }} />
                   </div>
                   <VillageCard
                     village={featured}
@@ -586,14 +597,14 @@ export default function GuildPage() {
                 <>
                   {!search && (
                     <div className="flex items-center gap-2 mb-2.5">
-                      <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest">
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: 'rgba(240,238,255,0.4)' }}>
                         {subFilter === 'popular' ? '今週活発'  :
                          subFilter === 'new'     ? '新着'       :
                          subFilter === 'member'  ? '参加中'     :
                          genre !== 'all'         ? `${activeGenre?.label}のゲーム村` :
                          'その他のゲーム村'}
                       </span>
-                      <div className="flex-1 h-px bg-stone-100" />
+                      <div className="flex-1 h-px" style={{ background: 'rgba(157,92,255,0.2)' }} />
                     </div>
                   )}
                   <div className="space-y-3">
