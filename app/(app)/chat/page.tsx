@@ -296,11 +296,11 @@ export default function ChatListPage() {
               </div>
               <p className="font-extrabold text-stone-700 text-base">まだチャットがありません</p>
               <p className="text-sm text-stone-400 mt-1.5 leading-relaxed max-w-[220px]">
-                村で話した人とDMができます
+                ギルドで知り合った仲間とDMができます
               </p>
-              <button onClick={() => router.push('/villages')}
+              <button onClick={() => router.push('/guilds')}
                 className="mt-5 px-6 py-3 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-md shadow-brand-200 active:scale-95 transition-all">
-                村を探す →
+                ギルドを探す →
               </button>
             </div>
           ) : (

@@ -86,7 +86,7 @@ const CAT_COLOR: Record<string, string> = {
 }
 
 const TAB_CONFIG: { key: Tab; label: string; icon: React.ElementType }[] = [
-  { key: 'myvillage', label: 'マイ村',   icon: Home  },
+  { key: 'myvillage', label: 'ギルド',   icon: Home  },
   { key: 'all',       label: 'みんな',   icon: Globe },
   { key: 'following', label: 'フォロー', icon: Users },
 ]
@@ -346,8 +346,8 @@ function PostCard({
   const tier     = getTierById(post.user_trust?.tier ?? 'visitor')
 
   function shareToX() {
-    const village = post.villages ? `${post.villages.icon}${post.villages.name}` : '自由村'
-    const text = `${post.content}\n\n— ${village}より\n#自由村\nnowmatejapan.com`
+    const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'samee'
+    const text = `${post.content}\n\n— ${village}より\n#samee #ゲームコミュニティ\nnowmatejapan.com`
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
 
@@ -660,7 +660,7 @@ function ComposeModal({
               <div className="flex items-center justify-between pt-3">
                 {errMsg
                   ? <p className="text-xs text-red-500 font-bold">⚠️ {errMsg}</p>
-                  : <p className="text-[11px] text-stone-400">自由村全体に公開されます</p>
+                  : <p className="text-[11px] text-stone-400">タイムラインに公開されます</p>
                 }
                 <div className="flex items-center gap-2">
                   <svg width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
@@ -1133,11 +1133,11 @@ export default function TimelinePage() {
         {tab === 'myvillage' && myVillageIds.length === 0 && !loading && (
           <div className="bg-white border border-stone-100 rounded-2xl p-5 text-center shadow-sm">
             <p className="text-2xl mb-2">🏕️</p>
-            <p className="text-sm font-extrabold text-stone-800 mb-1">まだ村に参加していません</p>
-            <p className="text-xs text-stone-500 leading-relaxed mb-4">村に参加すると、投稿とQ&Aがここに流れます。</p>
-            <button onClick={() => router.push('/villages')}
+            <p className="text-sm font-extrabold text-stone-800 mb-1">まだギルドに参加していません</p>
+            <p className="text-xs text-stone-500 leading-relaxed mb-4">ギルドに参加すると、仲間の投稿がここに流れます。</p>
+            <button onClick={() => router.push('/guilds')}
               className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-brand-500 text-white rounded-2xl text-sm font-bold active:scale-95 transition-all">
-              村を探す →
+              ギルドを探す →
             </button>
           </div>
         )}

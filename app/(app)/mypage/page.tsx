@@ -118,7 +118,7 @@ function TweetComposeSheet({
 
         {/* フッター */}
         <div className="flex items-center justify-between px-5 py-3 border-t border-stone-100">
-          <p className="text-[11px] text-stone-400">自由村全体に公開されます</p>
+          <p className="text-[11px] text-stone-400">タイムラインに公開されます</p>
           <div className="flex items-center gap-2.5">
             {/* 残り文字数リング */}
             <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">
@@ -521,15 +521,15 @@ export default function MyPage() {
               {joinedVillages.length === 0 ? (
                 <div className="flex flex-col items-center py-16 text-center">
                   <span className="text-4xl mb-3">🏘️</span>
-                  <p className="text-sm font-bold text-stone-600">まだ村・ギルドに参加していません</p>
+                  <p className="text-sm font-bold text-stone-600">まだギルドに参加していません</p>
                   <div className="flex gap-2 mt-4">
-                    <button onClick={() => router.push('/villages')}
+                    <button onClick={() => router.push('/guilds')}
                       className="px-4 py-2.5 bg-stone-900 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
-                    >🏕️ 村を探す</button>
+                    >🛡️ ギルドを探す</button>
                     <button onClick={() => router.push('/guild')}
                       className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
                       style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}
-                    >🎮 ギルドを探す</button>
+                    >🎮 ゲーム村へ</button>
                   </div>
                 </div>
               ) : (

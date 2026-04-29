@@ -10,29 +10,28 @@ import { INDUSTRIES } from '@/lib/guild'
 // ── ステップ定義（5枚カードは step 1.5 として挿入）──
 const STEPS = [
   { title: '年齢確認',         emoji: '🔒', sub: '20歳以上の方のみご利用いただけます' },
-  { title: 'プロフィール',     emoji: '👋', sub: '村での名前を決めましょう' },
-  { title: '今、話したいこと', emoji: '💬', sub: '今どんなことを話したいですか？' },
-  { title: '最初の村選択',     emoji: '🏕️', sub: 'まず参加する村を選んでみましょう' },
-  { title: '最初の一言',       emoji: '✍️', sub: '村での初投稿をしてみよう' },
+  { title: 'プロフィール',     emoji: '👋', sub: 'ゲームで使う名前を決めましょう' },
+  { title: '今、話したいこと', emoji: '💬', sub: 'どんなゲームが好きですか？' },
+  { title: '最初の村選択',     emoji: '🏕️', sub: '好きなゲームジャンルを選んでください' },
+  { title: '最初の一言',       emoji: '✍️', sub: 'ゲーム仲間に一言かけてみよう' },
 ]
 
 const CONCERN_OPTIONS = [
-  { emoji: '😮‍💨', label: 'しんどい・つかれた',   desc: '今日もつらかった',              villageId: 'ea3f9306-030a-4e49-b678-025655ee8b79', value: 'shindoi' },
-  { emoji: '💭',   label: '将来が不安',           desc: 'キャリア・お金・これから',      villageId: '9b81f39c-6b32-4a19-bd4e-a3211d0f0c51', value: 'fuan' },
-  { emoji: '👥',   label: '人間関係で悩んでる',   desc: '誰かとうまくいってない',        villageId: '5ab27f32-1ee8-4d88-b99a-00c7ba8e9d7d', value: 'ningenkankei' },
-  { emoji: '🔍',   label: '何かを変えたい',       desc: '今のままじゃない気がする',      villageId: '6d9a61b0-800d-419e-bd41-6aba7a4c41a0', value: 'kaetai' },
-  { emoji: '🌙',   label: 'ただ聞いてほしい',     desc: '言葉にするだけでいい',          villageId: '97064a96-6646-452e-b9f2-2aa9d2ff3113', value: 'kiite' },
-  { emoji: '✨',   label: 'まだわからない',       desc: 'とりあえず入ってみる',          villageId: null,                                   value: 'unknown' },
+  { emoji: '🎯', label: 'FPS・TPSが好き',          desc: 'エペ・Apex・CoD・Valo etc.',    villageId: null, value: 'fps' },
+  { emoji: '⚔️', label: 'RPGにハマってる',          desc: 'FF・ドラクエ・原神 etc.',        villageId: null, value: 'rpg' },
+  { emoji: '📱', label: 'スマホゲームをやってる',    desc: 'モンスト・パズドラ etc.',        villageId: null, value: 'mobile' },
+  { emoji: '🏆', label: 'ランク上げたい',            desc: 'ガチ勢・競技志向',              villageId: null, value: 'ranked' },
+  { emoji: '🌿', label: 'のんびりゲームしたい',      desc: 'カジュアル・雑談しながら',      villageId: null, value: 'casual' },
+  { emoji: '🤝', label: 'ゲーム仲間が欲しい',        desc: '一緒にやる人を探している',      villageId: null, value: 'friends' },
 ]
 
 const VILLAGE_TYPES = [
-  { id: '雑談',       emoji: '🌿', desc: '話して、気持ちを整理する' },
-  { id: '仕事終わり', emoji: '🌙', desc: '一日を振り返り、明日につなげる' },
-  { id: '相談',       emoji: '🤝', desc: '経験者から知恵をもらう' },
-  { id: '趣味',       emoji: '🎨', desc: '好きを通じて視点を広げる' },
-  { id: '地域',       emoji: '📍', desc: '暮らしをより良くする仲間と' },
-  { id: '初参加',     emoji: '🌱', desc: 'はじめての一歩、一緒に踏み出す' },
-  { id: '焚き火',     emoji: '🔥', desc: '今日を静かに終わらせる場所' },
+  { id: 'FPS・TPS',          emoji: '🎯', desc: 'エペ・Apex・CoD・Valorant' },
+  { id: 'RPG',               emoji: '⚔️', desc: 'FF・ドラクエ・原神・テイルズ' },
+  { id: 'アクション',        emoji: '🔥', desc: 'モンハン・鬼滅・ソウルシリーズ' },
+  { id: 'スポーツ',          emoji: '⚽', desc: 'FIFA・ウイイレ・パワプロ' },
+  { id: 'スマホゲーム',      emoji: '📱', desc: 'モンスト・パズドラ・ウマ娘' },
+  { id: 'シミュレーション',  emoji: '🧠', desc: '信長の野望・シヴィライゼーション' },
 ]
 
 export default function OnboardingPage() {
@@ -98,7 +97,7 @@ export default function OnboardingPage() {
         })
         setLoading(false)
       }
-      router.push(industry ? '/guild' : '/villages')
+      router.push('/guild')
       return
     }
 
@@ -282,17 +281,17 @@ export default function OnboardingPage() {
                   {/* 村 */}
                   <div className="bg-white border border-stone-100 rounded-2xl p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xl">🏕️</span>
+                      <span className="text-xl">🎮</span>
                       <div>
-                        <p className="text-sm font-extrabold text-stone-900">村</p>
-                        <p className="text-[10px] text-stone-400">話す場所・気持ちを整理する場所</p>
+                        <p className="text-sm font-extrabold text-stone-900">ゲーム村</p>
+                        <p className="text-[10px] text-stone-400">今すぐ仲間を集める通話ルーム</p>
                       </div>
                     </div>
                     <div className="space-y-1.5">
                       {[
-                        '雑談・悩み・仕事終わりのゆるい繋がり',
-                        '同じテーマで顔なじみができるコミュニティ',
-                        'ゲームしない日でも毎日使える',
+                        'ボイチャ・メンバー募集をリアルタイムで',
+                        'FPS・RPGなど10ジャンル対応',
+                        '荒らしゼロの20歳以上限定設計',
                       ].map(t => (
                         <div key={t} className="flex items-start gap-1.5">
                           <span className="text-indigo-400 mt-0.5 text-xs flex-shrink-0">·</span>
@@ -405,14 +404,14 @@ export default function OnboardingPage() {
 
             <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3">
               <p className="text-xs text-indigo-600 leading-relaxed">
-                💡 ニックネームは村の住民に表示されます。本名でなくてOKです。
+                💡 ニックネームはゲーム仲間に表示されます。ゲームIDでもOKです。
               </p>
             </div>
 
             {/* 次へ後に文化カードが出ることを予告 */}
             <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
               <p className="text-xs text-amber-700 leading-relaxed">
-                📖 次のステップで「自由村の文化」を5枚のカードで紹介します（1分以内）
+                📖 次のステップで「sameeのルール」を5枚のカードで紹介します（1分以内）
               </p>
             </div>
           </div>
@@ -423,9 +422,9 @@ export default function OnboardingPage() {
           <div className="space-y-3 pt-4">
             <div className="rounded-2xl px-4 py-4"
               style={{ background:'linear-gradient(135deg,#1e1b4b 0%,#312e81 100%)', border:'1px solid rgba(99,102,241,0.3)' }}>
-              <p className="text-xs font-extrabold text-indigo-300 uppercase tracking-widest mb-1.5">💬 今日ここに来た理由</p>
-              <p className="text-sm font-bold text-white leading-relaxed">今、一番話したいことを選んでください</p>
-              <p className="text-[11px] text-indigo-300/70 mt-1">選んだテーマの村に自動で参加します。あとで変えられます。</p>
+              <p className="text-xs font-extrabold text-indigo-300 uppercase tracking-widest mb-1.5">🎮 ゲームスタイルを教えてください</p>
+              <p className="text-sm font-bold text-white leading-relaxed">あなたはどんなゲームが好きですか？</p>
+              <p className="text-[11px] text-indigo-300/70 mt-1">選んだジャンルのギルドをおすすめします。あとで変えられます。</p>
             </div>
 
             <div className="space-y-2">
@@ -451,11 +450,11 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* ─── STEP 3: 村を選ぶ ─── */}
+        {/* ─── STEP 3: ジャンルを選ぶ ─── */}
         {step === 3 && (
           <div className="space-y-3 pt-4">
             <p className="text-xs text-stone-500 leading-relaxed">
-              好きなタイプの村をいくつでも選んでください（スキップもOK）
+              好きなゲームジャンルをいくつでも選んでください（スキップもOK）
             </p>
             <div className="grid grid-cols-2 gap-2">
               {VILLAGE_TYPES.map(t => {
@@ -487,11 +486,11 @@ export default function OnboardingPage() {
               style={{ background:'linear-gradient(135deg,#1e1b4b 0%,#312e81 100%)', border:'1px solid rgba(99,102,241,0.3)' }}>
               <p className="text-[10px] font-extrabold text-indigo-300 uppercase tracking-widest mb-1">✍️ 最初のひとこと</p>
               <p className="text-sm font-bold text-white leading-relaxed">
-                {wantToTalk && wantToTalk.value !== 'unknown'
-                  ? `${wantToTalk.emoji} みんなに一言かけてみよう`
-                  : '村のみんなに一言かけてみよう'}
+                {wantToTalk
+                  ? `${wantToTalk.emoji} ゲーム仲間に一言かけてみよう`
+                  : 'ゲーム仲間に一言かけてみよう'}
               </p>
-              <p className="text-[10px] text-indigo-300/70 mt-1">「今日どうでした？」だけでも大丈夫です</p>
+              <p className="text-[10px] text-indigo-300/70 mt-1">「よろしくお願いします！」だけでも大丈夫です</p>
             </div>
 
             <div>
@@ -532,7 +531,7 @@ export default function OnboardingPage() {
           {loading
             ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             : step === 1
-              ? '次へ — 文化カードを見る 📖'
+              ? '次へ — コミュニティルールを見る 🛡️'
               : step === STEPS.length - 1
                 ? (firstPost.trim() ? '投稿して始める →' : '村を探しに行く →')
                 : step === 2

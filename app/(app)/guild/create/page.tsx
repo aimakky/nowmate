@@ -74,7 +74,7 @@ export default function CreateGameRoomPage() {
         user_id:    user.id,
         role:       'host',
       })
-      router.push(`/villages/${data.id}`)
+      router.push(`/guild/${data.id}`)
     }
     setCreating(false)
   }
