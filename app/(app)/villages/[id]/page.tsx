@@ -39,7 +39,7 @@ function markPosted() {
 }
 
 // ─── Constants ────────────────────────────────────────────────
-const POST_CATEGORIES = ['全部', '雑談', '相談', '仕事', '趣味', '今日のひとこと', '初参加あいさつ', '今日のお題']
+const POST_CATEGORIES = ['全部', '雑談', '相談', '仕事', '趣味', '仲間募集', '今日のひとこと', '初参加あいさつ', '今日のお題']
 
 const CAT_ICONS: Record<string, string> = {
   '全部':           '📋',
@@ -47,6 +47,7 @@ const CAT_ICONS: Record<string, string> = {
   '相談':           '🤝',
   '仕事':           '💼',
   '趣味':           '🎨',
+  '仲間募集':        '🎮',
   '今日のひとこと':   '✏️',
   '初参加あいさつ':   '🌱',
   '今日のお題':       '❓',
@@ -57,6 +58,7 @@ const CAT_COLORS: Record<string, string> = {
   '相談':           '#1a9ec8',
   '仕事':           '#4f56c8',
   '趣味':           '#d44060',
+  '仲間募集':        '#7c3aed',
   '今日のひとこと':   '#d99820',
   '初参加あいさつ':   '#14a89a',
   '今日のお題':       '#7c3aed',
@@ -533,6 +535,35 @@ function PostCard({
           </div>
         </div>
         <p className="text-sm text-stone-800 leading-relaxed mb-3">{post.content}</p>
+
+        {/* 仲間募集バッジ */}
+        {post.category === '仲間募集' && (post.lfg_platform?.length > 0 || post.lfg_time || post.lfg_game) && (
+          <div className="mb-3 p-2.5 rounded-xl border border-violet-200 bg-violet-50 space-y-1.5">
+            {post.lfg_game && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-violet-500 w-12 flex-shrink-0">🎮 タイトル</span>
+                <span className="text-[11px] font-bold text-violet-800">{post.lfg_game}</span>
+              </div>
+            )}
+            {post.lfg_platform?.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-bold text-violet-500 w-12 flex-shrink-0">🖥️ 機種</span>
+                <div className="flex gap-1 flex-wrap">
+                  {post.lfg_platform.map((p: string) => (
+                    <span key={p} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">{p}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {post.lfg_time && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-violet-500 w-12 flex-shrink-0">⏰ 時間</span>
+                <span className="text-[11px] text-violet-800">{post.lfg_time}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between pt-2 border-t border-stone-50">
           <div className="flex items-center gap-3">
             <button onClick={() => onToggleLike(post.id)}
@@ -638,8 +669,13 @@ export default function VillageDetailPage() {
   const [members,     setMembers]     = useState<any[]>([])
   const [userTrust,   setUserTrust]   = useState<any>(null)
   const [diary,       setDiary]       = useState<any[]>([])
-  const [pinnedPost,  setPinnedPost]  = useState<any>(null)
-  const [newTitle,    setNewTitle]    = useState<{ genre: string } | null>(null)
+  const [pinnedPost,      setPinnedPost]      = useState<any>(null)
+  const [newTitle,        setNewTitle]        = useState<{ genre: string } | null>(null)
+  const [joinRequestSent, setJoinRequestSent] = useState(false)
+  const [joinRequests,    setJoinRequests]    = useState<any[]>([])
+  const [lfgPlatforms,setLfgPlatforms]= useState<string[]>([])
+  const [lfgTime,     setLfgTime]     = useState('')
+  const [lfgGame,     setLfgGame]     = useState('')
 
   const [tab,       setTab]       = useState<'posts' | 'voice' | 'bottle' | 'members' | 'diary' | 'diplo' | 'admin' | 'more'>('posts')
   const [showMoreMenu, setShowMoreMenu] = useState(false)
@@ -1057,6 +1093,22 @@ export default function VillageDetailPage() {
       await supabase.from('village_members').delete().eq('village_id', id).eq('user_id', userId)
       setIsMember(false); setIsHost(false)
     } else {
+      // 承認制・招待制の場合はリクエスト送信
+      const vis = village?.visibility ?? 'public'
+      if (vis === 'approval') {
+        await supabase.from('village_join_requests').upsert(
+          { village_id: id, user_id: userId, status: 'pending' },
+          { onConflict: 'village_id,user_id' }
+        )
+        setJoinRequestSent(true)
+        setJoining(false)
+        await supabase.rpc('notify_new_village_member', { p_village_id: id, p_new_user_id: userId })
+        return
+      }
+      if (vis === 'invite') {
+        setJoining(false)
+        return // 招待制は招待リンクからのみ
+      }
       await supabase.from('village_members').insert({ village_id: id, user_id: userId })
       setIsMember(true)
       // Tier2+既存メンバーに入村通知を送る
@@ -1147,6 +1199,11 @@ export default function VillageDetailPage() {
     await supabase.from('village_posts').insert({
       village_id: id, user_id: userId, content: text.trim(), category: newPostCat,
       ...(deadlineAt ? { deadline_at: deadlineAt } : {}),
+      ...(newPostCat === '仲間募集' ? {
+        lfg_platform: lfgPlatforms.length > 0 ? lfgPlatforms : null,
+        lfg_time:     lfgTime.trim() || null,
+        lfg_game:     lfgGame.trim() || null,
+      } : {}),
     })
     // slow mode タイムスタンプ更新
     markPosted()
@@ -1162,7 +1219,9 @@ export default function VillageDetailPage() {
       setShowRevival(true)
       setTimeout(() => setShowRevival(false), 5000)
     }
-    setNewPost(''); setNgWarning(''); setNewPostDeadline(null); setShowFirstPrompt(false); setUserVillagePosts(p => p + 1); await fetchPosts(); setPosting(false)
+    setNewPost(''); setNgWarning(''); setNewPostDeadline(null); setShowFirstPrompt(false); setUserVillagePosts(p => p + 1)
+    setLfgPlatforms([]); setLfgTime(''); setLfgGame('')
+    await fetchPosts(); setPosting(false)
   }
 
   // charter同意後に呼ばれる
@@ -1338,13 +1397,25 @@ export default function VillageDetailPage() {
         </button>
 
         {/* Join */}
-        <button onClick={toggleMembership} disabled={joining}
-          className="absolute top-4 right-4 px-4 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 z-10"
-          style={isMember
-            ? { background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(8px)' }
-            : { background: '#fff', color: style.accent, fontWeight: 800 }}>
-          {joining ? '…' : isMember ? '参加中 ✓' : 'この村で増やす →'}
-        </button>
+        {joinRequestSent ? (
+          <div className="absolute top-4 right-4 px-4 py-1.5 rounded-full text-xs font-bold z-10"
+            style={{ background: 'rgba(217,119,6,0.85)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}>
+            🔑 承認待ち
+          </div>
+        ) : village?.visibility === 'invite' && !isMember ? (
+          <div className="absolute top-4 right-4 px-4 py-1.5 rounded-full text-xs font-bold z-10"
+            style={{ background: 'rgba(124,58,237,0.85)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}>
+            🏰 招待制
+          </div>
+        ) : (
+          <button onClick={toggleMembership} disabled={joining}
+            className="absolute top-4 right-4 px-4 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 z-10"
+            style={isMember
+              ? { background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(8px)' }
+              : { background: '#fff', color: style.accent, fontWeight: 800 }}>
+            {joining ? '…' : isMember ? '参加中 ✓' : (village?.visibility === 'approval' ? '🔑 参加申請する' : 'この村で増やす →')}
+          </button>
+        )}
 
         {/* Level badge */}
         <div className="absolute top-14 left-4 flex items-center gap-1 text-white text-[9px] font-bold px-2.5 py-1 rounded-full"
@@ -1721,9 +1792,44 @@ export default function VillageDetailPage() {
                     </button>
                   ))}
                 </div>
+                {/* 仲間募集フォーム */}
+                {newPostCat === '仲間募集' && (
+                  <div className="mb-3 p-3 rounded-2xl border border-violet-200 bg-violet-50 space-y-2">
+                    <p className="text-[10px] font-bold text-violet-600">🎮 仲間募集の詳細（任意）</p>
+                    {/* プラットフォーム */}
+                    <div>
+                      <p className="text-[10px] text-stone-500 mb-1">機種</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['PC', 'PS5', 'Switch', 'Xbox', 'スマホ', 'その他'].map(p => (
+                          <button key={p} onClick={() => setLfgPlatforms(prev =>
+                            prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
+                          )}
+                            className="px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all active:scale-95"
+                            style={lfgPlatforms.includes(p)
+                              ? { background: '#7c3aed', color: '#fff', borderColor: '#7c3aed' }
+                              : { background: '#fff', color: '#7c3aed', borderColor: '#ddd6fe' }}>
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* 時間帯 */}
+                    <input value={lfgTime} onChange={e => setLfgTime(e.target.value)}
+                      placeholder="活動時間（例：今夜21時〜、週末昼）"
+                      className="w-full px-3 py-2 rounded-xl border border-violet-200 text-xs focus:outline-none bg-white"
+                      maxLength={40} />
+                    {/* ゲームタイトル */}
+                    <input value={lfgGame} onChange={e => setLfgGame(e.target.value)}
+                      placeholder="ゲームタイトル（例：Apex、原神、スプラ3）"
+                      className="w-full px-3 py-2 rounded-xl border border-violet-200 text-xs focus:outline-none bg-white"
+                      maxLength={40} />
+                  </div>
+                )}
+
                 <div className="flex gap-2 items-end">
                   <textarea id="post-textarea" value={newPost} onChange={e => { setNewPost(e.target.value); setNgWarning('') }}
-                    placeholder="考えを出す…" rows={2} maxLength={300}
+                    placeholder={newPostCat === '仲間募集' ? '一言メッセージ（例：初心者歓迎！ランク上げたい方ぜひ）' : '考えを出す…'}
+                    rows={2} maxLength={300}
                     className="flex-1 px-3 py-2.5 rounded-2xl border border-stone-200 text-sm resize-none focus:outline-none" />
                   <button onClick={() => submitPost()} disabled={!newPost.trim() || posting || slowModeLeft > 0}
                     className="w-11 h-11 rounded-2xl flex items-center justify-center disabled:opacity-40 active:scale-90 transition-all flex-shrink-0"
