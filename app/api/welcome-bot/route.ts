@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 const WELCOME_MESSAGES = [
   {
     emoji: '👋',
-    content: "Welcome to 休憩村! I'm your Japan setup guide. Your first mission: register 住民票 at your local city hall within 14 days of arrival. Need help? Head to the Survive tab →",
+    content: "Welcome to 自由村! I'm your Japan setup guide. Your first mission: register 住民票 at your local city hall within 14 days of arrival. Need help? Head to the Survive tab →",
   },
   {
     emoji: '🏦',

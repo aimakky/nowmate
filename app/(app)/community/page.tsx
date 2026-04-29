@@ -52,7 +52,7 @@ const TIPS = [
   { category: 'Language', emoji: '🗣️', title: 'The Japanese you actually need first', stage: 'new',
     body: 'Master these: すみません (excuse me), ありがとうございます (thank you), これをください (I\'ll have this), トイレはどこですか (where is the toilet?). Pointing and Google Translate go a long way for the rest.' },
   { category: 'Language', emoji: '📚', title: 'Best apps for learning Japanese', stage: 'new',
-    body: 'Anki (flashcards for kanji/vocab), Bunpro (grammar), and HelloTalk (language exchange) are the expat favorites. 休憩村 is great for practicing with real people nearby!' },
+    body: 'Anki (flashcards for kanji/vocab), Bunpro (grammar), and HelloTalk (language exchange) are the expat favorites. 自由村 is great for practicing with real people nearby!' },
   { category: 'Language', emoji: '✍️', title: 'Learning to read hiragana & katakana', stage: 'new',
     body: 'Hiragana and katakana can be learned in 1–2 weeks with daily practice. Start with hiragana. Knowing katakana helps you read imported food products and menu items.' },
 

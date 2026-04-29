@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import ArticleJsonLd from '@/components/seo/ArticleJsonLd'
 
 export const metadata: Metadata = {
-  title: 'Expats in Osaka — Making Friends & Community Guide | 休憩村',
+  title: 'Expats in Osaka — Making Friends & Community Guide | 自由村',
   description: 'Living in Osaka as a foreigner? This guide covers making friends, finding expat community, language exchange, and building your life in Japan\'s most welcoming city.',
   keywords: ['expats osaka', 'foreigners osaka', 'making friends osaka', 'expat community osaka', 'osaka expat guide', 'kansai expat'],
   openGraph: {
@@ -31,7 +31,7 @@ const SECTIONS = [
   {
     emoji: '🗣️',
     title: 'Language exchange in Osaka — what\'s different',
-    content: `Osaka people speak with a distinct accent and use Kansai-ben (Kansai dialect). Standard Japanese textbooks won't prepare you for everyday Osaka conversation. This can be frustrating — or an adventure, depending on your attitude.\n\nThe good news: Osaka language partners are often eager to share their dialect as a source of pride. Learning even a few Kansai expressions ("めっちゃ" for "very", "なんでやねん" as a friendly retort) opens doors immediately.\n\n休憩村 lets you find language exchange partners specifically in Osaka who can teach you real, local Japanese.`,
+    content: `Osaka people speak with a distinct accent and use Kansai-ben (Kansai dialect). Standard Japanese textbooks won't prepare you for everyday Osaka conversation. This can be frustrating — or an adventure, depending on your attitude.\n\nThe good news: Osaka language partners are often eager to share their dialect as a source of pride. Learning even a few Kansai expressions ("めっちゃ" for "very", "なんでやねん" as a friendly retort) opens doors immediately.\n\n自由村 lets you find language exchange partners specifically in Osaka who can teach you real, local Japanese.`,
   },
   {
     emoji: '🚃',
@@ -46,14 +46,14 @@ export default function ExpatsOsaka() {
       <ArticleJsonLd
         title="Expats in Osaka — Making Friends & Community Guide"
         description="Osaka is Japan's most welcoming city for foreigners. Here's how to make the most of it."
-        url="https://休憩村japan.com/guides/expats-in-osaka"
+        url="https://自由村japan.com/guides/expats-in-osaka"
       />
       <header className="flex items-center justify-between px-5 pt-5 pb-3">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm">
             <span className="text-white font-black text-sm">N</span>
           </div>
-          <span className="font-extrabold text-gray-900 text-lg tracking-tight">休憩村</span>
+          <span className="font-extrabold text-gray-900 text-lg tracking-tight">自由村</span>
         </Link>
       </header>
 
@@ -71,7 +71,7 @@ export default function ExpatsOsaka() {
 
       <div className="mx-5 mb-8 bg-orange-500 rounded-2xl p-4 text-center">
         <p className="text-white font-bold text-sm mb-1">Find your Osaka crew</p>
-        <p className="text-orange-100 text-xs mb-3">Meet expats and locals in Osaka on 休憩村</p>
+        <p className="text-orange-100 text-xs mb-3">Meet expats and locals in Osaka on 自由村</p>
         <Link href="/signup" className="inline-block px-6 py-2.5 bg-white text-orange-600 rounded-xl font-bold text-sm active:scale-95 transition-all">
           Join free →
         </Link>
@@ -92,7 +92,7 @@ export default function ExpatsOsaka() {
       <section className="bg-orange-50 mx-5 rounded-3xl p-6 mb-10 text-center">
         <div className="text-4xl mb-3">🏯</div>
         <h2 className="font-extrabold text-gray-900 text-lg mb-2">Ready to meet people in Osaka?</h2>
-        <p className="text-gray-500 text-sm mb-5 leading-relaxed">Join 休憩村 free and connect with expats and locals in Osaka.</p>
+        <p className="text-gray-500 text-sm mb-5 leading-relaxed">Join 自由村 free and connect with expats and locals in Osaka.</p>
         <Link href="/signup" className="block w-full py-4 bg-brand-500 text-white rounded-2xl font-bold text-sm text-center shadow-md shadow-brand-200 active:scale-[0.98] transition-all">
           Get Started — It's Free
         </Link>

@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import ArticleJsonLd from '@/components/seo/ArticleJsonLd'
 
 export const metadata: Metadata = {
-  title: 'Making Friends in Japan as a Foreigner — The Honest Guide | 休憩村',
+  title: 'Making Friends in Japan as a Foreigner — The Honest Guide | 自由村',
   description: 'Making friends in Japan is genuinely hard for foreigners. This guide covers why it\'s difficult, what actually works, and how to build a real social life in Japan.',
   keywords: ['making friends in japan', 'friends japan foreigner', 'social life japan expat', 'how to make friends japan', 'expat loneliness japan'],
   openGraph: {
@@ -31,7 +31,7 @@ const SECTIONS = [
   {
     emoji: '📱',
     title: 'Apps and platforms that help',
-    content: `**休憩村** — Specifically built for foreigners in Japan to find friends, language partners, and local support. You set your arrival stage (just arrived, settling in, Japan local) and match with people who get where you are. Free.\n\n**Meetup.com** — Still active in Tokyo and Osaka. "International" and "English" meetup groups are your filter. Quality varies wildly but there are genuinely good groups.\n\n**InterNations** — More professional/business oriented. Better for career networking than close friendships. Monthly social events in major cities.\n\n**HelloTalk / Tandem** — For language exchange partners specifically. Works better if you approach it as "let's do things together in both languages" vs. "let's practice grammar."\n\n**Facebook Groups** — "Foreigners in Japan," "Expats in Tokyo/Osaka" etc. are active communities. Post honestly about what you're looking for. People respond.`,
+    content: `**自由村** — Specifically built for foreigners in Japan to find friends, language partners, and local support. You set your arrival stage (just arrived, settling in, Japan local) and match with people who get where you are. Free.\n\n**Meetup.com** — Still active in Tokyo and Osaka. "International" and "English" meetup groups are your filter. Quality varies wildly but there are genuinely good groups.\n\n**InterNations** — More professional/business oriented. Better for career networking than close friendships. Monthly social events in major cities.\n\n**HelloTalk / Tandem** — For language exchange partners specifically. Works better if you approach it as "let's do things together in both languages" vs. "let's practice grammar."\n\n**Facebook Groups** — "Foreigners in Japan," "Expats in Tokyo/Osaka" etc. are active communities. Post honestly about what you're looking for. People respond.`,
   },
   {
     emoji: '⏳',
@@ -51,14 +51,14 @@ export default function MakingFriendsJapan() {
       <ArticleJsonLd
         title="Making Friends in Japan as a Foreigner — The Honest Guide"
         description="Why making friends in Japan is hard, what actually works, and how to build a real social life."
-        url="https://休憩村japan.com/guides/making-friends-in-japan"
+        url="https://自由村japan.com/guides/making-friends-in-japan"
       />
       <header className="flex items-center justify-between px-5 pt-5 pb-3">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm">
             <span className="text-white font-black text-sm">N</span>
           </div>
-          <span className="font-extrabold text-gray-900 text-lg tracking-tight">休憩村</span>
+          <span className="font-extrabold text-gray-900 text-lg tracking-tight">自由村</span>
         </Link>
       </header>
 
@@ -76,7 +76,7 @@ export default function MakingFriendsJapan() {
 
       <div className="mx-5 mb-8 bg-brand-500 rounded-2xl p-4 text-center">
         <p className="text-white font-bold text-sm mb-1">Skip the hard part</p>
-        <p className="text-blue-100 text-xs mb-3">Find friends at your arrival stage on 休憩村</p>
+        <p className="text-blue-100 text-xs mb-3">Find friends at your arrival stage on 自由村</p>
         <Link href="/signup" className="inline-block px-6 py-2.5 bg-white text-brand-600 rounded-xl font-bold text-sm active:scale-95 transition-all">
           Join free →
         </Link>
@@ -97,7 +97,7 @@ export default function MakingFriendsJapan() {
       <section className="bg-rose-50 mx-5 rounded-3xl p-6 mb-10 text-center">
         <div className="text-4xl mb-3">👥</div>
         <h2 className="font-extrabold text-gray-900 text-lg mb-2">Find your people today</h2>
-        <p className="text-gray-500 text-sm mb-5 leading-relaxed">休憩村 matches you with expats and locals in Japan. Free, no weird vibes.</p>
+        <p className="text-gray-500 text-sm mb-5 leading-relaxed">自由村 matches you with expats and locals in Japan. Free, no weird vibes.</p>
         <Link href="/signup" className="block w-full py-4 bg-brand-500 text-white rounded-2xl font-bold text-sm text-center shadow-md shadow-brand-200 active:scale-[0.98] transition-all">
           Get Started — It's Free
         </Link>

@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = 'https://休憩村japan.com'
+  const base = 'https://自由村japan.com'
   const now = new Date()
 
   return [

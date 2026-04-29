@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-// 休憩村の5つの約束 — 民度設計の中核
+// 自由村の5つの約束 — 民度設計の中核
 // 投稿前初回 + 週1リマインダーとして表示
 const RULES = [
   {
@@ -55,7 +55,7 @@ export default function CulturalCharter({ onAgree, onClose, isReminder = false }
             <span className="text-2xl">🏕️</span>
             <div>
               <p className="font-extrabold text-white text-base leading-tight">
-                {isReminder ? '休憩村の約束、覚えてますか？' : '休憩村へようこそ'}
+                {isReminder ? '自由村の約束、覚えてますか？' : '自由村へようこそ'}
               </p>
               <p className="text-white/50 text-xs mt-0.5">
                 {isReminder
@@ -132,8 +132,8 @@ export default function CulturalCharter({ onAgree, onClose, isReminder = false }
 }
 
 // ── ローカルストレージで「初回同意済み」「最終表示日」を管理 ──
-const STORAGE_KEY_AGREED  = '休憩村_charter_agreed'
-const STORAGE_KEY_LAST    = '休憩村_charter_last_shown'
+const STORAGE_KEY_AGREED  = '自由村_charter_agreed'
+const STORAGE_KEY_LAST    = '自由村_charter_last_shown'
 const WEEKLY_MS           = 7 * 24 * 60 * 60 * 1000
 
 export function shouldShowCharter(): 'first' | 'weekly' | null {

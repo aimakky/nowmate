@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
   { href: '/timeline',      label: 'TL',    icon: Layers   },
-  { href: '/villages',      label: '休憩村', icon: Compass  },
+  { href: '/villages',      label: '自由村', icon: Compass  },
   { href: '/guild',         label: 'ゲーム村', icon: Gamepad2 },
   { href: '/guilds',        label: '集い',   icon: Users    },
   { href: '/notifications', label: '通知',  icon: Bell     },

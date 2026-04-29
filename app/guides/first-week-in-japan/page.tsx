@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'First Week in Japan — Foreigner\'s Survival Guide 2026 | 休憩村',
+  title: 'First Week in Japan — Foreigner\'s Survival Guide 2026 | 自由村',
   description: 'What to do in your first 7 days in Japan as a foreigner. From landing at the airport to getting your residence card, SIM, bank account, and health insurance — step by step.',
   keywords: ['first week in japan', 'just arrived japan foreigner', 'first days in japan guide', 'japan arrival guide', 'new to japan first week', 'japan landing checklist'],
   openGraph: {
@@ -46,7 +46,7 @@ const DAYS = [
     steps: [
       { title: 'Apply for My Number Card (マイナンバーカード)', note: 'Takes 4–6 weeks but apply early. Needed for tax filing, better banking, and many official services.' },
       { title: 'Set up LINE (messaging app)', note: 'Essential in Japan — used for work, landlords, friends, and restaurants. Most Japanese don\'t use WhatsApp or iMessage.' },
-      { title: 'Find expats in your area', note: 'You\'re not the first foreigner to figure this out. Connect with people who\'ve done it — ask on 休憩村.' },
+      { title: 'Find expats in your area', note: 'You\'re not the first foreigner to figure this out. Connect with people who\'ve done it — ask on 自由村.' },
       { title: 'Explore your neighborhood', note: 'Find your closest supermarket (スーパー), 100-yen shop (百均), and drug store (ドラッグストア). These are your daily spots.' },
     ],
   },
@@ -119,10 +119,10 @@ export default function FirstWeekInJapan() {
       <div className="bg-brand-50 border border-brand-100 rounded-3xl p-6 text-center">
         <div className="text-3xl mb-3">🤝</div>
         <h3 className="text-lg font-extrabold text-gray-900 mb-2">Stuck on something?</h3>
-        <p className="text-sm text-gray-500 mb-4">Post a help request on 休憩村 — people who've been through your exact situation are ready to help. Free, fast, and real.</p>
+        <p className="text-sm text-gray-500 mb-4">Post a help request on 自由村 — people who've been through your exact situation are ready to help. Free, fast, and real.</p>
         <Link href="/signup"
           className="inline-block px-8 py-3.5 bg-brand-500 text-white rounded-2xl font-bold text-sm shadow-md shadow-brand-200 hover:bg-brand-600 transition">
-          Get help on 休憩村 →
+          Get help on 自由村 →
         </Link>
       </div>
     </div>

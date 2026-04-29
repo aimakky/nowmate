@@ -44,7 +44,7 @@ export default function LoginPage() {
             <span className="text-white font-extrabold text-2xl">🏕️</span>
           </div>
           <h1 className="text-2xl font-extrabold text-stone-900">おかえりなさい</h1>
-          <p className="text-stone-400 text-sm mt-1">休憩村にログインする</p>
+          <p className="text-stone-400 text-sm mt-1">自由村にログインする</p>
         </div>
 
         {/* Google */}

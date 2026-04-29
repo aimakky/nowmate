@@ -106,7 +106,7 @@ export default function MoodWeather({ villageId, villageName, userId, style, isM
 
   function handleShare() {
     const wInfo = WEATHER_MAP[classifyWeather(moodCounts)]
-    const text  = `今日の${villageName}は${wInfo.icon}${wInfo.label}！ ${wInfo.desc} #休憩村`
+    const text  = `今日の${villageName}は${wInfo.icon}${wInfo.label}！ ${wInfo.desc} #自由村`
     const url   = `https://nowmatejapan.com/villages/${villageId}`
     if (navigator.share) {
       navigator.share({ text, url }).catch(() => {})

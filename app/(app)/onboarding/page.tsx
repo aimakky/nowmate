@@ -412,7 +412,7 @@ export default function OnboardingPage() {
             {/* 次へ後に文化カードが出ることを予告 */}
             <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
               <p className="text-xs text-amber-700 leading-relaxed">
-                📖 次のステップで「休憩村の文化」を5枚のカードで紹介します（1分以内）
+                📖 次のステップで「自由村の文化」を5枚のカードで紹介します（1分以内）
               </p>
             </div>
           </div>

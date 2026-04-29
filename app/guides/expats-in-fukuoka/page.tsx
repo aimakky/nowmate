@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import ArticleJsonLd from '@/components/seo/ArticleJsonLd'
 
 export const metadata: Metadata = {
-  title: 'Expats in Fukuoka — Small City, Big Community | 休憩村',
+  title: 'Expats in Fukuoka — Small City, Big Community | 自由村',
   description: 'Fukuoka is Japan\'s most livable city for foreigners. Smaller, cheaper, and friendlier than Tokyo. This guide covers making friends, community, and expat life in Fukuoka.',
   keywords: ['expats fukuoka', 'foreigners fukuoka', 'expat community fukuoka', 'fukuoka expat guide', 'living in fukuoka foreigner'],
 }
@@ -37,14 +37,14 @@ export default function ExpatsFukuoka() {
       <ArticleJsonLd
         title="Expats in Fukuoka — Small City, Big Community"
         description="Fukuoka is Japan's most livable city for foreigners. Cheaper, friendlier, and more connected than you'd expect."
-        url="https://休憩村japan.com/guides/expats-in-fukuoka"
+        url="https://自由村japan.com/guides/expats-in-fukuoka"
       />
       <header className="flex items-center justify-between px-5 pt-5 pb-3">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm">
             <span className="text-white font-black text-sm">N</span>
           </div>
-          <span className="font-extrabold text-gray-900 text-lg tracking-tight">休憩村</span>
+          <span className="font-extrabold text-gray-900 text-lg tracking-tight">自由村</span>
         </Link>
       </header>
 
@@ -64,7 +64,7 @@ export default function ExpatsFukuoka() {
         <p className="text-white font-bold text-sm mb-1">Find your Fukuoka community</p>
         <p className="text-green-100 text-xs mb-3">Connect with expats and locals in Fukuoka</p>
         <Link href="/signup" className="inline-block px-6 py-2.5 bg-white text-green-700 rounded-xl font-bold text-sm active:scale-95 transition-all">
-          Join 休憩村 free →
+          Join 自由村 free →
         </Link>
       </div>
 
@@ -83,7 +83,7 @@ export default function ExpatsFukuoka() {
       <section className="bg-green-50 mx-5 rounded-3xl p-6 mb-10 text-center">
         <div className="text-4xl mb-3">🌿</div>
         <h2 className="font-extrabold text-gray-900 text-lg mb-2">Meet people in Fukuoka</h2>
-        <p className="text-gray-500 text-sm mb-5 leading-relaxed">Join 休憩村 free. Find your Fukuoka crew.</p>
+        <p className="text-gray-500 text-sm mb-5 leading-relaxed">Join 自由村 free. Find your Fukuoka crew.</p>
         <Link href="/signup" className="block w-full py-4 bg-brand-500 text-white rounded-2xl font-bold text-sm text-center shadow-md shadow-brand-200 active:scale-[0.98] transition-all">
           Get Started — It's Free
         </Link>

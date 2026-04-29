@@ -2,11 +2,11 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: '休憩村 for Business — Improve Expat Employee Retention in Japan',
-  description: 'Help your international employees build real connections in Japan. 休憩村 reduces expat isolation, improves wellbeing, and lowers turnover. Partner with us.',
+  title: '自由村 for Business — Improve Expat Employee Retention in Japan',
+  description: 'Help your international employees build real connections in Japan. 自由村 reduces expat isolation, improves wellbeing, and lowers turnover. Partner with us.',
   openGraph: {
-    title: '休憩村 for Business — Expat Employee Retention in Japan',
-    description: 'Foreign employees who build social networks in Japan stay longer. 休憩村 helps them get there.',
+    title: '自由村 for Business — Expat Employee Retention in Japan',
+    description: 'Foreign employees who build social networks in Japan stay longer. 自由村 helps them get there.',
   },
 }
 
@@ -69,7 +69,7 @@ export default function ForBusinessPage() {
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm">
             <span className="text-white font-black text-sm">N</span>
           </div>
-          <span className="font-extrabold text-gray-900 text-lg tracking-tight">休憩村</span>
+          <span className="font-extrabold text-gray-900 text-lg tracking-tight">自由村</span>
         </Link>
         <Link href="/login" className="text-sm font-semibold text-brand-500 px-3 py-1.5 rounded-xl hover:bg-brand-50 transition">
           Sign in
@@ -79,7 +79,7 @@ export default function ForBusinessPage() {
       {/* Hero */}
       <section className="px-5 pt-8 pb-10 text-center">
         <div className="inline-flex items-center gap-1.5 bg-brand-50 border border-brand-100 text-brand-600 text-xs font-semibold px-3 py-1 rounded-full mb-5">
-          🏢 休憩村 for Business
+          🏢 自由村 for Business
         </div>
         <h1 className="text-[1.9rem] font-black text-gray-900 leading-[1.15] mb-3">
           Your international staff<br />
@@ -88,7 +88,7 @@ export default function ForBusinessPage() {
         <p className="text-gray-500 text-base leading-relaxed mb-8 max-w-[300px] mx-auto">
           Foreign employees who build real connections in Japan stay longer, perform better, and become your best brand ambassadors.
         </p>
-        <a href="mailto:business@休憩村japan.com"
+        <a href="mailto:business@自由村japan.com"
           className="inline-block w-full py-4 bg-brand-500 text-white rounded-2xl font-bold text-base text-center shadow-md shadow-brand-200 hover:bg-brand-600 active:scale-[0.98] transition-all">
           Book a Free Demo
         </a>
@@ -110,7 +110,7 @@ export default function ForBusinessPage() {
 
       {/* Solutions */}
       <section className="px-5 py-10">
-        <h2 className="text-xl font-extrabold text-center text-gray-800 mb-2">How 休憩村 helps</h2>
+        <h2 className="text-xl font-extrabold text-center text-gray-800 mb-2">How 自由村 helps</h2>
         <p className="text-sm text-center text-gray-400 mb-6">A social layer that works from day one</p>
         <div className="grid grid-cols-2 gap-3">
           {SOLUTIONS.map(s => (
@@ -163,7 +163,7 @@ export default function ForBusinessPage() {
                   </li>
                 ))}
               </ul>
-              <a href="mailto:business@休憩村japan.com"
+              <a href="mailto:business@自由村japan.com"
                 className={`block w-full py-3 rounded-2xl text-sm font-bold text-center transition active:scale-95 ${
                   p.highlight
                     ? 'bg-brand-500 text-white shadow-md shadow-brand-200 hover:bg-brand-600'
@@ -181,11 +181,11 @@ export default function ForBusinessPage() {
         <div className="text-4xl mb-3">🤝</div>
         <h2 className="text-2xl font-extrabold text-white mb-2">Let's talk</h2>
         <p className="text-brand-100 text-sm mb-6 leading-relaxed">
-          We'll show you how 休憩村 works and build a custom plan for your organization.
+          We'll show you how 自由村 works and build a custom plan for your organization.
         </p>
-        <a href="mailto:business@休憩村japan.com"
+        <a href="mailto:business@自由村japan.com"
           className="inline-block px-8 py-3.5 bg-white text-brand-600 rounded-2xl font-bold text-sm shadow-md active:scale-95 transition-all">
-          business@休憩村japan.com
+          business@自由村japan.com
         </a>
       </section>
 
@@ -195,9 +195,9 @@ export default function ForBusinessPage() {
           <div className="w-6 h-6 bg-brand-500 rounded-lg flex items-center justify-center">
             <span className="text-white font-black text-xs">N</span>
           </div>
-          <span className="font-bold text-gray-700">休憩村</span>
+          <span className="font-bold text-gray-700">自由村</span>
         </Link>
-        <p className="text-xs text-gray-400 mb-3">休憩村 Japan · business@休憩村japan.com</p>
+        <p className="text-xs text-gray-400 mb-3">自由村 Japan · business@自由村japan.com</p>
         <div className="flex justify-center gap-5 text-xs text-gray-400">
           <Link href="/" className="hover:text-gray-600">For Users</Link>
           <Link href="/terms" className="hover:text-gray-600">Terms</Link>

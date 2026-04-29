@@ -91,7 +91,7 @@ export async function POST(req: Request) {
     }
 
     // SMS送信
-    await sendSms(phone, `【休憩村】認証コード: ${otp}\n有効期限10分。他人に教えないでください。`)
+    await sendSms(phone, `【自由村】認証コード: ${otp}\n有効期限10分。他人に教えないでください。`)
 
     return NextResponse.json({ success: true })
   } catch (e: any) {

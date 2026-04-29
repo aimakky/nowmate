@@ -219,8 +219,8 @@ function PostCard({
   const tier     = getTierById(post.user_trust?.tier ?? 'visitor')
 
   function shareToX() {
-    const village = post.villages ? `${post.villages.icon}${post.villages.name}` : '休憩村'
-    const text = `${post.content}\n\n— ${village}より\n#休憩村\nnowmatejapan.com`
+    const village = post.villages ? `${post.villages.icon}${post.villages.name}` : '自由村'
+    const text = `${post.content}\n\n— ${village}より\n#自由村\nnowmatejapan.com`
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
 
@@ -524,7 +524,7 @@ function ComposeModal({
               <div className="flex items-center justify-between pt-3">
                 {errMsg
                   ? <p className="text-xs text-red-500 font-bold">⚠️ {errMsg}</p>
-                  : <p className="text-[11px] text-stone-400">休憩村全体に公開されます</p>
+                  : <p className="text-[11px] text-stone-400">自由村全体に公開されます</p>
                 }
                 <div className="flex items-center gap-2">
                   <svg width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">

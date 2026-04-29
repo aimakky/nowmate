@@ -96,7 +96,7 @@ export default function MissionsCard({ userId }: { userId: string }) {
           </div>
           <p className="text-white/60 text-[10px]">
             {allDone
-              ? 'あなたは 休憩村 の住人になりました'
+              ? 'あなたは 自由村 の住人になりました'
               : `使うたびに、何かが増える — ${completedCount}/7 完了`}
           </p>
         </div>
