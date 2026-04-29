@@ -9,6 +9,7 @@ interface AvatarProps {
   isOnline?: boolean
   occupation?: string | null
   className?: string
+  tier?: string | null
 }
 
 const sizeMap = {
@@ -26,16 +27,26 @@ const badgeTextSize = {
   xl:  'text-[11px] px-2.5 py-1',
 }
 
-export default function Avatar({ src, name, size = 'md', isOnline, occupation, className }: AvatarProps) {
+export default function Avatar({ src, name, size = 'md', isOnline, occupation, className, tier }: AvatarProps) {
   const { px, cls } = sizeMap[size]
   const dotSize = size === 'xl' ? 'w-4 h-4 border-[3px]' : size === 'lg' ? 'w-3.5 h-3.5 border-2' : 'w-2.5 h-2.5 border-2'
   const badge = getOccupationBadge(occupation)
+  const isPillar = tier === 'pillar'
 
   return (
     <div className={cn('relative flex-shrink-0 flex flex-col items-center gap-0.5', className)}>
       {/* アバター画像 */}
       <div className="relative flex-shrink-0">
-        <div className={cn(cls, 'rounded-full overflow-hidden bg-brand-100 flex items-center justify-center font-bold text-brand-600')}>
+        {/* 村の柱 ゴールドフレーム */}
+        {isPillar && (
+          <div className="absolute inset-0 rounded-full z-10 pointer-events-none"
+            style={{ padding: 2, background: 'linear-gradient(135deg,#f59e0b,#fbbf24,#f59e0b,#d97706)', borderRadius: '50%' }}>
+            <div className="w-full h-full rounded-full" style={{ background: 'white' }} />
+          </div>
+        )}
+        <div className={cn(cls, 'rounded-full overflow-hidden bg-brand-100 flex items-center justify-center font-bold text-brand-600 relative z-20',
+          isPillar ? 'ring-2 ring-amber-400 ring-offset-1' : ''
+        )}>
           {src ? (
             <Image src={src} alt={name} width={px} height={px} className="object-cover w-full h-full" />
           ) : (
@@ -45,9 +56,13 @@ export default function Avatar({ src, name, size = 'md', isOnline, occupation, c
         {isOnline !== undefined && (
           <span className={cn(
             dotSize,
-            'absolute bottom-0 right-0 rounded-full border-white',
+            'absolute bottom-0 right-0 rounded-full border-white z-30',
             isOnline ? 'bg-green-400' : 'bg-gray-300'
           )} />
+        )}
+        {/* 村の柱 ✨ 右上バッジ */}
+        {isPillar && (
+          <span className="absolute -top-0.5 -right-0.5 text-[10px] z-30 leading-none">✨</span>
         )}
       </div>
 

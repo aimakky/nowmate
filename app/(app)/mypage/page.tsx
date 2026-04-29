@@ -306,12 +306,15 @@ export default function MyPage() {
 
         {/* アバター */}
         <div className="absolute left-4" style={{ bottom: -36 }}>
-          <div className="w-20 h-20 rounded-full border-4 border-white overflow-hidden bg-stone-100 flex items-center justify-center shadow-md">
+          <div className={`w-20 h-20 rounded-full border-4 border-white overflow-hidden bg-stone-100 flex items-center justify-center shadow-md ${trust?.tier === 'pillar' ? 'ring-2 ring-amber-400 ring-offset-1' : ''}`}>
             {profile.avatar_url
               ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
               : <span className="text-3xl">🙂</span>
             }
           </div>
+          {trust?.tier === 'pillar' && (
+            <span className="absolute -top-1 -right-1 text-base leading-none">✨</span>
+          )}
           {profile.is_online && (
             <span className="absolute bottom-1 right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white" />
           )}

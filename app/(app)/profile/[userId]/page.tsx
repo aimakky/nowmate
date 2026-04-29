@@ -168,7 +168,7 @@ if (loading) return (
       {/* Profile card */}
       <div className="bg-white px-5 pt-5 pb-4 border-b border-stone-100">
         <div className="flex items-start gap-4 mb-4">
-          <Avatar src={profile.avatar_url} name={profile.display_name} size="lg" />
+          <Avatar src={profile.avatar_url} name={profile.display_name} size="lg" tier={trustTier} />
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-0.5">
               <p className="font-extrabold text-stone-900 text-lg leading-tight">{profile.display_name}</p>

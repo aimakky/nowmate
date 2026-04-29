@@ -490,11 +490,14 @@ function PostCard({
         <div className="flex items-start justify-between mb-2.5">
           <div className="flex items-center gap-2.5">
             <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold text-white"
+              <div className={`relative w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold text-white ${post.user_trust?.tier === 'pillar' ? 'ring-2 ring-amber-400 ring-offset-1' : ''}`}
                 style={{ background: `linear-gradient(135deg, ${catColor} 0%, ${catColor}99 100%)` }}>
                 {post.profiles?.avatar_url
                   ? <img src={post.profiles.avatar_url} className="w-full h-full object-cover rounded-full" alt="" />
                   : post.profiles?.display_name?.[0] ?? '?'}
+                {post.user_trust?.tier === 'pillar' && (
+                  <span className="absolute -top-0.5 -right-0.5 text-[9px] leading-none">✨</span>
+                )}
               </div>
               {(() => {
                 const occ = getOccupationBadge(post.profiles?.occupation)
@@ -1040,7 +1043,8 @@ export default function VillageDetailPage() {
     return () => clearInterval(t)
   }, [fetchFreeNow])
 
-  const tier = userTrust ? getTierById(userTrust.tier) : getTierById('visitor')
+  const tier       = userTrust ? getTierById(userTrust.tier) : getTierById('visitor')
+  const isPillarUser = tier.id === 'pillar'
 
   // ── Actions ───────────────────────────────────────────────
   async function toggleMembership() {
@@ -1789,7 +1793,7 @@ export default function VillageDetailPage() {
           {pinnedPost && postCat === '全部' && (
             <PostCard post={pinnedPost} style={style} likedPosts={likedPosts}
               onToggleLike={toggleLike} onResolve={setResolvePost}
-              onPin={isHost ? setPinnedPostId : undefined} onDelete={isHost ? deletePost : undefined}
+              onPin={(isHost || isPillarUser) ? setPinnedPostId : undefined} onDelete={isHost ? deletePost : undefined}
               isPinned={true} userId={userId} isHost={isHost} villageId={id} />
           )}
 
@@ -1824,7 +1828,7 @@ export default function VillageDetailPage() {
             posts.filter(p => p.id !== village?.pinned_post_id || postCat !== '全部').map(post => (
               <PostCard key={post.id} post={post} style={style} likedPosts={likedPosts}
                 onToggleLike={toggleLike} onResolve={setResolvePost}
-                onPin={isHost ? setPinnedPostId : undefined} onDelete={isHost ? deletePost : undefined}
+                onPin={(isHost || isPillarUser) ? setPinnedPostId : undefined} onDelete={isHost ? deletePost : undefined}
                 isPinned={false} userId={userId} isHost={isHost} villageId={id} />
             ))
           )}
