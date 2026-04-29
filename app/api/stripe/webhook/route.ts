@@ -59,6 +59,8 @@ export async function POST(req: NextRequest) {
           await supabase.from('profiles').update({
             age_verified: true,
             age_verified_at: new Date().toISOString(),
+            age_verification_status: 'age_verified',
+            age_verification_provider: 'stripe_identity',
             age,
           }).eq('id', userId)
         }

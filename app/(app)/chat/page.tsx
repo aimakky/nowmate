@@ -212,7 +212,7 @@ export default function ChatListPage() {
                       {r.other.avatar_url
                         ? <img src={r.other.avatar_url} className="w-full h-full object-cover" />
                         : <div className="w-full h-full flex items-center justify-center">
-                            <span className="text-lg font-bold text-white">{r.other.display_name[0]}</span>
+                            <span className="text-lg font-bold text-white">{r.other.display_name?.[0] ?? '?'}</span>
                           </div>
                       }
                     </div>
@@ -274,7 +274,7 @@ export default function ChatListPage() {
                         <div className="w-full h-full flex items-center justify-center"
                           style={{ background: 'linear-gradient(135deg,#FF4FD8,#E03BC0)' }}>
                           <span className="text-xl font-bold text-white">
-                            {u.display_name.charAt(0).toUpperCase()}
+                            {u.display_name?.[0]?.toUpperCase() ?? '?'}
                           </span>
                         </div>
                       )}
@@ -382,7 +382,7 @@ export default function ChatListPage() {
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <span className="text-lg font-bold text-white">
-                                {c.other.display_name.charAt(0).toUpperCase()}
+                                {c.other.display_name?.[0]?.toUpperCase() ?? '?'}
                               </span>
                             </div>
                           )}

@@ -43,6 +43,9 @@ const LANES = [
 // ゲーム関連カテゴリ（villagesテーブルで使用）
 const GAME_CATEGORIES = INDUSTRIES.map(i => i.id)
 
+// GENRE_TABS alias（コンポーネント内で使用）
+const GENRES = GENRE_TABS
+
 // ── スモールカード ──────────────────────────────────────────────
 function GuildSmallCard({ village, isMember, onJoin }: {
   village: Village; isMember: boolean; onJoin: () => void
@@ -639,5 +642,3 @@ export default function GuildPage() {
   )
 }
 
-// GENRE_TABS と同じ形式で参照できるよう alias
-const GENRES = GENRE_TABS

@@ -18,6 +18,10 @@ export async function POST(req: NextRequest) {
     ? process.env.STRIPE_PRICE_YEARLY
     : process.env.STRIPE_PRICE_MONTHLY
 
+  if (!priceId) {
+    return NextResponse.json({ error: 'Price not configured' }, { status: 503 })
+  }
+
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     payment_method_types: ['card'],

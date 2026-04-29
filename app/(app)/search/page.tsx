@@ -80,7 +80,7 @@ export default function SearchPage() {
     if (keyword.trim()) {
       const kw = keyword.trim().toLowerCase()
       results = results.filter(p =>
-        p.display_name.toLowerCase().includes(kw) ||
+        (p.display_name || '').toLowerCase().includes(kw) ||
         (p.bio || '').toLowerCase().includes(kw)
       )
     }
