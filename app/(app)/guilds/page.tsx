@@ -215,7 +215,7 @@ export default function GuildsPage() {
               <p className="text-white/40 text-xs mt-0.5">読書・映画・料理・仕事…大人のサークルが集まる場所</p>
             </div>
             <button
-              onClick={() => router.push('/guild/create')}
+              onClick={() => router.push('/guilds/create')}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold flex-shrink-0 active:scale-95 transition-all"
               style={{ background: 'rgba(251,191,36,0.2)', color: '#fde68a', border: '1px solid rgba(251,191,36,0.3)' }}
             >
@@ -334,7 +334,7 @@ export default function GuildsPage() {
               </p>
               <p className="text-sm text-stone-400 mb-6">最初の集いを作ってみましょう</p>
               <button
-                onClick={() => router.push('/guild/create')}
+                onClick={() => router.push('/guilds/create')}
                 className="px-6 py-3 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
                 style={{ background: 'linear-gradient(135deg,#f97316 0%,#ea580c 100%)', boxShadow: '0 8px 24px rgba(249,115,22,0.4)' }}
               >✨ 集いを作る</button>
@@ -364,7 +364,7 @@ export default function GuildsPage() {
 
       {/* ── FAB ── */}
       <button
-        onClick={() => router.push('/guild/create')}
+        onClick={() => router.push('/guilds/create')}
         className="fixed right-5 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
         style={{
           bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
