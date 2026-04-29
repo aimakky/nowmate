@@ -442,6 +442,65 @@ function PostCard({
   const [submitting,      setSubmitting]      = useState(false)
   const [localCount,      setLocalCount]      = useState(post.comment_count ?? 0)
 
+  // ── 投票（Poll）──────────────────────────────────────────────
+  const [myVote,       setMyVote]       = useState<number | null>(null)   // 自分の投票index
+  const [voteCounts,   setVoteCounts]   = useState<number[]>([])          // 各選択肢の票数
+  const [totalVotes,   setTotalVotes]   = useState(0)
+  const [voting,       setVoting]       = useState(false)
+  const [pollLoaded,   setPollLoaded]   = useState(false)
+
+  const hasPoll = Array.isArray(post.poll_options) && post.poll_options.length >= 2
+
+  useEffect(() => {
+    if (!hasPoll) return
+    async function loadPoll() {
+      const sb = createClient()
+      const { data } = await sb
+        .from('poll_votes')
+        .select('user_id, option_index')
+        .eq('post_id', post.id)
+      const rows = data ?? []
+      const counts = new Array(post.poll_options.length).fill(0)
+      rows.forEach((r: any) => { counts[r.option_index] = (counts[r.option_index] ?? 0) + 1 })
+      setVoteCounts(counts)
+      setTotalVotes(rows.length)
+      if (userId) {
+        const mine = rows.find((r: any) => r.user_id === userId)
+        if (mine) setMyVote(mine.option_index)
+      }
+      setPollLoaded(true)
+    }
+    loadPoll()
+  }, [post.id, hasPoll, userId]) // eslint-disable-line
+
+  async function castVote(idx: number) {
+    if (!userId || voting) return
+    setVoting(true)
+    const sb = createClient()
+    if (myVote === idx) {
+      // 取り消し
+      await sb.from('poll_votes').delete().eq('post_id', post.id).eq('user_id', userId)
+      setVoteCounts(prev => { const n = [...prev]; n[idx] = Math.max(0, n[idx] - 1); return n })
+      setTotalVotes(t => Math.max(0, t - 1))
+      setMyVote(null)
+    } else {
+      // upsert で新規 or 変更を一括処理
+      await sb.from('poll_votes').upsert(
+        { post_id: post.id, user_id: userId, option_index: idx },
+        { onConflict: 'post_id,user_id' }
+      )
+      setVoteCounts(prev => {
+        const n = [...prev]
+        if (myVote !== null) n[myVote] = Math.max(0, n[myVote] - 1)
+        n[idx] = (n[idx] ?? 0) + 1
+        return n
+      })
+      if (myVote === null) setTotalVotes(t => t + 1)
+      setMyVote(idx)
+    }
+    setVoting(false)
+  }
+
   async function loadComments() {
     setLoadingComments(true)
     const { data } = await createClient()
@@ -535,6 +594,56 @@ function PostCard({
           </div>
         </div>
         <p className="text-sm text-stone-800 leading-relaxed mb-3">{post.content}</p>
+
+        {/* ── 投票（Poll）UI ── */}
+        {hasPoll && (
+          <div className="mb-3 rounded-2xl overflow-hidden border border-stone-100"
+            style={{ background: '#fafaf9' }}>
+            <div className="px-3 py-2 border-b border-stone-100 flex items-center gap-1.5">
+              <span className="text-xs">📊</span>
+              <span className="text-[11px] font-bold text-stone-500">
+                {pollLoaded ? `${totalVotes}票` : '集計中…'}
+              </span>
+            </div>
+            <div className="p-2 space-y-2">
+              {(post.poll_options as string[]).map((opt, idx) => {
+                const count = voteCounts[idx] ?? 0
+                const pct   = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0
+                const voted = myVote === idx
+                const shown = myVote !== null  // 自分が投票済みなら結果表示
+                return (
+                  <button key={idx} onClick={() => castVote(idx)} disabled={!userId || voting}
+                    className="w-full rounded-xl overflow-hidden relative transition-all active:scale-[0.99] disabled:opacity-60"
+                    style={{
+                      border: voted ? `2px solid ${style.accent}` : '2px solid #e7e5e4',
+                      background: 'white',
+                    }}>
+                    {/* 結果バー */}
+                    {shown && (
+                      <div className="absolute inset-0 rounded-[9px] transition-all"
+                        style={{ width: `${pct}%`, background: voted ? `${style.accent}20` : '#f5f5f4' }} />
+                    )}
+                    <div className="relative flex items-center justify-between px-3 py-2.5 gap-2">
+                      <div className="flex items-center gap-2">
+                        {voted && <span className="text-xs" style={{ color: style.accent }}>✓</span>}
+                        <span className="text-xs font-bold text-stone-800">{opt}</span>
+                      </div>
+                      {shown && (
+                        <span className="text-[11px] font-extrabold flex-shrink-0"
+                          style={{ color: voted ? style.accent : '#a8a29e' }}>
+                          {pct}%
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            {!userId && (
+              <p className="text-center text-[10px] text-stone-400 pb-2">ログインすると投票できます</p>
+            )}
+          </div>
+        )}
 
         {/* 仲間募集バッジ */}
         {post.category === '仲間募集' && (post.lfg_platform?.length > 0 || post.lfg_time || post.lfg_game) && (
@@ -676,6 +785,9 @@ export default function VillageDetailPage() {
   const [lfgPlatforms,setLfgPlatforms]= useState<string[]>([])
   const [lfgTime,     setLfgTime]     = useState('')
   const [lfgGame,     setLfgGame]     = useState('')
+  // ── Poll（投票）投稿 ────────────────────────────────────────
+  const [showPollCreator, setShowPollCreator] = useState(false)
+  const [pollDraft,       setPollDraft]       = useState(['', ''])  // 最低2選択肢
 
   const [tab,       setTab]       = useState<'posts' | 'voice' | 'bottle' | 'members' | 'diary' | 'diplo' | 'admin' | 'more'>('posts')
   const [showMoreMenu, setShowMoreMenu] = useState(false)
@@ -779,6 +891,8 @@ export default function VillageDetailPage() {
       setUserId(user.id)
       const trust = await getUserTrust(user.id)
       setUserTrust(trust)
+      // last seen を更新（オンライン表示用）
+      createClient().rpc('update_last_seen', { p_user_id: user.id })
       // この村でのユーザー投稿数を確認 → 0件なら初投稿プロンプト表示
       const { count } = await createClient()
         .from('village_posts')
@@ -879,7 +993,7 @@ export default function VillageDetailPage() {
   const fetchMembers = useCallback(async () => {
     const { data } = await createClient()
       .from('village_members')
-      .select('user_id, role, joined_at, visit_streak, max_streak, profiles(display_name, avatar_url), user_trust(tier)')
+      .select('user_id, role, joined_at, visit_streak, max_streak, profiles(display_name, avatar_url, last_seen_at), user_trust(tier)')
       .eq('village_id', id).order('joined_at', { ascending: true }).limit(50)
     setMembers(data || [])
   }, [id])
@@ -1196,6 +1310,7 @@ export default function VillageDetailPage() {
     const deadlineAt = newPostDeadline
       ? new Date(Date.now() + newPostDeadline * 3600000).toISOString()
       : null
+    const validPollOptions = pollDraft.map(s => s.trim()).filter(Boolean)
     await supabase.from('village_posts').insert({
       village_id: id, user_id: userId, content: text.trim(), category: newPostCat,
       ...(deadlineAt ? { deadline_at: deadlineAt } : {}),
@@ -1204,6 +1319,7 @@ export default function VillageDetailPage() {
         lfg_time:     lfgTime.trim() || null,
         lfg_game:     lfgGame.trim() || null,
       } : {}),
+      ...(showPollCreator && validPollOptions.length >= 2 ? { poll_options: validPollOptions } : {}),
     })
     // slow mode タイムスタンプ更新
     markPosted()
@@ -1221,6 +1337,7 @@ export default function VillageDetailPage() {
     }
     setNewPost(''); setNgWarning(''); setNewPostDeadline(null); setShowFirstPrompt(false); setUserVillagePosts(p => p + 1)
     setLfgPlatforms([]); setLfgTime(''); setLfgGame('')
+    setShowPollCreator(false); setPollDraft(['', ''])
     await fetchPosts(); setPosting(false)
   }
 
@@ -1880,6 +1997,48 @@ export default function VillageDetailPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* 📊 投票（Poll）トグル */}
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={() => { setShowPollCreator(v => !v); if (showPollCreator) setPollDraft(['', '']) }}
+                    className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-95"
+                    style={showPollCreator
+                      ? { background: style.accent, color: '#fff', borderColor: style.accent }
+                      : { background: '#fafaf9', color: '#a8a29e', borderColor: '#e7e5e4' }
+                    }
+                  >
+                    📊 投票をつける
+                  </button>
+                </div>
+
+                {/* Poll 選択肢入力 */}
+                {showPollCreator && (
+                  <div className="mt-2 p-3 rounded-2xl border border-stone-200 bg-stone-50 space-y-2">
+                    <p className="text-[10px] font-bold text-stone-500">📊 投票の選択肢（最大4つ）</p>
+                    {pollDraft.map((opt, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <input
+                          value={opt}
+                          onChange={e => setPollDraft(prev => { const n = [...prev]; n[i] = e.target.value; return n })}
+                          placeholder={`選択肢 ${i + 1}`}
+                          className="flex-1 px-3 py-1.5 rounded-xl border border-stone-200 text-xs focus:outline-none bg-white"
+                          maxLength={40}
+                        />
+                        {pollDraft.length > 2 && (
+                          <button onClick={() => setPollDraft(prev => prev.filter((_, j) => j !== i))}
+                            className="text-stone-300 hover:text-red-400 transition-colors">✕</button>
+                        )}
+                      </div>
+                    ))}
+                    {pollDraft.length < 4 && (
+                      <button onClick={() => setPollDraft(prev => [...prev, ''])}
+                        className="text-[10px] font-bold text-stone-400 hover:text-stone-600 transition-colors">
+                        + 選択肢を追加
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <button onClick={() => setShowPhoneVerify(true)}
@@ -2130,17 +2289,34 @@ export default function VillageDetailPage() {
       {tab === 'members' && (
         <div className="px-4 pb-32 space-y-2 pt-1">
           <p className="text-xs text-stone-400 font-semibold mb-3">{village.member_count} 人が住んでいます</p>
-          {members.map((m: any) => (
+          {members.map((m: any) => {
+            // オンライン判定：last_seen_at が5分以内ならオンライン
+            const lastSeenMs = m.profiles?.last_seen_at
+              ? Date.now() - new Date(m.profiles.last_seen_at).getTime()
+              : Infinity
+            const isOnline = lastSeenMs < 5 * 60 * 1000
+            return (
             <div key={m.user_id}
               className="bg-white border border-stone-100 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold text-white flex-shrink-0"
-                style={{ background: style.gradient }}>
-                {m.profiles?.display_name?.[0] ?? '?'}
+              <div className="relative flex-shrink-0">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold text-white"
+                  style={{ background: style.gradient }}>
+                  {m.profiles?.display_name?.[0] ?? '?'}
+                </div>
+                {/* オンラインバッジ */}
+                {isOnline && (
+                  <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <p className="text-sm font-bold text-stone-800 truncate">{m.profiles?.display_name ?? '住民'}</p>
                   {m.user_trust?.tier && <TrustBadge tierId={m.user_trust.tier} size="xs" />}
+                  {isOnline && (
+                    <span className="text-[9px] font-extrabold text-green-500 bg-green-50 px-1.5 py-0.5 rounded-full border border-green-100">
+                      オンライン
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <p className="text-[10px] text-stone-400">
@@ -2173,7 +2349,8 @@ export default function VillageDetailPage() {
                 )}
               </div>
             </div>
-          ))}
+          )
+          })}
         </div>
       )}
 

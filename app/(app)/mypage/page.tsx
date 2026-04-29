@@ -172,6 +172,8 @@ export default function MyPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
+      // last_seen_at 更新
+      supabase.rpc('update_last_seen', { p_user_id: user.id })
 
       const [
         { data: p },
@@ -699,6 +701,89 @@ export default function MyPage() {
               </div>
               <ChevronRight size={16} className="text-brand-300" />
             </button>
+          )}
+
+          {/* ── 信頼スコアカード（Reddit karma 的な可視化） ── */}
+          {trust && (
+            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
+              <div className="px-4 pt-4 pb-3">
+                <p className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest mb-3">信頼スコア</p>
+                <div className="flex items-end gap-3">
+                  {/* スコア大きく表示 */}
+                  <div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-5xl font-extrabold leading-none" style={{
+                        background: trust.score >= 1000
+                          ? 'linear-gradient(135deg,#f59e0b,#d97706)'
+                          : trust.score >= 600
+                          ? 'linear-gradient(135deg,#10b981,#059669)'
+                          : trust.score >= 300
+                          ? 'linear-gradient(135deg,#3b82f6,#2563eb)'
+                          : 'linear-gradient(135deg,#94a3b8,#64748b)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                      }}>
+                        {trust.score.toLocaleString()}
+                      </span>
+                      <span className="text-xs text-stone-400 font-semibold">pt</span>
+                    </div>
+                    <p className="text-xs text-stone-500 mt-1">
+                      {trust.total_helped > 0 ? `${trust.total_helped}人の役に立った` : 'まず電話認証してみよう'}
+                    </p>
+                  </div>
+                  {/* ティアアイコン */}
+                  <div className="flex-1 flex justify-end pb-1">
+                    <div className="text-right">
+                      <div className="text-3xl">
+                        {trust.tier === 'pillar' ? '✨' : trust.tier === 'trusted' ? '🌳' : trust.tier === 'regular' ? '🌿' : trust.tier === 'resident' ? '🏡' : '🪴'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* スコアバー */}
+                {tierProgress && (() => {
+                  const tiers = [
+                    { id: 'resident', min: 100,  label: '住民',  color: '#3b82f6' },
+                    { id: 'regular',  min: 300,  label: '常連',  color: '#10b981' },
+                    { id: 'trusted',  min: 600,  label: '信頼',  color: '#10b981' },
+                    { id: 'pillar',   min: 1000, label: '柱',    color: '#f59e0b' },
+                  ]
+                  const next = tiers.find(t => trust.score < t.min)
+                  if (!next) return (
+                    <div className="mt-3 text-center py-2">
+                      <p className="text-xs font-bold text-amber-600">✨ 最高ティア達成！</p>
+                    </div>
+                  )
+                  const prev = tiers[tiers.findIndex(t => t.id === next.id) - 1]
+                  const base = prev?.min ?? 0
+                  const pct  = Math.round(((trust.score - base) / (next.min - base)) * 100)
+                  return (
+                    <div className="mt-3">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-[10px] text-stone-400 font-semibold">次のティアまで</span>
+                        <span className="text-[10px] font-bold" style={{ color: next.color }}>
+                          あと {(next.min - trust.score).toLocaleString()}pt → {next.label}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all"
+                          style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${next.color}80, ${next.color})` }} />
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+
+              {/* ポイント獲得方法ヒント */}
+              <div className="border-t border-stone-50 px-4 py-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-3 text-[10px] text-stone-400">
+                  <span>📝 投稿 +2pt</span>
+                  <span>🤝 相談解決 +25pt</span>
+                  <span>🔥 7日連続 +10pt</span>
+                </div>
+              </div>
+            </div>
           )}
 
           {trust && (
