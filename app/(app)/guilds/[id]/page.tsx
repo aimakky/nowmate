@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Users, Send, Heart, MessageSquare, MoreHorizontal, Info, FileText } from 'lucide-react'
 import { INDUSTRIES } from '@/lib/guild'
+import { startDM } from '@/lib/dm'
 
 // ─── 型 ─────────────────────────────────────────────────────────
 type Guild = {
@@ -160,7 +161,7 @@ export default function GuildDetailPage() {
         .eq('village_id', id)
         .order('role', { ascending: true })
         .limit(30)
-      setMembers((mb ?? []) as Member[])
+      setMembers((mb ?? []) as unknown as Member[])
 
       setLoading(false)
     }
@@ -422,14 +423,28 @@ export default function GuildDetailPage() {
                       {online ? 'オンライン' : 'オフライン'}
                     </p>
                   </div>
-                  {isHost && (
-                    <span
-                      className="text-[9px] font-extrabold px-2 py-0.5 rounded-full text-white flex-shrink-0"
-                      style={{ background: genre?.color ?? '#7c3aed' }}
-                    >
-                      GM
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {isHost && (
+                      <span
+                        className="text-[9px] font-extrabold px-2 py-0.5 rounded-full text-white"
+                        style={{ background: genre?.color ?? '#7c3aed' }}
+                      >
+                        GM
+                      </span>
+                    )}
+                    {m.user_id !== userId && userId && (
+                      <button
+                        onClick={async () => {
+                          const result = await startDM(userId, m.user_id)
+                          if (result.status !== 'blocked') router.push(`/chat/${result.matchId}`)
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-90 bg-stone-50 border border-stone-200 text-stone-500"
+                        title="DM を送る"
+                      >
+                        <MessageSquare size={12} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )
             })}

@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   ArrowLeft, Mic, Users, Send, Flag, CheckCircle, Crown,
-  Pin, Trash2, Settings2, BookOpen, Save, X, PinOff, Flame, PenLine, ChevronRight,
+  Pin, Trash2, Settings2, BookOpen, Save, X, PinOff, Flame, PenLine, ChevronRight, MessageSquare,
 } from 'lucide-react'
 import { timeAgo } from '@/lib/utils'
 import { getOccupationBadge } from '@/lib/occupation'
@@ -21,6 +21,7 @@ import CulturalCharter, { shouldShowCharter, markCharterShown } from '@/componen
 import FirstPostPrompt from '@/components/features/FirstPostPrompt'
 
 import { detectNgWords } from '@/lib/moderation'
+import { startDM } from '@/lib/dm'
 
 // ─── Slow mode: 投稿間隔制限 ─────────────────────────────────
 const SLOW_MODE_MS  = 2 * 60 * 1000  // 2分
@@ -2338,14 +2339,30 @@ export default function VillageDetailPage() {
                   </div>
                 )}
                 {m.user_id !== userId && (
-                  <button
-                    onClick={() => toggleFollow(m.user_id)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-90"
-                    style={followingIds.has(m.user_id)
-                      ? { background: '#f5f5f4', color: '#78716c', border: '1px solid #e7e5e4' }
-                      : { background: style.accent, color: '#fff', boxShadow: `0 2px 8px ${style.accent}40` }}>
-                    {followingIds.has(m.user_id) ? '学んでいる ✓' : 'この人から学ぶ'}
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => toggleFollow(m.user_id)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-90"
+                      style={followingIds.has(m.user_id)
+                        ? { background: '#f5f5f4', color: '#78716c', border: '1px solid #e7e5e4' }
+                        : { background: style.accent, color: '#fff', boxShadow: `0 2px 8px ${style.accent}40` }}>
+                      {followingIds.has(m.user_id) ? 'フォロー中' : 'フォロー'}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!userId) return
+                        const result = await startDM(userId, m.user_id)
+                        if (result.status === 'ok' || result.status === 'exists' || result.status === 'request') {
+                          router.push(`/chat/${result.matchId}`)
+                        }
+                      }}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90"
+                      style={{ background: '#f5f5f4', color: '#78716c', border: '1px solid #e7e5e4' }}
+                      title="DM を送る"
+                    >
+                      <MessageSquare size={13} />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

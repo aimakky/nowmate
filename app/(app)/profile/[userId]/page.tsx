@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { getCategoryStyle, getTitleName, TITLE_LEVEL_STYLE } from '@/lib/qa'
 import ReportModal from '@/components/features/ReportModal'
 import { getGenreTitles, getIndustry } from '@/lib/guild'
+import { startDM } from '@/lib/dm'
 
 interface VillagePost {
   id: string
@@ -52,6 +53,8 @@ export default function UserProfilePage() {
   const [showAnswersTab, setShowAnswersTab] = useState(true)
   const [qaTitles, setQaTitles] = useState<any[]>([])
   const [genreTitles, setGenreTitles] = useState<{ genre: string; awarded_at: string }[]>([])
+  const [dmLoading, setDmLoading] = useState(false)
+  const [dmToast, setDmToast] = useState<string | null>(null)
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -143,6 +146,23 @@ export default function UserProfilePage() {
     setBlocking(false)
     setBlockDone(true)
     setShowMenu(false)
+  }
+
+  async function handleDM() {
+    if (!myId || dmLoading) return
+    setDmLoading(true)
+    const result = await startDM(myId, userId as string)
+    setDmLoading(false)
+    if (result.status === 'ok' || result.status === 'exists') {
+      router.push(`/chat/${result.matchId}`)
+    } else if (result.status === 'request') {
+      setDmToast('リクエストを送りました 📨')
+      setTimeout(() => setDmToast(null), 3000)
+      router.push(`/chat/${result.matchId}`)
+    } else {
+      setDmToast('このユーザーはDMを受け付けていません')
+      setTimeout(() => setDmToast(null), 3000)
+    }
   }
 
 if (loading) return (
@@ -238,14 +258,26 @@ if (loading) return (
         )}
 
         {!isMe && (
-          <button onClick={toggleFollow} disabled={toggling}
-            className={`w-full py-2.5 rounded-2xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50 ${
-              isFollowing
-                ? 'bg-stone-100 text-stone-700 border border-stone-200'
-                : 'bg-brand-500 text-white shadow-md shadow-brand-200'
-            }`}>
-            {toggling ? '...' : isFollowing ? '✓ この人から学んでいる' : 'この人から学ぶ'}
-          </button>
+          <div className="flex gap-2.5">
+            <button onClick={toggleFollow} disabled={toggling}
+              className={`flex-1 py-2.5 rounded-2xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50 ${
+                isFollowing
+                  ? 'bg-stone-100 text-stone-700 border border-stone-200'
+                  : 'bg-brand-500 text-white shadow-md shadow-brand-200'
+              }`}>
+              {toggling ? '...' : isFollowing ? '✓ フォロー中' : 'フォローする'}
+            </button>
+            <button
+              onClick={handleDM}
+              disabled={dmLoading}
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl font-bold text-sm bg-stone-100 text-stone-700 border border-stone-200 active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              {dmLoading
+                ? <span className="w-4 h-4 border-2 border-stone-400 border-t-transparent rounded-full animate-spin" />
+                : <><MessageSquare size={14} /> DM</>
+              }
+            </button>
+          </div>
         )}
         {isMe && (
           <button onClick={() => router.push('/mypage')}
@@ -441,6 +473,13 @@ if (loading) return (
           reportedName={profile.display_name}
           onClose={() => setShowReport(false)}
         />
+      )}
+
+      {/* ── DM トースト ── */}
+      {dmToast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-stone-900/90 text-white text-sm font-bold rounded-2xl shadow-xl backdrop-blur-sm whitespace-nowrap">
+          {dmToast}
+        </div>
       )}
     </div>
   )
