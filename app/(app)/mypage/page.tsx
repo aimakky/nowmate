@@ -405,7 +405,7 @@ export default function MyPage() {
           { id: 'tweets',          label: '投稿' },
           { id: 'images',          label: '画像' },
           { id: 'joined_villages', label: '参加中' },
-          { id: 'hosted_villages', label: '作った村' },
+          { id: 'hosted_villages', label: '村長' },
         ] as { id: ProfileTab; label: string }[]).map(tab => (
           <button
             key={tab.id}
