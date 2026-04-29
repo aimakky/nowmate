@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -297,28 +297,28 @@ export default function MyPage() {
   return (
     <div className="max-w-md mx-auto min-h-screen relative overflow-x-hidden" style={{ background: '#0d0b1f' }}>
 
-      {/* 紫ラジアルグロー（右上） */}
+      {/* シルバーグロー（右上） */}
       <div className="absolute top-0 right-0 w-80 h-80 pointer-events-none z-0"
-        style={{ background: 'radial-gradient(circle at 80% 15%, rgba(47,255,210,0.35) 0%, rgba(0,217,184,0.2) 35%, transparent 65%)' }} />
+        style={{ background: 'radial-gradient(circle at 80% 15%, rgba(234,242,255,0.18) 0%, rgba(184,199,217,0.1) 40%, transparent 70%)' }} />
 
       {/* ── ヘッダー行 ── */}
       <div className="relative z-10 flex items-center justify-between px-5 pt-12 pb-0">
         {/* 左：人アイコン（円形） */}
         <div className="w-10 h-10 rounded-full flex items-center justify-center"
-          style={{ border: '1.5px solid rgba(47,255,210,0.65)', background: 'rgba(47,255,210,0.08)' }}>
-          <User size={18} style={{ color: '#2FFFD2' }} />
+          style={{ border: '1.5px solid rgba(234,242,255,0.35)', background: 'rgba(234,242,255,0.06)' }}>
+          <User size={18} style={{ color: '#EAF2FF' }} />
         </div>
         {/* 右：設定アイコン（六角形） */}
         <Link
           href="/settings"
           className="w-10 h-10 flex items-center justify-center active:scale-90 transition-all"
           style={{
-            border: '1.5px solid rgba(47,255,210,0.65)',
-            background: 'rgba(47,255,210,0.08)',
+            border: '1.5px solid rgba(234,242,255,0.35)',
+            background: 'rgba(234,242,255,0.06)',
             clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
           }}
         >
-          <Settings size={16} style={{ color: '#2FFFD2' }} />
+          <Settings size={16} style={{ color: '#EAF2FF' }} />
         </Link>
       </div>
 
@@ -329,11 +329,11 @@ export default function MyPage() {
           <div
             className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center"
             style={{
-              border: '2px solid rgba(47,255,210,0.7)',
+              border: '2px solid rgba(234,242,255,0.45)',
               boxShadow: trust?.tier === 'pillar'
                 ? '0 0 30px rgba(255,77,144,0.6), 0 0 60px rgba(255,77,144,0.2)'
-                : '0 0 30px rgba(47,255,210,0.5), 0 0 60px rgba(47,255,210,0.2)',
-              background: 'rgba(47,255,210,0.12)',
+                : '0 0 24px rgba(234,242,255,0.28), 0 0 48px rgba(184,199,217,0.12)',
+              background: 'rgba(234,242,255,0.07)',
             }}
           >
             {profile.avatar_url
@@ -384,7 +384,7 @@ export default function MyPage() {
 
       {/* ── 統計カード ── */}
       <div className="relative z-10 mx-4 mb-3 rounded-2xl overflow-hidden"
-        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(47,255,210,0.2)' }}>
+        style={{ background: 'rgba(234,242,255,0.04)', border: '1px solid rgba(234,242,255,0.14)', boxShadow: '0 0 24px rgba(234,242,255,0.06)' }}>
         <div className="flex">
           {[
             { count: followingCount, label: 'フォロー中' },
@@ -394,10 +394,10 @@ export default function MyPage() {
             <div key={i} className="flex-1 flex flex-col items-center py-4 relative">
               {i > 0 && (
                 <div className="absolute left-0 top-3 bottom-3 w-px"
-                  style={{ background: 'rgba(157,92,255,0.2)' }} />
+                  style={{ background: 'rgba(184,199,217,0.18)' }} />
               )}
-              <span className="font-extrabold text-xl" style={{ color: '#9D5CFF' }}>{stat.count}</span>
-              <span className="text-xs mt-0.5" style={{ color: 'rgba(240,238,255,0.45)' }}>{stat.label}</span>
+              <span className="font-extrabold text-xl" style={{ color: '#EAF2FF' }}>{stat.count}</span>
+              <span className="text-xs mt-0.5" style={{ color: 'rgba(184,199,217,0.6)' }}>{stat.label}</span>
             </div>
           ))}
         </div>
@@ -447,7 +447,7 @@ export default function MyPage() {
 
       {/* ── タブ ── */}
       <div className="relative z-10 mx-4 mb-1 rounded-2xl overflow-hidden sticky top-2"
-        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(157,92,255,0.15)' }}>
+        style={{ background: 'rgba(234,242,255,0.04)', border: '1px solid rgba(184,199,217,0.14)', boxShadow: '0 0 16px rgba(234,242,255,0.05)' }}>
         <div className="flex">
           {([
             { id: 'tweets',          label: '投稿' },
@@ -459,13 +459,13 @@ export default function MyPage() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className="flex-1 py-3.5 text-xs font-bold transition-colors relative"
-              style={{ color: activeTab === tab.id ? '#F0EEFF' : 'rgba(240,238,255,0.35)' }}
+              style={{ color: activeTab === tab.id ? '#EAF2FF' : 'rgba(184,199,217,0.4)' }}
             >
               {tab.label}
               {activeTab === tab.id && (
                 <span
                   className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full"
-                  style={{ background: 'linear-gradient(90deg, #9D5CFF, #FF4D90)' }}
+                  style={{ background: 'linear-gradient(90deg, #EAF2FF, #B8C7D9)', boxShadow: '0 0 8px rgba(234,242,255,0.5)' }}
                 />
               )}
             </button>
@@ -604,7 +604,7 @@ export default function MyPage() {
                               style={{ background: vs.gradient, boxShadow: '0 0 12px rgba(157,92,255,0.3)' }}>{v.icon}</div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
-                              <p className="text-[11px]" style={{ color: '#49E1FF' }}>
+                              <p className="text-[11px]" style={{ color: '#B8C7D9' }}>
                                 <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
                               </p>
                             </div>
@@ -640,7 +640,7 @@ export default function MyPage() {
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11px]" style={{ color: '#49E1FF' }}>
+                              <p className="text-[11px]" style={{ color: '#B8C7D9' }}>
                                 <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
                               </p>
                             </div>
@@ -704,7 +704,7 @@ export default function MyPage() {
                                   <Crown size={8} /> 村長
                                 </span>
                               </div>
-                              <p className="text-[11px]" style={{ color: '#49E1FF' }}>
+                              <p className="text-[11px]" style={{ color: '#B8C7D9' }}>
                                 <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
                               </p>
                             </div>
@@ -738,7 +738,7 @@ export default function MyPage() {
                                   <Crown size={8} /> 団長
                                 </span>
                               </div>
-                              <p className="text-[11px]" style={{ color: '#49E1FF' }}>
+                              <p className="text-[11px]" style={{ color: '#B8C7D9' }}>
                                 <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
                               </p>
                             </div>
@@ -828,7 +828,7 @@ export default function MyPage() {
                 {/* スコアバー */}
                 {tierProgress && (() => {
                   const tiers = [
-                    { id: 'resident', min: 100,  label: '住民',  color: '#49E1FF' },
+                    { id: 'resident', min: 100,  label: '住民',  color: '#B8C7D9' },
                     { id: 'regular',  min: 300,  label: '常連',  color: '#7CFF82' },
                     { id: 'trusted',  min: 600,  label: '信頼',  color: '#9D5CFF' },
                     { id: 'pillar',   min: 1000, label: '柱',    color: '#FF4D90' },
@@ -962,3 +962,4 @@ export default function MyPage() {
     </div>
   )
 }
+
