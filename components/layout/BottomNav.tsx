@@ -8,11 +8,11 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
-  { href: '/timeline',      label: 'TL',      icon: Layers,        live: false },
-  { href: '/guilds',        label: 'ギルド',   icon: Shield,        live: false },
-  { href: '/guild',         label: 'ゲーム村', icon: Gamepad2,      live: true  },
-  { href: '/chat',          label: 'チャット', icon: MessageSquare, live: false },
-  { href: '/notifications', label: '通知',    icon: Bell,          live: false },
+  { href: '/timeline',      label: 'TL',      icon: Layers,        live: false, activeColor: '#49E1FF' },
+  { href: '/guilds',        label: 'ギルド',   icon: Shield,        live: false, activeColor: '#49E1FF' },
+  { href: '/guild',         label: 'ゲーム村', icon: Gamepad2,      live: true,  activeColor: '#9D5CFF' },
+  { href: '/chat',          label: 'チャット', icon: MessageSquare, live: false, activeColor: '#F59E0B' },
+  { href: '/notifications', label: '通知',    icon: Bell,          live: false, activeColor: '#FF84B0' },
 ]
 
 export default function BottomNav() {
@@ -57,7 +57,7 @@ export default function BottomNav() {
     >
       <div className="max-w-[430px] mx-auto flex items-center h-16">
 
-        {NAV_ITEMS.map(({ href, label, icon: Icon, live }) => {
+        {NAV_ITEMS.map(({ href, label, icon: Icon, live, activeColor }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           const badge  = badges[href] ?? 0
 
@@ -68,18 +68,18 @@ export default function BottomNav() {
                 {/* Active glow bg */}
                 {active && (
                   <div className="absolute inset-x-2 inset-y-1 rounded-2xl"
-                    style={{ background: 'rgba(157,92,255,0.12)', border: '1px solid rgba(157,92,255,0.2)' }} />
+                    style={{ background: `${activeColor}1F`, border: `1px solid ${activeColor}33` }} />
                 )}
                 <div className="relative z-10">
                   <Gamepad2
                     size={20}
                     strokeWidth={active ? 2.5 : 1.8}
-                    style={{ color: active ? '#9D5CFF' : 'rgba(157,92,255,0.5)' }}
+                    style={{ color: active ? activeColor : `${activeColor}80` }}
                   />
                   {/* LIVE badge */}
                   <span className="absolute -top-2 -right-4 flex items-center">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-40"
-                      style={{ background: '#9D5CFF' }} />
+                      style={{ background: activeColor }} />
                     <span className="relative text-[7px] font-extrabold tracking-widest px-1 py-px rounded-full leading-none"
                       style={{ background: 'linear-gradient(135deg,#9D5CFF,#FF4D90)', color: '#fff' }}>
                       LIVE
@@ -87,12 +87,12 @@ export default function BottomNav() {
                   </span>
                 </div>
                 <span className="text-[9px] font-extrabold tracking-wide mt-0.5 z-10"
-                  style={{ color: active ? '#9D5CFF' : 'rgba(157,92,255,0.5)' }}>
+                  style={{ color: active ? activeColor : `${activeColor}80` }}>
                   {label}
                 </span>
                 {active && (
                   <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full"
-                    style={{ background: 'linear-gradient(90deg,#9D5CFF,#FF4D90)' }} />
+                    style={{ background: activeColor, boxShadow: `0 0 8px ${activeColor}CC` }} />
                 )}
               </Link>
             )
@@ -106,12 +106,12 @@ export default function BottomNav() {
                   <Icon
                     size={20}
                     strokeWidth={active ? 2.5 : 1.8}
-                    style={{ color: active ? '#9D5CFF' : 'rgba(240,238,255,0.35)' }}
+                    style={{ color: active ? activeColor : `${activeColor}59` }}
                   />
                 )}
                 {badge > 0 && (
                   <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 rounded-full flex items-center justify-center px-1"
-                    style={{ background: 'linear-gradient(135deg,#9D5CFF,#FF4D90)' }}>
+                    style={{ background: activeColor }}>
                     <span className="text-[9px] font-extrabold text-white leading-none">
                       {badge > 99 ? '99+' : badge}
                     </span>
@@ -119,12 +119,12 @@ export default function BottomNav() {
                 )}
               </div>
               <span className="text-[9px] font-bold tracking-wide mt-0.5"
-                style={{ color: active ? '#9D5CFF' : 'rgba(240,238,255,0.35)' }}>
+                style={{ color: active ? activeColor : `${activeColor}59` }}>
                 {label}
               </span>
               {active && (
                 <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full"
-                  style={{ background: '#9D5CFF', boxShadow: '0 0 8px rgba(157,92,255,0.8)' }} />
+                  style={{ background: activeColor, boxShadow: `0 0 8px ${activeColor}CC` }} />
               )}
             </Link>
           )

@@ -8,7 +8,7 @@ import { TrustCard } from '@/components/ui/TrustBadge'
 import TrustBadge from '@/components/ui/TrustBadge'
 import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
 import { getUserTrust, fetchTierProgress, type TierProgress } from '@/lib/trust'
-import { Settings, LogOut, ChevronRight, Crown, Users, Copy, Check, Pencil, X, Eye, EyeOff } from 'lucide-react'
+import { Settings, LogOut, ChevronRight, Crown, Users, Copy, Check, Pencil, X, Eye, EyeOff, User } from 'lucide-react'
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
@@ -301,11 +301,24 @@ export default function MyPage() {
       <div className="relative">
         <div className="h-32 w-full" style={{ background: bannerGradient }} />
 
-        {/* 設定ボタン */}
+        {/* 左上：プロフィールアイコン */}
+        <div
+          className="absolute top-3 left-3 w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: 'rgba(8,8,18,0.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(157,92,255,0.3)' }}
+        >
+          <User size={16} className="text-white" />
+        </div>
+
+        {/* 設定ボタン（六角形） */}
         <Link
           href="/settings"
-          className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
-          style={{ background: 'rgba(8,8,18,0.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(157,92,255,0.3)' }}
+          className="absolute top-3 right-3 w-10 h-10 flex items-center justify-center active:scale-90 transition-all"
+          style={{
+            background: 'rgba(8,8,18,0.5)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(157,92,255,0.3)',
+            clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+          }}
         >
           <Settings size={16} className="text-white" />
         </Link>

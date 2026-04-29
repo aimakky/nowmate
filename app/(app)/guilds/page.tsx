@@ -232,7 +232,7 @@ export default function GuildsPage() {
         <div className="relative">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div>
-              <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(240,238,255,0.3)' }}>GUILD</p>
+              <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: '#49E1FF' }}>GUILD</p>
               <h1 className="font-extrabold text-2xl leading-tight" style={{ color: '#F0EEFF' }}>🛡️ ギルドを探す</h1>
               <p className="text-xs mt-0.5" style={{ color: 'rgba(240,238,255,0.3)' }}>同じゲームを愛する仲間が集まるコミュニティ</p>
             </div>
@@ -342,6 +342,15 @@ export default function GuildsPage() {
           </div>
         )}
 
+        {/* すべてのギルド divider */}
+        {!showLanes && (
+          <div className="px-4 flex items-center gap-3 pt-4 pb-2">
+            <div className="flex-1 h-px" style={{ background: 'rgba(157,92,255,0.2)' }} />
+            <span className="text-[11px] font-bold" style={{ color: 'rgba(240,238,255,0.4)' }}>すべてのギルド</span>
+            <div className="flex-1 h-px" style={{ background: 'rgba(157,92,255,0.2)' }} />
+          </div>
+        )}
+
         <div className="px-4 pt-4">
           {loading ? (
             <div className="space-y-3">
@@ -357,17 +366,48 @@ export default function GuildsPage() {
               ))}
             </div>
           ) : displayed.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="text-5xl mb-4">🛡️</div>
-              <p className="font-extrabold text-base mb-1.5" style={{ color: '#F0EEFF' }}>
+            <div className="text-center py-16">
+              {/* Glowing shield */}
+              <div className="relative w-44 h-44 mx-auto mb-6">
+                {/* Outer glow ring */}
+                <div className="absolute inset-0 rounded-full" style={{
+                  background: 'radial-gradient(circle, rgba(73,225,255,0.2) 0%, rgba(157,92,255,0.1) 50%, transparent 70%)',
+                  filter: 'blur(16px)',
+                }} />
+                {/* Sparkle dots */}
+                <span className="absolute top-4 right-8 text-xs font-bold" style={{ color: 'rgba(73,225,255,0.7)' }}>•</span>
+                <span className="absolute top-8 right-4 text-[8px] font-bold" style={{ color: 'rgba(157,92,255,0.5)' }}>•</span>
+                <span className="absolute bottom-6 left-6 text-xs font-bold" style={{ color: 'rgba(73,225,255,0.5)' }}>•</span>
+                <span className="absolute top-6 left-8 text-[8px] font-bold" style={{ color: 'rgba(255,255,255,0.3)' }}>•</span>
+                {/* Shield icon */}
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <div
+                    className="w-28 h-28 flex items-center justify-center"
+                    style={{ filter: 'drop-shadow(0 0 24px rgba(73,225,255,0.5)) drop-shadow(0 0 48px rgba(157,92,255,0.3))' }}
+                  >
+                    <span className="text-8xl">🛡️</span>
+                  </div>
+                </div>
+              </div>
+
+              <p className="font-extrabold text-lg mb-2" style={{ color: '#F0EEFF' }}>
                 {subFilter === 'member' ? 'まだギルドに参加していません' : 'このジャンルのギルドはまだありません'}
               </p>
-              <p className="text-sm mb-6" style={{ color: 'rgba(240,238,255,0.4)' }}>最初のギルドを作ってみましょう</p>
-              <button
-                onClick={() => router.push('/guilds/create')}
-                className="px-6 py-3 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)', boxShadow: '0 8px 24px rgba(157,92,255,0.4)' }}
-              >🛡️ ギルドを作る</button>
+              <p className="text-sm mb-8" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                {subFilter === 'member' ? '気に入ったギルドに参加しよう' : '最初のギルドを作ってみましょう'}
+              </p>
+              {subFilter !== 'member' && (
+                <button
+                  onClick={() => router.push('/guilds/create')}
+                  className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-base font-bold text-white active:scale-95 transition-all"
+                  style={{
+                    background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)',
+                    boxShadow: '0 8px 28px rgba(157,92,255,0.4)',
+                  }}
+                >
+                  🛡️ ギルドを作る
+                </button>
+              )}
             </div>
           ) : (
             <>

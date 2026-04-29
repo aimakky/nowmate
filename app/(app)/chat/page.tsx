@@ -318,18 +318,42 @@ export default function ChatListPage() {
               ))}
             </div>
           ) : directs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-4"
-                style={{ background: 'rgba(157,92,255,0.08)', border: '1px solid rgba(157,92,255,0.2)' }}>
-                <span className="text-4xl">💬</span>
+            <div className="flex flex-col items-center justify-center px-6" style={{ minHeight: 'calc(100vh - 200px)' }}>
+              {/* Chat bubble icon with sparkles */}
+              <div className="relative mb-6">
+                <span className="absolute -top-2 -right-1 text-[10px] font-bold" style={{ color: 'rgba(157,92,255,0.6)' }}>+</span>
+                <span className="absolute -bottom-1 -left-3 text-[10px] font-bold" style={{ color: 'rgba(157,92,255,0.4)' }}>+</span>
+                <span className="absolute top-2 -left-4 text-[8px] font-bold" style={{ color: 'rgba(73,225,255,0.5)' }}>+</span>
+                <div
+                  className="w-[80px] h-[80px] rounded-[22px] flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(157,92,255,0.2) 0%, rgba(73,225,255,0.1) 100%)',
+                    border: '1px solid rgba(157,92,255,0.25)',
+                    boxShadow: '0 0 30px rgba(157,92,255,0.15)',
+                  }}
+                >
+                  <span className="text-5xl">💬</span>
+                </div>
               </div>
-              <p className="font-extrabold text-base" style={{ color: '#F0EEFF' }}>まだチャットがありません</p>
-              <p className="text-sm mt-1.5 leading-relaxed max-w-[220px]" style={{ color: 'rgba(240,238,255,0.4)' }}>
+
+              <p className="font-extrabold text-xl mb-2 text-center" style={{ color: '#F0EEFF' }}>
+                まだチャットがありません
+              </p>
+              <p className="text-sm text-center leading-relaxed mb-8" style={{ color: 'rgba(240,238,255,0.4)' }}>
                 ギルドで知り合った仲間とDMができます
               </p>
-              <button onClick={() => router.push('/guilds')}
-                className="mt-5 px-6 py-3 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}>
+
+              {/* Neon border CTA button */}
+              <button
+                onClick={() => router.push('/guilds')}
+                className="relative w-full max-w-xs py-4 rounded-2xl font-bold text-base active:scale-[0.98] transition-all"
+                style={{
+                  background: 'rgba(157,92,255,0.12)',
+                  border: '1px solid rgba(157,92,255,0.5)',
+                  color: '#F0EEFF',
+                  boxShadow: '0 0 20px rgba(157,92,255,0.2), inset 0 0 20px rgba(157,92,255,0.05)',
+                }}
+              >
                 ギルドを探す →
               </button>
             </div>

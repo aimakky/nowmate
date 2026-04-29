@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
 import Avatar from '@/components/ui/Avatar'
+import { User } from 'lucide-react'
 
 type Notif = {
   id: string
@@ -115,15 +116,21 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0f0f1a' }}>
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
 
       {/* ── ヘッダー ── */}
       <div className="sticky top-0 z-10 px-4 pt-12 pb-3 backdrop-blur-md"
-        style={{ background: 'rgba(15,15,26,0.92)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(139,92,246,0.7)' }}>NOTIFICATIONS</p>
-            <h1 className="font-extrabold text-white text-xl">通知</h1>
+        style={{ background: 'rgba(8,8,18,0.92)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ border: '2px solid rgba(157,92,255,0.5)', background: 'rgba(157,92,255,0.1)' }}>
+              <User size={16} style={{ color: '#9D5CFF' }} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#9D5CFF' }}>NOTIFICATIONS</p>
+              <h1 className="font-extrabold text-2xl leading-tight" style={{ color: '#F0EEFF' }}>通知</h1>
+            </div>
           </div>
           {unreadCount > 0 && (
             <span className="flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-full"
@@ -149,15 +156,32 @@ export default function NotificationsPage() {
           ))}
         </div>
       ) : notifs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-32 px-8 text-center">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-            style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}>
-            <span className="text-3xl">🔔</span>
+        <div className="flex flex-col items-center justify-center px-6" style={{ minHeight: 'calc(100vh - 120px)' }}>
+          <div className="w-full max-w-xs rounded-3xl p-8 flex flex-col items-center text-center"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(157,92,255,0.12)' }}>
+            {/* Bell icon with sparkles */}
+            <div className="relative mb-6">
+              {/* Sparkle dots */}
+              <span className="absolute -top-2 -right-2 text-[10px] font-bold" style={{ color: 'rgba(157,92,255,0.6)' }}>+</span>
+              <span className="absolute -bottom-1 -left-3 text-[10px] font-bold" style={{ color: 'rgba(157,92,255,0.4)' }}>+</span>
+              <span className="absolute top-1 -left-4 text-[8px] font-bold" style={{ color: 'rgba(157,92,255,0.5)' }}>+</span>
+              <span className="absolute -top-3 left-3 text-[8px] font-bold" style={{ color: 'rgba(157,92,255,0.3)' }}>+</span>
+              <div
+                className="w-[72px] h-[72px] rounded-2xl flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(157,92,255,0.25) 0%, rgba(255,77,144,0.15) 100%)',
+                  border: '1px solid rgba(157,92,255,0.3)',
+                  boxShadow: '0 0 30px rgba(157,92,255,0.2)',
+                }}
+              >
+                <span className="text-4xl">🔔</span>
+              </div>
+            </div>
+            <p className="font-extrabold text-xl mb-2" style={{ color: '#F0EEFF' }}>通知はまだありません</p>
+            <p className="text-sm leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>
+              ギルドに投稿・返信・反応すると<br />ここに届きます
+            </p>
           </div>
-          <p className="font-bold text-white text-base mb-1">通知はまだありません</p>
-          <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            ギルドに投稿・返信・反応すると<br />ここに届きます
-          </p>
         </div>
       ) : (
         <div className="pb-28 pt-2">
