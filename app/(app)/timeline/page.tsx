@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getTierById } from '@/lib/trust'
 import { timeAgo } from '@/lib/utils'
 import { detectNgWords } from '@/lib/moderation'
-import { Heart, RefreshCw, ChevronRight, Users, Globe, Home, Share2, Sparkles, HelpCircle, Send, CheckCircle, X, Plus, Waves, Mic } from 'lucide-react'
+import { Heart, RefreshCw, ChevronRight, Users, Globe, Home, Share2, HelpCircle, Send, CheckCircle, X, Plus, Waves, Mic } from 'lucide-react'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import { detectCrisisKeywords } from '@/lib/moderation'
 import Link from 'next/link'
@@ -63,15 +63,6 @@ type FeedItem =
 
 const PAGE_SIZE = 20
 
-const DAILY_PROMPTS = [
-  { q: '最近、心があたたかくなった瞬間は？',        hint: '小さなことでも話してみて' },
-  { q: '今週、誰かに感謝したいことは？',             hint: '言えてなかった感謝を' },
-  { q: '最近、自分を褒めてあげたいことは？',         hint: '頑張ったこと、教えてみて' },
-  { q: '今日、誰かに話しかけたかったこと',           hint: 'うまく言えなかったやつ' },
-  { q: 'ずっと気になっていること、一つ挙げるなら',   hint: '答えは出なくてもいい' },
-  { q: '今の自分に必要なものは？',                   hint: '時間？人？休息？' },
-  { q: '最近、変わってきたと思うことは？',            hint: '自分でも気づいてる変化' },
-]
 
 const CAT_COLOR: Record<string, string> = {
   '雑談':           '#8b7355',
@@ -784,9 +775,7 @@ export default function TimelinePage() {
   const [voiceRooms,     setVoiceRooms]     = useState<VoiceRoom[]>([])
 
   const offsetRef   = useRef(0)
-  const todayPrompt = DAILY_PROMPTS[new Date().getDay()]
-
-  const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
+const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
 
   // ── 初期化 ──────────────────────────────────────────────────
   useEffect(() => {
@@ -1119,21 +1108,6 @@ export default function TimelinePage() {
           </div>
         )}
 
-        {/* 今日のお題カード */}
-        {tab === 'all' && (
-          <div className="rounded-2xl overflow-hidden shadow-sm"
-            style={{ background: 'linear-gradient(135deg,#1f3526 0%,#2d4d37 100%)', border: '1px solid rgba(74,124,89,0.3)' }}>
-            <div className="px-4 py-2.5 flex items-center gap-2"
-              style={{ background: 'rgba(74,124,89,0.25)' }}>
-              <Sparkles size={14} className="text-brand-300" />
-              <p className="text-[10px] font-extrabold text-brand-300 uppercase tracking-widest">今日のお題</p>
-            </div>
-            <div className="px-4 py-3.5">
-              <p className="text-sm font-bold text-white leading-relaxed">「{todayPrompt.q}」</p>
-              <p className="text-[10px] text-brand-300/70 mt-1">{todayPrompt.hint}</p>
-            </div>
-          </div>
-        )}
 
         {/* 村に参加していない */}
         {tab === 'myvillage' && myVillageIds.length === 0 && !loading && (
