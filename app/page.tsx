@@ -3,14 +3,27 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: '休憩村 — 知らない誰かに、助けてもらえるSNS',
-  description: '匿名で悩みや質問を流すと、民度の高い大人たちが答えてくれる。電話認証必須・Trust Tier制度で民度を設計した、日本唯一の大人コミュニティ。',
+  title: 'samee — 20歳以上限定の大人ゲームコミュニティ',
+  description: '民度が高い。荒らしがいない。電話認証必須・信頼ティア制度で守られた、ゲーマーのための大人コミュニティ。FPS・RPG・スマホゲームなど10ジャンルのギルドがある。',
   openGraph: {
-    title: '休憩村 — 知らない誰かに、助けてもらえるSNS',
-    description: '匿名で質問を流すと、誰かが答えてくれる。民度の高い大人のコミュニティ。',
+    title: 'samee — 20歳以上限定の大人ゲームコミュニティ',
+    description: '民度が高い。荒らしがいない。それだけで、全部違う。',
     images: [{ url: '/og-image.png', width: 1200, height: 630 }],
   },
 }
+
+const GENRES = [
+  { id: 'FPS・TPS',       emoji: '🎯', color: '#ef4444' },
+  { id: 'RPG',            emoji: '⚔️', color: '#8b5cf6' },
+  { id: 'アクション',     emoji: '🔥', color: '#f97316' },
+  { id: 'スポーツ',       emoji: '⚽', color: '#10b981' },
+  { id: 'スマホゲーム',   emoji: '📱', color: '#ec4899' },
+  { id: 'シミュレーション',emoji: '🧠', color: '#0891b2' },
+  { id: 'パズル',         emoji: '🧩', color: '#f59e0b' },
+  { id: 'インディー',     emoji: '🌱', color: '#059669' },
+  { id: 'レトロ',         emoji: '🕹️', color: '#6366f1' },
+  { id: '雑談',           emoji: '💬', color: '#64748b' },
+]
 
 export default async function TopPage() {
   const supabase = createClient()
@@ -21,300 +34,360 @@ export default async function TopPage() {
   const userCount = Math.max(count ?? 0, 1)
 
   return (
-    <div className="min-h-screen bg-birch flex flex-col max-w-[430px] mx-auto">
+    <div className="min-h-screen flex flex-col max-w-[430px] mx-auto" style={{ background: '#0a0a0f' }}>
 
       {/* ── ヘッダー ── */}
-      <header className="flex items-center justify-between px-5 pt-5 pb-3 sticky top-0 bg-birch/95 backdrop-blur z-10 border-b border-stone-100/60">
+      <header className="flex items-center justify-between px-5 pt-5 pb-3 sticky top-0 z-10 border-b border-white/10"
+        style={{ background: 'rgba(10,10,15,0.95)', backdropFilter: 'blur(12px)' }}>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm shadow-brand-200">
-            <span className="text-white font-black text-sm">V</span>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-lg"
+            style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
+            <span className="text-white font-black text-sm">s</span>
           </div>
-          <span className="font-extrabold text-stone-900 text-lg tracking-tight">休憩村</span>
+          <span className="font-extrabold text-white text-lg tracking-tight">samee</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full ml-1"
+            style={{ background: 'rgba(139,92,246,0.2)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.3)' }}>
+            20歳以上
+          </span>
         </div>
         <Link href="/login"
-          className="text-sm font-bold text-brand-500 px-4 py-1.5 rounded-xl border border-brand-200 hover:bg-brand-50 transition">
+          className="text-sm font-bold px-4 py-1.5 rounded-xl border transition"
+          style={{ color: '#a78bfa', borderColor: 'rgba(139,92,246,0.4)', background: 'rgba(139,92,246,0.1)' }}>
           ログイン
         </Link>
       </header>
 
       {/* ── ヒーロー ── */}
-      <section className="px-5 pt-8 pb-10 text-center flex flex-col items-center">
+      <section className="px-5 pt-10 pb-10 text-center flex flex-col items-center relative overflow-hidden">
+        {/* 背景グロー */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full blur-3xl pointer-events-none"
+          style={{ background: 'radial-gradient(circle,rgba(139,92,246,0.25) 0%,transparent 70%)' }} />
 
-        {/* 参加者バッジ */}
-        <div className="inline-flex items-center gap-2 bg-white border border-stone-200 rounded-full px-3.5 py-1.5 mb-5 shadow-sm">
-          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          <span className="text-xs font-bold text-stone-700">{userCount.toLocaleString()}人が利用中</span>
+        {/* ライブバッジ */}
+        <div className="relative inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-6"
+          style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.35)' }}>
+          <span className="relative flex w-2 h-2">
+            <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping"
+              style={{ background: '#a78bfa' }} />
+            <span className="relative inline-flex rounded-full w-2 h-2" style={{ background: '#8b5cf6' }} />
+          </span>
+          <span className="text-xs font-bold" style={{ color: '#c4b5fd' }}>
+            {userCount.toLocaleString()}人のゲーマーがいま在籍
+          </span>
         </div>
 
-        <h1 className="text-[2rem] font-black text-stone-900 leading-[1.2] mb-4 tracking-tight">
-          知らない誰かに、<br />
-          <span className="text-brand-500">助けてもらえた。</span>
+        <h1 className="font-black leading-[1.15] mb-4 tracking-tight"
+          style={{ fontSize: '2.1rem', color: 'white' }}>
+          民度の高い<br />
+          <span style={{
+            background: 'linear-gradient(135deg,#a78bfa 0%,#7c3aed 50%,#ec4899 100%)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          }}>大人のゲーム村</span>、<br />
+          ここにある。
         </h1>
 
-        <p className="text-stone-500 text-[14px] leading-relaxed mb-2 max-w-[300px]">
-          匿名で悩みや質問を流すと、<br />
-          民度の高い大人たちが答えてくれる。
+        <p className="text-sm leading-relaxed mb-2 max-w-[290px]" style={{ color: '#94a3b8' }}>
+          荒らしがいない。煽りがいない。<br />
+          <strong style={{ color: '#cbd5e1' }}>それだけで、全部違う。</strong>
         </p>
-        <p className="text-stone-700 text-[13px] font-bold mb-7">
-          それだけのSNS。でも、それが全部。
+        <p className="text-xs font-bold mb-8" style={{ color: '#6366f1' }}>
+          電話認証必須 · Trust Tier制度 · 20歳以上限定
         </p>
 
         <Link href="/signup"
-          className="w-full py-4 bg-brand-500 text-white rounded-2xl font-extrabold text-base text-center shadow-lg shadow-brand-200 active:scale-[0.98] transition-all mb-3">
+          className="w-full py-4 rounded-2xl font-extrabold text-base text-center active:scale-[0.98] transition-all mb-3"
+          style={{ background: 'linear-gradient(135deg,#8b5cf6 0%,#6d28d9 100%)', color: 'white',
+            boxShadow: '0 4px 24px rgba(139,92,246,0.5)' }}>
           無料で始める — 30秒 →
         </Link>
         <Link href="/login"
-          className="w-full py-3 border-2 border-stone-200 text-stone-600 rounded-2xl font-semibold text-sm text-center hover:bg-stone-50 active:scale-[0.98] transition-all">
+          className="w-full py-3 rounded-2xl font-semibold text-sm text-center active:scale-[0.98] transition-all"
+          style={{ border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8',
+            background: 'rgba(255,255,255,0.04)' }}>
           すでにアカウントがある
         </Link>
-        <p className="text-xs text-stone-400 mt-3">無料 · クレジットカード不要 · 18歳以上</p>
+        <p className="text-xs mt-3" style={{ color: '#475569' }}>無料 · クレジットカード不要 · 18歳以上</p>
       </section>
 
-      {/* ── 体験の流れ（漂流瓶 Q&A）── */}
-      <section className="px-4 pb-10">
-        <div className="rounded-3xl overflow-hidden"
-          style={{ background: 'linear-gradient(180deg,#060d1f 0%,#0a1e3d 100%)', border: '1px solid rgba(100,140,255,0.2)' }}>
+      {/* ── ジャンル一覧 ── */}
+      <section className="px-5 pb-10">
+        <p className="text-[10px] font-extrabold uppercase tracking-widest text-center mb-4"
+          style={{ color: '#475569' }}>
+          10ジャンルのゲームギルド
+        </p>
+        <div className="grid grid-cols-5 gap-2">
+          {GENRES.map(g => (
+            <div key={g.id}
+              className="flex flex-col items-center gap-1.5 rounded-2xl py-3 px-1"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <span className="text-xl">{g.emoji}</span>
+              <span className="text-[8px] font-bold text-center leading-tight"
+                style={{ color: '#94a3b8' }}>
+                {g.id}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="text-center text-xs mt-4" style={{ color: '#475569' }}>
+          同じゲームを語れる仲間が、ジャンルごとに集まっている
+        </p>
+      </section>
 
+      {/* ── Discord との違い ── */}
+      <section className="px-5 pb-10">
+        <div className="rounded-3xl overflow-hidden"
+          style={{ background: 'linear-gradient(135deg,#0f0f1a 0%,#1a0a2e 100%)',
+            border: '1px solid rgba(139,92,246,0.2)' }}>
           <div className="px-5 pt-6 pb-4 text-center">
-            <p className="text-[10px] font-bold text-blue-400/60 uppercase tracking-widest mb-1">🌊 漂流瓶 — 匿名Q&A</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1"
+              style={{ color: 'rgba(139,92,246,0.6)' }}>vs Discord</p>
             <h2 className="text-base font-extrabold text-white leading-snug">
-              こんなことが、ここでは起きる
+              Discordじゃダメな理由、わかる？
             </h2>
           </div>
-
-          {/* 体験ストーリー */}
-          <div className="px-4 pb-6 space-y-2">
+          <div className="px-4 pb-6 space-y-3">
             {[
-              {
-                role:  'question',
-                icon:  '😔',
-                text:  '「仕事が嫌で辞めたいけど、次が見つかるか不安で動けない」',
-                label: '匿名で質問を流した',
-              },
-              {
-                role:  'answer',
-                icon:  '🤝',
-                text:  '「同じ状況で辞めました。先に求人見るだけでもだいぶ気持ちが変わりますよ」',
-                label: '見知らぬ住民が答えた',
-              },
-              {
-                role:  'answer',
-                icon:  '💬',
-                text:  '「私は辞めてよかった派。でもまず副業から試したのが良かったかも」',
-                label: 'さらに別の住民も',
-              },
-              {
-                role:  'resolve',
-                icon:  '✅',
-                text:  '「解決しました。ありがとうございます」',
-                label: '質問者が解決マークをつけた',
-              },
-            ].map((item, i) => (
-              <div key={i} className={`flex gap-2.5 ${item.role === 'question' ? '' : 'pl-4'}`}>
-                <div className="flex-shrink-0 mt-1">
-                  {item.role === 'question'
-                    ? <div className="w-7 h-7 rounded-full bg-blue-900/60 flex items-center justify-center text-sm">{item.icon}</div>
-                    : item.role === 'resolve'
-                    ? <div className="w-7 h-7 rounded-full bg-green-900/40 flex items-center justify-center text-sm">{item.icon}</div>
-                    : <div className="w-7 h-7 rounded-full bg-indigo-900/60 flex items-center justify-center text-sm">{item.icon}</div>
-                  }
-                </div>
+              { problem: '中学生・荒らしが普通にいる',         solution: '20歳以上 + 電話認証必須',   icon: '🔞' },
+              { problem: '匿名すぎて誰を信じていいか謎',       solution: '信頼ティアで実績が見える',   icon: '🏅' },
+              { problem: 'サーバー乱立でどこ行けばいいか迷う', solution: 'ジャンル別ギルドで即マッチ', icon: '🎮' },
+              { problem: '仲間募集が埋もれてどこか不明',       solution: '仲間募集カテゴリ専用フォーム', icon: '🤝' },
+            ].map(item => (
+              <div key={item.icon} className="rounded-2xl px-3 py-3 flex items-start gap-3"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <span className="text-xl flex-shrink-0 mt-0.5">{item.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold mb-1"
-                    style={{ color: item.role === 'resolve' ? '#86efac' : item.role === 'question' ? '#93c5fd' : '#a5b4fc' }}>
-                    {item.label}
+                  <p className="text-[10px] line-through mb-1" style={{ color: '#475569' }}>
+                    ❌ {item.problem}
                   </p>
-                  <div className="rounded-xl px-3 py-2"
-                    style={item.role === 'question'
-                      ? { background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)' }
-                      : item.role === 'resolve'
-                      ? { background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }
-                      : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <p className="text-xs text-white/80 leading-relaxed">{item.text}</p>
-                  </div>
+                  <p className="text-xs font-bold" style={{ color: '#a78bfa' }}>
+                    ✓ {item.solution}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
+        </div>
+      </section>
 
-          <div className="px-4 pb-5 text-center">
-            <p className="text-[11px] text-blue-300/50">
-              匿名で流した質問に、民度の高い住民が本気で答える。<br />それが休憩村の漂流瓶。
+      {/* ── 機能ハイライト ── */}
+      <section className="px-5 pb-10">
+        <p className="text-[10px] font-extrabold uppercase tracking-widest text-center mb-5"
+          style={{ color: '#475569' }}>sameeでできること</p>
+        <div className="space-y-3">
+          {[
+            {
+              emoji: '🎮', title: 'ゲームギルド（村）',
+              desc: 'FPS・RPG・スマホゲームなど10ジャンル。同じゲームを語れる仲間とだけ話せる専用スペース。',
+              color: '#8b5cf6',
+            },
+            {
+              emoji: '🤝', title: '仲間募集（LFG）',
+              desc: 'ゲームタイトル・機種・活動時間を入力して仲間を募集。ランク上げ・フレンド集め・初心者歓迎など。',
+              color: '#ec4899',
+            },
+            {
+              emoji: '📊', title: '村内投票',
+              desc: '「今夜どのゲームやる？」をギルド内で投票。リアルタイムで棒グラフ表示。',
+              color: '#06b6d4',
+            },
+            {
+              emoji: '🏆', title: 'ジャンルマスター称号',
+              desc: '同ジャンルのギルドに3つ以上参加すると称号が解除。プロフィールに表示される。',
+              color: '#f59e0b',
+            },
+            {
+              emoji: '🧊', title: 'ストリーク＆凍結',
+              desc: '毎日ログインでストリークが続く。7日連続で凍結アイテム獲得 — 1日空いても自動でストリーク維持。',
+              color: '#10b981',
+            },
+          ].map(f => (
+            <div key={f.title} className="flex items-start gap-4 rounded-2xl px-4 py-4"
+              style={{ background: `${f.color}10`, border: `1px solid ${f.color}25` }}>
+              <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+                style={{ background: `${f.color}20`, border: `1px solid ${f.color}30` }}>
+                <span className="text-xl">{f.emoji}</span>
+              </div>
+              <div>
+                <p className="font-extrabold text-sm mb-1" style={{ color: 'white' }}>{f.title}</p>
+                <p className="text-xs leading-relaxed" style={{ color: '#94a3b8' }}>{f.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <Link href="/signup"
+          className="mt-8 w-full py-4 rounded-2xl font-extrabold text-base text-center active:scale-[0.98] transition-all block"
+          style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', color: 'white',
+            boxShadow: '0 4px 20px rgba(139,92,246,0.4)' }}>
+          無料で始める →
+        </Link>
+      </section>
+
+      {/* ── 信頼ティア ── */}
+      <section className="px-5 pb-10">
+        <div className="rounded-3xl overflow-hidden"
+          style={{ background: 'linear-gradient(135deg,#111827 0%,#1f2937 100%)',
+            border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="px-5 pt-6 pb-5">
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1"
+              style={{ color: '#6b7280' }}>Trust Tier</p>
+            <h2 className="text-base font-extrabold text-white mb-4">
+              活動するほど、できることが増える
+            </h2>
+            <div className="space-y-2">
+              {[
+                { icon: '🪴', label: '見習い',     desc: '登録直後。村を覗ける',          color: '#94a3b8' },
+                { icon: '🏡', label: '住民',       desc: '電話認証後。投稿・通話が使える', color: '#60a5fa' },
+                { icon: '🌿', label: '常連',       desc: '通話部屋を作れる',               color: '#34d399' },
+                { icon: '🌳', label: '信頼の住民', desc: '村・ギルドを作れる',             color: '#86efac' },
+                { icon: '✨', label: '村の柱',     desc: '金フレーム・全機能解放',         color: '#fbbf24' },
+              ].map(t => (
+                <div key={t.label} className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+                  style={{ background: 'rgba(255,255,255,0.04)' }}>
+                  <span className="text-base w-7 text-center flex-shrink-0">{t.icon}</span>
+                  <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold flex-shrink-0"
+                      style={{ color: t.color }}>{t.label}</span>
+                    <span className="text-[10px] truncate"
+                      style={{ color: '#6b7280' }}>{t.desc}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="border-t px-5 py-4" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+            <p className="text-[11px] leading-relaxed" style={{ color: '#6b7280' }}>
+              電話認証必須 + Trust Tier制度により、荒らし・未成年・業者を構造的に排除。
+              大人のゲーマーだけが残る。
             </p>
           </div>
         </div>
       </section>
 
-      {/* ── 3つの体験 ── */}
-      <section className="px-5 pb-10">
-        <p className="text-xs font-bold text-stone-400 uppercase tracking-widest text-center mb-5">休憩村でできること</p>
-        <div className="space-y-3">
-          {[
-            {
-              emoji: '🌊',
-              title: '漂流瓶で匿名Q&A',
-              desc:  '悩みや質問を匿名で流すと、知らない誰かが答えてくれる。ベストアンサーも選べる。',
-              color: '#1d4ed8',
-              bg:    '#eff6ff',
-              border:'#bfdbfe',
-            },
-            {
-              emoji: '🏕️',
-              title: '村コミュニティ',
-              desc:  '同じテーマの村に参加して、毎日会う顔なじみを作る。声で話せる通話ルームも。',
-              color: '#166534',
-              bg:    '#f0fdf4',
-              border:'#bbf7d0',
-            },
-            {
-              emoji: '🤝',
-              title: '人助けが実績になる',
-              desc:  'Q&Aに答えるたびに「助けた人数」がプロフィールに残る。貢献が見える文化。',
-              color: '#92400e',
-              bg:    '#fffbeb',
-              border:'#fde68a',
-            },
-          ].map(f => (
-            <div key={f.title} className="flex items-start gap-4 rounded-2xl px-4 py-4 shadow-sm"
-              style={{ background: f.bg, border: `1px solid ${f.border}` }}>
-              <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-                style={{ background: `${f.color}15`, border: `1px solid ${f.color}25` }}>
-                <span className="text-xl">{f.emoji}</span>
-              </div>
-              <div>
-                <p className="font-extrabold text-stone-900 text-sm mb-1">{f.title}</p>
-                <p className="text-xs text-stone-500 leading-relaxed">{f.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        <Link href="/signup"
-          className="mt-8 w-full py-4 bg-brand-500 text-white rounded-2xl font-extrabold text-base text-center shadow-md shadow-brand-200 active:scale-[0.98] transition-all block">
-          無料で始める →
-        </Link>
-      </section>
-
       {/* ── ユーザーの声 ── */}
-      <section className="bg-stone-50 px-5 py-10">
-        <p className="text-xs font-bold text-stone-400 uppercase tracking-widest text-center mb-2">実際の声</p>
-        <h2 className="text-xl font-extrabold text-center text-stone-900 mb-6">「知らない人に助けられた」</h2>
+      <section className="px-5 pb-10">
+        <p className="text-[10px] font-extrabold uppercase tracking-widest text-center mb-5"
+          style={{ color: '#475569' }}>実際の声</p>
         <div className="space-y-3">
           {[
             {
-              text: '漂流瓶で「転職迷ってる」って流したら、3人から返事が来た。みんなちゃんと考えて答えてくれてる感じがした。',
-              name: '会社員・28歳',
+              text: 'Discordのサーバーって結局荒らしが来るじゃないですか。ここは電話認証あるから、明らかに雰囲気違う。',
+              name: '社会人・29歳・FPSメイン',
             },
             {
-              text: 'テキストだと伝わらないニュアンスが、声だと一発でわかる。「しんどい」の一言でも、声で言うと全然違う。',
-              name: '看護師・34歳',
+              text: 'ジャンルマスター称号が解除されたとき、地味にテンション上がった笑。ゲームの実績みたいで好き。',
+              name: 'フリーランス・33歳・RPG好き',
             },
             {
-              text: '人助けカウントが5になったとき、なんか誇らしかった。Xで「いいね」もらうより嬉しいかも。',
-              name: 'フリーランス・31歳',
+              text: '仲間募集フォームがちゃんと機能ごとに分かれてるから見つけやすい。他のSNSだと投稿が流れちゃう。',
+              name: '会社員・26歳・スマホゲームメイン',
             },
           ].map((v, i) => (
-            <div key={i} className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm">
-              <p className="text-sm text-stone-700 leading-relaxed mb-3">「{v.text}」</p>
-              <p className="text-xs text-stone-400 font-semibold">{v.name}</p>
+            <div key={i} className="rounded-2xl p-4"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <p className="text-sm leading-relaxed mb-3" style={{ color: '#cbd5e1' }}>
+                「{v.text}」
+              </p>
+              <p className="text-xs font-semibold" style={{ color: '#475569' }}>{v.name}</p>
             </div>
           ))}
         </div>
-      </section>
-
-      {/* ── 民度の設計 ── */}
-      <section className="bg-stone-900 px-5 py-10">
-        <p className="text-xs font-bold text-stone-400 uppercase tracking-widest text-center mb-2">なぜ安心なのか</p>
-        <h2 className="text-xl font-extrabold text-center text-white mb-7">民度は、設計で決まる</h2>
-        <div className="space-y-3">
-          {[
-            { emoji: '📱', title: '電話認証が必須',     desc: '捨てアカが存在できない設計。本物の人間だけが入れる。' },
-            { emoji: '🏅', title: 'Trust Tier制度',     desc: '活動するほど信頼が上がる。ティアが上がると使える機能が増える。' },
-            { emoji: '🔒', title: '匿名・本名不要',     desc: 'ニックネームだけでOK。言いたくないことは言わなくていい。' },
-            { emoji: '🤝', title: '人助けが可視化',     desc: 'Q&Aに答えると「助けた人数」が残る。貢献する文化が自然に生まれる。' },
-          ].map(t => (
-            <div key={t.title} className="flex items-start gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5">
-              <span className="text-xl flex-shrink-0 mt-0.5">{t.emoji}</span>
-              <div>
-                <p className="font-bold text-white text-sm mb-0.5">{t.title}</p>
-                <p className="text-xs text-stone-400 leading-relaxed">{t.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        <Link href="/signup"
-          className="mt-8 w-full py-4 bg-brand-500 text-white rounded-2xl font-extrabold text-base text-center shadow-lg active:scale-[0.98] transition-all block">
-          無料で始める →
-        </Link>
       </section>
 
       {/* ── こんな人に ── */}
-      <section className="px-5 py-10">
-        <p className="text-xs font-bold text-stone-400 uppercase tracking-widest text-center mb-2">こんな人に</p>
-        <h2 className="text-xl font-extrabold text-center text-stone-900 mb-6">あなたの話し相手が、ここにいる</h2>
-        <div className="space-y-2.5">
+      <section className="px-5 pb-10">
+        <p className="text-[10px] font-extrabold uppercase tracking-widest text-center mb-5"
+          style={{ color: '#475569' }}>こんなゲーマーに</p>
+        <div className="space-y-2">
           {[
-            { emoji: '😮‍💨', text: '今日しんどかった、誰かに話を聞いてほしい' },
-            { emoji: '❓',   text: '悩みや疑問を、匿名で誰かに聞いてみたい' },
-            { emoji: '🤝',  text: '誰かの役に立ちたい、でも大げさにしたくない' },
-            { emoji: '🌙',  text: '夜中に一人でいるとき、誰かと話したい' },
-            { emoji: '💬',  text: 'SNSに疲れた、変な人がいない場所に行きたい' },
-            { emoji: '🌱',  text: '居場所がほしい、でも無理せず繋がりたい' },
+            { emoji: '🎮', text: '荒らしがいないゲームコミュニティで話したい' },
+            { emoji: '🤝', text: '固定パーティー・フレンドを真剣に探している' },
+            { emoji: '🏆', text: 'ゲームの話を大人同士でできる場所がほしい' },
+            { emoji: '🌙', text: '夜中に一緒にやれる仲間が欲しい' },
+            { emoji: '💬', text: 'Discordは荒れすぎ、Twitterは拡散が怖い' },
+            { emoji: '🌱', text: '初心者だけど、馬鹿にされない場所で始めたい' },
           ].map(item => (
-            <div key={item.text} className="flex items-center gap-3 bg-white border border-stone-100 rounded-2xl px-4 py-3 shadow-sm">
+            <div key={item.text}
+              className="flex items-center gap-3 rounded-2xl px-4 py-3"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
               <span className="text-lg flex-shrink-0">{item.emoji}</span>
-              <p className="text-sm text-stone-700 font-medium">{item.text}</p>
+              <p className="text-sm font-medium" style={{ color: '#cbd5e1' }}>{item.text}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── 最終CTA ── */}
-      <section className="px-5 pb-12">
-        <div className="rounded-3xl p-8 text-center"
-          style={{ background: 'linear-gradient(135deg,#1a1a2e 0%,#4f46e5 100%)' }}>
-          <p className="text-white/50 text-xs mb-3">電話認証必須 · 18歳以上 · 匿名OK</p>
-          <h2 className="text-2xl font-extrabold text-white mb-2">
-            知らない誰かに、<br />助けてもらいに行く。
-          </h2>
-          <p className="text-white/50 text-xs mb-6">民度を設計した、日本唯一の大人コミュニティ</p>
-          <Link href="/signup"
-            className="w-full py-4 bg-white text-brand-600 rounded-2xl font-extrabold text-base text-center active:scale-[0.98] transition-all block mb-3 shadow-lg">
-            無料で始める →
-          </Link>
-          <p className="text-xs text-white/30">30秒で登録 · 永久無料 · 18歳以上</p>
+      <section className="px-5 pb-14">
+        <div className="rounded-3xl p-8 text-center relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg,#1e0a3c 0%,#2d1b69 50%,#1e3a5f 100%)',
+            border: '1px solid rgba(139,92,246,0.3)',
+            boxShadow: '0 0 60px rgba(139,92,246,0.2)',
+          }}>
+          <div className="absolute inset-0 pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse at 50% 0%,rgba(139,92,246,0.2) 0%,transparent 60%)' }} />
+          <div className="relative">
+            <p className="text-xs mb-4" style={{ color: 'rgba(167,139,250,0.6)' }}>
+              電話認証必須 · 20歳以上 · 荒らし構造排除
+            </p>
+            <h2 className="text-2xl font-extrabold text-white mb-2 leading-snug">
+              民度の高い仲間と、<br />
+              本気でゲームを語ろう。
+            </h2>
+            <p className="text-xs mb-7" style={{ color: 'rgba(148,163,184,0.7)' }}>
+              大人のゲームコミュニティ、samee
+            </p>
+            <Link href="/signup"
+              className="w-full py-4 rounded-2xl font-extrabold text-base text-center active:scale-[0.98] transition-all block mb-3"
+              style={{
+                background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', color: 'white',
+                boxShadow: '0 4px 24px rgba(139,92,246,0.6)',
+              }}>
+              無料で始める →
+            </Link>
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>30秒で登録 · 永久無料</p>
+          </div>
         </div>
       </section>
 
       {/* ── B2B ── */}
       <section className="px-5 pb-6">
         <Link href="/for-business"
-          className="flex items-center gap-3 bg-white border border-stone-200 rounded-2xl px-4 py-3.5 hover:bg-stone-50 active:scale-[0.98] transition-all shadow-sm">
+          className="flex items-center gap-3 rounded-2xl px-4 py-3.5 active:scale-[0.98] transition-all"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <span className="text-2xl">🏢</span>
           <div className="flex-1">
-            <p className="font-bold text-stone-800 text-sm">休憩村 for Business</p>
-            <p className="text-xs text-stone-500">社内コミュニティ・エンゲージメント設計 →</p>
+            <p className="font-bold text-sm" style={{ color: '#e2e8f0' }}>samee for Business</p>
+            <p className="text-xs" style={{ color: '#64748b' }}>
+              ゲーム企業・コミュニティ運営向けプラン →
+            </p>
           </div>
-          <span className="text-stone-400 text-sm">→</span>
+          <span style={{ color: '#475569' }}>→</span>
         </Link>
       </section>
 
       {/* ── フッター ── */}
-      <footer className="border-t border-stone-100 px-5 py-6 text-center bg-birch">
+      <footer className="border-t px-5 py-6 text-center"
+        style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#0a0a0f' }}>
         <div className="flex items-center justify-center gap-2 mb-3">
-          <div className="w-6 h-6 bg-brand-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-black text-xs">V</span>
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
+            <span className="text-white font-black text-xs">s</span>
           </div>
-          <span className="font-bold text-stone-700">休憩村</span>
+          <span className="font-bold" style={{ color: '#94a3b8' }}>samee</span>
         </div>
-        <p className="text-xs text-stone-400 mb-3">知らない誰かに、助けてもらえるSNS · 18歳以上</p>
-        <div className="flex justify-center gap-5 text-xs text-stone-400">
-          <Link href="/terms"   className="hover:text-stone-600 transition">利用規約</Link>
-          <Link href="/privacy" className="hover:text-stone-600 transition">プライバシー</Link>
-          <Link href="/safety"  className="hover:text-stone-600 transition">Safety Center</Link>
-          <Link href="/contact" className="hover:text-stone-600 transition">お問い合わせ</Link>
+        <p className="text-xs mb-3" style={{ color: '#475569' }}>
+          20歳以上限定の大人ゲームコミュニティ
+        </p>
+        <div className="flex justify-center gap-5 text-xs" style={{ color: '#475569' }}>
+          <Link href="/terms"   className="hover:text-slate-300 transition">利用規約</Link>
+          <Link href="/privacy" className="hover:text-slate-300 transition">プライバシー</Link>
+          <Link href="/safety"  className="hover:text-slate-300 transition">Safety Center</Link>
+          <Link href="/contact" className="hover:text-slate-300 transition">お問い合わせ</Link>
         </div>
-        <p className="text-xs text-stone-300 mt-3">© 2026 休憩村</p>
+        <p className="text-xs mt-3" style={{ color: '#334155' }}>© 2026 samee</p>
       </footer>
+
     </div>
   )
 }
