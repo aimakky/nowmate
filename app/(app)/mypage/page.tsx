@@ -66,12 +66,12 @@ function TweetComposeSheet({
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div
         className="relative rounded-t-3xl w-full max-w-md mx-auto overflow-hidden"
-        style={{ background: '#0f0820', border: '1px solid rgba(157,92,255,0.2)', borderBottom: 'none' }}
+        style={{ background: '#0a0a18', border: '1px solid rgba(234,242,255,0.12)', borderBottom: 'none' }}
         onClick={e => e.stopPropagation()}
       >
         {/* ドラッグハンドル */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(157,92,255,0.3)' }} />
+          <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(234,242,255,0.18)' }} />
         </div>
 
         {/* ヘッダー */}
@@ -87,7 +87,7 @@ function TweetComposeSheet({
             onClick={handlePost}
             disabled={!text.trim() || sending || sent || text.length > MAX}
             className="px-5 py-1.5 rounded-full text-sm font-extrabold text-white disabled:opacity-40 active:scale-95 transition-all"
-            style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}
+            style={{ background: 'linear-gradient(135deg, #EAF2FF 0%, #B8C7D9 100%)', boxShadow: '0 4px 20px rgba(234,242,255,0.24)' }}
           >
             {sending ? (
               <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin block" />
@@ -100,7 +100,7 @@ function TweetComposeSheet({
           <div className="flex-shrink-0">
             <div
               className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold text-white"
-              style={{ background: 'linear-gradient(135deg, #9D5CFF, #FF4D90)' }}
+              style={{ background: 'linear-gradient(135deg, #EAF2FF, #FF4D90)' }}
             >
               {avatarUrl
                 ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -122,13 +122,13 @@ function TweetComposeSheet({
         </div>
 
         {/* フッター */}
-        <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: '1px solid rgba(157,92,255,0.15)' }}>
+        <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: '1px solid rgba(234,242,255,0.09)' }}>
           <p className="text-[11px]" style={{ color: 'rgba(240,238,255,0.3)' }}>タイムラインに公開されます</p>
           <div className="flex items-center gap-2.5">
             <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">
-              <circle cx="12" cy="12" r={circleR} fill="none" stroke="rgba(157,92,255,0.2)" strokeWidth="2.5" />
+              <circle cx="12" cy="12" r={circleR} fill="none" stroke="rgba(234,242,255,0.12)" strokeWidth="2.5" />
               <circle cx="12" cy="12" r={circleR} fill="none"
-                stroke={pct > 0.9 ? '#FF4D90' : '#9D5CFF'}
+                stroke={pct > 0.9 ? '#FF4D90' : '#EAF2FF'}
                 strokeWidth="2.5" strokeLinecap="round"
                 strokeDasharray={circleC}
                 strokeDashoffset={circleC * (1 - pct)}
@@ -281,7 +281,7 @@ export default function MyPage() {
   if (loading || !profile) {
     return (
       <div className="flex items-center justify-center h-screen" style={{ background: '#0d0b1f' }}>
-        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }} />
+        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#EAF2FF', borderTopColor: 'transparent' }} />
       </div>
     )
   }
@@ -292,7 +292,7 @@ export default function MyPage() {
 
   const bannerGradient = industryInfo
     ? industryInfo.gradient
-    : 'linear-gradient(135deg, #0d0820 0%, #1a0a40 50%, #0a0a30 100%)'
+    : 'linear-gradient(135deg, #0a0a18 0%, #0d0d1e 50%, #080818 100%)'
 
   return (
     <div className="max-w-md mx-auto min-h-screen relative overflow-x-hidden" style={{ background: '#0d0b1f' }}>
@@ -418,7 +418,7 @@ export default function MyPage() {
               ) : (
                 <span
                   className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full"
-                  style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.3)', border: '1px solid rgba(157,92,255,0.15)' }}
+                  style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.3)', border: '1px solid rgba(234,242,255,0.09)' }}
                 >
                   {industryInfo.emoji} 非公開
                 </span>
@@ -482,13 +482,13 @@ export default function MyPage() {
             {tweetLoading ? (
               <div className="space-y-0">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="px-4 py-4 animate-pulse" style={{ borderBottom: '1px solid rgba(157,92,255,0.08)' }}>
+                  <div key={i} className="px-4 py-4 animate-pulse" style={{ borderBottom: '1px solid rgba(234,242,255,0.05)' }}>
                     <div className="flex gap-3">
-                      <div className="w-9 h-9 rounded-full flex-shrink-0" style={{ background: 'rgba(157,92,255,0.1)' }} />
+                      <div className="w-9 h-9 rounded-full flex-shrink-0" style={{ background: 'rgba(234,242,255,0.06)' }} />
                       <div className="flex-1 space-y-2">
-                        <div className="h-3 rounded w-1/4" style={{ background: 'rgba(157,92,255,0.15)' }} />
-                        <div className="h-3.5 rounded w-full" style={{ background: 'rgba(157,92,255,0.08)' }} />
-                        <div className="h-3.5 rounded w-3/4" style={{ background: 'rgba(157,92,255,0.08)' }} />
+                        <div className="h-3 rounded w-1/4" style={{ background: 'rgba(234,242,255,0.09)' }} />
+                        <div className="h-3.5 rounded w-full" style={{ background: 'rgba(234,242,255,0.05)' }} />
+                        <div className="h-3.5 rounded w-3/4" style={{ background: 'rgba(234,242,255,0.05)' }} />
                       </div>
                     </div>
                   </div>
@@ -498,16 +498,16 @@ export default function MyPage() {
               <div className="flex flex-col items-center py-20 text-center px-6">
                 <div
                   className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-                  style={{ background: 'rgba(157,92,255,0.1)', border: '1px solid rgba(157,92,255,0.2)' }}
+                  style={{ background: 'rgba(234,242,255,0.06)', border: '1px solid rgba(234,242,255,0.12)' }}
                 >
-                  <Pencil size={28} style={{ color: 'rgba(157,92,255,0.5)' }} />
+                  <Pencil size={28} style={{ color: 'rgba(234,242,255,0.3)' }} />
                 </div>
                 <p className="font-bold text-sm" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ投稿がありません</p>
                 <p className="text-xs mt-1.5" style={{ color: 'rgba(240,238,255,0.3)' }}>思ったことをつぶやいてみよう</p>
                 <button
                   onClick={() => setShowCompose(true)}
                   className="mt-5 px-5 py-2.5 rounded-full text-sm font-bold text-white active:scale-95 transition-all"
-                  style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}
+                  style={{ background: 'linear-gradient(135deg, #EAF2FF 0%, #B8C7D9 100%)', boxShadow: '0 4px 20px rgba(234,242,255,0.24)' }}
                 >
                   最初の投稿をする
                 </button>
@@ -536,7 +536,7 @@ export default function MyPage() {
               <div className="flex flex-col items-center py-16 text-center px-6">
                 <div
                   className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-                  style={{ background: 'rgba(157,92,255,0.1)', border: '1px solid rgba(157,92,255,0.2)' }}
+                  style={{ background: 'rgba(234,242,255,0.06)', border: '1px solid rgba(234,242,255,0.12)' }}
                 >
                   <span className="text-3xl">🖼️</span>
                 </div>
@@ -544,12 +544,12 @@ export default function MyPage() {
                 <p className="text-xs mt-1.5" style={{ color: 'rgba(240,238,255,0.3)' }}>ギルドに画像付きで投稿しよう</p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-0.5" style={{ background: 'rgba(157,92,255,0.1)' }}>
+              <div className="grid grid-cols-3 gap-0.5" style={{ background: 'rgba(234,242,255,0.06)' }}>
                 {imagePosts.map((post: any) => (
                   <div
                     key={post.id}
                     className="aspect-square overflow-hidden active:opacity-80 transition-opacity"
-                    style={{ background: 'rgba(157,92,255,0.08)' }}
+                    style={{ background: 'rgba(234,242,255,0.05)' }}
                     onClick={() => router.push(`/guild/${post.id}`)}
                   >
                     <img
@@ -578,11 +578,11 @@ export default function MyPage() {
                   <div className="flex gap-2 mt-4">
                     <button onClick={() => router.push('/guilds')}
                       className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
-                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(157,92,255,0.2)' }}
+                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(234,242,255,0.12)' }}
                     >🛡️ ギルドを探す</button>
                     <button onClick={() => router.push('/guild')}
                       className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
-                      style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)', boxShadow: '0 4px 16px rgba(157,92,255,0.4)' }}
+                      style={{ background: 'linear-gradient(135deg, #EAF2FF 0%, #B8C7D9 100%)', boxShadow: '0 4px 16px rgba(234,242,255,0.24)' }}
                     >🎮 ゲーム村へ</button>
                   </div>
                 </div>
@@ -599,9 +599,9 @@ export default function MyPage() {
                         return (
                           <Link key={v.id} href={`/villages/${v.id}`}
                             className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
-                            style={{ borderBottom: '1px solid rgba(157,92,255,0.08)' }}>
+                            style={{ borderBottom: '1px solid rgba(234,242,255,0.05)' }}>
                             <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
-                              style={{ background: vs.gradient, boxShadow: '0 0 12px rgba(157,92,255,0.3)' }}>{v.icon}</div>
+                              style={{ background: vs.gradient, boxShadow: '0 0 12px rgba(234,242,255,0.18)' }}>{v.icon}</div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
                               <p className="text-[11px]" style={{ color: '#B8C7D9' }}>
@@ -617,17 +617,17 @@ export default function MyPage() {
                   {/* 🎮 ギルドセクション */}
                   {myGuilds.length > 0 && (
                     <>
-                      <div className="px-4 py-2" style={{ background: 'rgba(157,92,255,0.06)' }}>
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#9D5CFF' }}>🎮 ギルド</p>
+                      <div className="px-4 py-2" style={{ background: 'rgba(234,242,255,0.04)' }}>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#EAF2FF' }}>🎮 ギルド</p>
                       </div>
                       {myGuilds.map((v: any) => {
                         const genreInfo = INDUSTRIES.find(i => i.id === v.category)
                         return (
                           <Link key={v.id} href={`/villages/${v.id}`}
                             className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
-                            style={{ borderBottom: '1px solid rgba(157,92,255,0.08)' }}>
+                            style={{ borderBottom: '1px solid rgba(234,242,255,0.05)' }}>
                             <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
-                              style={{ background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg, #9D5CFF, #7B3FE4)', boxShadow: '0 0 12px rgba(157,92,255,0.3)' }}>{v.icon}</div>
+                              style={{ background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg, #EAF2FF, #B8C7D9)', boxShadow: '0 0 12px rgba(234,242,255,0.18)' }}>{v.icon}</div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 mb-0.5">
                                 <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
@@ -665,16 +665,16 @@ export default function MyPage() {
             <div>
               {hostedVillages.length === 0 ? (
                 <div className="flex flex-col items-center py-16 text-center">
-                  <Crown size={36} style={{ color: 'rgba(157,92,255,0.3)' }} className="mb-3" />
+                  <Crown size={36} style={{ color: 'rgba(234,242,255,0.18)' }} className="mb-3" />
                   <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだギルド・ゲーム村を作っていません</p>
                   <div className="flex gap-2 mt-4">
                     <button onClick={() => router.push('/guilds/create')}
                       className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
-                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(157,92,255,0.2)' }}
+                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(234,242,255,0.12)' }}
                     >🛡️ ギルドを作る</button>
                     <button onClick={() => router.push('/guild/create')}
                       className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
-                      style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)', boxShadow: '0 4px 16px rgba(157,92,255,0.4)' }}
+                      style={{ background: 'linear-gradient(135deg, #EAF2FF 0%, #B8C7D9 100%)', boxShadow: '0 4px 16px rgba(234,242,255,0.24)' }}
                     >🎮 ゲーム村を作る</button>
                   </div>
                 </div>
@@ -691,9 +691,9 @@ export default function MyPage() {
                         return (
                           <Link key={v.id} href={`/villages/${v.id}`}
                             className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
-                            style={{ borderBottom: '1px solid rgba(157,92,255,0.08)' }}>
+                            style={{ borderBottom: '1px solid rgba(234,242,255,0.05)' }}>
                             <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
-                              style={{ background: vs.gradient, boxShadow: '0 0 12px rgba(157,92,255,0.3)' }}>{v.icon}</div>
+                              style={{ background: vs.gradient, boxShadow: '0 0 12px rgba(234,242,255,0.18)' }}>{v.icon}</div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 mb-0.5">
                                 <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
@@ -717,23 +717,23 @@ export default function MyPage() {
                   {/* 🎮 オーナーギルドセクション */}
                   {ownedGuilds.length > 0 && (
                     <>
-                      <div className="px-4 py-2" style={{ background: 'rgba(157,92,255,0.06)' }}>
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#9D5CFF' }}>🎮 オーナーギルド</p>
+                      <div className="px-4 py-2" style={{ background: 'rgba(234,242,255,0.04)' }}>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#EAF2FF' }}>🎮 オーナーギルド</p>
                       </div>
                       {ownedGuilds.map((v: any) => {
                         const genreInfo = INDUSTRIES.find(i => i.id === v.category)
                         return (
                           <Link key={v.id} href={`/villages/${v.id}`}
                             className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
-                            style={{ borderBottom: '1px solid rgba(157,92,255,0.08)' }}>
+                            style={{ borderBottom: '1px solid rgba(234,242,255,0.05)' }}>
                             <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
-                              style={{ background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg, #9D5CFF, #7B3FE4)', boxShadow: '0 0 12px rgba(157,92,255,0.3)' }}>{v.icon}</div>
+                              style={{ background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg, #EAF2FF, #B8C7D9)', boxShadow: '0 0 12px rgba(234,242,255,0.18)' }}>{v.icon}</div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 mb-0.5">
                                 <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
                                 <span
                                   className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                                  style={{ background: 'rgba(157,92,255,0.15)', color: '#9D5CFF', border: '1px solid rgba(157,92,255,0.3)' }}
+                                  style={{ background: 'rgba(234,242,255,0.09)', color: '#EAF2FF', border: '1px solid rgba(234,242,255,0.18)' }}
                                 >
                                   <Crown size={8} /> 団長
                                 </span>
@@ -760,14 +760,14 @@ export default function MyPage() {
             <button
               onClick={() => setShowPhoneVerify(true)}
               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left active:scale-[0.99] transition-all"
-              style={{ background: 'rgba(157,92,255,0.08)', border: '1px solid rgba(157,92,255,0.25)' }}
+              style={{ background: 'rgba(234,242,255,0.05)', border: '1px solid rgba(234,242,255,0.15)' }}
             >
               <span className="text-2xl">📱</span>
               <div className="flex-1">
-                <p className="text-sm font-bold" style={{ color: '#9D5CFF' }}>電話番号を認証する</p>
-                <p className="text-xs mt-0.5" style={{ color: 'rgba(157,92,255,0.6)' }}>投稿・通話が解放されます · +30pt</p>
+                <p className="text-sm font-bold" style={{ color: '#EAF2FF' }}>電話番号を認証する</p>
+                <p className="text-xs mt-0.5" style={{ color: 'rgba(234,242,255,0.38)' }}>投稿・通話が解放されます · +30pt</p>
               </div>
-              <ChevronRight size={16} style={{ color: 'rgba(157,92,255,0.5)' }} />
+              <ChevronRight size={16} style={{ color: 'rgba(234,242,255,0.3)' }} />
             </button>
           )}
 
@@ -775,7 +775,7 @@ export default function MyPage() {
           {profile && userId && (
             <div
               className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)' }}
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(234,242,255,0.12)' }}
             >
               <div className="px-4 pt-4 pb-1">
                 <p className="text-[10px] font-extrabold uppercase tracking-widest mb-1" style={{ color: 'rgba(240,238,255,0.3)' }}>DM受信設定</p>
@@ -792,7 +792,7 @@ export default function MyPage() {
           {trust && (
             <div
               className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)' }}
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(234,242,255,0.12)' }}
             >
               <div className="px-4 pt-4 pb-3">
                 <p className="text-[10px] font-extrabold uppercase tracking-widest mb-3" style={{ color: 'rgba(240,238,255,0.3)' }}>信頼スコア</p>
@@ -806,7 +806,7 @@ export default function MyPage() {
                           ? 'linear-gradient(135deg, #7CFF82, #00E676)'
                           : trust.score >= 300
                           ? 'linear-gradient(135deg, #49E1FF, #00B4CC)'
-                          : 'linear-gradient(135deg, #9D5CFF, #7B3FE4)',
+                          : 'linear-gradient(135deg, #EAF2FF, #B8C7D9)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                       }}>
@@ -830,7 +830,7 @@ export default function MyPage() {
                   const tiers = [
                     { id: 'resident', min: 100,  label: '住民',  color: '#B8C7D9' },
                     { id: 'regular',  min: 300,  label: '常連',  color: '#7CFF82' },
-                    { id: 'trusted',  min: 600,  label: '信頼',  color: '#9D5CFF' },
+                    { id: 'trusted',  min: 600,  label: '信頼',  color: '#EAF2FF' },
                     { id: 'pillar',   min: 1000, label: '柱',    color: '#FF4D90' },
                   ]
                   const next = tiers.find(t => trust.score < t.min)
@@ -850,7 +850,7 @@ export default function MyPage() {
                           あと {(next.min - trust.score).toLocaleString()}pt → {next.label}
                         </span>
                       </div>
-                      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(157,92,255,0.1)' }}>
+                      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(234,242,255,0.06)' }}>
                         <div className="h-full rounded-full transition-all"
                           style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${next.color}80, ${next.color})` }} />
                       </div>
@@ -860,7 +860,7 @@ export default function MyPage() {
               </div>
 
               {/* ポイント獲得方法ヒント */}
-              <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderTop: '1px solid rgba(157,92,255,0.1)' }}>
+              <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderTop: '1px solid rgba(234,242,255,0.06)' }}>
                 <div className="flex items-center gap-3 text-[10px]" style={{ color: 'rgba(240,238,255,0.4)' }}>
                   <span>📝 投稿 +2pt</span>
                   <span>🤝 相談解決 +25pt</span>
@@ -885,7 +885,7 @@ export default function MyPage() {
 
           <div
             className="rounded-2xl overflow-hidden"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)' }}
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(234,242,255,0.12)' }}
           >
             {[
               { href: '/settings', icon: '⚙️',  label: 'プロフィールを編集' },
@@ -898,7 +898,7 @@ export default function MyPage() {
                 key={item.href}
                 href={item.href}
                 className="flex items-center justify-between px-4 py-3.5 active:opacity-80 transition-colors"
-                style={{ borderBottom: idx < arr.length - 1 ? '1px solid rgba(157,92,255,0.08)' : 'none' }}
+                style={{ borderBottom: idx < arr.length - 1 ? '1px solid rgba(234,242,255,0.05)' : 'none' }}
               >
                 <div className="flex items-center gap-3">
                   <span className="text-base w-6 text-center">{item.icon}</span>
@@ -924,11 +924,12 @@ export default function MyPage() {
         onClick={() => setShowCompose(true)}
         className="fixed bottom-24 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
         style={{
-          background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)',
-          boxShadow: '0 8px 24px rgba(157,92,255,0.5), 0 0 20px rgba(157,92,255,0.3)',
+          background: 'rgba(234,242,255,0.08)',
+          border: '1.5px solid rgba(234,242,255,0.45)',
+          boxShadow: '0 8px 24px rgba(234,242,255,0.18), 0 0 30px rgba(184,199,217,0.12)',
         }}
       >
-        <Pencil size={22} className="text-white" strokeWidth={2} />
+        <Pencil size={22} style={{ color: '#EAF2FF' }} strokeWidth={2} />
       </button>
 
       {/* ── コンポーズシート ── */}
@@ -962,4 +963,5 @@ export default function MyPage() {
     </div>
   )
 }
+
 
