@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag, timeAgo } from '@/lib/utils'
-import { ArrowLeft, Heart, ChevronRight, MessageSquare } from 'lucide-react'
+import { ArrowLeft, Heart, ChevronRight, MessageSquare, MoreHorizontal, Flag, Ban } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
 import Link from 'next/link'
 import { getCategoryStyle, getTitleName, TITLE_LEVEL_STYLE } from '@/lib/qa'
+import ReportModal from '@/components/features/ReportModal'
 
 interface VillagePost {
   id: string
@@ -39,6 +40,10 @@ export default function UserProfilePage() {
   const [followingCount, setFollowingCount] = useState(0)
   const [toggling, setToggling] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [showMenu,   setShowMenu]   = useState(false)
+  const [showReport, setShowReport] = useState(false)
+  const [blocking,   setBlocking]   = useState(false)
+  const [blockDone,  setBlockDone]  = useState(false)
   const [trustTier, setTrustTier] = useState<string | null>(null)
   const [isPremium, setIsPremium] = useState(false)
   const [activeTab, setActiveTab] = useState<'posts' | 'answers'>('posts')
@@ -122,6 +127,19 @@ export default function UserProfilePage() {
     setToggling(false)
   }
 
+  async function handleBlock() {
+    if (!myId || blocking) return
+    setBlocking(true)
+    const supabase = createClient()
+    await supabase.from('blocks').upsert(
+      { blocker_id: myId, blocked_id: userId },
+      { onConflict: 'blocker_id,blocked_id' }
+    )
+    setBlocking(false)
+    setBlockDone(true)
+    setShowMenu(false)
+  }
+
 if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-birch">
       <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
@@ -140,6 +158,11 @@ if (loading) return (
           <ArrowLeft size={20} />
         </button>
         <p className="font-extrabold text-stone-900 flex-1 truncate">{profile.display_name}</p>
+        {!isMe && myId && (
+          <button onClick={() => setShowMenu(true)} className="p-1.5 rounded-full text-stone-400 hover:bg-stone-100 active:bg-stone-200 transition-colors">
+            <MoreHorizontal size={20} />
+          </button>
+        )}
       </div>
 
       {/* Profile card */}
@@ -338,6 +361,69 @@ if (loading) return (
           </>
         )}
       </div>
+
+      {/* ── アクションシート（通報・ブロック）── */}
+      {showMenu && (
+        <div className="fixed inset-0 z-[70] flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowMenu(false)} />
+          <div className="relative bg-white rounded-t-3xl w-full max-w-md mx-auto overflow-hidden pb-safe">
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="w-10 h-1 rounded-full bg-stone-200" />
+            </div>
+            <div className="px-4 pb-6">
+              <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3 px-1">
+                {profile.display_name} さんへの操作
+              </p>
+
+              {/* 通報 */}
+              <button
+                onClick={() => { setShowMenu(false); setShowReport(true) }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl hover:bg-orange-50 active:bg-orange-100 transition-colors text-left">
+                <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0">
+                  <Flag size={16} className="text-orange-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-orange-600">通報する</p>
+                  <p className="text-xs text-orange-400">不適切なユーザーを報告する</p>
+                </div>
+              </button>
+
+              {/* ブロック */}
+              <button
+                onClick={handleBlock}
+                disabled={blocking || blockDone}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl hover:bg-red-50 active:bg-red-100 transition-colors text-left mt-1 disabled:opacity-60">
+                <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                  {blockDone ? <span className="text-base">✅</span> : <Ban size={16} className="text-red-500" />}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-red-600">
+                    {blockDone ? 'ブロックしました' : 'ブロックする'}
+                  </p>
+                  <p className="text-xs text-red-400">
+                    {blockDone ? 'このユーザーは非表示になります' : 'このユーザーを非表示にする'}
+                  </p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setShowMenu(false)}
+                className="w-full mt-3 py-3.5 rounded-2xl bg-stone-100 text-sm font-bold text-stone-600 active:bg-stone-200 transition-colors">
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 通報モーダル ── */}
+      {showReport && (
+        <ReportModal
+          reportedId={userId as string}
+          reportedName={profile.display_name}
+          onClose={() => setShowReport(false)}
+        />
+      )}
     </div>
   )
 }

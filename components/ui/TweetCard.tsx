@@ -4,8 +4,9 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag, timeAgo } from '@/lib/utils'
-import { MessageCircle, Repeat2, MoreHorizontal, Pencil, Trash2, X } from 'lucide-react'
+import { MessageCircle, Repeat2, MoreHorizontal, Pencil, Trash2, X, Flag, Ban } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
+import ReportModal from '@/components/features/ReportModal'
 
 export const REACTIONS = [
   { key: 'heart',   emoji: '❤️', label: 'Love' },
@@ -52,6 +53,9 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
   const [saving,      setSaving]      = useState(false)
   const [deleting,    setDeleting]    = useState(false)
   const [confirmDel,  setConfirmDel]  = useState(false)
+  const [showReport,  setShowReport]  = useState(false)
+  const [blockDone,   setBlockDone]   = useState(false)
+  const [blocking,    setBlocking]    = useState(false)
 
   const isOwn = myId === tweet.user_id
   const MAX = 280
@@ -104,6 +108,20 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
     onUpdate()
   }
 
+  // ── block ────────────────────────────────────────────────────
+  async function handleBlock() {
+    if (!myId || blocking) return
+    setBlocking(true)
+    const supabase = createClient()
+    await supabase.from('blocks').upsert(
+      { blocker_id: myId, blocked_id: tweet.user_id },
+      { onConflict: 'blocker_id,blocked_id' }
+    )
+    setBlocking(false)
+    setBlockDone(true)
+    setTimeout(() => { setShowMenu(false); setBlockDone(false); onUpdate() }, 1200)
+  }
+
   // ── delete ───────────────────────────────────────────────────
   async function handleDelete() {
     if (deleting) return
@@ -146,7 +164,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                 <span className="text-base leading-none">{flag}</span>
                 <span className="text-xs text-stone-400">{timeAgo(tweet.created_at)}</span>
               </div>
-              {isOwn && (
+              {myId && (
                 <button
                   onClick={() => setShowMenu(true)}
                   className="w-7 h-7 flex items-center justify-center rounded-full text-stone-400 hover:bg-stone-100 active:bg-stone-200 transition-colors -mr-1 flex-shrink-0">
@@ -265,31 +283,70 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
               <div className="px-4 pb-6">
                 <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3 px-1">投稿の操作</p>
 
-                {/* 編集 */}
-                <button
-                  onClick={() => { setEditText(tweet.content); setShowMenu(false); setShowEdit(true) }}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl hover:bg-stone-50 active:bg-stone-100 transition-colors text-left">
-                  <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center flex-shrink-0">
-                    <Pencil size={16} className="text-stone-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-stone-900">編集する</p>
-                    <p className="text-xs text-stone-400">内容を修正できます</p>
-                  </div>
-                </button>
+                {isOwn ? (
+                  <>
+                    {/* 編集 */}
+                    <button
+                      onClick={() => { setEditText(tweet.content); setShowMenu(false); setShowEdit(true) }}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl hover:bg-stone-50 active:bg-stone-100 transition-colors text-left">
+                      <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center flex-shrink-0">
+                        <Pencil size={16} className="text-stone-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-stone-900">編集する</p>
+                        <p className="text-xs text-stone-400">内容を修正できます</p>
+                      </div>
+                    </button>
 
-                {/* 削除 */}
-                <button
-                  onClick={() => setConfirmDel(true)}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl hover:bg-red-50 active:bg-red-100 transition-colors text-left mt-1">
-                  <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
-                    <Trash2 size={16} className="text-red-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-red-600">削除する</p>
-                    <p className="text-xs text-red-400">この操作は取り消せません</p>
-                  </div>
-                </button>
+                    {/* 削除 */}
+                    <button
+                      onClick={() => setConfirmDel(true)}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl hover:bg-red-50 active:bg-red-100 transition-colors text-left mt-1">
+                      <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                        <Trash2 size={16} className="text-red-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-red-600">削除する</p>
+                        <p className="text-xs text-red-400">この操作は取り消せません</p>
+                      </div>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* 通報 */}
+                    <button
+                      onClick={() => { setShowMenu(false); setShowReport(true) }}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl hover:bg-orange-50 active:bg-orange-100 transition-colors text-left">
+                      <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0">
+                        <Flag size={16} className="text-orange-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-orange-600">通報する</p>
+                        <p className="text-xs text-orange-400">不適切な投稿を報告する</p>
+                      </div>
+                    </button>
+
+                    {/* ブロック */}
+                    <button
+                      onClick={handleBlock}
+                      disabled={blocking || blockDone}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl hover:bg-red-50 active:bg-red-100 transition-colors text-left mt-1 disabled:opacity-60">
+                      <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                        {blockDone
+                          ? <span className="text-base">✅</span>
+                          : <Ban size={16} className="text-red-500" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-red-600">
+                          {blockDone ? 'ブロックしました' : 'ブロックする'}
+                        </p>
+                        <p className="text-xs text-red-400">
+                          {blockDone ? 'このユーザーの投稿が非表示になります' : 'このユーザーを非表示にする'}
+                        </p>
+                      </div>
+                    </button>
+                  </>
+                )}
 
                 {/* キャンセル */}
                 <button
@@ -323,6 +380,15 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
             )}
           </div>
         </div>
+      )}
+
+      {/* ── 通報モーダル ── */}
+      {showReport && (
+        <ReportModal
+          reportedId={tweet.user_id}
+          reportedName={tweet.profiles?.display_name ?? 'このユーザー'}
+          onClose={() => setShowReport(false)}
+        />
       )}
 
       {/* ── 編集シート ── */}
