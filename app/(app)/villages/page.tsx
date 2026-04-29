@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, ChevronRight, Mic } from 'lucide-react'
@@ -92,7 +92,7 @@ function SmallVillageCard({ village, isMember, isLive, onJoin }: {
   )
 }
 
-export default function VillagesPage() {
+function VillagesContent() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const [villages,     setVillages]     = useState<Village[]>([])
@@ -549,5 +549,17 @@ export default function VillagesPage() {
         <Plus size={22} className="text-white" />
       </button>
     </div>
+  )
+}
+
+export default function VillagesPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-md mx-auto min-h-screen bg-birch flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <VillagesContent />
+    </Suspense>
   )
 }
