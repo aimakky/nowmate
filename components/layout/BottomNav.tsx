@@ -11,8 +11,8 @@ const NAV_ITEMS = [
   { href: '/timeline',      label: 'TL',      icon: Layers,        live: false, activeColor: '#39FF88' },
   { href: '/guilds',        label: 'ギルド',   icon: Shield,        live: false, activeColor: '#27DFFF' },
   { href: '/guild',         label: 'ゲーム村', icon: Gamepad2,      live: true,  activeColor: '#8B5CF6' },
-  { href: '/chat',          label: 'チャット', icon: MessageSquare, live: false, activeColor: '#FFC928' },
-  { href: '/notifications', label: '通知',    icon: Bell,          live: false, activeColor: '#FF4FD8' },
+  { href: '/chat',          label: 'チャット', icon: MessageSquare, live: false, activeColor: '#FF4FD8' },
+  { href: '/notifications', label: '通知',    icon: Bell,          live: false, activeColor: '#FFC928' },
 ]
 
 export default function BottomNav() {
