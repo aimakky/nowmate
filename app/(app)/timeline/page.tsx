@@ -92,11 +92,11 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
   const slots = slotsMatch?.[1]?.trim() ?? ''
 
   const GAME_COLORS: Record<string, string> = {
-    'FPS': '#ef4444', 'MOBA': '#f97316', 'RPG': '#8b5cf6',
-    'スポーツ': '#10b981', 'カードゲーム': '#3b82f6', 'パズル': '#ec4899',
-    'サバイバル': '#78716c', 'その他': '#6366f1',
+    'FPS': '#FF4D90', 'MOBA': '#f97316', 'RPG': '#9D5CFF',
+    'スポーツ': '#49E1FF', 'カードゲーム': '#49E1FF', 'パズル': '#FF4D90',
+    'サバイバル': '#7CFF82', 'その他': '#9D5CFF',
   }
-  const color = GAME_COLORS[room.category] ?? '#6366f1'
+  const color = GAME_COLORS[room.category] ?? '#9D5CFF'
 
   // 全参加者（ホスト + メンバー）
   const allParticipants = [
@@ -108,58 +108,56 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
     <div
       className="rounded-2xl overflow-hidden"
       style={{
-        background: 'linear-gradient(135deg,rgba(15,15,26,0.95) 0%,rgba(26,16,53,0.95) 100%)',
-        border: `1px solid ${color}30`,
-        boxShadow: `0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px ${color}15`,
+        background: 'rgba(255,255,255,0.04)',
+        border: `1px solid ${color}40`,
+        boxShadow: `0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px ${color}15`,
       }}
     >
-      {/* ── チャンネルヘッダー（Discord風） ── */}
+      {/* ── チャンネルヘッダー ── */}
       <div
         className="flex items-center gap-3 px-4 py-2.5"
-        style={{ background: `${color}18`, borderBottom: `1px solid ${color}20` }}
+        style={{ background: `${color}12`, borderBottom: `1px solid ${color}25` }}
       >
         <div className="flex items-center gap-1.5 flex-1 min-w-0">
-          {/* スピーカーアイコン風 */}
           <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
-            style={{ background: `${color}30` }}>
+            style={{ background: `${color}25` }}>
             <Waves size={11} style={{ color }} />
           </div>
-          <span className="text-xs font-extrabold text-white truncate">{room.name}</span>
+          <span className="text-xs font-extrabold truncate" style={{ color: '#F0EEFF' }}>{room.name}</span>
           {tagMatches.map((tag, i) => (
             <span key={i} className="text-[8px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-              style={{ background: `${color}25`, color, border: `1px solid ${color}35` }}>
+              style={{ background: `${color}20`, color, border: `1px solid ${color}35` }}>
               {tag}
             </span>
           ))}
         </div>
         {/* LIVE badge */}
         <div className="flex items-center gap-1 px-2 py-0.5 rounded-full flex-shrink-0"
-          style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)' }}>
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-[9px] font-extrabold text-red-400">LIVE</span>
+          style={{ background: 'linear-gradient(135deg,#9D5CFF,#FF4D90)', boxShadow: '0 2px 8px rgba(157,92,255,0.4)' }}>
+          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+          <span className="text-[9px] font-extrabold text-white">LIVE</span>
         </div>
       </div>
 
-      {/* ── 参加者グリッド（Discord voice channel style） ── */}
+      {/* ── 参加者グリッド ── */}
       <div className="p-3">
         <div className="grid grid-cols-4 gap-2">
           {allParticipants.slice(0, 8).map((p, i) => (
             <div key={p.user_id} className="flex flex-col items-center gap-1">
-              {/* アバター + speaking ring */}
               <div className="relative">
-                {/* speaking animation ring（ランダムに光らせる） */}
+                {/* speaking animation ring */}
                 {i % 3 === 0 && (
                   <div
-                    className="absolute inset-0 rounded-full animate-ping opacity-40"
-                    style={{ background: `${color}60`, transform: 'scale(1.3)' }}
+                    className="absolute inset-0 rounded-full animate-ping opacity-50"
+                    style={{ background: `${color}50`, transform: 'scale(1.4)' }}
                   />
                 )}
                 <div
                   className="relative w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold text-white overflow-hidden"
                   style={{
                     background: p.avatar_url ? undefined : `linear-gradient(135deg,${color},${color}80)`,
-                    border: i % 3 === 0 ? `2px solid ${color}` : '2px solid rgba(255,255,255,0.1)',
-                    boxShadow: i % 3 === 0 ? `0 0 12px ${color}60` : 'none',
+                    border: i % 3 === 0 ? `2px solid ${color}` : '2px solid rgba(157,92,255,0.2)',
+                    boxShadow: i % 3 === 0 ? `0 0 14px ${color}70` : 'none',
                   }}
                 >
                   {p.avatar_url
@@ -170,14 +168,14 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
                 {p.isHost && (
                   <span
                     className="absolute -top-1.5 -right-1.5 text-[10px] w-4 h-4 rounded-full flex items-center justify-center"
-                    style={{ background: '#fbbf24', boxShadow: '0 0 6px rgba(251,191,36,0.6)' }}
+                    style={{ background: '#fbbf24', boxShadow: '0 0 8px rgba(251,191,36,0.7)' }}
                   >
                     👑
                   </span>
                 )}
               </div>
               <p className="text-[9px] font-bold text-center truncate w-full"
-                style={{ color: 'rgba(255,255,255,0.7)' }}>
+                style={{ color: 'rgba(240,238,255,0.55)' }}>
                 {p.display_name.split(/[_\s]/)[0]}
               </p>
             </div>
@@ -186,18 +184,18 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
             <div className="flex flex-col items-center gap-1">
               <div
                 className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-extrabold"
-                style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', border: '2px solid rgba(255,255,255,0.1)' }}
+                style={{ background: 'rgba(157,92,255,0.1)', color: 'rgba(240,238,255,0.4)', border: '2px solid rgba(157,92,255,0.2)' }}
               >
                 +{allParticipants.length - 8}
               </div>
-              <p className="text-[9px]" style={{ color: 'rgba(255,255,255,0.3)' }}>他</p>
+              <p className="text-[9px]" style={{ color: 'rgba(240,238,255,0.3)' }}>他</p>
             </div>
           )}
         </div>
 
         {/* スロット情報 */}
         {slots && (
-          <p className="text-[10px] mt-2 text-center" style={{ color: 'rgba(255,255,255,0.4)' }}>{slots}</p>
+          <p className="text-[10px] mt-2 text-center" style={{ color: 'rgba(240,238,255,0.3)' }}>{slots}</p>
         )}
       </div>
 
@@ -206,7 +204,10 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
         <button
           onClick={() => router.push(`/villages/${room.id}`)}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-extrabold text-white active:scale-95 transition-all"
-          style={{ background: `linear-gradient(135deg,${color},${color}cc)`, boxShadow: `0 4px 14px ${color}50` }}
+          style={{
+            background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)',
+            boxShadow: '0 4px 20px rgba(157,92,255,0.4)',
+          }}
         >
           <Mic size={14} />
           {isHost ? 'ルームに戻る' : `通話に参加 · ${allParticipants.length}人通話中`}
@@ -252,85 +253,92 @@ function QACard({
   }
 
   return (
-    <div className="rounded-2xl overflow-hidden shadow-sm"
+    <div className="rounded-2xl overflow-hidden"
       style={{
-        background: 'linear-gradient(135deg,#0c1445 0%,#0a2540 100%)',
-        border: bottle.is_resolved ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(100,140,255,0.25)',
+        background: 'rgba(255,255,255,0.04)',
+        border: bottle.is_resolved ? '1px solid rgba(124,255,130,0.25)' : '1px solid rgba(73,225,255,0.2)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
       }}>
 
       {/* ヘッダー */}
       <div className="px-4 pt-3 pb-2 flex items-center gap-2">
         <div className="flex items-center gap-1.5 flex-1 min-w-0">
-          <HelpCircle size={13} className={bottle.is_resolved ? 'text-emerald-400' : 'text-amber-400'} />
+          <HelpCircle size={13} style={{ color: bottle.is_resolved ? '#7CFF82' : '#49E1FF' }} />
           <span className="text-[10px] font-extrabold"
-            style={{ color: bottle.is_resolved ? '#86efac' : '#fbbf24' }}>
+            style={{ color: bottle.is_resolved ? '#7CFF82' : '#49E1FF' }}>
             {bottle.is_resolved ? '✅ 解決済み' : '❓ 匿名質問'}
           </span>
           {bottle.village && (
             <>
-              <span className="text-white/20 text-[10px]">·</span>
-              <span className="text-[10px] text-blue-400/60 truncate">
+              <span className="text-[10px]" style={{ color: 'rgba(240,238,255,0.2)' }}>·</span>
+              <span className="text-[10px] truncate" style={{ color: 'rgba(73,225,255,0.5)' }}>
                 {bottle.village.icon} {bottle.village.name}
               </span>
             </>
           )}
         </div>
-        <span className="text-[10px] text-blue-400/40 flex-shrink-0">{timeAgo(bottle.created_at)}</span>
+        <span className="text-[10px] flex-shrink-0" style={{ color: 'rgba(240,238,255,0.3)' }}>{timeAgo(bottle.created_at)}</span>
       </div>
 
       {/* 質問本文 */}
       <div className="px-4 pb-3">
-        <p className="text-sm text-white/90 leading-relaxed font-medium">{bottle.message}</p>
+        <p className="text-sm leading-relaxed font-medium" style={{ color: 'rgba(240,238,255,0.9)' }}>{bottle.message}</p>
       </div>
 
       {/* フッター */}
-      <div className="px-4 py-2.5 border-t border-white/5 flex items-center justify-between gap-2">
+      <div className="px-4 py-2.5 flex items-center justify-between gap-2"
+        style={{ borderTop: '1px solid rgba(157,92,255,0.1)' }}>
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px] text-blue-300/50">
+          <span className="text-[11px]" style={{ color: 'rgba(73,225,255,0.4)' }}>
             💬 {bottle.reply_count > 0 ? `${bottle.reply_count}件の回答` : 'まだ回答なし'}
           </span>
         </div>
 
         {done ? (
-          <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
+          <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: '#7CFF82' }}>
             <CheckCircle size={11} /> 回答しました
           </span>
         ) : isMyBottle ? (
-          <span className="text-[10px] text-blue-400/30">自分の質問</span>
+          <span className="text-[10px]" style={{ color: 'rgba(73,225,255,0.3)' }}>自分の質問</span>
         ) : bottle.is_resolved ? (
-          <span className="text-[10px] text-emerald-400/50">解決済み</span>
+          <span className="text-[10px]" style={{ color: 'rgba(124,255,130,0.4)' }}>解決済み</span>
         ) : canReply ? (
           <button onClick={() => setOpen(o => !o)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold active:scale-95 transition-all"
-            style={{ background: 'rgba(100,140,255,0.2)', border: '1px solid rgba(100,140,255,0.3)', color: '#93c5fd' }}>
+            style={{ background: 'rgba(73,225,255,0.12)', border: '1px solid rgba(73,225,255,0.25)', color: '#49E1FF' }}>
             {open ? '閉じる' : '回答する →'}
           </button>
         ) : (
-          <span className="text-[10px] text-blue-400/30">常連以上が回答可</span>
+          <span className="text-[10px]" style={{ color: 'rgba(73,225,255,0.3)' }}>常連以上が回答可</span>
         )}
       </div>
 
       {/* インライン回答フォーム */}
       {open && !done && (
-        <div className="px-4 pb-4 pt-1 border-t border-white/5 space-y-2">
+        <div className="px-4 pb-4 pt-1 space-y-2" style={{ borderTop: '1px solid rgba(157,92,255,0.1)' }}>
           <textarea
             value={text}
             onChange={e => { setText(e.target.value); setErrMsg('') }}
             placeholder="回答を書く（名前が表示されます）"
             rows={2} maxLength={300} autoFocus
-            className="w-full px-3 py-2 rounded-xl text-xs resize-none focus:outline-none text-white placeholder-blue-400/30"
-            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(100,140,255,0.2)' }}
+            className="w-full px-3 py-2 rounded-xl text-xs resize-none focus:outline-none"
+            style={{
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(157,92,255,0.2)',
+              color: '#F0EEFF',
+              caretColor: '#9D5CFF',
+            }}
           />
           {errMsg && <p className="text-[10px] text-red-400">⚠️ {errMsg}</p>}
           <div className="flex gap-2">
             <button onClick={() => setOpen(false)}
               className="flex-1 py-2 rounded-xl text-xs font-bold border"
-              style={{ borderColor: 'rgba(100,140,255,0.2)', color: '#60a5fa', background: 'transparent' }}>
+              style={{ borderColor: 'rgba(157,92,255,0.2)', color: 'rgba(240,238,255,0.55)', background: 'transparent' }}>
               キャンセル
             </button>
             <button onClick={submit} disabled={!text.trim() || sending}
               className="flex-1 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-1"
-              style={{ background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)' }}>
+              style={{ background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}>
               {sending
                 ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 : <><Send size={10} /> 送信</>}
@@ -363,58 +371,69 @@ function PostCard({
   }
 
   return (
-    <div className="rounded-2xl overflow-hidden backdrop-blur-sm"
-      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
+    <div className="rounded-2xl overflow-hidden"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(157,92,255,0.2)',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
+      }}>
       <div className="px-4 pt-3.5 pb-2 flex items-start gap-2.5">
-        <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 overflow-hidden"
-          style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
+        {/* Avatar with purple ring */}
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg,#9D5CFF,#7B3FE4)',
+            boxShadow: '0 0 0 2px rgba(157,92,255,0.5)',
+          }}>
           {post.profiles?.avatar_url
             ? <img src={post.profiles.avatar_url} alt="" className="w-full h-full object-cover rounded-full" />
             : post.profiles?.display_name?.[0] ?? '?'}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm font-bold text-white">{post.profiles?.display_name ?? '名無し'}</span>
-            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border whitespace-nowrap ${tier.color}`}>
+            <span className="text-sm font-bold" style={{ color: '#F0EEFF' }}>{post.profiles?.display_name ?? '名無し'}</span>
+            {/* Tier badge neon style */}
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border whitespace-nowrap ${tier.color}`}
+              style={{ boxShadow: '0 0 6px rgba(157,92,255,0.3)' }}>
               {tier.icon} {tier.label}
             </span>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-              style={{ background: `${catColor}25`, color: catColor, border: `1px solid ${catColor}40` }}>
+              style={{ background: `${catColor}20`, color: catColor, border: `1px solid ${catColor}35` }}>
               {post.category}
             </span>
-            <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{timeAgo(post.created_at)}</span>
+            <span className="text-[10px]" style={{ color: 'rgba(240,238,255,0.3)' }}>{timeAgo(post.created_at)}</span>
           </div>
         </div>
       </div>
 
       <div className="px-4 pb-3">
-        <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>{post.content}</p>
+        <p className="text-sm leading-relaxed" style={{ color: 'rgba(240,238,255,0.85)' }}>{post.content}</p>
       </div>
 
       <div className="flex items-center justify-between px-4 py-2.5"
-        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        style={{ borderTop: '1px solid rgba(157,92,255,0.1)' }}>
         {showVillage && post.villages ? (
           <Link href={`/villages/${post.village_id}`} onClick={e => e.stopPropagation()}
             className="flex items-center gap-1.5 active:opacity-70 transition-opacity">
             <span className="text-sm">{post.villages.icon}</span>
-            <span className="text-[11px] font-bold truncate max-w-[120px]" style={{ color: 'rgba(255,255,255,0.45)' }}>{post.villages.name}</span>
-            <ChevronRight size={11} style={{ color: 'rgba(255,255,255,0.25)' }} className="flex-shrink-0" />
+            <span className="text-[11px] font-bold truncate max-w-[120px]" style={{ color: 'rgba(240,238,255,0.4)' }}>{post.villages.name}</span>
+            <ChevronRight size={11} style={{ color: 'rgba(157,92,255,0.4)' }} className="flex-shrink-0" />
           </Link>
         ) : <span />}
         <div className="flex items-center gap-1.5">
           <button onClick={shareToX}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-90"
-            style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.4)' }}>
+            style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)' }}>
             <Share2 size={12} />
           </button>
           <button onClick={() => onToggleLike(post.id)}
             className="flex items-center gap-1 px-3 py-1.5 rounded-xl transition-all active:scale-90"
             style={liked
-              ? { background: 'rgba(244,63,94,0.2)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.3)' }
-              : { background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.4)' }}>
-            <Heart size={13} fill={liked ? '#f43f5e' : 'none'} strokeWidth={liked ? 0 : 1.8} />
+              ? { background: 'rgba(255,77,144,0.15)', color: '#FF4D90', border: '1px solid rgba(255,77,144,0.3)' }
+              : { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)' }}>
+            <Heart size={13} fill={liked ? '#FF4D90' : 'none'} strokeWidth={liked ? 0 : 1.8} />
             {post.reaction_count > 0 && <span className="text-[11px] font-bold">{post.reaction_count}</span>}
           </button>
         </div>
@@ -429,17 +448,17 @@ function Skeleton() {
     <div className="space-y-3">
       {[...Array(5)].map((_, i) => (
         <div key={i} className="rounded-2xl p-4 animate-pulse"
-          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.1)' }}>
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-9 h-9 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }} />
+            <div className="w-9 h-9 rounded-full flex-shrink-0" style={{ background: 'rgba(157,92,255,0.15)' }} />
             <div className="flex-1 space-y-1.5">
-              <div className="h-3 rounded w-1/3" style={{ background: 'rgba(255,255,255,0.1)' }} />
-              <div className="h-2.5 rounded w-1/4" style={{ background: 'rgba(255,255,255,0.06)' }} />
+              <div className="h-3 rounded w-1/3" style={{ background: 'rgba(157,92,255,0.1)' }} />
+              <div className="h-2.5 rounded w-1/4" style={{ background: 'rgba(157,92,255,0.07)' }} />
             </div>
           </div>
           <div className="space-y-1.5">
-            <div className="h-3.5 rounded w-full" style={{ background: 'rgba(255,255,255,0.06)' }} />
-            <div className="h-3.5 rounded w-4/5" style={{ background: 'rgba(255,255,255,0.06)' }} />
+            <div className="h-3.5 rounded w-full" style={{ background: 'rgba(157,92,255,0.07)' }} />
+            <div className="h-3.5 rounded w-4/5" style={{ background: 'rgba(157,92,255,0.07)' }} />
           </div>
         </div>
       ))}
@@ -560,24 +579,29 @@ function ComposeModal({
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       {/* 危機検出モーダル */}
       {showCrisis && (
         <div className="absolute inset-0 z-10 flex items-center justify-center px-6">
           <div className="w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl"
-            style={{ background: 'linear-gradient(180deg,#0c1445 0%,#0a2540 100%)', border: '1px solid rgba(100,140,255,0.3)' }}>
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(73,225,255,0.3)',
+              backdropFilter: 'blur(20px)',
+            }}>
             <p className="text-2xl mb-3">💙</p>
-            <p className="text-white font-bold text-sm leading-relaxed mb-2">つらい気持ちを感じているようです</p>
-            <p className="text-blue-300/70 text-xs leading-relaxed mb-4">よりそいホットライン: 0120-279-338（24時間）</p>
+            <p className="font-bold text-sm leading-relaxed mb-2" style={{ color: '#F0EEFF' }}>つらい気持ちを感じているようです</p>
+            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(73,225,255,0.6)' }}>よりそいホットライン: 0120-279-338（24時間）</p>
             <div className="flex gap-2">
               <button onClick={() => { setShowCrisis(false); onClose() }}
-                className="flex-1 py-2.5 rounded-2xl text-xs font-bold border border-blue-500/30 text-blue-300">
+                className="flex-1 py-2.5 rounded-2xl text-xs font-bold"
+                style={{ border: '1px solid rgba(73,225,255,0.3)', color: '#49E1FF', background: 'transparent' }}>
                 閉じる
               </button>
               <button onClick={() => { setShowCrisis(false); doSendBottle() }}
                 className="flex-1 py-2.5 rounded-2xl text-xs font-bold text-white"
-                style={{ background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)' }}>
+                style={{ background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}>
                 それでも流す
               </button>
             </div>
@@ -586,31 +610,31 @@ function ComposeModal({
       )}
 
       <div
-        className={`relative rounded-t-3xl w-full max-w-md mx-auto overflow-hidden transition-colors ${isBottle ? '' : 'bg-white'}`}
-        style={isBottle ? { background: 'linear-gradient(180deg,#0c1445 0%,#0d1f4a 100%)' } : {}}
+        className="relative rounded-t-3xl w-full max-w-md mx-auto overflow-hidden"
+        style={{ background: '#080812', border: '1px solid rgba(157,92,255,0.2)', borderBottom: 'none' }}
         onClick={e => e.stopPropagation()}
       >
         {/* ドラッグハンドル */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full" style={{ background: isBottle ? 'rgba(255,255,255,0.2)' : '#e5e7eb' }} />
+          <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(157,92,255,0.3)' }} />
         </div>
 
         {/* モード切替タブ */}
         <div className="flex mx-5 mt-1 mb-3 rounded-2xl overflow-hidden"
-          style={{ background: isBottle ? 'rgba(255,255,255,0.08)' : '#f5f5f4' }}>
+          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.15)' }}>
           <button onClick={() => switchMode('post')}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold transition-all rounded-2xl"
             style={!isBottle
-              ? { background: '#1c1917', color: '#fff' }
-              : { color: 'rgba(255,255,255,0.4)' }
+              ? { background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', color: '#fff', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }
+              : { color: 'rgba(240,238,255,0.4)' }
             }>
             <span>✍️</span> 投稿
           </button>
           <button onClick={() => switchMode('bottle')}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold transition-all rounded-2xl"
             style={isBottle
-              ? { background: 'rgba(100,140,255,0.3)', color: '#93c5fd', border: '1px solid rgba(100,140,255,0.4)' }
-              : { color: '#78716c' }
+              ? { background: 'rgba(73,225,255,0.15)', color: '#49E1FF', border: '1px solid rgba(73,225,255,0.3)' }
+              : { color: 'rgba(240,238,255,0.4)' }
             }>
             <Waves size={12} /> 漂流瓶
           </button>
@@ -620,16 +644,17 @@ function ComposeModal({
         <div className="flex items-center justify-between px-5 py-2">
           <button onClick={onClose}
             className="text-sm font-bold transition-colors"
-            style={{ color: isBottle ? 'rgba(147,197,253,0.7)' : '#a8a29e' }}>
+            style={{ color: 'rgba(240,238,255,0.4)' }}>
             キャンセル
           </button>
           <button
             onClick={isBottle ? handleBottle : handlePost}
             disabled={!canSubmit}
             className="px-5 py-1.5 rounded-full text-sm font-extrabold text-white disabled:opacity-40 active:scale-95 transition-all flex items-center gap-1.5"
-            style={{ background: isBottle
-              ? 'linear-gradient(135deg,#3b82f6,#1d4ed8)'
-              : 'linear-gradient(135deg,#1c1917,#3c3836)' }}
+            style={{
+              background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)',
+              boxShadow: '0 4px 20px rgba(157,92,255,0.4)',
+            }}
           >
             {sending
               ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -646,7 +671,7 @@ function ComposeModal({
             <>
               <div className="flex gap-3 pt-2 pb-3">
                 <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold text-white"
-                  style={{ background: 'linear-gradient(135deg,#6366f1,#4f46e5)' }}>
+                  style={{ background: 'linear-gradient(135deg,#9D5CFF,#7B3FE4)', boxShadow: '0 0 0 2px rgba(157,92,255,0.4)' }}>
                   {userProfile?.avatar_url
                     ? <img src={userProfile.avatar_url} alt="" className="w-full h-full object-cover" />
                     : avatarLetter}
@@ -657,17 +682,18 @@ function ComposeModal({
                     onChange={e => { setText(e.target.value.slice(0, MAX)); setErrMsg('') }}
                     placeholder="いまどうしてる？"
                     rows={4} autoFocus
-                    className="w-full text-[17px] leading-relaxed resize-none focus:outline-none text-stone-900 placeholder-stone-300 bg-transparent"
+                    className="w-full text-[17px] leading-relaxed resize-none focus:outline-none bg-transparent"
+                    style={{ color: '#F0EEFF', caretColor: '#9D5CFF' }}
                   />
                 </div>
               </div>
-              <div className="flex gap-1.5 flex-wrap pb-3 border-b border-stone-100">
+              <div className="flex gap-1.5 flex-wrap pb-3" style={{ borderBottom: '1px solid rgba(157,92,255,0.15)' }}>
                 {POST_CATEGORIES.map(c => (
                   <button key={c.id} onClick={() => setCategory(c.id)}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all active:scale-95"
                     style={category === c.id
-                      ? { background: '#1c1917', color: '#fff', borderColor: '#1c1917' }
-                      : { background: '#fafaf9', color: '#78716c', borderColor: '#e7e5e4' }
+                      ? { background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', color: '#fff', borderColor: '#9D5CFF', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }
+                      : { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.55)', borderColor: 'rgba(157,92,255,0.2)' }
                     }>
                     {c.emoji} {c.id}
                   </button>
@@ -675,21 +701,22 @@ function ComposeModal({
               </div>
               <div className="flex items-center justify-between pt-3">
                 {errMsg
-                  ? <p className="text-xs text-red-500 font-bold">⚠️ {errMsg}</p>
-                  : <p className="text-[11px] text-stone-400">タイムラインに公開されます</p>
+                  ? <p className="text-xs text-red-400 font-bold">⚠️ {errMsg}</p>
+                  : <p className="text-[11px]" style={{ color: 'rgba(240,238,255,0.3)' }}>タイムラインに公開されます</p>
                 }
                 <div className="flex items-center gap-2">
                   <svg width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
-                    <circle cx="11" cy="11" r="9" fill="none" stroke="#e7e5e4" strokeWidth="2.5" />
+                    <circle cx="11" cy="11" r="9" fill="none" stroke="rgba(157,92,255,0.2)" strokeWidth="2.5" />
                     <circle cx="11" cy="11" r="9" fill="none"
-                      stroke={text.length > MAX * 0.9 ? '#f97316' : '#1c1917'}
+                      stroke={text.length > MAX * 0.9 ? '#FF4D90' : '#9D5CFF'}
                       strokeWidth="2.5" strokeLinecap="round"
                       strokeDasharray={`${2 * Math.PI * 9}`}
                       strokeDashoffset={`${2 * Math.PI * 9 * (1 - text.length / MAX)}`}
                       style={{ transition: 'stroke-dashoffset 0.1s' }}
                     />
                   </svg>
-                  <span className={`text-[11px] font-bold ${text.length > MAX * 0.9 ? 'text-orange-500' : 'text-stone-300'}`}>
+                  <span className="text-[11px] font-bold"
+                    style={{ color: text.length > MAX * 0.9 ? '#FF4D90' : 'rgba(240,238,255,0.3)' }}>
                     {MAX - text.length}
                   </span>
                 </div>
@@ -703,18 +730,18 @@ function ComposeModal({
               {/* 村セレクター */}
               {villages.length === 0 ? (
                 <div className="py-4 text-center">
-                  <p className="text-blue-300/60 text-xs">村に参加するとここから漂流瓶を流せます</p>
+                  <p className="text-xs" style={{ color: 'rgba(73,225,255,0.5)' }}>村に参加するとここから漂流瓶を流せます</p>
                 </div>
               ) : (
                 <div className="mb-3">
-                  <p className="text-[10px] font-bold text-blue-300/50 uppercase tracking-wider mb-2">どの村に流す？</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'rgba(73,225,255,0.4)' }}>どの村に流す？</p>
                   <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
                     {villages.map(v => (
                       <button key={v.id} onClick={() => setTargetVil(v)}
                         className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95"
                         style={targetVil?.id === v.id
-                          ? { background: 'rgba(100,140,255,0.35)', color: '#93c5fd', border: '1px solid rgba(100,140,255,0.5)' }
-                          : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)' }
+                          ? { background: 'rgba(73,225,255,0.15)', color: '#49E1FF', border: '1px solid rgba(73,225,255,0.35)' }
+                          : { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)', border: '1px solid rgba(157,92,255,0.15)' }
                         }>
                         <span>{v.icon}</span>
                         <span className="truncate max-w-[70px]">{v.name}</span>
@@ -733,10 +760,10 @@ function ComposeModal({
                   rows={5} autoFocus={mode === 'bottle'}
                   className="w-full px-4 py-3.5 rounded-2xl text-sm resize-none focus:outline-none leading-relaxed"
                   style={{
-                    background: 'rgba(255,255,255,0.07)',
-                    border: '1px solid rgba(100,140,255,0.25)',
-                    color: 'rgba(255,255,255,0.9)',
-                    caretColor: '#60a5fa',
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(73,225,255,0.2)',
+                    color: 'rgba(240,238,255,0.9)',
+                    caretColor: '#49E1FF',
                   }}
                 />
               </div>
@@ -745,20 +772,21 @@ function ComposeModal({
               <div className="flex items-center justify-between">
                 {errMsg
                   ? <p className="text-xs text-red-400 font-bold">⚠️ {errMsg}</p>
-                  : <p className="text-[11px] text-blue-400/40">🔒 完全匿名 · {targetVil?.icon}{targetVil?.name ?? '村未選択'}へ届きます</p>
+                  : <p className="text-[11px]" style={{ color: 'rgba(73,225,255,0.35)' }}>🔒 完全匿名 · {targetVil?.icon}{targetVil?.name ?? '村未選択'}へ届きます</p>
                 }
                 <div className="flex items-center gap-2">
                   <svg width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
-                    <circle cx="11" cy="11" r="9" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="2.5" />
+                    <circle cx="11" cy="11" r="9" fill="none" stroke="rgba(73,225,255,0.1)" strokeWidth="2.5" />
                     <circle cx="11" cy="11" r="9" fill="none"
-                      stroke={text.length > MAX_BOTTLE * 0.9 ? '#f97316' : '#3b82f6'}
+                      stroke={text.length > MAX_BOTTLE * 0.9 ? '#FF4D90' : '#49E1FF'}
                       strokeWidth="2.5" strokeLinecap="round"
                       strokeDasharray={`${2 * Math.PI * 9}`}
                       strokeDashoffset={`${2 * Math.PI * 9 * (1 - text.length / MAX_BOTTLE)}`}
                       style={{ transition: 'stroke-dashoffset 0.1s' }}
                     />
                   </svg>
-                  <span className={`text-[11px] font-bold ${text.length > MAX_BOTTLE * 0.9 ? 'text-orange-400' : 'text-blue-400/40'}`}>
+                  <span className="text-[11px] font-bold"
+                    style={{ color: text.length > MAX_BOTTLE * 0.9 ? '#FF4D90' : 'rgba(73,225,255,0.35)' }}>
                     {MAX_BOTTLE - text.length}
                   </span>
                 </div>
@@ -1071,42 +1099,49 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
 
   // ── レンダリング ─────────────────────────────────────────────
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0f0f1a' }}>
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
 
       {/* ヘッダー */}
       <div className="px-4 pt-12 pb-0"
-        style={{ background: 'linear-gradient(160deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%)' }}>
+        style={{
+          background: 'linear-gradient(160deg,rgba(8,8,18,0.98) 0%,rgba(20,10,40,0.98) 60%,rgba(30,12,60,0.95) 100%)',
+          borderBottom: '1px solid rgba(157,92,255,0.15)',
+        }}>
         <div className="flex items-end justify-between mb-3">
           <div>
-            <h1 className="font-extrabold text-white text-2xl leading-tight">タイムライン</h1>
-            <p className="text-xs text-white/50 mt-0.5">みんなの声が流れる場所</p>
+            <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(157,92,255,0.6)' }}>TIMELINE</p>
+            <h1 className="font-extrabold text-2xl leading-tight" style={{ color: '#F0EEFF' }}>タイムライン</h1>
+            <p className="text-xs mt-0.5" style={{ color: 'rgba(240,238,255,0.3)' }}>みんなの声が流れる場所</p>
           </div>
           <button onClick={() => { fetchPosts(true); fetchVoiceRooms(); if (userId) fetchQA(userId, myVillageIds); if (tab === 'all') fetchTweets() }}
             className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
-            style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
-            <RefreshCw size={15} className="text-white/70" />
+            style={{ background: 'rgba(157,92,255,0.1)', border: '1px solid rgba(157,92,255,0.25)' }}>
+            <RefreshCw size={15} style={{ color: 'rgba(157,92,255,0.7)' }} />
           </button>
         </div>
 
         {/* タブ */}
-        <div className="flex border-b border-white/10">
+        <div className="flex" style={{ borderBottom: '1px solid rgba(157,92,255,0.15)' }}>
           {TAB_CONFIG.map(({ key, label, icon: Icon }) => (
             <button key={key} onClick={() => setTab(key)}
               className="flex-1 flex flex-col items-center gap-0.5 pt-2 pb-3 transition-all relative">
               <Icon size={16}
-                className={tab === key ? 'text-white' : 'text-white/40'}
+                style={{ color: tab === key ? '#9D5CFF' : 'rgba(240,238,255,0.3)' }}
                 strokeWidth={tab === key ? 2.5 : 1.8} />
-              <span className={`text-[10px] font-bold whitespace-nowrap ${tab === key ? 'text-white' : 'text-white/40'}`}>
+              <span className="text-[10px] font-bold whitespace-nowrap"
+                style={{ color: tab === key ? '#F0EEFF' : 'rgba(240,238,255,0.3)' }}>
                 {label}
               </span>
               {/* マイ村タブにQ&Aバッジ */}
               {key === 'myvillage' && qaBottles.length > 0 && (
-                <span className="absolute top-1.5 right-2 min-w-[14px] h-[14px] bg-amber-400 rounded-full flex items-center justify-center px-0.5">
-                  <span className="text-[8px] font-black text-stone-900">{qaBottles.length}</span>
+                <span className="absolute top-1.5 right-2 min-w-[14px] h-[14px] rounded-full flex items-center justify-center px-0.5"
+                  style={{ background: 'linear-gradient(135deg,#9D5CFF,#FF4D90)' }}>
+                  <span className="text-[8px] font-black text-white">{qaBottles.length}</span>
                 </span>
               )}
               {tab === key && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-white rounded-full" />
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
+                  style={{ background: 'linear-gradient(90deg,#9D5CFF,#FF4D90)' }} />
               )}
             </button>
           ))}
@@ -1119,25 +1154,24 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         {/* 回答待ちバナー（マイ村タブ・Q&Aあり） */}
         {tab === 'myvillage' && qaBottles.length > 0 && !loading && (
           <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl"
-            style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)' }}>
-            <HelpCircle size={14} className="text-amber-400 flex-shrink-0" />
-            <p className="text-xs font-bold text-amber-300">
+            style={{ background: 'rgba(157,92,255,0.08)', border: '1px solid rgba(157,92,255,0.25)' }}>
+            <HelpCircle size={14} style={{ color: '#9D5CFF' }} className="flex-shrink-0" />
+            <p className="text-xs font-bold" style={{ color: 'rgba(157,92,255,0.9)' }}>
               あなたの村に{qaBottles.length}件の質問が届いています
             </p>
           </div>
         )}
 
-
         {/* 村に参加していない */}
         {tab === 'myvillage' && myVillageIds.length === 0 && !loading && (
           <div className="rounded-2xl p-6 text-center"
-            style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)' }}>
+            style={{ background: 'rgba(157,92,255,0.06)', border: '1px solid rgba(157,92,255,0.2)' }}>
             <p className="text-3xl mb-3">🛡️</p>
-            <p className="text-sm font-extrabold text-white mb-1">まだギルドに参加していません</p>
-            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.4)' }}>ギルドに参加すると、仲間の投稿がここに流れます。</p>
+            <p className="text-sm font-extrabold mb-1" style={{ color: '#F0EEFF' }}>まだギルドに参加していません</p>
+            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(240,238,255,0.35)' }}>ギルドに参加すると、仲間の投稿がここに流れます。</p>
             <button onClick={() => router.push('/guilds')}
               className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
-              style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', boxShadow: '0 4px 16px rgba(139,92,246,0.4)' }}>
+              style={{ background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}>
               ギルドを探す →
             </button>
           </div>
@@ -1146,13 +1180,13 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         {/* フォロー0人 */}
         {tab === 'following' && followingIds.length === 0 && !loading && (
           <div className="rounded-2xl p-6 text-center"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)' }}>
             <p className="text-3xl mb-3">👥</p>
-            <p className="text-sm font-extrabold text-white mb-1">まだ誰もフォローしていません</p>
-            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.4)' }}>ゲーム仲間をフォローすると、ここに投稿が流れます。</p>
+            <p className="text-sm font-extrabold mb-1" style={{ color: '#F0EEFF' }}>まだ誰もフォローしていません</p>
+            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(240,238,255,0.35)' }}>ゲーム仲間をフォローすると、ここに投稿が流れます。</p>
             <button onClick={() => router.push('/guilds')}
               className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
-              style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', boxShadow: '0 4px 16px rgba(139,92,246,0.4)' }}>
+              style={{ background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}>
               ギルドを探す →
             </button>
           </div>
@@ -1178,8 +1212,8 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
               onAnswered={handleAnswered}
             />
           ) : item.type === 'tweet' ? (
-            <div key={`tweet-${item.data.id}`} className="rounded-2xl overflow-hidden backdrop-blur-sm"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
+            <div key={`tweet-${item.data.id}`} className="rounded-2xl overflow-hidden"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)', boxShadow: '0 4px 24px rgba(0,0,0,0.35)' }}>
               <TweetCard
                 tweet={item.data}
                 myId={userId}
@@ -1207,8 +1241,11 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
           (tab === 'following' && followingIds.length > 0)
         ) && (
           <div className="text-center py-12">
-            <p className="text-3xl mb-3">🎮</p>
-            <p className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.5)' }}>まだ投稿がありません</p>
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{ background: 'rgba(157,92,255,0.1)', border: '1px solid rgba(157,92,255,0.2)' }}>
+              <span className="text-3xl">🎮</span>
+            </div>
+            <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.4)' }}>まだ投稿がありません</p>
           </div>
         )}
 
@@ -1216,9 +1253,9 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         {!loading && hasMore && posts.length > 0 && (
           <button onClick={() => fetchPosts(false)} disabled={loadingMore}
             className="w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>
+            style={{ background: 'rgba(157,92,255,0.08)', border: '1px solid rgba(157,92,255,0.2)', color: 'rgba(157,92,255,0.8)' }}>
             {loadingMore
-              ? <span className="w-4 h-4 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+              ? <span className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgba(157,92,255,0.6)', borderTopColor: 'transparent' }} />
               : '続きを読む'}
           </button>
         )}
@@ -1228,7 +1265,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       <button
         onClick={() => setShowCompose(true)}
         className="fixed bottom-24 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
-        style={{ background: 'linear-gradient(135deg,#6366f1 0%,#4f46e5 100%)', boxShadow: '0 8px 24px rgba(99,102,241,0.45)' }}
+        style={{ background: 'linear-gradient(135deg,#9D5CFF 0%,#7B3FE4 100%)', boxShadow: '0 8px 28px rgba(157,92,255,0.5)' }}
       >
         <Plus size={24} className="text-white" strokeWidth={2.5} />
       </button>

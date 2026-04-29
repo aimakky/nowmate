@@ -36,19 +36,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* マイページ — 左上固定アバター（Twitter/X スタイル） */}
+    <div className="min-h-screen" style={{ background: '#080812' }}>
+      {/* マイページ — 左上固定アバター */}
       {!hideAvatar && (
         <Link
           href="/mypage"
-          className="fixed top-3 left-4 z-50 w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-md active:scale-90 transition-all"
-          style={{ top: 'max(12px, env(safe-area-inset-top, 12px))' }}
+          className="fixed top-3 left-4 z-50 w-9 h-9 rounded-full overflow-hidden active:scale-90 transition-all"
+          style={{
+            top: 'max(12px, env(safe-area-inset-top, 12px))',
+            border: '2px solid rgba(157,92,255,0.5)',
+            boxShadow: '0 0 10px rgba(157,92,255,0.3)',
+          }}
         >
           {avatarUrl ? (
             <img src={avatarUrl} alt="マイページ" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full bg-stone-200 flex items-center justify-center">
-              <User size={18} className="text-stone-500" />
+            <div className="w-full h-full flex items-center justify-center"
+              style={{ background: 'rgba(157,92,255,0.2)' }}>
+              <User size={18} style={{ color: '#9D5CFF' }} />
             </div>
           )}
         </Link>
@@ -59,10 +64,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       <BottomNav />
 
-      {/* Floating feedback button — left side to avoid FAB conflict */}
+      {/* Floating feedback button */}
       <button
         onClick={() => setShowFeedback(true)}
-        className="fixed bottom-24 left-4 z-30 w-11 h-11 bg-white border border-gray-200 rounded-2xl shadow-md flex items-center justify-center text-lg hover:shadow-lg hover:scale-105 active:scale-95 transition-all"
+        className="fixed bottom-24 left-4 z-30 w-11 h-11 rounded-2xl flex items-center justify-center text-lg active:scale-95 transition-all"
+        style={{
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(157,92,255,0.2)',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+        }}
         title="Share feedback"
       >
         💡

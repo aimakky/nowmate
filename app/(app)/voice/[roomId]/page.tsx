@@ -497,8 +497,8 @@ export default function VoiceRoomPage() {
 
   // ─────────────────────────────────────────────────────────
   if (!room) return (
-    <div className="min-h-screen flex items-center justify-center bg-birch">
-      <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#080812' }}>
+      <span className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }} />
     </div>
   )
 
@@ -507,7 +507,7 @@ export default function VoiceRoomPage() {
   const isHost    = room.host_id === userId
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-birch flex flex-col relative overflow-hidden">
+    <div className="max-w-md mx-auto min-h-screen flex flex-col relative overflow-hidden" style={{ background: '#080812' }}>
 
       {/* ── フローティングリアクション ── */}
       {floatings.map(f => (
@@ -567,21 +567,24 @@ export default function VoiceRoomPage() {
       )}
 
       {/* ── ヘッダー ── */}
-      <div className="bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex-shrink-0">
+      <div className="px-4 pt-4 pb-3 flex-shrink-0"
+        style={{ background: 'rgba(8,8,18,0.9)', borderBottom: '1px solid rgba(157,92,255,0.15)', backdropFilter: 'blur(12px)' }}>
         <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-1 -ml-1 text-stone-500">
+          <button onClick={() => router.back()} className="p-1 -ml-1" style={{ color: 'rgba(240,238,255,0.5)' }}>
             <ArrowLeft size={20} />
           </button>
           <span className="text-xl">{CAT_EMOJI[room.category] ?? '✨'}</span>
           <div className="flex-1 min-w-0">
-            <p className="font-extrabold text-stone-900 text-sm truncate">{room.title}</p>
-            <p className="text-xs text-stone-400">
+            <p className="font-extrabold text-sm truncate" style={{ color: '#F0EEFF' }}>{room.title}</p>
+            <p className="text-xs" style={{ color: 'rgba(240,238,255,0.45)' }}>
               {room.category} · {getNationalityFlag(room.profiles?.nationality || '')} {room.profiles?.display_name}
             </p>
           </div>
-          <div className="flex items-center gap-1 bg-red-50 border border-red-100 px-2 py-1 rounded-full">
-            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-xs font-bold text-red-600">LIVE</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+            style={{ background: 'rgba(124,255,130,0.1)', border: '1px solid rgba(124,255,130,0.25)' }}>
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse"
+              style={{ background: '#7CFF82', boxShadow: '0 0 6px rgba(124,255,130,0.8)' }} />
+            <span className="text-xs font-extrabold tracking-wider" style={{ color: '#7CFF82' }}>LIVE</span>
           </div>
         </div>
       </div>
@@ -889,10 +892,11 @@ export default function VoiceRoomPage() {
 
       {/* ── コントロール（参加後）── */}
       {joined && (
-        <div className="bg-white border-t border-stone-100 px-4 py-3.5 flex-shrink-0">
+        <div className="px-4 py-3.5 flex-shrink-0"
+          style={{ background: 'rgba(8,8,18,0.95)', borderTop: '1px solid rgba(157,92,255,0.15)', backdropFilter: 'blur(12px)' }}>
           <div className="flex items-center justify-between">
-            <div className="text-xs text-stone-500">
-              <span className="font-bold text-stone-800">{participants.length}</span> 人参加中
+            <div className="text-xs" style={{ color: 'rgba(240,238,255,0.45)' }}>
+              <span className="font-bold" style={{ color: '#9D5CFF' }}>{participants.length}</span> 人参加中
             </div>
 
             <div className="flex items-center gap-3">
@@ -932,7 +936,12 @@ export default function VoiceRoomPage() {
             </div>
 
             <div className="text-right">
-              {isHost && <span className="text-[10px] text-stone-400 bg-stone-100 px-2 py-1 rounded-full">Host 👑</span>}
+              {isHost && (
+                <span className="text-[10px] px-2 py-1 rounded-full font-bold"
+                  style={{ background: 'rgba(157,92,255,0.15)', color: '#9D5CFF', border: '1px solid rgba(157,92,255,0.3)' }}>
+                  Host 👑
+                </span>
+              )}
             </div>
           </div>
         </div>

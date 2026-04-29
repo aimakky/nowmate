@@ -156,8 +156,8 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-birch flex items-center justify-center">
-        <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#080812' }}>
+        <span className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }} />
       </div>
     )
   }
@@ -167,26 +167,35 @@ export default function HomePage() {
   const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0)
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-birch pb-28">
+    <div className="max-w-md mx-auto min-h-screen pb-28" style={{ background: '#080812' }}>
 
       {/* ── ヘッダー ── */}
-      <div className="px-4 pt-10 pb-5"
-        style={{ background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)' }}>
+      <div
+        className="px-4 pt-10 pb-5"
+        style={{
+          background: 'linear-gradient(160deg, #0d0820 0%, #120a2e 60%, #0a1040 100%)',
+          borderBottom: '1px solid rgba(157,92,255,0.15)',
+        }}
+      >
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xl">{greeting.emoji}</span>
-          <p className="text-xs text-white/50 font-medium">{greeting.text}</p>
+          <p className="text-xs font-medium" style={{ color: 'rgba(240,238,255,0.5)' }}>{greeting.text}</p>
         </div>
         {occBadge && (
-          <div className="inline-flex items-center gap-1.5 bg-indigo-500/20 border border-indigo-400/30 rounded-full px-3 py-1 mt-1">
+          <div
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 mt-1"
+            style={{ background: 'rgba(157,92,255,0.15)', border: '1px solid rgba(157,92,255,0.3)' }}
+          >
             <span className="text-sm">{occBadge.emoji}</span>
-            <span className="text-xs font-bold text-indigo-200">{occBadge.label}</span>
+            <span className="text-xs font-bold" style={{ color: '#9D5CFF' }}>{occBadge.label}</span>
           </div>
         )}
         {!profile?.occupation && (
           <Link href="/settings"
-            className="inline-flex items-center gap-1.5 bg-white/10 border border-white/20 rounded-full px-3 py-1 mt-1">
-            <span className="text-[11px] text-white/60">💼 職業を設定すると専用村に入れます</span>
-            <ChevronRight size={10} className="text-white/40" />
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 mt-1"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.2)' }}>
+            <span className="text-[11px]" style={{ color: 'rgba(240,238,255,0.6)' }}>💼 職業を設定すると専用村に入れます</span>
+            <ChevronRight size={10} style={{ color: 'rgba(240,238,255,0.4)' }} />
           </Link>
         )}
       </div>
@@ -202,25 +211,34 @@ export default function HomePage() {
       {totalUnread > 0 && (
         <div className="mx-4 mt-4">
           <button onClick={() => router.push('/villages')}
-            className="w-full flex items-center gap-3 bg-brand-50 border border-brand-200 rounded-2xl px-4 py-3 active:scale-[0.99] transition-all">
-            <span className="w-2 h-2 bg-brand-500 rounded-full animate-pulse flex-shrink-0" />
-            <p className="text-sm font-bold text-brand-700 flex-1 text-left">
+            className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 active:scale-[0.99] transition-all"
+            style={{
+              background: 'rgba(157,92,255,0.1)',
+              border: '1px solid rgba(157,92,255,0.3)',
+              boxShadow: '0 0 20px rgba(157,92,255,0.1)',
+            }}>
+            <span className="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style={{ background: '#9D5CFF' }} />
+            <p className="text-sm font-bold flex-1 text-left" style={{ color: '#9D5CFF' }}>
               参加中の村に{totalUnread}件の新しい投稿があります
             </p>
-            <ChevronRight size={14} className="text-brand-400 flex-shrink-0" />
+            <ChevronRight size={14} style={{ color: 'rgba(157,92,255,0.6)' }} className="flex-shrink-0" />
           </button>
         </div>
       )}
 
       {/* ── 今日の問い ── */}
       <div className="mx-4 mt-4">
-        <div className="bg-white border border-stone-100 rounded-2xl px-4 py-3.5 shadow-sm">
-          <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1.5">今日の問い</p>
-          <p className="text-sm font-bold text-stone-800 leading-relaxed">「{todayPrompt}」</p>
+        <div
+          className="rounded-2xl px-4 py-3.5"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)' }}
+        >
+          <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'rgba(240,238,255,0.3)' }}>今日の問い</p>
+          <p className="text-sm font-bold leading-relaxed" style={{ color: '#F0EEFF' }}>「{todayPrompt}」</p>
           {occVillage && (
             <button
               onClick={() => setNewPost(todayPrompt)}
-              className="mt-2.5 text-[10px] text-brand-500 font-bold"
+              className="mt-2.5 text-[10px] font-bold"
+              style={{ color: '#9D5CFF' }}
             >
               → {occVillage.name}に書いてみる
             </button>
@@ -231,53 +249,68 @@ export default function HomePage() {
       {/* ── 職業村 ── */}
       {occVillage ? (
         <div className="mx-4 mt-4">
-          <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)' }}
+          >
             {/* 村ヘッダー */}
             <button
               onClick={() => router.push(`/villages/${occVillage.id}`)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-stone-50 active:bg-stone-50 transition-all"
+              className="w-full flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-all"
+              style={{ borderBottom: '1px solid rgba(157,92,255,0.1)' }}
             >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' }}>
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)', boxShadow: '0 0 16px rgba(157,92,255,0.4)' }}
+              >
                 {occVillage.icon}
               </div>
               <div className="flex-1 text-left">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-extrabold text-stone-900">{occVillage.name}</p>
+                  <p className="text-sm font-extrabold" style={{ color: '#F0EEFF' }}>{occVillage.name}</p>
                   {todayCount > 0 && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-600 border border-brand-100">
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{ background: 'rgba(157,92,255,0.15)', color: '#9D5CFF', border: '1px solid rgba(157,92,255,0.3)' }}
+                    >
                       今日{todayCount}件
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] text-stone-400">
+                <p className="text-[10px]" style={{ color: 'rgba(240,238,255,0.4)' }}>
                   {occVillage.job_type}限定 · 👥 {occVillage.member_count}人
                 </p>
               </div>
-              <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+              <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
             </button>
 
             {/* 投稿入力 */}
-            <div className="px-4 py-3 border-b border-stone-50">
+            <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(157,92,255,0.1)' }}>
               <div className="flex gap-2">
                 <textarea
                   value={newPost}
                   onChange={e => setNewPost(e.target.value)}
                   placeholder={`${occVillage.name}に書いてみる…`}
                   rows={2}
-                  className="flex-1 text-sm bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 focus:outline-none focus:border-brand-300 placeholder:text-stone-300 resize-none"
+                  className="flex-1 text-sm rounded-xl px-3 py-2 focus:outline-none resize-none transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(157,92,255,0.2)',
+                    color: '#F0EEFF',
+                  }}
                 />
                 <button
                   onClick={handlePost}
                   disabled={!newPost.trim() || posting}
-                  className="w-9 h-9 bg-brand-500 rounded-xl flex items-center justify-center disabled:opacity-30 active:scale-90 transition-all flex-shrink-0 self-end"
+                  className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-30 active:scale-90 transition-all flex-shrink-0 self-end"
+                  style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}
                 >
                   {posting
                     ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     : <Send size={14} className="text-white" />}
                 </button>
               </div>
-              {posted && <p className="text-[11px] text-brand-500 font-bold mt-1.5">✓ 投稿しました</p>}
+              {posted && <p className="text-[11px] font-bold mt-1.5" style={{ color: '#7CFF82' }}>✓ 投稿しました</p>}
             </div>
 
             {/* 最新投稿 */}
@@ -288,27 +321,35 @@ export default function HomePage() {
                   return (
                     <button key={post.id}
                       onClick={() => router.push(`/villages/${occVillage.id}`)}
-                      className={`w-full text-left px-4 py-3 active:bg-stone-50 transition-all ${i < Math.min(recentPosts.length, 3) - 1 ? 'border-b border-stone-50' : ''}`}
+                      className="w-full text-left px-4 py-3 active:opacity-80 transition-all"
+                      style={{ borderBottom: i < Math.min(recentPosts.length, 3) - 1 ? '1px solid rgba(157,92,255,0.08)' : 'none' }}
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+                        <div
+                          className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
+                          style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #FF4D90 100%)' }}
+                        >
                           {post.profiles?.display_name?.[0] ?? '?'}
                         </div>
-                        <span className="text-[10px] font-bold text-stone-600">{post.profiles?.display_name}</span>
+                        <span className="text-[10px] font-bold" style={{ color: 'rgba(240,238,255,0.7)' }}>{post.profiles?.display_name}</span>
                         {occ && (
-                          <span className="text-[8px] font-bold px-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
+                          <span
+                            className="text-[8px] font-bold px-1 rounded-full"
+                            style={{ background: 'rgba(157,92,255,0.15)', color: '#9D5CFF', border: '1px solid rgba(157,92,255,0.2)' }}
+                          >
                             {occ.emoji}
                           </span>
                         )}
-                        <span className="text-[10px] text-stone-400 ml-auto">{timeAgo(post.created_at)}</span>
+                        <span className="text-[10px] ml-auto" style={{ color: 'rgba(240,238,255,0.3)' }}>{timeAgo(post.created_at)}</span>
                       </div>
-                      <p className="text-xs text-stone-700 leading-relaxed line-clamp-2">{post.content}</p>
+                      <p className="text-xs leading-relaxed line-clamp-2" style={{ color: 'rgba(240,238,255,0.7)' }}>{post.content}</p>
                     </button>
                   )
                 })}
                 <button
                   onClick={() => router.push(`/villages/${occVillage.id}`)}
-                  className="w-full py-3 text-xs font-bold text-brand-500 border-t border-stone-50 text-center active:bg-stone-50 transition-all"
+                  className="w-full py-3 text-xs font-bold text-center active:opacity-80 transition-all"
+                  style={{ color: '#9D5CFF', borderTop: '1px solid rgba(157,92,255,0.1)' }}
                 >
                   村を開く →
                 </button>
@@ -316,8 +357,8 @@ export default function HomePage() {
             ) : (
               <div className="px-4 py-6 text-center">
                 <p className="text-2xl mb-2">🌿</p>
-                <p className="text-xs font-bold text-stone-600">まだ投稿がありません</p>
-                <p className="text-[11px] text-stone-400 mt-1">最初の投稿をしてみましょう</p>
+                <p className="text-xs font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ投稿がありません</p>
+                <p className="text-[11px] mt-1" style={{ color: 'rgba(240,238,255,0.3)' }}>最初の投稿をしてみましょう</p>
               </div>
             )}
           </div>
@@ -325,14 +366,18 @@ export default function HomePage() {
       ) : (
         /* 職業村なし → 職業設定を促す */
         <div className="mx-4 mt-4">
-          <div className="bg-white border border-stone-100 rounded-2xl p-5 shadow-sm text-center">
+          <div
+            className="rounded-2xl p-5 text-center"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)' }}
+          >
             <p className="text-3xl mb-3">💼</p>
-            <p className="text-sm font-extrabold text-stone-800 mb-1">職業を設定してください</p>
-            <p className="text-xs text-stone-500 leading-relaxed mb-4">
+            <p className="text-sm font-extrabold mb-1" style={{ color: '#F0EEFF' }}>職業を設定してください</p>
+            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(240,238,255,0.55)' }}>
               職業を設定すると、同じ仕事をしている人だけの村に入れます。
             </p>
             <Link href="/settings"
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-md shadow-brand-200 active:scale-95 transition-all">
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
+              style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}>
               💼 職業を設定する →
             </Link>
           </div>
@@ -343,8 +388,8 @@ export default function HomePage() {
       {myVillages.filter((v: any) => !occVillage || v.id !== occVillage.id).length > 0 && (
         <div className="mx-4 mt-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-extrabold text-stone-700">参加中の村</p>
-            <button onClick={() => router.push('/villages')} className="text-[10px] text-brand-500 font-bold">
+            <p className="text-xs font-extrabold" style={{ color: 'rgba(240,238,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>参加中の村</p>
+            <button onClick={() => router.push('/villages')} className="text-[10px] font-bold" style={{ color: '#9D5CFF' }}>
               すべて見る →
             </button>
           </div>
@@ -357,19 +402,23 @@ export default function HomePage() {
                 return (
                   <button key={v.id}
                     onClick={() => router.push(`/villages/${v.id}`)}
-                    className="w-full flex items-center gap-3 bg-white border border-stone-100 rounded-2xl px-4 py-3 shadow-sm active:scale-[0.99] transition-all text-left"
+                    className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 active:scale-[0.99] transition-all text-left"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)' }}
                   >
                     <span className="text-xl flex-shrink-0">{v.icon}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-stone-800 truncate">{v.name}</p>
-                      <p className="text-[10px] text-stone-400">👥 {v.member_count}人</p>
+                      <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
+                      <p className="text-[10px]" style={{ color: '#49E1FF' }}>👥 {v.member_count}人</p>
                     </div>
                     {unread > 0 && (
-                      <span className="flex-shrink-0 w-5 h-5 bg-brand-500 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white">
+                      <span
+                        className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white"
+                        style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)', boxShadow: '0 0 8px rgba(157,92,255,0.5)' }}
+                      >
                         {unread > 9 ? '9+' : unread}
                       </span>
                     )}
-                    <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                    <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
                   </button>
                 )
               })}
@@ -381,8 +430,8 @@ export default function HomePage() {
       {allVillages.length > 0 && (
         <div className="mx-4 mt-6">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-extrabold text-stone-700">🔥 活発な職業村</p>
-            <button onClick={() => router.push('/villages')} className="text-[10px] text-brand-500 font-bold">
+            <p className="text-xs font-extrabold" style={{ color: 'rgba(240,238,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>🔥 活発な職業村</p>
+            <button onClick={() => router.push('/villages')} className="text-[10px] font-bold" style={{ color: '#9D5CFF' }}>
               すべて見る →
             </button>
           </div>
@@ -390,12 +439,13 @@ export default function HomePage() {
             {allVillages.slice(0, 4).map((v: any) => (
               <button key={v.id}
                 onClick={() => router.push(`/villages/${v.id}`)}
-                className="flex items-center gap-2.5 bg-white border border-stone-100 rounded-2xl p-3 shadow-sm active:scale-[0.98] transition-all text-left"
+                className="flex items-center gap-2.5 rounded-2xl p-3 active:scale-[0.98] transition-all text-left"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)' }}
               >
                 <span className="text-xl flex-shrink-0">{v.icon}</span>
                 <div className="min-w-0">
-                  <p className="text-xs font-extrabold text-stone-800 truncate">{v.job_type}村</p>
-                  <p className="text-[10px] text-brand-500 font-bold">今週{v.post_count_7d}投稿</p>
+                  <p className="text-xs font-extrabold truncate" style={{ color: '#F0EEFF' }}>{v.job_type}村</p>
+                  <p className="text-[10px] font-bold" style={{ color: '#FF4D90' }}>今週{v.post_count_7d}投稿</p>
                 </div>
               </button>
             ))}
@@ -406,9 +456,10 @@ export default function HomePage() {
       {/* ── 村を見つける CTA ── */}
       <div className="mx-4 mt-5">
         <button onClick={() => router.push('/villages')}
-          className="w-full py-3.5 bg-white border border-stone-200 rounded-2xl text-sm font-bold text-stone-700 flex items-center justify-center gap-2 active:bg-stone-50 transition-all shadow-sm">
+          className="w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 active:opacity-80 transition-all"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)', color: 'rgba(240,238,255,0.7)' }}>
           🏕️ すべての村を見る
-          <ChevronRight size={14} className="text-stone-400" />
+          <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.4)' }} />
         </button>
       </div>
     </div>

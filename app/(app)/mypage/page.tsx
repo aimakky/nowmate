@@ -51,7 +51,7 @@ function TweetComposeSheet({
     setSending(false)
     if (!error) {
       setSent(true)
-      await onPosted()   // リロード完了を待つ
+      await onPosted()
       onClose()
     }
   }
@@ -63,29 +63,31 @@ function TweetComposeSheet({
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div
-        className="relative bg-white rounded-t-3xl w-full max-w-md mx-auto overflow-hidden"
+        className="relative rounded-t-3xl w-full max-w-md mx-auto overflow-hidden"
+        style={{ background: '#0f0820', border: '1px solid rgba(157,92,255,0.2)', borderBottom: 'none' }}
         onClick={e => e.stopPropagation()}
       >
         {/* ドラッグハンドル */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-stone-200" />
+          <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(157,92,255,0.3)' }} />
         </div>
 
         {/* ヘッダー */}
         <div className="flex items-center justify-between px-5 py-2.5">
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full active:bg-stone-100 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-full active:opacity-60 transition-opacity"
+            style={{ background: 'rgba(255,255,255,0.06)' }}
           >
-            <X size={18} className="text-stone-500" />
+            <X size={18} style={{ color: 'rgba(240,238,255,0.55)' }} />
           </button>
           <button
             onClick={handlePost}
             disabled={!text.trim() || sending || sent || text.length > MAX}
             className="px-5 py-1.5 rounded-full text-sm font-extrabold text-white disabled:opacity-40 active:scale-95 transition-all"
-            style={{ background: 'linear-gradient(135deg,#1c1917,#3c3836)' }}
+            style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}
           >
             {sending ? (
               <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin block" />
@@ -96,8 +98,10 @@ function TweetComposeSheet({
         {/* 入力エリア */}
         <div className="flex gap-3 px-5 pt-1 pb-4">
           <div className="flex-shrink-0">
-            <div className="w-10 h-10 rounded-full overflow-hidden bg-stone-100 flex items-center justify-center text-sm font-bold text-white"
-              style={{ background: 'linear-gradient(135deg,#6366f1,#4f46e5)' }}>
+            <div
+              className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold text-white"
+              style={{ background: 'linear-gradient(135deg, #9D5CFF, #FF4D90)' }}
+            >
               {avatarUrl
                 ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
                 : <span>{displayName[0]}</span>
@@ -111,27 +115,27 @@ function TweetComposeSheet({
               placeholder="いまどうしてる？"
               rows={5}
               autoFocus
-              className="w-full text-[17px] leading-relaxed resize-none focus:outline-none text-stone-900 placeholder-stone-300 bg-transparent"
+              className="w-full text-[17px] leading-relaxed resize-none focus:outline-none bg-transparent"
+              style={{ color: '#F0EEFF' }}
             />
           </div>
         </div>
 
         {/* フッター */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-stone-100">
-          <p className="text-[11px] text-stone-400">タイムラインに公開されます</p>
+        <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: '1px solid rgba(157,92,255,0.15)' }}>
+          <p className="text-[11px]" style={{ color: 'rgba(240,238,255,0.3)' }}>タイムラインに公開されます</p>
           <div className="flex items-center gap-2.5">
-            {/* 残り文字数リング */}
             <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">
-              <circle cx="12" cy="12" r={circleR} fill="none" stroke="#e7e5e4" strokeWidth="2.5" />
+              <circle cx="12" cy="12" r={circleR} fill="none" stroke="rgba(157,92,255,0.2)" strokeWidth="2.5" />
               <circle cx="12" cy="12" r={circleR} fill="none"
-                stroke={pct > 0.9 ? '#f97316' : '#1c1917'}
+                stroke={pct > 0.9 ? '#FF4D90' : '#9D5CFF'}
                 strokeWidth="2.5" strokeLinecap="round"
                 strokeDasharray={circleC}
                 strokeDashoffset={circleC * (1 - pct)}
                 style={{ transition: 'stroke-dashoffset 0.1s' }}
               />
             </svg>
-            <span className={`text-xs font-bold ${remaining < 20 ? 'text-orange-500' : 'text-stone-300'}`}>
+            <span className="text-xs font-bold" style={{ color: remaining < 20 ? '#FF4D90' : 'rgba(240,238,255,0.3)' }}>
               {remaining}
             </span>
           </div>
@@ -173,7 +177,6 @@ export default function MyPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
-      // last_seen_at 更新
       supabase.rpc('update_last_seen', { p_user_id: user.id })
 
       const [
@@ -277,8 +280,8 @@ export default function MyPage() {
 
   if (loading || !profile) {
     return (
-      <div className="flex items-center justify-center h-screen bg-white">
-        <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center h-screen" style={{ background: '#080812' }}>
+        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }} />
       </div>
     )
   }
@@ -289,10 +292,10 @@ export default function MyPage() {
 
   const bannerGradient = industryInfo
     ? industryInfo.gradient
-    : 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
+    : 'linear-gradient(135deg, #0d0820 0%, #1a0a40 50%, #0a0a30 100%)'
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-stone-50">
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
 
       {/* ── バナー + アバター ── */}
       <div className="relative">
@@ -302,14 +305,23 @@ export default function MyPage() {
         <Link
           href="/settings"
           className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
-          style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}
+          style={{ background: 'rgba(8,8,18,0.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(157,92,255,0.3)' }}
         >
           <Settings size={16} className="text-white" />
         </Link>
 
         {/* アバター */}
         <div className="absolute left-4" style={{ bottom: -36 }}>
-          <div className={`w-20 h-20 rounded-full border-4 border-white overflow-hidden bg-stone-100 flex items-center justify-center shadow-md ${trust?.tier === 'pillar' ? 'ring-2 ring-amber-400 ring-offset-1' : ''}`}>
+          <div
+            className={`w-20 h-20 rounded-full border-4 overflow-hidden flex items-center justify-center ${trust?.tier === 'pillar' ? 'ring-2 ring-offset-1' : ''}`}
+            style={{
+              borderColor: '#080812',
+              background: 'rgba(157,92,255,0.15)',
+              boxShadow: trust?.tier === 'pillar'
+                ? '0 0 20px rgba(255,77,144,0.5), 0 0 0 2px #FF4D90'
+                : '0 0 20px rgba(157,92,255,0.4)',
+            }}
+          >
             {profile.avatar_url
               ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
               : <span className="text-3xl">🙂</span>
@@ -319,7 +331,8 @@ export default function MyPage() {
             <span className="absolute -top-1 -right-1 text-base leading-none">✨</span>
           )}
           {profile.is_online && (
-            <span className="absolute bottom-1 right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white" />
+            <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full border-2"
+              style={{ background: '#7CFF82', borderColor: '#080812' }} />
           )}
         </div>
 
@@ -330,8 +343,8 @@ export default function MyPage() {
       </div>
 
       {/* ── プロフ情報 ── */}
-      <div className="pt-14 px-4 pb-3 bg-white border-b border-stone-100">
-        <h2 className="font-extrabold text-stone-900 text-xl leading-tight truncate">
+      <div className="pt-14 px-4 pb-3" style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(157,92,255,0.15)' }}>
+        <h2 className="font-extrabold text-xl leading-tight truncate" style={{ color: '#F0EEFF' }}>
           {profile.display_name}
         </h2>
         {profile.VILLIA_id && (
@@ -343,46 +356,52 @@ export default function MyPage() {
             }}
             className="flex items-center gap-1 mt-0.5 active:opacity-60 transition-opacity"
           >
-            <span className="text-xs text-stone-400 font-mono">#{profile.VILLIA_id}</span>
+            <span className="text-xs font-mono" style={{ color: 'rgba(240,238,255,0.3)' }}>#{profile.VILLIA_id}</span>
             {idCopied
-              ? <Check size={11} className="text-green-500" />
-              : <Copy size={11} className="text-stone-300" />
+              ? <Check size={11} style={{ color: '#7CFF82' }} />
+              : <Copy size={11} style={{ color: 'rgba(240,238,255,0.3)' }} />
             }
           </button>
         )}
 
         {profile.bio && (
-          <p className="text-sm text-stone-700 mt-2 leading-relaxed">{profile.bio}</p>
+          <p className="text-sm mt-2 leading-relaxed" style={{ color: 'rgba(240,238,255,0.7)' }}>{profile.bio}</p>
         )}
 
         <div className="flex flex-wrap items-center gap-2 mt-2.5">
           {industryInfo && (
             <div className="flex items-center gap-1.5">
               {showIndustry ? (
-                <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full"
-                  style={{ background: `${industryInfo.color}15`, color: industryInfo.color }}>
+                <span
+                  className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full"
+                  style={{ background: `${industryInfo.color}20`, color: industryInfo.color, border: `1px solid ${industryInfo.color}40` }}
+                >
                   {industryInfo.emoji} {industryInfo.id}
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-stone-100 text-stone-400">
+                <span
+                  className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full"
+                  style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.3)', border: '1px solid rgba(157,92,255,0.15)' }}
+                >
                   {industryInfo.emoji} 非公開
                 </span>
               )}
               <button
                 onClick={toggleIndustryVisibility}
                 disabled={savingIndustry}
-                className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-stone-100 active:bg-stone-200 transition-colors disabled:opacity-40"
+                className="w-6 h-6 flex items-center justify-center rounded-full transition-colors disabled:opacity-40"
+                style={{ background: 'rgba(255,255,255,0.04)' }}
                 title={showIndustry ? '職業を非表示にする' : '職業を公開する'}
               >
                 {showIndustry
-                  ? <Eye size={13} className="text-stone-400" />
-                  : <EyeOff size={13} className="text-stone-400" />
+                  ? <Eye size={13} style={{ color: 'rgba(240,238,255,0.4)' }} />
+                  : <EyeOff size={13} style={{ color: 'rgba(240,238,255,0.4)' }} />
                 }
               </button>
             </div>
           )}
           {profile.created_at && (
-            <span className="text-xs text-stone-400">
+            <span className="text-xs" style={{ color: 'rgba(240,238,255,0.3)' }}>
               🗓️ {new Date(profile.created_at).getFullYear()}年{new Date(profile.created_at).getMonth() + 1}月から
             </span>
           )}
@@ -391,22 +410,34 @@ export default function MyPage() {
         {/* フォロー / フォロワー / 投稿 */}
         <div className="flex gap-5 mt-3">
           <div className="flex items-center gap-1.5">
-            <span className="font-extrabold text-stone-900 text-sm">{followingCount}</span>
-            <span className="text-xs text-stone-500">フォロー中</span>
+            <span className="font-extrabold text-sm" style={{
+              background: 'linear-gradient(135deg, #9D5CFF, #FF4D90)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}>{followingCount}</span>
+            <span className="text-xs" style={{ color: 'rgba(240,238,255,0.55)' }}>フォロー中</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="font-extrabold text-stone-900 text-sm">{followersCount}</span>
-            <span className="text-xs text-stone-500">フォロワー</span>
+            <span className="font-extrabold text-sm" style={{
+              background: 'linear-gradient(135deg, #9D5CFF, #FF4D90)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}>{followersCount}</span>
+            <span className="text-xs" style={{ color: 'rgba(240,238,255,0.55)' }}>フォロワー</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="font-extrabold text-stone-900 text-sm">{tweets.length}</span>
-            <span className="text-xs text-stone-500">投稿</span>
+            <span className="font-extrabold text-sm" style={{
+              background: 'linear-gradient(135deg, #9D5CFF, #FF4D90)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}>{tweets.length}</span>
+            <span className="text-xs" style={{ color: 'rgba(240,238,255,0.55)' }}>投稿</span>
           </div>
         </div>
       </div>
 
       {/* ── タブ ── */}
-      <div className="flex bg-white border-b border-stone-100 sticky top-0 z-10">
+      <div className="flex sticky top-0 z-10" style={{ background: '#080812', borderBottom: '1px solid rgba(157,92,255,0.15)' }}>
         {([
           { id: 'tweets',          label: '投稿' },
           { id: 'images',          label: '画像' },
@@ -417,11 +448,14 @@ export default function MyPage() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className="flex-1 py-3 text-xs font-bold transition-colors relative"
-            style={{ color: activeTab === tab.id ? '#0c0a09' : '#a8a29e' }}
+            style={{ color: activeTab === tab.id ? '#9D5CFF' : 'rgba(240,238,255,0.3)' }}
           >
             {tab.label}
             {activeTab === tab.id && (
-              <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-stone-900" />
+              <span
+                className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full"
+                style={{ background: 'linear-gradient(90deg, #9D5CFF, #FF4D90)' }}
+              />
             )}
           </button>
         ))}
@@ -436,13 +470,13 @@ export default function MyPage() {
             {tweetLoading ? (
               <div className="space-y-0">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="bg-white border-b border-stone-50 px-4 py-4 animate-pulse">
+                  <div key={i} className="px-4 py-4 animate-pulse" style={{ borderBottom: '1px solid rgba(157,92,255,0.08)' }}>
                     <div className="flex gap-3">
-                      <div className="w-9 h-9 rounded-full bg-stone-100 flex-shrink-0" />
+                      <div className="w-9 h-9 rounded-full flex-shrink-0" style={{ background: 'rgba(157,92,255,0.1)' }} />
                       <div className="flex-1 space-y-2">
-                        <div className="h-3 bg-stone-100 rounded w-1/4" />
-                        <div className="h-3.5 bg-stone-100 rounded w-full" />
-                        <div className="h-3.5 bg-stone-100 rounded w-3/4" />
+                        <div className="h-3 rounded w-1/4" style={{ background: 'rgba(157,92,255,0.15)' }} />
+                        <div className="h-3.5 rounded w-full" style={{ background: 'rgba(157,92,255,0.08)' }} />
+                        <div className="h-3.5 rounded w-3/4" style={{ background: 'rgba(157,92,255,0.08)' }} />
                       </div>
                     </div>
                   </div>
@@ -450,21 +484,24 @@ export default function MyPage() {
               </div>
             ) : tweets.length === 0 ? (
               <div className="flex flex-col items-center py-20 text-center px-6">
-                <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mb-4">
-                  <Pencil size={28} className="text-stone-300" />
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                  style={{ background: 'rgba(157,92,255,0.1)', border: '1px solid rgba(157,92,255,0.2)' }}
+                >
+                  <Pencil size={28} style={{ color: 'rgba(157,92,255,0.5)' }} />
                 </div>
-                <p className="font-bold text-stone-600 text-sm">まだ投稿がありません</p>
-                <p className="text-xs text-stone-400 mt-1.5">思ったことをつぶやいてみよう</p>
+                <p className="font-bold text-sm" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ投稿がありません</p>
+                <p className="text-xs mt-1.5" style={{ color: 'rgba(240,238,255,0.3)' }}>思ったことをつぶやいてみよう</p>
                 <button
                   onClick={() => setShowCompose(true)}
                   className="mt-5 px-5 py-2.5 rounded-full text-sm font-bold text-white active:scale-95 transition-all"
-                  style={{ background: 'linear-gradient(135deg,#1c1917,#3c3836)' }}
+                  style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}
                 >
                   最初の投稿をする
                 </button>
               </div>
             ) : (
-              <div className="bg-white divide-y divide-stone-50">
+              <div style={{ background: 'transparent' }}>
                 {tweets.map(t => (
                   <TweetCard
                     key={t.id}
@@ -485,18 +522,22 @@ export default function MyPage() {
           <div>
             {imagePosts.length === 0 ? (
               <div className="flex flex-col items-center py-16 text-center px-6">
-                <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mb-4">
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                  style={{ background: 'rgba(157,92,255,0.1)', border: '1px solid rgba(157,92,255,0.2)' }}
+                >
                   <span className="text-3xl">🖼️</span>
                 </div>
-                <p className="font-bold text-stone-600 text-sm">まだ画像投稿がありません</p>
-                <p className="text-xs text-stone-400 mt-1.5">ギルドに画像付きで投稿しよう</p>
+                <p className="font-bold text-sm" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ画像投稿がありません</p>
+                <p className="text-xs mt-1.5" style={{ color: 'rgba(240,238,255,0.3)' }}>ギルドに画像付きで投稿しよう</p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-0.5 bg-stone-100">
+              <div className="grid grid-cols-3 gap-0.5" style={{ background: 'rgba(157,92,255,0.1)' }}>
                 {imagePosts.map((post: any) => (
                   <div
                     key={post.id}
-                    className="aspect-square overflow-hidden bg-stone-200 active:opacity-80 transition-opacity"
+                    className="aspect-square overflow-hidden active:opacity-80 transition-opacity"
+                    style={{ background: 'rgba(157,92,255,0.08)' }}
                     onClick={() => router.push(`/guild/${post.id}`)}
                   >
                     <img
@@ -521,39 +562,41 @@ export default function MyPage() {
               {joinedVillages.length === 0 ? (
                 <div className="flex flex-col items-center py-16 text-center">
                   <span className="text-4xl mb-3">🏘️</span>
-                  <p className="text-sm font-bold text-stone-600">まだギルド・ゲーム村に参加していません</p>
+                  <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだギルド・ゲーム村に参加していません</p>
                   <div className="flex gap-2 mt-4">
                     <button onClick={() => router.push('/guilds')}
-                      className="px-4 py-2.5 bg-stone-900 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
+                      className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
+                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(157,92,255,0.2)' }}
                     >🛡️ ギルドを探す</button>
                     <button onClick={() => router.push('/guild')}
                       className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
-                      style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}
+                      style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)', boxShadow: '0 4px 16px rgba(157,92,255,0.4)' }}
                     >🎮 ゲーム村へ</button>
                   </div>
                 </div>
               ) : (
-                <div className="bg-white divide-y divide-stone-100">
+                <div>
                   {/* 🏕️ 村セクション */}
                   {myVillages.length > 0 && (
                     <>
-                      <div className="px-4 py-2 bg-stone-50">
-                        <p className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest">🏕️ 村</p>
+                      <div className="px-4 py-2" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: 'rgba(240,238,255,0.3)' }}>🏕️ 村</p>
                       </div>
                       {myVillages.map((v: any) => {
                         const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
                         return (
                           <Link key={v.id} href={`/villages/${v.id}`}
-                            className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
-                              style={{ background: vs.gradient }}>{v.icon}</div>
+                            className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
+                            style={{ borderBottom: '1px solid rgba(157,92,255,0.08)' }}>
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
+                              style={{ background: vs.gradient, boxShadow: '0 0 12px rgba(157,92,255,0.3)' }}>{v.icon}</div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
-                              <p className="text-[11px] text-stone-400">
+                              <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
+                              <p className="text-[11px]" style={{ color: '#49E1FF' }}>
                                 <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
                               </p>
                             </div>
-                            <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                            <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
                           </Link>
                         )
                       })}
@@ -562,31 +605,34 @@ export default function MyPage() {
                   {/* 🎮 ギルドセクション */}
                   {myGuilds.length > 0 && (
                     <>
-                      <div className="px-4 py-2" style={{ background: '#f5f3ff' }}>
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#7c3aed' }}>🎮 ギルド</p>
+                      <div className="px-4 py-2" style={{ background: 'rgba(157,92,255,0.06)' }}>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#9D5CFF' }}>🎮 ギルド</p>
                       </div>
                       {myGuilds.map((v: any) => {
                         const genreInfo = INDUSTRIES.find(i => i.id === v.category)
                         return (
                           <Link key={v.id} href={`/villages/${v.id}`}
-                            className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
-                              style={{ background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>{v.icon}</div>
+                            className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
+                            style={{ borderBottom: '1px solid rgba(157,92,255,0.08)' }}>
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
+                              style={{ background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg, #9D5CFF, #7B3FE4)', boxShadow: '0 0 12px rgba(157,92,255,0.3)' }}>{v.icon}</div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 mb-0.5">
-                                <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
+                                <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
                                 {genreInfo && (
-                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                                    style={{ background: `${genreInfo.color}18`, color: genreInfo.color }}>
+                                  <span
+                                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                                    style={{ background: `${genreInfo.color}20`, color: genreInfo.color, border: `1px solid ${genreInfo.color}40` }}
+                                  >
                                     {genreInfo.emoji}
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11px] text-stone-400">
+                              <p className="text-[11px]" style={{ color: '#49E1FF' }}>
                                 <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
                               </p>
                             </div>
-                            <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                            <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
                           </Link>
                         )
                       })}
@@ -607,45 +653,50 @@ export default function MyPage() {
             <div>
               {hostedVillages.length === 0 ? (
                 <div className="flex flex-col items-center py-16 text-center">
-                  <Crown size={36} className="text-stone-200 mb-3" />
-                  <p className="text-sm font-bold text-stone-600">まだギルド・ゲーム村を作っていません</p>
+                  <Crown size={36} style={{ color: 'rgba(157,92,255,0.3)' }} className="mb-3" />
+                  <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだギルド・ゲーム村を作っていません</p>
                   <div className="flex gap-2 mt-4">
                     <button onClick={() => router.push('/guilds/create')}
-                      className="px-4 py-2.5 bg-stone-900 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
+                      className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
+                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(157,92,255,0.2)' }}
                     >🛡️ ギルドを作る</button>
                     <button onClick={() => router.push('/guild/create')}
                       className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
-                      style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}
+                      style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)', boxShadow: '0 4px 16px rgba(157,92,255,0.4)' }}
                     >🎮 ゲーム村を作る</button>
                   </div>
                 </div>
               ) : (
-                <div className="bg-white divide-y divide-stone-100">
+                <div>
                   {/* 🏕️ オーナー村セクション */}
                   {ownedVillages.length > 0 && (
                     <>
-                      <div className="px-4 py-2 bg-stone-50">
-                        <p className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest">🏕️ オーナー村</p>
+                      <div className="px-4 py-2" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: 'rgba(240,238,255,0.3)' }}>🏕️ オーナー村</p>
                       </div>
                       {ownedVillages.map((v: any) => {
                         const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
                         return (
                           <Link key={v.id} href={`/villages/${v.id}`}
-                            className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
-                              style={{ background: vs.gradient }}>{v.icon}</div>
+                            className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
+                            style={{ borderBottom: '1px solid rgba(157,92,255,0.08)' }}>
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
+                              style={{ background: vs.gradient, boxShadow: '0 0 12px rgba(157,92,255,0.3)' }}>{v.icon}</div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 mb-0.5">
-                                <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
-                                <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex-shrink-0">
+                                <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
+                                <span
+                                  className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                                  style={{ background: 'rgba(255,196,0,0.1)', color: '#FFD700', border: '1px solid rgba(255,196,0,0.3)' }}
+                                >
                                   <Crown size={8} /> 村長
                                 </span>
                               </div>
-                              <p className="text-[11px] text-stone-400">
+                              <p className="text-[11px]" style={{ color: '#49E1FF' }}>
                                 <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
                               </p>
                             </div>
-                            <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                            <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
                           </Link>
                         )
                       })}
@@ -654,29 +705,32 @@ export default function MyPage() {
                   {/* 🎮 オーナーギルドセクション */}
                   {ownedGuilds.length > 0 && (
                     <>
-                      <div className="px-4 py-2" style={{ background: '#f5f3ff' }}>
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#7c3aed' }}>🎮 オーナーギルド</p>
+                      <div className="px-4 py-2" style={{ background: 'rgba(157,92,255,0.06)' }}>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#9D5CFF' }}>🎮 オーナーギルド</p>
                       </div>
                       {ownedGuilds.map((v: any) => {
                         const genreInfo = INDUSTRIES.find(i => i.id === v.category)
                         return (
                           <Link key={v.id} href={`/villages/${v.id}`}
-                            className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
-                              style={{ background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>{v.icon}</div>
+                            className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
+                            style={{ borderBottom: '1px solid rgba(157,92,255,0.08)' }}>
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
+                              style={{ background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg, #9D5CFF, #7B3FE4)', boxShadow: '0 0 12px rgba(157,92,255,0.3)' }}>{v.icon}</div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 mb-0.5">
-                                <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
-                                <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                                  style={{ background: '#ede9fe', color: '#7c3aed', border: '1px solid #ddd6fe' }}>
+                                <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
+                                <span
+                                  className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                                  style={{ background: 'rgba(157,92,255,0.15)', color: '#9D5CFF', border: '1px solid rgba(157,92,255,0.3)' }}
+                                >
                                   <Crown size={8} /> 団長
                                 </span>
                               </div>
-                              <p className="text-[11px] text-stone-400">
+                              <p className="text-[11px]" style={{ color: '#49E1FF' }}>
                                 <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
                               </p>
                             </div>
-                            <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                            <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
                           </Link>
                         )
                       })}
@@ -693,23 +747,27 @@ export default function MyPage() {
           {trust && !trust.phone_verified && (
             <button
               onClick={() => setShowPhoneVerify(true)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left active:scale-[0.99] transition-all bg-white border border-brand-100"
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left active:scale-[0.99] transition-all"
+              style={{ background: 'rgba(157,92,255,0.08)', border: '1px solid rgba(157,92,255,0.25)' }}
             >
               <span className="text-2xl">📱</span>
               <div className="flex-1">
-                <p className="text-sm font-bold text-brand-700">電話番号を認証する</p>
-                <p className="text-xs text-brand-400 mt-0.5">投稿・通話が解放されます · +30pt</p>
+                <p className="text-sm font-bold" style={{ color: '#9D5CFF' }}>電話番号を認証する</p>
+                <p className="text-xs mt-0.5" style={{ color: 'rgba(157,92,255,0.6)' }}>投稿・通話が解放されます · +30pt</p>
               </div>
-              <ChevronRight size={16} className="text-brand-300" />
+              <ChevronRight size={16} style={{ color: 'rgba(157,92,255,0.5)' }} />
             </button>
           )}
 
           {/* ── DM プライバシー設定 ── */}
           {profile && userId && (
-            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)' }}
+            >
               <div className="px-4 pt-4 pb-1">
-                <p className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest mb-1">DM受信設定</p>
-                <p className="text-xs text-stone-400 mb-3">誰からのDMを受け取るか設定できます</p>
+                <p className="text-[10px] font-extrabold uppercase tracking-widest mb-1" style={{ color: 'rgba(240,238,255,0.3)' }}>DM受信設定</p>
+                <p className="text-xs mb-3" style={{ color: 'rgba(240,238,255,0.4)' }}>誰からのDMを受け取るか設定できます</p>
                 <DMPrivacySettings
                   userId={userId}
                   initialValue={(profile as any).dm_privacy ?? 'all'}
@@ -718,40 +776,39 @@ export default function MyPage() {
             </div>
           )}
 
-          {/* ── 信頼スコアカード（Reddit karma 的な可視化） ── */}
+          {/* ── 信頼スコアカード ── */}
           {trust && (
-            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)' }}
+            >
               <div className="px-4 pt-4 pb-3">
-                <p className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest mb-3">信頼スコア</p>
+                <p className="text-[10px] font-extrabold uppercase tracking-widest mb-3" style={{ color: 'rgba(240,238,255,0.3)' }}>信頼スコア</p>
                 <div className="flex items-end gap-3">
-                  {/* スコア大きく表示 */}
                   <div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-5xl font-extrabold leading-none" style={{
                         background: trust.score >= 1000
-                          ? 'linear-gradient(135deg,#f59e0b,#d97706)'
+                          ? 'linear-gradient(135deg, #FFD700, #FF8C00)'
                           : trust.score >= 600
-                          ? 'linear-gradient(135deg,#10b981,#059669)'
+                          ? 'linear-gradient(135deg, #7CFF82, #00E676)'
                           : trust.score >= 300
-                          ? 'linear-gradient(135deg,#3b82f6,#2563eb)'
-                          : 'linear-gradient(135deg,#94a3b8,#64748b)',
+                          ? 'linear-gradient(135deg, #49E1FF, #00B4CC)'
+                          : 'linear-gradient(135deg, #9D5CFF, #7B3FE4)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                       }}>
                         {trust.score.toLocaleString()}
                       </span>
-                      <span className="text-xs text-stone-400 font-semibold">pt</span>
+                      <span className="text-xs font-semibold" style={{ color: 'rgba(240,238,255,0.4)' }}>pt</span>
                     </div>
-                    <p className="text-xs text-stone-500 mt-1">
+                    <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.55)' }}>
                       {trust.total_helped > 0 ? `${trust.total_helped}人の役に立った` : 'まず電話認証してみよう'}
                     </p>
                   </div>
-                  {/* ティアアイコン */}
                   <div className="flex-1 flex justify-end pb-1">
-                    <div className="text-right">
-                      <div className="text-3xl">
-                        {trust.tier === 'pillar' ? '✨' : trust.tier === 'trusted' ? '🌳' : trust.tier === 'regular' ? '🌿' : trust.tier === 'resident' ? '🏡' : '🪴'}
-                      </div>
+                    <div className="text-3xl">
+                      {trust.tier === 'pillar' ? '✨' : trust.tier === 'trusted' ? '🌳' : trust.tier === 'regular' ? '🌿' : trust.tier === 'resident' ? '🏡' : '🪴'}
                     </div>
                   </div>
                 </div>
@@ -759,15 +816,15 @@ export default function MyPage() {
                 {/* スコアバー */}
                 {tierProgress && (() => {
                   const tiers = [
-                    { id: 'resident', min: 100,  label: '住民',  color: '#3b82f6' },
-                    { id: 'regular',  min: 300,  label: '常連',  color: '#10b981' },
-                    { id: 'trusted',  min: 600,  label: '信頼',  color: '#10b981' },
-                    { id: 'pillar',   min: 1000, label: '柱',    color: '#f59e0b' },
+                    { id: 'resident', min: 100,  label: '住民',  color: '#49E1FF' },
+                    { id: 'regular',  min: 300,  label: '常連',  color: '#7CFF82' },
+                    { id: 'trusted',  min: 600,  label: '信頼',  color: '#9D5CFF' },
+                    { id: 'pillar',   min: 1000, label: '柱',    color: '#FF4D90' },
                   ]
                   const next = tiers.find(t => trust.score < t.min)
                   if (!next) return (
                     <div className="mt-3 text-center py-2">
-                      <p className="text-xs font-bold text-amber-600">✨ 最高ティア達成！</p>
+                      <p className="text-xs font-bold" style={{ color: '#FF4D90' }}>✨ 最高ティア達成！</p>
                     </div>
                   )
                   const prev = tiers[tiers.findIndex(t => t.id === next.id) - 1]
@@ -776,12 +833,12 @@ export default function MyPage() {
                   return (
                     <div className="mt-3">
                       <div className="flex justify-between items-center mb-1.5">
-                        <span className="text-[10px] text-stone-400 font-semibold">次のティアまで</span>
+                        <span className="text-[10px] font-semibold" style={{ color: 'rgba(240,238,255,0.4)' }}>次のティアまで</span>
                         <span className="text-[10px] font-bold" style={{ color: next.color }}>
                           あと {(next.min - trust.score).toLocaleString()}pt → {next.label}
                         </span>
                       </div>
-                      <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(157,92,255,0.1)' }}>
                         <div className="h-full rounded-full transition-all"
                           style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${next.color}80, ${next.color})` }} />
                       </div>
@@ -791,8 +848,8 @@ export default function MyPage() {
               </div>
 
               {/* ポイント獲得方法ヒント */}
-              <div className="border-t border-stone-50 px-4 py-2.5 flex items-center justify-between">
-                <div className="flex items-center gap-3 text-[10px] text-stone-400">
+              <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderTop: '1px solid rgba(157,92,255,0.1)' }}>
+                <div className="flex items-center gap-3 text-[10px]" style={{ color: 'rgba(240,238,255,0.4)' }}>
                   <span>📝 投稿 +2pt</span>
                   <span>🤝 相談解決 +25pt</span>
                   <span>🔥 7日連続 +10pt</span>
@@ -814,31 +871,36 @@ export default function MyPage() {
             />
           )}
 
-          <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden divide-y divide-stone-50 shadow-sm">
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)' }}
+          >
             {[
               { href: '/settings', icon: '⚙️',  label: 'プロフィールを編集' },
               { href: '/invite',   icon: '🤝',  label: '友達を招待する' },
               { href: '/terms',    icon: '📄',  label: '利用規約' },
               { href: '/privacy',  icon: '🔒',  label: 'プライバシーポリシー' },
               { href: '/contact',  icon: '✉️',  label: 'お問い合わせ' },
-            ].map(item => (
+            ].map((item, idx, arr) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center justify-between px-4 py-3.5 active:bg-stone-50 transition-colors"
+                className="flex items-center justify-between px-4 py-3.5 active:opacity-80 transition-colors"
+                style={{ borderBottom: idx < arr.length - 1 ? '1px solid rgba(157,92,255,0.08)' : 'none' }}
               >
                 <div className="flex items-center gap-3">
                   <span className="text-base w-6 text-center">{item.icon}</span>
-                  <span className="text-sm text-stone-700 font-medium">{item.label}</span>
+                  <span className="text-sm font-medium" style={{ color: 'rgba(240,238,255,0.7)' }}>{item.label}</span>
                 </div>
-                <ChevronRight size={14} className="text-stone-300" />
+                <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} />
               </Link>
             ))}
           </div>
 
           <button
             onClick={handleLogout}
-            className="w-full py-3.5 rounded-2xl border border-red-100 bg-red-50 text-red-500 text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-all"
+            className="w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-all"
+            style={{ background: 'rgba(255,77,144,0.08)', border: '1px solid rgba(255,77,144,0.25)', color: '#FF4D90' }}
           >
             <LogOut size={15} /> ログアウト
           </button>
@@ -850,8 +912,8 @@ export default function MyPage() {
         onClick={() => setShowCompose(true)}
         className="fixed bottom-24 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
         style={{
-          background: 'linear-gradient(135deg,#1c1917 0%,#3c3836 100%)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+          background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)',
+          boxShadow: '0 8px 24px rgba(157,92,255,0.5), 0 0 20px rgba(157,92,255,0.3)',
         }}
       >
         <Pencil size={22} className="text-white" strokeWidth={2} />

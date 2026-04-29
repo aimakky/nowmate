@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, MoreVertical } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface HeaderProps {
@@ -17,21 +17,24 @@ export default function Header({ title, showBack, right, className, transparent 
   return (
     <header className={cn(
       'sticky top-0 z-30 flex items-center justify-between h-14 px-4',
-      transparent ? 'bg-transparent' : 'bg-white border-b border-gray-100',
+      transparent
+        ? 'bg-transparent'
+        : 'bg-[rgba(8,8,18,0.85)] backdrop-blur-xl border-b border-[rgba(157,92,255,0.15)]',
       className
     )}>
       <div className="w-10">
         {showBack && (
           <button
             onClick={() => router.back()}
-            className="p-1.5 -ml-1.5 rounded-xl text-gray-500 hover:bg-gray-100 transition"
+            className="p-1.5 -ml-1.5 rounded-xl transition-all active:scale-90"
+            style={{ color: 'rgba(240,238,255,0.6)' }}
           >
             <ArrowLeft size={22} />
           </button>
         )}
       </div>
       {title && (
-        <h1 className="text-base font-semibold text-gray-800">{title}</h1>
+        <h1 className="text-sm font-bold tracking-wide" style={{ color: '#F0EEFF' }}>{title}</h1>
       )}
       <div className="w-10 flex justify-end">
         {right}

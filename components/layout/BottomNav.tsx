@@ -16,7 +16,7 @@ const NAV_ITEMS = [
 ]
 
 export default function BottomNav() {
-  const pathname   = usePathname()
+  const pathname    = usePathname()
   const [notifCount, setNotifCount] = useState(0)
 
   useEffect(() => {
@@ -25,20 +25,13 @@ export default function BottomNav() {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
-
-        // 未読通知数
         const { count: nc } = await supabase
           .from('notifications')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
           .eq('is_read', false)
         setNotifCount(nc ?? 0)
-
-
-
-      } catch {
-        // silent
-      }
+      } catch { /* silent */ }
     }
     fetchBadges()
     const interval = setInterval(fetchBadges, 30_000)
@@ -51,9 +44,17 @@ export default function BottomNav() {
 
   const badges: Record<string, number> = { '/notifications': notifCount }
 
-
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-stone-100 safe-area-pb">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-40 safe-area-pb"
+      style={{
+        background: 'rgba(8,8,18,0.92)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderTop: '1px solid rgba(157,92,255,0.18)',
+        boxShadow: '0 -4px 30px rgba(0,0,0,0.4)',
+      }}
+    >
       <div className="max-w-[430px] mx-auto flex items-center h-16">
 
         {NAV_ITEMS.map(({ href, label, icon: Icon, live }) => {
@@ -61,60 +62,70 @@ export default function BottomNav() {
           const badge  = badges[href] ?? 0
 
           if (live) {
-            // ── ゲーム村: LIVEエフェクト付き特別タブ ──
             return (
               <Link key={href} href={href}
                 className="flex-1 flex flex-col items-center justify-center py-1 gap-0 relative">
-                {/* 背景グロー（常時） */}
-                <div className={cn(
-                  'absolute inset-x-1 inset-y-0.5 rounded-2xl transition-all',
-                  active
-                    ? 'opacity-100'
-                    : 'opacity-60'
+                {/* Active glow bg */}
+                {active && (
+                  <div className="absolute inset-x-2 inset-y-1 rounded-2xl"
+                    style={{ background: 'rgba(157,92,255,0.12)', border: '1px solid rgba(157,92,255,0.2)' }} />
                 )}
-                  style={{ background: 'linear-gradient(135deg,#8b5cf620,#6d28d920)' }}
-                />
-                {/* アイコン + LIVEバッジ */}
                 <div className="relative z-10">
                   <Gamepad2
                     size={20}
                     strokeWidth={active ? 2.5 : 1.8}
-                    className={active ? 'text-violet-600' : 'text-violet-400'}
+                    style={{ color: active ? '#9D5CFF' : 'rgba(157,92,255,0.5)' }}
                   />
-                  {/* 右上にLIVEバッジ（パルス付き） */}
+                  {/* LIVE badge */}
                   <span className="absolute -top-2 -right-4 flex items-center">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-40" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-40"
+                      style={{ background: '#9D5CFF' }} />
                     <span className="relative text-[7px] font-extrabold tracking-widest px-1 py-px rounded-full leading-none"
-                      style={{ background: active ? '#7c3aed' : '#8b5cf6', color: '#fff' }}>
+                      style={{ background: 'linear-gradient(135deg,#9D5CFF,#FF4D90)', color: '#fff' }}>
                       LIVE
                     </span>
                   </span>
                 </div>
-                {/* ラベル */}
-                <div className="flex items-center gap-0.5 mt-0.5 z-10">
-                  <span className={cn('text-[9px] font-extrabold tracking-wide',
-                    active ? 'text-violet-600' : 'text-violet-400')}>{label}</span>
-                </div>
-                {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-violet-600" />}
+                <span className="text-[9px] font-extrabold tracking-wide mt-0.5 z-10"
+                  style={{ color: active ? '#9D5CFF' : 'rgba(157,92,255,0.5)' }}>
+                  {label}
+                </span>
+                {active && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full"
+                    style={{ background: 'linear-gradient(90deg,#9D5CFF,#FF4D90)' }} />
+                )}
               </Link>
             )
           }
 
           return (
             <Link key={href} href={href}
-              className={cn('flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-colors',
-                active ? 'text-stone-900' : 'text-stone-400')}>
+              className="flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-colors">
               <div className="relative">
-                {Icon && <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />}
+                {Icon && (
+                  <Icon
+                    size={20}
+                    strokeWidth={active ? 2.5 : 1.8}
+                    style={{ color: active ? '#9D5CFF' : 'rgba(240,238,255,0.35)' }}
+                  />
+                )}
                 {badge > 0 && (
-                  <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 bg-brand-500 rounded-full flex items-center justify-center px-1">
-                    <span className="text-[9px] font-extrabold text-white leading-none">{badge > 99 ? '99+' : badge}</span>
+                  <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 rounded-full flex items-center justify-center px-1"
+                    style={{ background: 'linear-gradient(135deg,#9D5CFF,#FF4D90)' }}>
+                    <span className="text-[9px] font-extrabold text-white leading-none">
+                      {badge > 99 ? '99+' : badge}
+                    </span>
                   </span>
                 )}
               </div>
-              <span className={cn('text-[9px] font-bold tracking-wide mt-0.5',
-                active ? 'text-stone-900' : 'text-stone-400')}>{label}</span>
-              {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-stone-900 rounded-full" />}
+              <span className="text-[9px] font-bold tracking-wide mt-0.5"
+                style={{ color: active ? '#9D5CFF' : 'rgba(240,238,255,0.35)' }}>
+                {label}
+              </span>
+              {active && (
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full"
+                  style={{ background: '#9D5CFF', boxShadow: '0 0 8px rgba(157,92,255,0.8)' }} />
+              )}
             </Link>
           )
         })}
