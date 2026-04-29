@@ -74,10 +74,12 @@ export default function BottomNav() {
                   style={active ? { background: 'linear-gradient(135deg,#7c3aed,#a855f7)' } : {}}>
                   <div className="relative">
                     <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
-                    {/* NEW バッジ */}
+                    {/* LIVE バッジ */}
                     {!active && (
-                      <span className="absolute -top-2 -right-3 text-[8px] font-extrabold text-white bg-violet-500 rounded-full px-1 leading-4">
-                        NEW
+                      <span className="absolute -top-2 -right-4 flex items-center gap-0.5 bg-red-500 rounded-full px-1.5 leading-4 h-3.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping absolute" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-white relative" />
+                        <span className="text-[8px] font-extrabold text-white relative">LIVE</span>
                       </span>
                     )}
                   </div>
