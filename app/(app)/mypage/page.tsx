@@ -12,6 +12,7 @@ import { Settings, LogOut, ChevronRight, Crown, Users, Copy, Check, Pencil, X, E
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
+import DMPrivacySettings from '@/components/features/DMPrivacySettings'
 
 type ProfileTab = 'tweets' | 'images' | 'joined_villages' | 'hosted_villages'
 
@@ -701,6 +702,20 @@ export default function MyPage() {
               </div>
               <ChevronRight size={16} className="text-brand-300" />
             </button>
+          )}
+
+          {/* ── DM プライバシー設定 ── */}
+          {profile && userId && (
+            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
+              <div className="px-4 pt-4 pb-1">
+                <p className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest mb-1">DM受信設定</p>
+                <p className="text-xs text-stone-400 mb-3">誰からのDMを受け取るか設定できます</p>
+                <DMPrivacySettings
+                  userId={userId}
+                  initialValue={(profile as any).dm_privacy ?? 'all'}
+                />
+              </div>
+            </div>
           )}
 
           {/* ── 信頼スコアカード（Reddit karma 的な可視化） ── */}

@@ -7,7 +7,7 @@ import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
-import { Edit2 } from 'lucide-react'
+import { Edit2, MessageSquareDashed, Check, X } from 'lucide-react'
 
 interface DirectChat {
   matchId: string
@@ -19,6 +19,7 @@ interface DirectChat {
     trust_tier?: string | null
   }
   lastMessage: { content: string; created_at: string; sender_id: string } | null
+  isRequest?: boolean
 }
 
 interface OnlineUser {
@@ -29,10 +30,12 @@ interface OnlineUser {
 
 export default function ChatListPage() {
   const router = useRouter()
-  const [directs, setDirects] = useState<DirectChat[]>([])
+  const [directs,   setDirects]   = useState<DirectChat[]>([])
+  const [requests,  setRequests]  = useState<DirectChat[]>([])
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
-  const [loading, setLoading] = useState(true)
-  const [userId, setUserId] = useState<string | null>(null)
+  const [loading,   setLoading]   = useState(true)
+  const [userId,    setUserId]    = useState<string | null>(null)
+  const [tab,       setTab]       = useState<'chat' | 'request'>('chat')
 
   useEffect(() => {
     async function load() {
@@ -44,8 +47,9 @@ export default function ChatListPage() {
 
         const { data: matchData, error: matchErr } = await supabase
           .from('matches')
-          .select('id, user1_id, user2_id')
+          .select('id, user1_id, user2_id, is_request, request_status')
           .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+          .not('request_status', 'eq', 'declined')
           .order('created_at', { ascending: false })
 
         if (matchErr || !matchData || matchData.length === 0) {
@@ -90,6 +94,7 @@ export default function ChatListPage() {
               matchId: m.id,
               other: { ...other, trust_tier: trustMap.get(otherId) ?? null },
               lastMessage: lastMsgMap.get(m.id) ?? null,
+              isRequest: m.is_request && m.request_status === 'pending' && m.user2_id === user.id,
             }
           })
           .filter(Boolean) as DirectChat[]
@@ -100,7 +105,11 @@ export default function ChatListPage() {
           return tb.localeCompare(ta)
         })
 
-        setDirects(directData)
+        // 通常チャットとリクエストを分離
+        const normalChats  = directData.filter(d => !d.isRequest)
+        const requestChats = directData.filter(d => d.isRequest)
+        setDirects(normalChats)
+        setRequests(requestChats)
 
         // オンラインユーザーを抽出
         const online = (profileData || [])
@@ -117,18 +126,117 @@ export default function ChatListPage() {
     load()
   }, [router])
 
+  async function handleRequest(matchId: string, accept: boolean) {
+    const supabase = createClient()
+    if (accept) {
+      await supabase.from('matches').update({ request_status: 'accepted', is_request: false }).eq('id', matchId)
+      const req = requests.find(r => r.matchId === matchId)
+      if (req) {
+        setRequests(prev => prev.filter(r => r.matchId !== matchId))
+        setDirects(prev => [{ ...req, isRequest: false }, ...prev])
+      }
+    } else {
+      await supabase.from('matches').update({ request_status: 'declined' }).eq('id', matchId)
+      setRequests(prev => prev.filter(r => r.matchId !== matchId))
+    }
+  }
+
   return (
     <div className="max-w-md mx-auto min-h-screen bg-white">
 
       {/* ヘッダー */}
-      <div className="sticky top-0 z-10 bg-white border-b border-stone-100 px-4 pt-12 pb-3 flex items-center justify-between">
-        <h1 className="font-extrabold text-stone-900 text-xl">チャット</h1>
-        <button className="text-sm font-semibold text-brand-500 active:opacity-60 transition-opacity">
-          編集
-        </button>
+      <div className="sticky top-0 z-10 bg-white border-b border-stone-100 px-4 pt-12 pb-0">
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="font-extrabold text-stone-900 text-xl">チャット</h1>
+          <button className="text-sm font-semibold text-brand-500 active:opacity-60 transition-opacity">
+            編集
+          </button>
+        </div>
+        {/* タブ */}
+        <div className="flex">
+          {[
+            { id: 'chat',    label: 'メッセージ', count: 0 },
+            { id: 'request', label: 'リクエスト', count: requests.length },
+          ].map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id as 'chat' | 'request')}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold relative transition-colors"
+              style={{ color: tab === t.id ? '#7c3aed' : '#a8a29e' }}
+            >
+              {t.label}
+              {t.count > 0 && (
+                <span className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] font-extrabold text-white">
+                  {t.count}
+                </span>
+              )}
+              {tab === t.id && (
+                <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full bg-brand-500" />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="pb-28">
+
+        {/* ══ リクエストタブ ══ */}
+        {tab === 'request' && (
+          <div className="pt-4 px-4 space-y-3">
+            {requests.length === 0 ? (
+              <div className="text-center py-20">
+                <MessageSquareDashed size={40} className="mx-auto text-stone-200 mb-3" />
+                <p className="font-bold text-stone-500">リクエストはありません</p>
+                <p className="text-xs text-stone-400 mt-1">知らない人からのDMはここに届きます</p>
+              </div>
+            ) : (
+              requests.map(r => (
+                <div key={r.matchId} className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
+                  {/* ユーザー情報 */}
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <div className="w-12 h-12 rounded-full flex-shrink-0 overflow-hidden bg-stone-100">
+                      {r.other.avatar_url
+                        ? <img src={r.other.avatar_url} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center bg-brand-100">
+                            <span className="text-lg font-bold text-brand-500">{r.other.display_name[0]}</span>
+                          </div>
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-stone-800 text-sm">{r.other.display_name}</p>
+                      {r.lastMessage && (
+                        <p className="text-xs text-stone-400 truncate mt-0.5">{r.lastMessage.content}</p>
+                      )}
+                    </div>
+                  </div>
+                  {/* 注意書き */}
+                  <div className="px-4 pb-2">
+                    <p className="text-[10px] text-stone-400 bg-stone-50 rounded-xl px-3 py-2">
+                      🔒 承認するまで相手に既読はつきません。拒否しても相手には通知されません。
+                    </p>
+                  </div>
+                  {/* アクション */}
+                  <div className="grid grid-cols-2 border-t border-stone-100">
+                    <button
+                      onClick={() => handleRequest(r.matchId, false)}
+                      className="flex items-center justify-center gap-1.5 py-3 text-sm font-bold text-stone-500 active:bg-stone-50 transition-colors border-r border-stone-100"
+                    >
+                      <X size={15} /> 拒否
+                    </button>
+                    <button
+                      onClick={() => handleRequest(r.matchId, true)}
+                      className="flex items-center justify-center gap-1.5 py-3 text-sm font-bold text-emerald-600 active:bg-emerald-50 transition-colors"
+                    >
+                      <Check size={15} /> 承認
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {tab === 'chat' && <>
 
         {/* オンライン中フレンド */}
         {!loading && onlineUsers.length > 0 && (
@@ -250,6 +358,8 @@ export default function ChatListPage() {
             </div>
           )}
         </div>
+
+        </> /* end tab === 'chat' */}
       </div>
 
     </div>
