@@ -195,7 +195,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                   <button key={r.key} onClick={() => toggleReaction(r.key)}
                     className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-all active:scale-90"
                     style={myReaction === r.key
-                      ? { background: 'rgba(157,92,255,0.2)', color: '#9D5CFF', border: '1px solid rgba(157,92,255,0.4)' }
+                      ? { background: 'rgba(57,255,136,0.15)', color: '#39FF88', border: '1px solid rgba(57,255,136,0.4)' }
                       : { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.55)', border: '1px solid rgba(255,255,255,0.08)' }
                     }>
                     <span>{r.emoji}</span>
@@ -215,8 +215,8 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                       onClick={() => setShowPicker(p => !p)}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
                       style={myReaction
-                        ? { color: '#9D5CFF', background: 'rgba(157,92,255,0.12)' }
-                        : { color: '#9D5CFF', background: 'transparent' }
+                        ? { color: '#39FF88', background: 'rgba(57,255,136,0.1)' }
+                        : { color: '#39FF88', background: 'transparent' }
                       }>
                       {myReaction
                         ? <span>{REACTIONS.find(r => r.key === myReaction)?.emoji}</span>
@@ -227,12 +227,12 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
                         <div className="absolute bottom-9 left-0 z-50 rounded-2xl shadow-xl p-2 flex gap-1"
-                          style={{ background: '#1a0f2e', border: '1px solid rgba(157,92,255,0.3)', boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+                          style={{ background: '#080f0a', border: '1px solid rgba(57,255,136,0.25)', boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 20px rgba(57,255,136,0.1)' }}>
                           {REACTIONS.map(r => (
                             <button key={r.key} onClick={() => toggleReaction(r.key)} title={r.label}
                               className="w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all hover:scale-125 active:scale-95"
                               style={myReaction === r.key
-                                ? { background: 'rgba(157,92,255,0.25)', border: '1px solid rgba(157,92,255,0.5)' }
+                                ? { background: 'rgba(57,255,136,0.2)', border: '1px solid rgba(57,255,136,0.45)' }
                                 : { background: 'rgba(255,255,255,0.06)' }
                               }>
                               {r.emoji}
