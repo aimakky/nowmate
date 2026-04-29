@@ -11,13 +11,19 @@ import { type Village, getFireStatus } from '@/components/ui/VillageCard'
 const GAME_CATEGORIES = new Set(INDUSTRIES.map(i => i.id))
 
 const GENRE_TABS = [
-  { id: 'all',  emoji: '🛡️', label: 'すべて' },
-  { id: '趣味', emoji: '🎨', label: '趣味' },
-  { id: '仕事', emoji: '💼', label: '仕事' },
-  { id: '学習', emoji: '📚', label: '学習' },
-  { id: '地域', emoji: '📍', label: '地域' },
-  { id: '雑談', emoji: '☕', label: '雑談' },
-  { id: '相談', emoji: '🤝', label: '相談' },
+  { id: 'all',        emoji: '✨', label: 'すべて'     },
+  { id: '読書',       emoji: '📖', label: '読書'       },
+  { id: '映画・アニメ',emoji: '🎬', label: '映画・アニメ'},
+  { id: '音楽',       emoji: '🎵', label: '音楽'       },
+  { id: '料理・グルメ',emoji: '🍳', label: '料理'       },
+  { id: 'スポーツ',   emoji: '🏃', label: 'スポーツ'   },
+  { id: '旅行',       emoji: '✈️', label: '旅行'       },
+  { id: '仕事・副業', emoji: '💼', label: '仕事・副業' },
+  { id: '勉強・資格', emoji: '📚', label: '勉強・資格' },
+  { id: '育児・家族', emoji: '👨‍👩‍👧', label: '育児・家族' },
+  { id: '健康・美容', emoji: '💪', label: '健康・美容' },
+  { id: '地域・ご近所',emoji: '📍', label: '地域'       },
+  { id: '雑談・なんでも',emoji: '☕', label: '雑談'    },
 ]
 
 const SUB_FILTERS = [
@@ -27,8 +33,8 @@ const SUB_FILTERS = [
 ]
 
 const LANES = [
-  { id: 'hot', emoji: '🔥', label: '今週活発なギルド', orderBy: 'post_count_7d' as const, ascending: false },
-  { id: 'new', emoji: '✨', label: '新しいギルド',     orderBy: 'created_at'    as const, ascending: false },
+  { id: 'hot', emoji: '🔥', label: '今週にぎわってる集い', orderBy: 'post_count_7d' as const, ascending: false },
+  { id: 'new', emoji: '✨', label: '新しい集い',          orderBy: 'created_at'    as const, ascending: false },
 ]
 
 // ── 縦長リストカード ────────────────────────────────────────────
@@ -195,7 +201,7 @@ export default function GuildsPage() {
 
       {/* ── ヘッダー ── */}
       <div className="sticky top-0 z-10 px-4 pt-12 pb-0"
-        style={{ background: 'linear-gradient(160deg,#431407 0%,#7c2d12 60%,#9a3412 100%)' }}>
+        style={{ background: 'linear-gradient(160deg,#1c1917 0%,#292524 60%,#3c2a1e 100%)' }}>
 
         {/* 背景テクスチャ */}
         <div className="absolute inset-0 opacity-20 pointer-events-none"
@@ -204,14 +210,14 @@ export default function GuildsPage() {
         <div className="relative">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div>
-              <p className="text-orange-300/60 text-[10px] font-bold tracking-widest uppercase mb-0.5">GUILD</p>
-              <h1 className="font-extrabold text-white text-2xl leading-tight">🛡️ ギルドを探す</h1>
-              <p className="text-white/40 text-xs mt-0.5">趣味・仕事・学習の仲間が集まるギルド</p>
+              <p className="text-amber-300/60 text-[10px] font-bold tracking-widest uppercase mb-0.5">CIRCLE</p>
+              <h1 className="font-extrabold text-white text-2xl leading-tight">✨ 集いを探す</h1>
+              <p className="text-white/40 text-xs mt-0.5">読書・映画・料理・仕事…大人のサークルが集まる場所</p>
             </div>
             <button
               onClick={() => router.push('/guild/create')}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold flex-shrink-0 active:scale-95 transition-all"
-              style={{ background: 'rgba(251,146,60,0.25)', color: '#fed7aa', border: '1px solid rgba(251,146,60,0.35)' }}
+              style={{ background: 'rgba(251,191,36,0.2)', color: '#fde68a', border: '1px solid rgba(251,191,36,0.3)' }}
             >
               <Plus size={13} /> 作る
             </button>
@@ -223,7 +229,7 @@ export default function GuildsPage() {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="ギルドを検索..."
+              placeholder="集いを検索..."
               className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-sm focus:outline-none text-white placeholder-white/25"
               style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.12)' }}
             />
@@ -301,7 +307,7 @@ export default function GuildsPage() {
             })}
             <div className="px-4 flex items-center gap-2 pt-1">
               <div className="flex-1 h-px bg-stone-100" />
-              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">すべてのギルド</span>
+              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">すべての集い</span>
               <div className="flex-1 h-px bg-stone-100" />
             </div>
           </div>
@@ -324,14 +330,14 @@ export default function GuildsPage() {
             <div className="text-center py-20">
               <div className="text-5xl mb-4">🛡️</div>
               <p className="font-extrabold text-stone-800 text-base mb-1.5">
-                {subFilter === 'member' ? 'まだギルドに参加していません' : 'このカテゴリのギルドはまだありません'}
+                {subFilter === 'member' ? 'まだ集いに参加していません' : 'このカテゴリの集いはまだありません'}
               </p>
-              <p className="text-sm text-stone-400 mb-6">最初のギルドを作ってみましょう</p>
+              <p className="text-sm text-stone-400 mb-6">最初の集いを作ってみましょう</p>
               <button
                 onClick={() => router.push('/guild/create')}
                 className="px-6 py-3 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
                 style={{ background: 'linear-gradient(135deg,#f97316 0%,#ea580c 100%)', boxShadow: '0 8px 24px rgba(249,115,22,0.4)' }}
-              >🛡️ ギルドを作る</button>
+              >✨ 集いを作る</button>
             </div>
           ) : (
             <>

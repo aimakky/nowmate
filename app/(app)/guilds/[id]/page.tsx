@@ -351,7 +351,7 @@ export default function GuildDetailPage() {
               <div className="text-4xl mb-3">{guild.icon}</div>
               <p className="font-bold text-stone-700 mb-1">まだ投稿がありません</p>
               <p className="text-sm text-stone-400">
-                {isMember ? '最初の投稿をしてみよう！' : 'ギルドに参加して投稿しよう'}
+                {isMember ? '最初の投稿をしてみよう！' : '集いに参加して投稿しよう'}
               </p>
             </div>
           ) : (
@@ -368,7 +368,7 @@ export default function GuildDetailPage() {
 
           {/* 説明 */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-stone-100">
-            <p className="text-[11px] font-extrabold text-stone-400 uppercase tracking-wider mb-2">ギルドについて</p>
+            <p className="text-[11px] font-extrabold text-stone-400 uppercase tracking-wider mb-2">この集いについて</p>
             <p className="text-sm text-stone-700 leading-relaxed">
               {guild.description || 'まだ説明がありません。'}
             </p>

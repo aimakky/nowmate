@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Compass, Layers, Bell, Gamepad2, Shield } from 'lucide-react'
+import { Compass, Layers, Bell, Gamepad2, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { href: '/timeline',      label: 'TL',    icon: Layers   },
   { href: '/villages',      label: '休憩村', icon: Compass  },
   { href: '/guild',         label: 'ゲーム村', icon: Gamepad2 },
-  { href: '/guilds',        label: 'ギルド', icon: Shield   },
+  { href: '/guilds',        label: '集い',   icon: Users    },
   { href: '/notifications', label: '通知',  icon: Bell     },
 ]
 
