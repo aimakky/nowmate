@@ -123,7 +123,7 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
           </div>
           {/* LIVEドット */}
           <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
-            style={{ background: '#8b5cf6', border: '2px solid #0a0a12' }}>
+            style={{ background: '#8b5cf6', border: '2px solid #0f0f1a' }}>
             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
           </span>
         </div>
@@ -1063,7 +1063,7 @@ export default function TimelinePage() {
 
   // ── レンダリング ─────────────────────────────────────────────
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0a0a12' }}>
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0f0f1a' }}>
 
       {/* ヘッダー */}
       <div className="px-4 pt-12 pb-0"

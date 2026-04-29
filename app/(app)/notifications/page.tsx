@@ -115,11 +115,11 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0a0a12' }}>
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0f0f1a' }}>
 
       {/* ── ヘッダー ── */}
       <div className="sticky top-0 z-10 px-4 pt-12 pb-3 backdrop-blur-md"
-        style={{ background: 'rgba(10,10,18,0.92)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        style={{ background: 'rgba(15,15,26,0.92)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(139,92,246,0.7)' }}>NOTIFICATIONS</p>

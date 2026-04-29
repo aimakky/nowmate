@@ -142,11 +142,11 @@ export default function ChatListPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0a0a12' }}>
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0f0f1a' }}>
 
       {/* ヘッダー */}
       <div className="sticky top-0 z-10 px-4 pt-12 pb-0 backdrop-blur-md"
-        style={{ background: 'rgba(10,10,18,0.95)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        style={{ background: 'rgba(15,15,26,0.95)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(139,92,246,0.7)' }}>MESSAGES</p>
@@ -189,9 +189,9 @@ export default function ChatListPage() {
           <div className="pt-4 px-4 space-y-3">
             {requests.length === 0 ? (
               <div className="text-center py-20">
-                <MessageSquareDashed size={40} className="mx-auto text-stone-200 mb-3" />
-                <p className="font-bold text-stone-500">リクエストはありません</p>
-                <p className="text-xs text-stone-400 mt-1">知らない人からのDMはここに届きます</p>
+                <MessageSquareDashed size={40} className="mx-auto mb-3" style={{ color: 'rgba(255,255,255,0.2)' }} />
+                <p className="font-bold" style={{ color: 'rgba(255,255,255,0.5)' }}>リクエストはありません</p>
+                <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>知らない人からのDMはここに届きます</p>
               </div>
             ) : (
               requests.map(r => (
@@ -270,7 +270,7 @@ export default function ChatListPage() {
                       )}
                     </div>
                     <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-400 rounded-full"
-                      style={{ border: '2px solid #0a0a12' }} />
+                      style={{ border: '2px solid #0f0f1a' }} />
                   </div>
                   <span className="text-[10px] font-medium max-w-[52px] truncate text-center" style={{ color: 'rgba(255,255,255,0.6)' }}>
                     {u.display_name}
@@ -344,7 +344,7 @@ export default function ChatListPage() {
                         </div>
                         {c.other.is_online && (
                           <span className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-green-400 rounded-full"
-                            style={{ border: '2px solid #0a0a12' }} />
+                            style={{ border: '2px solid #0f0f1a' }} />
                         )}
                       </div>
 
