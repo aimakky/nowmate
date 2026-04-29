@@ -6,7 +6,7 @@ export const runtime = 'edge'
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const reply   = searchParams.get('reply')   ?? '...'
-  const village = searchParams.get('village') ?? '自由村村'
+  const village = searchParams.get('village') ?? '休憩村村'
   const tier    = searchParams.get('tier')    ?? 'resident'
 
   const TIER_LABELS: Record<string, { label: string; icon: string; color: string }> = {
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
           <div style={{ fontSize: '48px' }}>🍶</div>
           <div>
             <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '18px', fontWeight: 700, letterSpacing: '0.1em' }}>
-              自由村 — 漂流瓶
+              休憩村 — 漂流瓶
             </div>
             <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px', marginTop: '4px' }}>
               {villageText} の住民が答えました

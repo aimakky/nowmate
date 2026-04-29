@@ -7,6 +7,7 @@ import { getTierById } from '@/lib/trust'
 import { timeAgo } from '@/lib/utils'
 import { detectNgWords } from '@/lib/moderation'
 import { Heart, RefreshCw, ChevronRight, Users, Globe, Home, Share2, Sparkles, HelpCircle, Send, CheckCircle, X, Plus, Waves } from 'lucide-react'
+import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import { detectCrisisKeywords } from '@/lib/moderation'
 import Link from 'next/link'
 
@@ -43,8 +44,9 @@ interface QABottle {
 }
 
 type FeedItem =
-  | { type: 'post'; data: TPost }
-  | { type: 'qa';   data: QABottle }
+  | { type: 'post';  data: TPost }
+  | { type: 'qa';    data: QABottle }
+  | { type: 'tweet'; data: TweetData }
 
 const PAGE_SIZE = 20
 
@@ -217,8 +219,8 @@ function PostCard({
   const tier     = getTierById(post.user_trust?.tier ?? 'visitor')
 
   function shareToX() {
-    const village = post.villages ? `${post.villages.icon}${post.villages.name}` : '自由村'
-    const text = `${post.content}\n\n— ${village}より\n#自由村\nnowmatejapan.com`
+    const village = post.villages ? `${post.villages.icon}${post.villages.name}` : '休憩村'
+    const text = `${post.content}\n\n— ${village}より\n#休憩村\nnowmatejapan.com`
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
 
@@ -522,7 +524,7 @@ function ComposeModal({
               <div className="flex items-center justify-between pt-3">
                 {errMsg
                   ? <p className="text-xs text-red-500 font-bold">⚠️ {errMsg}</p>
-                  : <p className="text-[11px] text-stone-400">自由村全体に公開されます</p>
+                  : <p className="text-[11px] text-stone-400">休憩村全体に公開されます</p>
                 }
                 <div className="flex items-center gap-2">
                   <svg width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
@@ -632,9 +634,11 @@ export default function TimelinePage() {
   const [myVillageIds, setMyVillageIds] = useState<string[]>([])
   const [followingIds, setFollowingIds] = useState<string[]>([])
   const [likedIds,     setLikedIds]     = useState<Set<string>>(new Set())
-  const [showCompose,  setShowCompose]  = useState(false)
-  const [userProfile,  setUserProfile]  = useState<{ display_name: string; avatar_url: string | null } | null>(null)
-  const [myVillages,   setMyVillages]   = useState<Village[]>([])
+  const [showCompose,    setShowCompose]    = useState(false)
+  const [userProfile,    setUserProfile]    = useState<{ display_name: string; avatar_url: string | null } | null>(null)
+  const [myVillages,     setMyVillages]     = useState<Village[]>([])
+  const [tweetFeed,      setTweetFeed]      = useState<TweetData[]>([])
+  const [tweetLoading,   setTweetLoading]   = useState(false)
 
   const offsetRef   = useRef(0)
   const todayPrompt = DAILY_PROMPTS[new Date().getDay()]
@@ -784,12 +788,28 @@ export default function TimelinePage() {
     }
   }, [userId, tab, myVillageIds, followingIds])
 
+  // ── ツイートフェッチ（みんなタブ用・全ユーザー） ────────────────
+  const fetchTweets = useCallback(async () => {
+    setTweetLoading(true)
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('tweets')
+      .select('*, profiles!tweets_user_id_fkey(display_name, nationality, avatar_url), tweet_reactions!tweet_reactions_tweet_id_fkey(user_id, reaction), tweet_replies!tweet_replies_tweet_id_fkey(id)')
+      .is('reply_to_id', null)
+      .order('created_at', { ascending: false })
+      .limit(40)
+    if (error) console.error('fetchTweets error:', error)
+    setTweetFeed((data ?? []) as TweetData[])
+    setTweetLoading(false)
+  }, [])
+
   useEffect(() => {
     if (userId) {
       fetchPosts(true)
       if (tab === 'myvillage') fetchQA(userId, myVillageIds)
+      if (tab === 'all') fetchTweets()
     }
-  }, [userId, tab, fetchPosts, fetchQA, myVillageIds])
+  }, [userId, tab, fetchPosts, fetchQA, fetchTweets, myVillageIds])
 
   // ── いいね ──────────────────────────────────────────────────
   function toggleLike(postId: string) {
@@ -811,10 +831,22 @@ export default function TimelinePage() {
     setQaBottles(prev => prev.filter(b => b.id !== bottleId))
   }
 
-  // フィード合成（マイ村タブのみQ&A混在）
-  const feed: FeedItem[] = tab === 'myvillage' && qaBottles.length > 0
-    ? buildFeed(posts, qaBottles)
-    : posts.map(p => ({ type: 'post' as const, data: p }))
+  // フィード合成
+  const feed: FeedItem[] = (() => {
+    if (tab === 'myvillage' && qaBottles.length > 0) {
+      return buildFeed(posts, qaBottles)
+    }
+    if (tab === 'all' && tweetFeed.length > 0) {
+      const combined: FeedItem[] = [
+        ...posts.map(p => ({ type: 'post' as const, data: p })),
+        ...tweetFeed.map(t => ({ type: 'tweet' as const, data: t })),
+      ]
+      return combined.sort((a, b) =>
+        new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
+      )
+    }
+    return posts.map(p => ({ type: 'post' as const, data: p }))
+  })()
 
   // ── レンダリング ─────────────────────────────────────────────
   return (
@@ -828,7 +860,7 @@ export default function TimelinePage() {
             <h1 className="font-extrabold text-white text-2xl leading-tight">タイムライン</h1>
             <p className="text-xs text-white/50 mt-0.5">みんなの声が流れる場所</p>
           </div>
-          <button onClick={() => { fetchPosts(true); if (userId) fetchQA(userId, myVillageIds) }}
+          <button onClick={() => { fetchPosts(true); if (userId) fetchQA(userId, myVillageIds); if (tab === 'all') fetchTweets() }}
             className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
             style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
             <RefreshCw size={15} className="text-white/70" />
@@ -919,8 +951,8 @@ export default function TimelinePage() {
         {/* ローディング */}
         {loading && <Skeleton />}
 
-        {/* フィード（投稿 + Q&Aカード混在） */}
-        {!loading && feed.map((item, idx) =>
+        {/* フィード（投稿 + Q&Aカード + ツイート混在） */}
+        {!loading && feed.map((item) =>
           item.type === 'qa' ? (
             <QACard
               key={`qa-${item.data.id}`}
@@ -929,6 +961,16 @@ export default function TimelinePage() {
               canReply={canReply}
               onAnswered={handleAnswered}
             />
+          ) : item.type === 'tweet' ? (
+            <div key={`tweet-${item.data.id}`} className="bg-white rounded-2xl overflow-hidden shadow-sm">
+              <TweetCard
+                tweet={item.data}
+                myId={userId}
+                onUpdate={fetchTweets}
+                showBorder={false}
+                canInteract={true}
+              />
+            </div>
           ) : (
             <PostCard
               key={`post-${item.data.id}`}
@@ -968,15 +1010,12 @@ export default function TimelinePage() {
       <button
         onClick={() => setShowCompose(true)}
         className="fixed bottom-24 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
-        style={{
-          background: 'linear-gradient(135deg,#6366f1 0%,#4f46e5 100%)',
-          boxShadow: '0 8px 24px rgba(99,102,241,0.45)',
-        }}
+        style={{ background: 'linear-gradient(135deg,#6366f1 0%,#4f46e5 100%)', boxShadow: '0 8px 24px rgba(99,102,241,0.45)' }}
       >
         <Plus size={24} className="text-white" strokeWidth={2.5} />
       </button>
 
-      {/* ── 投稿モーダル ── */}
+      {/* ── 村投稿モーダル ── */}
       {showCompose && userId && (
         <ComposeModal
           userId={userId}

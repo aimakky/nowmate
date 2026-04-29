@@ -4,50 +4,176 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { TrustCard, TrustHowToCard } from '@/components/ui/TrustBadge'
+import { TrustCard } from '@/components/ui/TrustBadge'
+import TrustBadge from '@/components/ui/TrustBadge'
 import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
 import { getUserTrust, fetchTierProgress, type TierProgress } from '@/lib/trust'
-import { getTitleName, TITLE_LEVEL_STYLE } from '@/lib/qa'
-import { Settings, LogOut, ChevronRight, Crown, Users, MessageSquare } from 'lucide-react'
-import { getCategoryStyle } from '@/lib/qa'
-import { timeAgo } from '@/lib/utils'
+import { Settings, LogOut, ChevronRight, Crown, Users, Copy, Check, Pencil, X, Eye, EyeOff } from 'lucide-react'
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
-import MissionsCard from '@/components/features/MissionsCard'
-import GrowthPortfolio from '@/components/features/GrowthPortfolio'
-import ThirtyDayJourney from '@/components/features/ThirtyDayJourney'
-import DailyCheckIn from '@/components/features/DailyCheckIn'
+import { INDUSTRIES } from '@/lib/guild'
+import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 
+type ProfileTab = 'tweets' | 'images' | 'joined_villages' | 'hosted_villages'
+
+// ── ツイートコンポーズシート ────────────────────────────────────
+function TweetComposeSheet({
+  userId,
+  avatarUrl,
+  displayName,
+  onClose,
+  onPosted,
+}: {
+  userId: string
+  avatarUrl: string | null
+  displayName: string
+  onClose: () => void
+  onPosted: () => Promise<void>
+}) {
+  const [text, setText] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+  const MAX = 280
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
+  async function handlePost() {
+    if (!text.trim() || sending || text.length > MAX) return
+    setSending(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('tweets').insert({
+      user_id: userId,
+      content: text.trim(),
+    })
+    setSending(false)
+    if (!error) {
+      setSent(true)
+      await onPosted()   // リロード完了を待つ
+      onClose()
+    }
+  }
+
+  const remaining = MAX - text.length
+  const pct = text.length / MAX
+  const circleR = 9
+  const circleC = 2 * Math.PI * circleR
+
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col justify-end">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="relative bg-white rounded-t-3xl w-full max-w-md mx-auto overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* ドラッグハンドル */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-stone-200" />
+        </div>
+
+        {/* ヘッダー */}
+        <div className="flex items-center justify-between px-5 py-2.5">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full active:bg-stone-100 transition-colors"
+          >
+            <X size={18} className="text-stone-500" />
+          </button>
+          <button
+            onClick={handlePost}
+            disabled={!text.trim() || sending || sent || text.length > MAX}
+            className="px-5 py-1.5 rounded-full text-sm font-extrabold text-white disabled:opacity-40 active:scale-95 transition-all"
+            style={{ background: 'linear-gradient(135deg,#1c1917,#3c3836)' }}
+          >
+            {sending ? (
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin block" />
+            ) : sent ? '✓ 投稿済み' : '投稿する'}
+          </button>
+        </div>
+
+        {/* 入力エリア */}
+        <div className="flex gap-3 px-5 pt-1 pb-4">
+          <div className="flex-shrink-0">
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-stone-100 flex items-center justify-center text-sm font-bold text-white"
+              style={{ background: 'linear-gradient(135deg,#6366f1,#4f46e5)' }}>
+              {avatarUrl
+                ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                : <span>{displayName[0]}</span>
+              }
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <textarea
+              value={text}
+              onChange={e => setText(e.target.value)}
+              placeholder="いまどうしてる？"
+              rows={5}
+              autoFocus
+              className="w-full text-[17px] leading-relaxed resize-none focus:outline-none text-stone-900 placeholder-stone-300 bg-transparent"
+            />
+          </div>
+        </div>
+
+        {/* フッター */}
+        <div className="flex items-center justify-between px-5 py-3 border-t border-stone-100">
+          <p className="text-[11px] text-stone-400">休憩村全体に公開されます</p>
+          <div className="flex items-center gap-2.5">
+            {/* 残り文字数リング */}
+            <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">
+              <circle cx="12" cy="12" r={circleR} fill="none" stroke="#e7e5e4" strokeWidth="2.5" />
+              <circle cx="12" cy="12" r={circleR} fill="none"
+                stroke={pct > 0.9 ? '#f97316' : '#1c1917'}
+                strokeWidth="2.5" strokeLinecap="round"
+                strokeDasharray={circleC}
+                strokeDashoffset={circleC * (1 - pct)}
+                style={{ transition: 'stroke-dashoffset 0.1s' }}
+              />
+            </svg>
+            <span className={`text-xs font-bold ${remaining < 20 ? 'text-orange-500' : 'text-stone-300'}`}>
+              {remaining}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── メインページ ────────────────────────────────────────────────
 export default function MyPage() {
   const router = useRouter()
 
   const [profile,        setProfile]        = useState<any>(null)
   const [trust,          setTrust]          = useState<any>(null)
+  const [tierProgress,   setTierProgress]   = useState<TierProgress | null>(null)
   const [villageCount,   setVillageCount]   = useState(0)
   const [postCount,      setPostCount]      = useState(0)
-  const [tierProgress,   setTierProgress]   = useState<TierProgress | null>(null)
-  const [qaTitles,       setQaTitles]       = useState<any[]>([])
-  const [hostedVillages, setHostedVillages] = useState<any[]>([])
-  const [joinedVillages, setJoinedVillages] = useState<any[]>([])
-  const [myBottles,      setMyBottles]      = useState<any[]>([])
-  const [followingPosts, setFollowingPosts] = useState<any[]>([])
   const [followingCount, setFollowingCount] = useState(0)
   const [followersCount, setFollowersCount] = useState(0)
-  const [followingUsers, setFollowingUsers] = useState<any[]>([])
-  const [followerUsers,  setFollowerUsers]  = useState<any[]>([])
   const [followingIds,   setFollowingIds]   = useState<Set<string>>(new Set())
-  const [followTab,      setFollowTab]      = useState<'following' | 'followers'>('following')
+  const [hostedVillages, setHostedVillages] = useState<any[]>([])
+  const [joinedVillages, setJoinedVillages] = useState<any[]>([])
+  const [imagePosts,     setImagePosts]     = useState<any[]>([])
+  const [tweets,         setTweets]         = useState<TweetData[]>([])
+  const [tweetLoading,   setTweetLoading]   = useState(false)
+  const [userId,         setUserId]         = useState<string | null>(null)
+  const [activeTab,      setActiveTab]      = useState<ProfileTab>('tweets')
   const [loading,        setLoading]        = useState(true)
   const [showPhoneVerify,setShowPhoneVerify]= useState(false)
+  const [showCompose,    setShowCompose]    = useState(false)
   const [idCopied,       setIdCopied]       = useState(false)
-  const [myAnswers,      setMyAnswers]      = useState<any[]>([])
-  const [qaStats,        setQaStats]        = useState<Record<string, { helpful: number; best: number }>>({})
-  const [totalLikes,     setTotalLikes]     = useState(0)
+  const [showIndustry,   setShowIndustry]   = useState(true)
+  const [savingIndustry, setSavingIndustry] = useState(false)
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+      setUserId(user.id)
+      // last_seen_at 更新
+      supabase.rpc('update_last_seen', { p_user_id: user.id })
 
       const [
         { data: p },
@@ -55,131 +181,83 @@ export default function MyPage() {
         tierProgressData,
         { count: vc },
         { count: pc },
-        qaTitlesRes,
         hostedRes,
         joinedRes,
-        bottlesRes,
         followsRes,
         followersRes,
+        imageRes,
+        tweetRes,
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         getUserTrust(user.id),
         fetchTierProgress(user.id),
         supabase.from('village_members').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('village_posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('qa_titles').select('*').eq('user_id', user.id).order('awarded_at', { ascending: false }),
         supabase.from('village_members')
-          .select('villages(id, name, icon, type, member_count, post_count_7d, description)')
+          .select('villages(id, name, icon, type, member_count, post_count_7d)')
           .eq('user_id', user.id).eq('role', 'host'),
         supabase.from('village_members')
           .select('villages(id, name, icon, type, member_count, post_count_7d)')
           .eq('user_id', user.id).eq('role', 'member')
-          .order('joined_at', { ascending: false }).limit(6),
-        supabase.from('drift_bottles')
-          .select(`id, message, status, created_at,
-            recipient_village:recipient_village_id(name, icon)`)
-          .eq('sender_user_id', user.id)
+          .order('joined_at', { ascending: false }).limit(12),
+        supabase.from('user_follows')
+          .select('following_id')
+          .eq('follower_id', user.id),
+        supabase.from('user_follows')
+          .select('follower_id', { count: 'exact', head: true })
+          .eq('following_id', user.id),
+        supabase.from('guild_posts')
+          .select('id, image_url, content, created_at')
+          .eq('user_id', user.id)
+          .not('image_url', 'is', null)
           .order('created_at', { ascending: false })
-          .limit(10),
-        supabase.from('user_follows').select('following_id, profiles:following_id(id,display_name,avatar_url,bio)').eq('follower_id', user.id),
-        supabase.from('user_follows').select('follower_id, profiles:follower_id(id,display_name,avatar_url,bio)').eq('following_id', user.id),
+          .limit(30),
+        supabase
+          .from('tweets')
+          .select('*, profiles!tweets_user_id_fkey(display_name, nationality, avatar_url), tweet_reactions!tweet_reactions_tweet_id_fkey(user_id, reaction), tweet_replies!tweet_replies_tweet_id_fkey(id)')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(30),
       ])
-
-      // 自分の回答履歴（全件・匿名/実名両方表示）+ いいね統計
-      const { data: answersData } = await supabase
-        .from('qa_answers')
-        .select('id, content, is_anonymous, helpful_count, is_best, created_at, qa_questions(id, title, category)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      const normalized = (answersData || []).map((a: any) => ({
-        ...a,
-        qa_questions: Array.isArray(a.qa_questions) ? a.qa_questions[0] ?? null : a.qa_questions,
-      }))
-      setMyAnswers(normalized.slice(0, 30))
-
-      // カテゴリ別いいね・ベストアンサー集計
-      const stats: Record<string, { helpful: number; best: number }> = {}
-      let total = 0
-      for (const a of normalized) {
-        const cat = a.qa_questions?.category
-        if (!cat) continue
-        if (!stats[cat]) stats[cat] = { helpful: 0, best: 0 }
-        stats[cat].helpful += a.helpful_count ?? 0
-        if (a.is_best) stats[cat].best += 1
-        total += a.helpful_count ?? 0
-      }
-      setQaStats(stats)
-      setTotalLikes(total)
 
       if (!p) { router.push('/onboarding'); return }
       setProfile(p)
+      setShowIndustry(p.show_industry !== false)
       setTrust(trustData)
       setTierProgress(tierProgressData)
       setVillageCount(vc ?? 0)
       setPostCount(pc ?? 0)
-      setQaTitles((qaTitlesRes as any)?.data ?? [])
       setHostedVillages(((hostedRes as any)?.data ?? []).map((r: any) => r.villages).filter(Boolean))
       setJoinedVillages(((joinedRes as any)?.data ?? []).map((r: any) => r.villages).filter(Boolean))
-      setMyBottles((bottlesRes as any)?.data ?? [])
 
-      // フォロー
       const followingRaw: any[] = (followsRes as any)?.data ?? []
       const followingIdArr: string[] = followingRaw.map((r: any) => r.following_id)
-      const followingIdSet = new Set(followingIdArr)
-      setFollowingIds(followingIdSet)
+      setFollowingIds(new Set(followingIdArr))
       setFollowingCount(followingIdArr.length)
 
-      const fUsers = followingRaw.map((r: any) => {
-        const p = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
-        return p
-      }).filter(Boolean)
-      setFollowingUsers(fUsers)
-
-      const followerRaw: any[] = (followersRes as any)?.data ?? []
-      setFollowersCount(followerRaw.length)
-      const fwUsers = followerRaw.map((r: any) => {
-        const p = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
-        return p
-      }).filter(Boolean)
-      setFollowerUsers(fwUsers)
-
-      // フォロー中ユーザーの最新投稿
-      if (followingIdArr.length > 0) {
-        const { data: fPosts } = await supabase
-          .from('village_posts')
-          .select(`id, content, created_at, user_id,
-            profiles:user_id(display_name, avatar_url),
-            villages:village_id(id, name, icon)`)
-          .in('user_id', followingIdArr)
-          .order('created_at', { ascending: false })
-          .limit(10)
-        setFollowingPosts(fPosts ?? [])
-      }
+      setFollowersCount((followersRes as any)?.count ?? 0)
+      setImagePosts((imageRes as any)?.data ?? [])
+      const tr = tweetRes as any
+      if (tr?.error) console.error('tweets fetch error:', tr.error)
+      setTweets((tr?.data ?? []) as TweetData[])
 
       setLoading(false)
     }
     load()
   }, [router])
 
-  async function handleUnfollow(targetId: string) {
-    const supabase = createClient()
-    await supabase.from('user_follows').delete()
-      .eq('follower_id', profile.id).eq('following_id', targetId)
-    setFollowingUsers(prev => prev.filter(u => u.id !== targetId))
-    setFollowingIds(prev => { const n = new Set(prev); n.delete(targetId); return n })
-    setFollowingCount(prev => prev - 1)
-  }
-
-  async function handleFollowBack(targetId: string) {
-    const supabase = createClient()
-    await supabase.from('user_follows').insert({ follower_id: profile.id, following_id: targetId })
-    const { data: p } = await supabase.from('profiles')
-      .select('id,display_name,avatar_url,bio').eq('id', targetId).single()
-    if (p) setFollowingUsers(prev => [...prev, p])
-    setFollowingIds(prev => new Set([...prev, targetId]))
-    setFollowingCount(prev => prev + 1)
+  async function loadTweets(uid: string, supabaseClient?: any) {
+    const client = supabaseClient ?? createClient()
+    setTweetLoading(true)
+    const { data, error } = await client
+      .from('tweets')
+      .select('*, profiles!tweets_user_id_fkey(display_name, nationality, avatar_url), tweet_reactions!tweet_reactions_tweet_id_fkey(user_id, reaction), tweet_replies!tweet_replies_tweet_id_fkey(id)')
+      .eq('user_id', uid)
+      .order('created_at', { ascending: false })
+      .limit(30)
+    if (error) console.error('loadTweets error:', error)
+    setTweets((data ?? []) as TweetData[])
+    setTweetLoading(false)
   }
 
   async function handleLogout() {
@@ -187,647 +265,598 @@ export default function MyPage() {
     router.push('/')
   }
 
+  async function toggleIndustryVisibility() {
+    if (savingIndustry || !userId) return
+    const next = !showIndustry
+    setShowIndustry(next)
+    setSavingIndustry(true)
+    await createClient().from('profiles').update({ show_industry: next }).eq('id', userId)
+    setSavingIndustry(false)
+  }
+
   if (loading || !profile) {
     return (
-      <div className="flex items-center justify-center h-screen bg-birch">
+      <div className="flex items-center justify-center h-screen bg-white">
         <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
+  const industryInfo = profile.industry
+    ? INDUSTRIES.find((i: any) => i.id === profile.industry)
+    : null
+
+  const bannerGradient = industryInfo
+    ? industryInfo.gradient
+    : 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
+
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-birch">
+    <div className="max-w-md mx-auto min-h-screen bg-stone-50">
 
-      {/* ── Profile Hero ── */}
-      <div
-        className="relative overflow-hidden px-5 pt-14 pb-6"
-        style={{ background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)' }}
-      >
-        {/* stars */}
-        <div className="absolute inset-0 opacity-25"
-          style={{ backgroundImage: `radial-gradient(1px 1px at 25% 35%, white, transparent), radial-gradient(1px 1px at 70% 20%, white, transparent), radial-gradient(1.5px 1.5px at 85% 60%, white, transparent), radial-gradient(1px 1px at 40% 75%, white, transparent)` }}
-        />
+      {/* ── バナー + アバター ── */}
+      <div className="relative">
+        <div className="h-32 w-full" style={{ background: bannerGradient }} />
 
-        {/* Edit button */}
+        {/* 設定ボタン */}
         <Link
           href="/settings"
-          className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
-          style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}
+          className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
+          style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}
         >
-          <Settings size={12} /> 編集
+          <Settings size={16} className="text-white" />
         </Link>
 
-        {/* Avatar */}
-        <div className="flex items-end gap-4">
-          <div
-            className="w-18 h-18 rounded-3xl border-2 border-white/30 flex items-center justify-center text-4xl bg-white/10 shadow-lg flex-shrink-0"
-            style={{ width: 72, height: 72 }}
-          >
+        {/* アバター */}
+        <div className="absolute left-4" style={{ bottom: -36 }}>
+          <div className={`w-20 h-20 rounded-full border-4 border-white overflow-hidden bg-stone-100 flex items-center justify-center shadow-md ${trust?.tier === 'pillar' ? 'ring-2 ring-amber-400 ring-offset-1' : ''}`}>
             {profile.avatar_url
-              ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover rounded-3xl" />
-              : <span>🙂</span>
+              ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              : <span className="text-3xl">🙂</span>
             }
           </div>
-          <div className="pb-1 flex-1 min-w-0">
-            <h2 className="font-extrabold text-white text-xl leading-tight truncate">
-              {profile.display_name}
-            </h2>
-            {profile.bio && (
-              <p className="text-white/60 text-xs mt-0.5 line-clamp-2 leading-relaxed">
-                {profile.bio}
-              </p>
-            )}
-          </div>
+          {trust?.tier === 'pillar' && (
+            <span className="absolute -top-1 -right-1 text-base leading-none">✨</span>
+          )}
+          {profile.is_online && (
+            <span className="absolute bottom-1 right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white" />
+          )}
         </div>
 
-        {/* Activity stats */}
-        <div
-          className="mt-4 grid grid-cols-4 gap-1.5 rounded-2xl px-3 py-3"
-          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
-        >
-          {[
-            { value: villageCount,   label: '参加村' },
-            { value: postCount,      label: '投稿' },
-            { value: followingCount, label: '学んでる' },
-            { value: followersCount, label: '学ばれてる' },
-          ].map(s => (
-            <div key={s.label} className="text-center">
-              <p className="font-extrabold text-white text-base leading-none">{s.value}</p>
-              <p className="text-white/50 text-[9px] mt-0.5 font-medium leading-tight">{s.label}</p>
-            </div>
-          ))}
+        {/* 信頼ティアバッジ */}
+        <div className="absolute right-4" style={{ bottom: -28 }}>
+          {trust && <TrustBadge tierId={trust.tier} size="sm" showLabel={true} />}
         </div>
-
-        {/* 人助けカウント */}
-        {(profile.helped_count ?? 0) > 0 && (
-          <div className="mt-3 flex items-center gap-3 px-4 py-3 rounded-2xl"
-            style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}>
-            <span className="text-2xl">🤝</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-extrabold text-emerald-300">
-                {profile.helped_count}人を助けた
-              </p>
-              <p className="text-[10px] text-emerald-400/60 mt-0.5">漂流瓶の質問に回答した回数</p>
-            </div>
-            <div className="text-right flex-shrink-0">
-              <p className="text-xl font-black text-emerald-300">{profile.helped_count}</p>
-              <p className="text-[9px] text-emerald-400/40">人助け</p>
-            </div>
-          </div>
-        )}
       </div>
 
-      <div className="px-4 pt-4 pb-32 space-y-4">
-
-        {/* ── デイリーチェックイン ── */}
-        <DailyCheckIn userId={profile.id} />
-
-        {/* ── 30日の村旅 ── */}
-        {profile.created_at && (
-          <ThirtyDayJourney
-            tierProgress={tierProgress}
-            postCount={postCount}
-            joinedAt={profile.created_at}
-          />
-        )}
-
-        {/* ── 7日間ミッション ── */}
-        <MissionsCard userId={profile.id} />
-
-        {/* ── フォロー・フォロワー ── */}
-        <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
-            {/* タブ */}
-            <div className="flex">
-              {([
-                { id: 'following', label: 'フォロー中', count: followingCount },
-                { id: 'followers', label: 'フォロワー', count: followersCount },
-              ] as const).map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setFollowTab(tab.id)}
-                  className="flex-1 py-3 flex items-center justify-center gap-1.5 text-xs font-bold transition-colors relative"
-                  style={{ color: followTab === tab.id ? '#1c1917' : '#a8a29e' }}
-                >
-                  <span>{tab.label}</span>
-                  <span
-                    className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold"
-                    style={{
-                      background: followTab === tab.id ? '#1c1917' : '#f5f5f4',
-                      color:      followTab === tab.id ? '#fff'    : '#a8a29e',
-                    }}
-                  >
-                    {tab.count}
-                  </span>
-                  {followTab === tab.id && (
-                    <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-stone-900" />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* リスト */}
-            <div className="divide-y divide-stone-50">
-              {followTab === 'following' ? (
-                followingUsers.length === 0 ? (
-                  <div className="py-10 text-center">
-                    <p className="text-2xl mb-2">👥</p>
-                    <p className="text-xs text-stone-400">まだ誰もフォローしていません</p>
-                  </div>
-                ) : followingUsers.map((u: any) => (
-                  <div key={u.id} className="flex items-center gap-3 px-4 py-3">
-                    <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-lg overflow-hidden flex-shrink-0 border border-stone-100">
-                      {u.avatar_url
-                        ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
-                        : <span>🙂</span>
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-stone-900 truncate">{u.display_name}</p>
-                      {u.bio && <p className="text-[10px] text-stone-400 truncate mt-0.5">{u.bio}</p>}
-                    </div>
-                    <button
-                      onClick={() => handleUnfollow(u.id)}
-                      className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-xl border border-stone-200 text-stone-500 active:scale-95 transition-all"
-                    >
-                      フォロー中
-                    </button>
-                  </div>
-                ))
-              ) : (
-                followerUsers.length === 0 ? (
-                  <div className="py-10 text-center">
-                    <p className="text-2xl mb-2">🌱</p>
-                    <p className="text-xs text-stone-400">まだフォロワーがいません</p>
-                  </div>
-                ) : followerUsers.map((u: any) => {
-                  const isFollowing = followingIds.has(u.id)
-                  return (
-                    <div key={u.id} className="flex items-center gap-3 px-4 py-3">
-                      <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-lg overflow-hidden flex-shrink-0 border border-stone-100">
-                        {u.avatar_url
-                          ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
-                          : <span>🙂</span>
-                        }
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-stone-900 truncate">{u.display_name}</p>
-                        {u.bio && <p className="text-[10px] text-stone-400 truncate mt-0.5">{u.bio}</p>}
-                      </div>
-                      {isFollowing ? (
-                        <span className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-xl bg-stone-100 text-stone-400">
-                          相互
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => handleFollowBack(u.id)}
-                          className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-xl bg-stone-900 text-white active:scale-95 transition-all"
-                        >
-                          フォローする
-                        </button>
-                      )}
-                    </div>
-                  )
-                })
-              )}
-            </div>
-        </div>
-
-        {/* ── 成長ポートフォリオ ── */}
-        <GrowthPortfolio
-          postCount={postCount}
-          tweetCount={0}
-          followingCount={followingCount}
-          villageCount={villageCount}
-          displayName={profile?.display_name}
-        />
-
-        {/* ── Trust Card ── */}
-        {trust && (
-          <TrustCard
-            trust={{
-              score:          trust.score,
-              tier:           trust.tier,
-              total_helped:   trust.total_helped,
-              phone_verified: trust.phone_verified,
-            }}
-            progress={tierProgress}
-            isPremium={!!profile?.is_premium}
-          />
-        )}
-
-        {/* ── 電話未認証バナー ── */}
-        {trust && !trust.phone_verified && (
+      {/* ── プロフ情報 ── */}
+      <div className="pt-14 px-4 pb-3 bg-white border-b border-stone-100">
+        <h2 className="font-extrabold text-stone-900 text-xl leading-tight truncate">
+          {profile.display_name}
+        </h2>
+        {profile.VILLIA_id && (
           <button
-            onClick={() => setShowPhoneVerify(true)}
-            className="w-full bg-brand-50 border border-brand-200 rounded-2xl px-4 py-3.5 flex items-center gap-3 text-left active:scale-[0.99] transition-all"
+            onClick={() => {
+              navigator.clipboard.writeText(profile.VILLIA_id!)
+              setIdCopied(true)
+              setTimeout(() => setIdCopied(false), 2000)
+            }}
+            className="flex items-center gap-1 mt-0.5 active:opacity-60 transition-opacity"
           >
-            <span className="text-2xl">📱</span>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-brand-700">電話番号を認証する</p>
-              <p className="text-xs text-brand-500 mt-0.5">投稿・通話が解放されます · +30pt</p>
-            </div>
-            <ChevronRight size={16} className="text-brand-300" />
+            <span className="text-xs text-stone-400 font-mono">#{profile.VILLIA_id}</span>
+            {idCopied
+              ? <Check size={11} className="text-green-500" />
+              : <Copy size={11} className="text-stone-300" />
+            }
           </button>
         )}
 
-        {/* ── 信頼の積み方 ── */}
-        {trust && <TrustHowToCard />}
-
-        {/* ── 私の村 ── */}
-        {(hostedVillages.length > 0 || joinedVillages.length > 0) && (
-          <div className="space-y-3">
-
-            {/* 村長の村 */}
-            {hostedVillages.length > 0 && (
-              <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
-                <div
-                  className="px-4 py-3 flex items-center justify-between"
-                  style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%)' }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Crown size={14} className="text-yellow-300" />
-                    <p className="text-xs font-bold text-white">村長の村</p>
-                  </div>
-                  <p className="text-[10px] text-white/50">{hostedVillages.length}村</p>
-                </div>
-                <div className="divide-y divide-stone-50">
-                  {hostedVillages.map((v: any) => {
-                    const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
-                    return (
-                      <div key={v.id} className="flex items-center gap-3 px-4 py-3">
-                        {/* Village gradient thumb */}
-                        <div
-                          className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
-                          style={{ background: vs.gradient }}
-                        >
-                          {v.icon}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="flex items-center gap-0.5 text-[10px] text-stone-400">
-                              <Users size={9} /> {v.member_count}人
-                            </span>
-                            <span className="text-[10px] text-stone-400">
-                              今週{v.post_count_7d}件
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex gap-1.5">
-                          <Link
-                            href={`/villages/${v.id}`}
-                            className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-white active:scale-95 transition-all"
-                            style={{ background: vs.accent }}
-                          >
-                            村を見る
-                          </Link>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* 参加中の村 */}
-            {joinedVillages.length > 0 && (
-              <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
-                <div className="px-4 py-3 border-b border-stone-50 flex items-center justify-between">
-                  <p className="text-xs font-bold text-stone-500 uppercase tracking-wider">参加中の村</p>
-                  <Link href="/villages" className="text-[10px] text-indigo-500 font-bold">すべて見る →</Link>
-                </div>
-                <div className="divide-y divide-stone-50">
-                  {joinedVillages.map((v: any) => {
-                    const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
-                    return (
-                      <Link
-                        key={v.id}
-                        href={`/villages/${v.id}`}
-                        className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition-colors active:bg-stone-50"
-                      >
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-                          style={{ background: vs.gradient }}
-                        >
-                          {v.icon}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-stone-800 truncate">{v.name}</p>
-                          <p className="text-[10px] text-stone-400">
-                            {v.member_count}人 · 今週{v.post_count_7d}件
-                          </p>
-                        </div>
-                        <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
-                      </Link>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+        {profile.bio && (
+          <p className="text-sm text-stone-700 mt-2 leading-relaxed">{profile.bio}</p>
         )}
 
-        {/* ── 私の漂流瓶 ── */}
-        {myBottles.length > 0 && (
-          <div className="rounded-2xl overflow-hidden shadow-sm"
-            style={{ background: 'linear-gradient(135deg,#0c1445 0%,#0a2540 100%)', border: '1px solid rgba(100,140,255,0.2)' }}>
-            <div className="px-4 py-3 flex items-center justify-between border-b border-white/8">
-              <div className="flex items-center gap-2">
-                <span className="text-base">🍶</span>
-                <p className="text-xs font-bold text-blue-200">私の漂流瓶</p>
-              </div>
-              <p className="text-[10px] text-blue-400/50">{myBottles.length}本</p>
-            </div>
-            <div className="divide-y divide-white/5">
-              {myBottles.map((b: any) => {
-                const rv = Array.isArray(b.recipient_village) ? b.recipient_village[0] : b.recipient_village
-                const statusInfo =
-                  b.status === 'replied'   ? { icon: '💌', label: '返事あり',  color: '#34d399' } :
-                  b.status === 'delivered' ? { icon: '📬', label: '届いた',    color: '#60a5fa' } :
-                                            { icon: '🌊', label: '漂流中',    color: '#94a3b8' }
-                return (
-                  <div key={b.id} className="px-4 py-3 flex items-center gap-3">
-                    <span className="text-lg flex-shrink-0">{statusInfo.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-white/75 line-clamp-1">{b.message}</p>
-                      <p className="text-[10px] text-blue-400/50 mt-0.5">
-                        {rv ? `${rv.icon} ${rv.name}へ` : '送信先不明'}
-                      </p>
-                    </div>
-                    <span
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                      style={{ background: `${statusInfo.color}20`, color: statusInfo.color, border: `1px solid ${statusInfo.color}30` }}
-                    >
-                      {statusInfo.label}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── 私の回答履歴 ── */}
-        {myAnswers.length > 0 && (
-          <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b border-stone-50 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <MessageSquare size={14} className="text-indigo-500" />
-                <p className="text-xs font-bold text-stone-700">私の回答履歴</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <p className="text-[10px] text-stone-400">{myAnswers.length}件</p>
-                <ChevronRight
-                  size={12}
-                  className="text-stone-300 cursor-pointer"
-                  onClick={() => router.push('/settings')}
-                />
-              </div>
-            </div>
-            <div className="divide-y divide-stone-50">
-              {myAnswers.slice(0, 5).map((a: any) => {
-                const q = a.qa_questions
-                const cs = q ? getCategoryStyle(q.category) : getCategoryStyle('なんでも相談')
-                return (
-                  <div key={a.id} className="px-4 py-3">
-                    {/* 質問タイトル */}
-                    {q && (
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <span
-                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                          style={{ background: cs.bg, color: cs.color, border: `1px solid ${cs.border}` }}>
-                          {cs.emoji} {q.category}
-                        </span>
-                        <p className="text-[11px] font-bold text-stone-500 truncate flex-1">{q.title}</p>
-                        {a.is_anonymous && (
-                          <span className="text-[9px] text-stone-300 flex-shrink-0">🕵️ 匿名</span>
-                        )}
-                      </div>
-                    )}
-                    {/* 回答本文 */}
-                    <p className="text-xs text-stone-700 leading-relaxed line-clamp-2">{a.content}</p>
-                    <p className="text-[10px] text-stone-300 mt-1">{timeAgo(a.created_at)}</p>
-                  </div>
-                )
-              })}
-            </div>
-            {myAnswers.length > 5 && (
-              <div className="px-4 py-3 border-t border-stone-50 text-center">
-                <p className="text-[11px] text-indigo-500 font-bold">
-                  残り{myAnswers.length - 5}件 — プロフィールで全件表示
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── フォロー中の投稿 ── */}
-        {followingPosts.length > 0 && (
-          <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b border-stone-50 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-base">👥</span>
-                <p className="text-xs font-bold text-stone-700">学んでいる人たちの最新の考え</p>
-              </div>
-              <p className="text-[10px] text-stone-400">{followingCount}人から学んでいる</p>
-            </div>
-            <div className="divide-y divide-stone-50">
-              {followingPosts.map((fp: any) => {
-                const prof = Array.isArray(fp.profiles) ? fp.profiles[0] : fp.profiles
-                const vil  = Array.isArray(fp.villages)  ? fp.villages[0]  : fp.villages
-                const ago  = (() => {
-                  const diff = Date.now() - new Date(fp.created_at).getTime()
-                  const m = Math.floor(diff / 60000)
-                  if (m < 60)  return `${m}分前`
-                  const h = Math.floor(m / 60)
-                  if (h < 24)  return `${h}時間前`
-                  return `${Math.floor(h / 24)}日前`
-                })()
-                return (
-                  <Link
-                    key={fp.id}
-                    href={`/villages/${vil?.id ?? ''}`}
-                    className="flex gap-3 px-4 py-3 hover:bg-stone-50 transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-sm flex-shrink-0 overflow-hidden">
-                      {prof?.avatar_url
-                        ? <img src={prof.avatar_url} alt="" className="w-full h-full object-cover" />
-                        : '🙂'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-xs font-bold text-stone-800 truncate">{prof?.display_name ?? '…'}</span>
-                        {vil && (
-                          <span className="text-[10px] text-stone-400 flex-shrink-0">
-                            in {vil.icon}{vil.name}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">{fp.content}</p>
-                      <p className="text-[10px] text-stone-300 mt-1">{ago}</p>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── Q&A 実績 ── */}
-        {(qaTitles.length > 0 || totalLikes > 0 || Object.keys(qaStats).length > 0) && (
-          <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
-            {/* ヘッダー */}
-            <div className="px-4 py-3 border-b border-stone-50 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-base">👍</span>
-                <p className="text-xs font-bold text-stone-700">Q&A 実績</p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm">👍</span>
-                <p className="text-sm font-extrabold text-stone-800">{totalLikes}</p>
-                <p className="text-[10px] text-stone-400">いいね受領</p>
-              </div>
-            </div>
-
-            {/* 称号グリッド */}
-            {qaTitles.length > 0 && (
-              <div className="px-4 pt-3 pb-2">
-                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2">獲得した称号</p>
-                <div className="flex flex-wrap gap-2">
-                  {qaTitles.map((t: any) => {
-                    const cs      = getCategoryStyle(t.category)
-                    const lvStyle = TITLE_LEVEL_STYLE[t.level]
-                    return (
-                      <div
-                        key={t.id}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold"
-                        style={{ background: cs.bg, borderColor: cs.border, color: cs.color }}
-                      >
-                        <span>{lvStyle?.badge}</span>
-                        <span>{getTitleName(t.category, t.level)}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* カテゴリ別進捗 */}
-            {Object.keys(qaStats).length > 0 && (
-              <div className="px-4 pt-2 pb-4 space-y-3">
-                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">ジャンル別いいね</p>
-                {Object.entries(qaStats)
-                  .sort(([, a], [, b]) => b.helpful - a.helpful)
-                  .map(([cat, stat]) => {
-                    const cs    = getCategoryStyle(cat)
-                    const title = qaTitles.find((t: any) => t.category === cat)
-                    // 次のレベルまでの進捗
-                    const nextThreshold =
-                      !title            ? 5  :
-                      title.level === 'bronze' ? 15 :
-                      title.level === 'silver' ? 50 : null
-                    const progress = nextThreshold
-                      ? Math.min(100, Math.round((stat.helpful / nextThreshold) * 100))
-                      : 100
-                    return (
-                      <div key={cat}>
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                              style={{ background: cs.bg, color: cs.color, border: `1px solid ${cs.border}` }}
-                            >
-                              {cs.emoji} {cat}
-                            </span>
-                            {title && (
-                              <span className="text-[9px] font-bold text-stone-500">
-                                {TITLE_LEVEL_STYLE[title.level]?.badge} {getTitleName(cat, title.level)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 text-[10px] text-stone-500">
-                            <span>👍 {stat.helpful}</span>
-                            <span>⭐ {stat.best}</span>
-                          </div>
-                        </div>
-                        {nextThreshold && (
-                          <div className="w-full h-1.5 rounded-full bg-stone-100 overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{ width: `${progress}%`, background: cs.color }}
-                            />
-                          </div>
-                        )}
-                        {nextThreshold && (
-                          <p className="text-[9px] text-stone-300 mt-0.5 text-right">
-                            次のレベルまで あと {Math.max(0, nextThreshold - stat.helpful)} いいね
-                          </p>
-                        )}
-                      </div>
-                    )
-                  })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── 自由村 ID ── */}
-        {profile.VILLIA_id && (
-          <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm">
-            <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">My ID</p>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5">
-                <span className="font-mono font-bold text-stone-800 text-base tracking-widest">#{profile.VILLIA_id}</span>
-              </div>
+        <div className="flex flex-wrap items-center gap-2 mt-2.5">
+          {industryInfo && (
+            <div className="flex items-center gap-1.5">
+              {showIndustry ? (
+                <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full"
+                  style={{ background: `${industryInfo.color}15`, color: industryInfo.color }}>
+                  {industryInfo.emoji} {industryInfo.id}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-stone-100 text-stone-400">
+                  {industryInfo.emoji} 非公開
+                </span>
+              )}
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(profile.VILLIA_id!)
-                  setIdCopied(true)
-                  setTimeout(() => setIdCopied(false), 2000)
-                }}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                  idCopied ? 'bg-emerald-500 text-white' : 'bg-stone-900 text-white'
-                }`}
+                onClick={toggleIndustryVisibility}
+                disabled={savingIndustry}
+                className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-stone-100 active:bg-stone-200 transition-colors disabled:opacity-40"
+                title={showIndustry ? '職業を非表示にする' : '職業を公開する'}
               >
-                {idCopied ? '✓ コピー済み' : 'コピー'}
+                {showIndustry
+                  ? <Eye size={13} className="text-stone-400" />
+                  : <EyeOff size={13} className="text-stone-400" />
+                }
               </button>
             </div>
+          )}
+          {profile.created_at && (
+            <span className="text-xs text-stone-400">
+              🗓️ {new Date(profile.created_at).getFullYear()}年{new Date(profile.created_at).getMonth() + 1}月から
+            </span>
+          )}
+        </div>
+
+        {/* フォロー / フォロワー / 投稿 */}
+        <div className="flex gap-5 mt-3">
+          <div className="flex items-center gap-1.5">
+            <span className="font-extrabold text-stone-900 text-sm">{followingCount}</span>
+            <span className="text-xs text-stone-500">フォロー中</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-extrabold text-stone-900 text-sm">{followersCount}</span>
+            <span className="text-xs text-stone-500">フォロワー</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-extrabold text-stone-900 text-sm">{tweets.length}</span>
+            <span className="text-xs text-stone-500">投稿</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── タブ ── */}
+      <div className="flex bg-white border-b border-stone-100 sticky top-0 z-10">
+        {([
+          { id: 'tweets',          label: '投稿' },
+          { id: 'images',          label: '画像' },
+          { id: 'joined_villages', label: '参加中' },
+          { id: 'hosted_villages', label: '村長' },
+        ] as { id: ProfileTab; label: string }[]).map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className="flex-1 py-3 text-xs font-bold transition-colors relative"
+            style={{ color: activeTab === tab.id ? '#0c0a09' : '#a8a29e' }}
+          >
+            {tab.label}
+            {activeTab === tab.id && (
+              <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-stone-900" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ── タブコンテンツ ── */}
+      <div className="pb-32">
+
+        {/* 投稿タブ */}
+        {activeTab === 'tweets' && (
+          <div>
+            {tweetLoading ? (
+              <div className="space-y-0">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="bg-white border-b border-stone-50 px-4 py-4 animate-pulse">
+                    <div className="flex gap-3">
+                      <div className="w-9 h-9 rounded-full bg-stone-100 flex-shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 bg-stone-100 rounded w-1/4" />
+                        <div className="h-3.5 bg-stone-100 rounded w-full" />
+                        <div className="h-3.5 bg-stone-100 rounded w-3/4" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : tweets.length === 0 ? (
+              <div className="flex flex-col items-center py-20 text-center px-6">
+                <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mb-4">
+                  <Pencil size={28} className="text-stone-300" />
+                </div>
+                <p className="font-bold text-stone-600 text-sm">まだ投稿がありません</p>
+                <p className="text-xs text-stone-400 mt-1.5">思ったことをつぶやいてみよう</p>
+                <button
+                  onClick={() => setShowCompose(true)}
+                  className="mt-5 px-5 py-2.5 rounded-full text-sm font-bold text-white active:scale-95 transition-all"
+                  style={{ background: 'linear-gradient(135deg,#1c1917,#3c3836)' }}
+                >
+                  最初の投稿をする
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white divide-y divide-stone-50">
+                {tweets.map(t => (
+                  <TweetCard
+                    key={t.id}
+                    tweet={t}
+                    myId={userId}
+                    onUpdate={() => userId && loadTweets(userId)}
+                    showBorder={false}
+                    canInteract={true}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── Menu ── */}
-        <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden divide-y divide-stone-50 shadow-sm">
-          {[
-            { href: '/settings', icon: '⚙️',  label: 'プロフィールを編集' },
-            { href: '/invite',   icon: '🤝',  label: '友達を招待する' },
-            { href: '/terms',    icon: '📄',  label: '利用規約' },
-            { href: '/privacy',  icon: '🔒',  label: 'プライバシーポリシー' },
-            { href: '/contact',  icon: '✉️',  label: 'お問い合わせ' },
-          ].map(item => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex items-center justify-between px-4 py-3.5 hover:bg-stone-50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-base w-6 text-center">{item.icon}</span>
-                <span className="text-sm text-stone-700 font-medium">{item.label}</span>
+        {/* 画像タブ */}
+        {activeTab === 'images' && (
+          <div>
+            {imagePosts.length === 0 ? (
+              <div className="flex flex-col items-center py-16 text-center px-6">
+                <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mb-4">
+                  <span className="text-3xl">🖼️</span>
+                </div>
+                <p className="font-bold text-stone-600 text-sm">まだ画像投稿がありません</p>
+                <p className="text-xs text-stone-400 mt-1.5">仕事村に画像付きで投稿しよう</p>
               </div>
-              <ChevronRight size={14} className="text-stone-300" />
-            </Link>
-          ))}
-        </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-0.5 bg-stone-100">
+                {imagePosts.map((post: any) => (
+                  <div
+                    key={post.id}
+                    className="aspect-square overflow-hidden bg-stone-200 active:opacity-80 transition-opacity"
+                    onClick={() => router.push(`/guild/${post.id}`)}
+                  >
+                    <img
+                      src={post.image_url}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* ── Logout ── */}
-        <button
-          onClick={handleLogout}
-          className="w-full py-3.5 rounded-2xl border border-red-100 bg-red-50 text-red-500 text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-all"
-        >
-          <LogOut size={15} /> ログアウト
-        </button>
+        {/* 参加中タブ */}
+        {activeTab === 'joined_villages' && (() => {
+          const gameCats = new Set(INDUSTRIES.map(i => i.id))
+          const myVillages = joinedVillages.filter((v: any) => !gameCats.has(v.category))
+          const myGuilds   = joinedVillages.filter((v: any) =>  gameCats.has(v.category))
+          return (
+            <div>
+              {joinedVillages.length === 0 ? (
+                <div className="flex flex-col items-center py-16 text-center">
+                  <span className="text-4xl mb-3">🏘️</span>
+                  <p className="text-sm font-bold text-stone-600">まだ村・ギルドに参加していません</p>
+                  <div className="flex gap-2 mt-4">
+                    <button onClick={() => router.push('/villages')}
+                      className="px-4 py-2.5 bg-stone-900 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
+                    >🏕️ 村を探す</button>
+                    <button onClick={() => router.push('/guild')}
+                      className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
+                      style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}
+                    >🎮 ギルドを探す</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white divide-y divide-stone-100">
+                  {/* 🏕️ 村セクション */}
+                  {myVillages.length > 0 && (
+                    <>
+                      <div className="px-4 py-2 bg-stone-50">
+                        <p className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest">🏕️ 村</p>
+                      </div>
+                      {myVillages.map((v: any) => {
+                        const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
+                        return (
+                          <Link key={v.id} href={`/villages/${v.id}`}
+                            className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
+                              style={{ background: vs.gradient }}>{v.icon}</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
+                              <p className="text-[11px] text-stone-400">
+                                <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
+                              </p>
+                            </div>
+                            <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                          </Link>
+                        )
+                      })}
+                    </>
+                  )}
+                  {/* 🎮 ギルドセクション */}
+                  {myGuilds.length > 0 && (
+                    <>
+                      <div className="px-4 py-2" style={{ background: '#f5f3ff' }}>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#7c3aed' }}>🎮 ギルド</p>
+                      </div>
+                      {myGuilds.map((v: any) => {
+                        const genreInfo = INDUSTRIES.find(i => i.id === v.category)
+                        return (
+                          <Link key={v.id} href={`/villages/${v.id}`}
+                            className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
+                              style={{ background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>{v.icon}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
+                                {genreInfo && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                                    style={{ background: `${genreInfo.color}18`, color: genreInfo.color }}>
+                                    {genreInfo.emoji}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-stone-400">
+                                <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
+                              </p>
+                            </div>
+                            <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                          </Link>
+                        )
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })()}
+
+        {/* 作った村タブ */}
+        {activeTab === 'hosted_villages' && (() => {
+          const gameCats = new Set(INDUSTRIES.map(i => i.id))
+          const ownedVillages = hostedVillages.filter((v: any) => !gameCats.has(v.category))
+          const ownedGuilds   = hostedVillages.filter((v: any) =>  gameCats.has(v.category))
+          return (
+            <div>
+              {hostedVillages.length === 0 ? (
+                <div className="flex flex-col items-center py-16 text-center">
+                  <Crown size={36} className="text-stone-200 mb-3" />
+                  <p className="text-sm font-bold text-stone-600">まだ村・ギルドを作っていません</p>
+                  <div className="flex gap-2 mt-4">
+                    <button onClick={() => router.push('/villages/create')}
+                      className="px-4 py-2.5 bg-stone-900 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
+                    >🏕️ 村を作る</button>
+                    <button onClick={() => router.push('/guild/create')}
+                      className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
+                      style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}
+                    >🎮 ギルドを作る</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white divide-y divide-stone-100">
+                  {/* 🏕️ オーナー村セクション */}
+                  {ownedVillages.length > 0 && (
+                    <>
+                      <div className="px-4 py-2 bg-stone-50">
+                        <p className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest">🏕️ オーナー村</p>
+                      </div>
+                      {ownedVillages.map((v: any) => {
+                        const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
+                        return (
+                          <Link key={v.id} href={`/villages/${v.id}`}
+                            className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
+                              style={{ background: vs.gradient }}>{v.icon}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
+                                <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex-shrink-0">
+                                  <Crown size={8} /> 村長
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-stone-400">
+                                <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
+                              </p>
+                            </div>
+                            <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                          </Link>
+                        )
+                      })}
+                    </>
+                  )}
+                  {/* 🎮 オーナーギルドセクション */}
+                  {ownedGuilds.length > 0 && (
+                    <>
+                      <div className="px-4 py-2" style={{ background: '#f5f3ff' }}>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#7c3aed' }}>🎮 オーナーギルド</p>
+                      </div>
+                      {ownedGuilds.map((v: any) => {
+                        const genreInfo = INDUSTRIES.find(i => i.id === v.category)
+                        return (
+                          <Link key={v.id} href={`/villages/${v.id}`}
+                            className="flex items-center gap-3 px-4 py-3.5 active:bg-stone-50 transition-colors">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
+                              style={{ background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>{v.icon}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <p className="text-sm font-bold text-stone-900 truncate">{v.name}</p>
+                                <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                                  style={{ background: '#ede9fe', color: '#7c3aed', border: '1px solid #ddd6fe' }}>
+                                  <Crown size={8} /> 団長
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-stone-400">
+                                <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
+                              </p>
+                            </div>
+                            <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
+                          </Link>
+                        )
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })()}
+
+        {/* ── 下部コンテンツ（全タブ共通） ── */}
+        <div className="px-4 pt-4 space-y-3">
+          {trust && !trust.phone_verified && (
+            <button
+              onClick={() => setShowPhoneVerify(true)}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left active:scale-[0.99] transition-all bg-white border border-brand-100"
+            >
+              <span className="text-2xl">📱</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-brand-700">電話番号を認証する</p>
+                <p className="text-xs text-brand-400 mt-0.5">投稿・通話が解放されます · +30pt</p>
+              </div>
+              <ChevronRight size={16} className="text-brand-300" />
+            </button>
+          )}
+
+          {/* ── 信頼スコアカード（Reddit karma 的な可視化） ── */}
+          {trust && (
+            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
+              <div className="px-4 pt-4 pb-3">
+                <p className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest mb-3">信頼スコア</p>
+                <div className="flex items-end gap-3">
+                  {/* スコア大きく表示 */}
+                  <div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-5xl font-extrabold leading-none" style={{
+                        background: trust.score >= 1000
+                          ? 'linear-gradient(135deg,#f59e0b,#d97706)'
+                          : trust.score >= 600
+                          ? 'linear-gradient(135deg,#10b981,#059669)'
+                          : trust.score >= 300
+                          ? 'linear-gradient(135deg,#3b82f6,#2563eb)'
+                          : 'linear-gradient(135deg,#94a3b8,#64748b)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                      }}>
+                        {trust.score.toLocaleString()}
+                      </span>
+                      <span className="text-xs text-stone-400 font-semibold">pt</span>
+                    </div>
+                    <p className="text-xs text-stone-500 mt-1">
+                      {trust.total_helped > 0 ? `${trust.total_helped}人の役に立った` : 'まず電話認証してみよう'}
+                    </p>
+                  </div>
+                  {/* ティアアイコン */}
+                  <div className="flex-1 flex justify-end pb-1">
+                    <div className="text-right">
+                      <div className="text-3xl">
+                        {trust.tier === 'pillar' ? '✨' : trust.tier === 'trusted' ? '🌳' : trust.tier === 'regular' ? '🌿' : trust.tier === 'resident' ? '🏡' : '🪴'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* スコアバー */}
+                {tierProgress && (() => {
+                  const tiers = [
+                    { id: 'resident', min: 100,  label: '住民',  color: '#3b82f6' },
+                    { id: 'regular',  min: 300,  label: '常連',  color: '#10b981' },
+                    { id: 'trusted',  min: 600,  label: '信頼',  color: '#10b981' },
+                    { id: 'pillar',   min: 1000, label: '柱',    color: '#f59e0b' },
+                  ]
+                  const next = tiers.find(t => trust.score < t.min)
+                  if (!next) return (
+                    <div className="mt-3 text-center py-2">
+                      <p className="text-xs font-bold text-amber-600">✨ 最高ティア達成！</p>
+                    </div>
+                  )
+                  const prev = tiers[tiers.findIndex(t => t.id === next.id) - 1]
+                  const base = prev?.min ?? 0
+                  const pct  = Math.round(((trust.score - base) / (next.min - base)) * 100)
+                  return (
+                    <div className="mt-3">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-[10px] text-stone-400 font-semibold">次のティアまで</span>
+                        <span className="text-[10px] font-bold" style={{ color: next.color }}>
+                          あと {(next.min - trust.score).toLocaleString()}pt → {next.label}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all"
+                          style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${next.color}80, ${next.color})` }} />
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+
+              {/* ポイント獲得方法ヒント */}
+              <div className="border-t border-stone-50 px-4 py-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-3 text-[10px] text-stone-400">
+                  <span>📝 投稿 +2pt</span>
+                  <span>🤝 相談解決 +25pt</span>
+                  <span>🔥 7日連続 +10pt</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {trust && (
+            <TrustCard
+              trust={{
+                score:          trust.score,
+                tier:           trust.tier,
+                total_helped:   trust.total_helped,
+                phone_verified: trust.phone_verified,
+              }}
+              progress={tierProgress}
+              isPremium={!!profile?.is_premium}
+            />
+          )}
+
+          <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden divide-y divide-stone-50 shadow-sm">
+            {[
+              { href: '/settings', icon: '⚙️',  label: 'プロフィールを編集' },
+              { href: '/invite',   icon: '🤝',  label: '友達を招待する' },
+              { href: '/terms',    icon: '📄',  label: '利用規約' },
+              { href: '/privacy',  icon: '🔒',  label: 'プライバシーポリシー' },
+              { href: '/contact',  icon: '✉️',  label: 'お問い合わせ' },
+            ].map(item => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex items-center justify-between px-4 py-3.5 active:bg-stone-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-base w-6 text-center">{item.icon}</span>
+                  <span className="text-sm text-stone-700 font-medium">{item.label}</span>
+                </div>
+                <ChevronRight size={14} className="text-stone-300" />
+              </Link>
+            ))}
+          </div>
+
+          <button
+            onClick={handleLogout}
+            className="w-full py-3.5 rounded-2xl border border-red-100 bg-red-50 text-red-500 text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-all"
+          >
+            <LogOut size={15} /> ログアウト
+          </button>
+        </div>
       </div>
 
-      {/* ── Modals ── */}
+      {/* ── ツイートFAB ── */}
+      <button
+        onClick={() => setShowCompose(true)}
+        className="fixed bottom-24 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
+        style={{
+          background: 'linear-gradient(135deg,#1c1917 0%,#3c3836 100%)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+        }}
+      >
+        <Pencil size={22} className="text-white" strokeWidth={2} />
+      </button>
+
+      {/* ── コンポーズシート ── */}
+      {showCompose && userId && (
+        <TweetComposeSheet
+          userId={userId}
+          avatarUrl={profile.avatar_url}
+          displayName={profile.display_name}
+          onClose={() => setShowCompose(false)}
+          onPosted={async () => {
+            if (userId) await loadTweets(userId)
+            setActiveTab('tweets')
+          }}
+        />
+      )}
+
+      {/* ── モーダル ── */}
       {showPhoneVerify && (
         <PhoneVerifyModal
           onClose={() => setShowPhoneVerify(false)}

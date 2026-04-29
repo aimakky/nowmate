@@ -73,11 +73,11 @@ export default function GrowthPortfolio(props: Props) {
   function buildShareText() {
     const lines = GROWTH_TYPES.map(g => `${g.icon} ${g.label} +${g.getValue(props)}`)
     return [
-      `自由村で積み上げた成長レポート 📊`,
+      `休憩村で積み上げた成長レポート 📊`,
       lines.join('  '),
       `総合成長度 ${overallPct}%`,
       `「使うたびに、何かが増える」`,
-      `#自由村 nowmatejapan.com`,
+      `#休憩村 nowmatejapan.com`,
     ].join('\n')
   }
 
@@ -153,7 +153,7 @@ export default function GrowthPortfolio(props: Props) {
           {/* カード本体（スクショ用） */}
           <div className="p-4">
             <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-2">
-              自由村 成長レポート
+              休憩村 成長レポート
             </p>
             <div className="grid grid-cols-2 gap-2 mb-3">
               {GROWTH_TYPES.map(g => (

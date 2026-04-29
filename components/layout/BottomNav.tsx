@@ -2,23 +2,21 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Compass, Layers, Bell, MessageCircle } from 'lucide-react'
+import { Compass, Layers, Bell, Gamepad2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
-  { href: '/timeline',      label: 'TL',      icon: Layers         },
-  { href: '/villages',      label: '自由村',  icon: Compass        },
-  { href: '/guild',         label: '仕事村',  icon: null           },
-  { href: '/notifications', label: '通知',    icon: Bell           },
-  { href: '/chat',          label: 'チャット', icon: MessageCircle },
+  { href: '/timeline',      label: 'TL',   icon: Layers   },
+  { href: '/villages',      label: '休憩村',  icon: Compass  },
+  { href: '/guild',         label: 'ゲーム村', icon: Gamepad2 },
+  { href: '/notifications', label: '通知',  icon: Bell     },
 ]
 
 export default function BottomNav() {
   const pathname   = usePathname()
-  const [notifCount,  setNotifCount]  = useState(0)
-  const [chatCount,   setChatCount]   = useState(0)
+  const [notifCount, setNotifCount] = useState(0)
 
   useEffect(() => {
     async function fetchBadges() {
@@ -35,22 +33,6 @@ export default function BottomNav() {
           .eq('is_read', false)
         setNotifCount(nc ?? 0)
 
-        // 未読チャット数
-        const { data: matches } = await supabase
-          .from('matches')
-          .select('id')
-          .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
-        if (matches && matches.length > 0) {
-          const matchIds = matches.map((m: any) => m.id)
-          const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
-          const { count: mc } = await supabase
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .in('match_id', matchIds)
-            .neq('sender_id', user.id)
-            .gte('created_at', since48h)
-          setChatCount(mc ?? 0)
-        }
 
 
       } catch {
@@ -64,29 +46,59 @@ export default function BottomNav() {
 
   useEffect(() => {
     if (pathname === '/notifications') setNotifCount(0)
-    if (pathname === '/chat' || pathname.startsWith('/chat/')) setChatCount(0)
   }, [pathname])
 
   const badges: Record<string, number> = { '/notifications': notifCount }
+
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-stone-100 safe-area-pb">
       <div className="max-w-[430px] mx-auto flex items-center h-16">
 
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + '/')
-          const badge  = badges[href] ?? 0
-          const isGuild = href === '/guild'
+          const active  = pathname === href || pathname.startsWith(href + '/')
+          const badge   = badges[href] ?? 0
+          const isGame  = href === '/guild'
+
+          if (isGame) {
+            return (
+              <Link key={href} href={href}
+                className="flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-all">
+                {/* 光るピル背景 */}
+                <div className={cn(
+                  'relative flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-2xl transition-all',
+                  active
+                    ? 'text-white shadow-lg'
+                    : 'text-violet-500'
+                )}
+                  style={active ? { background: 'linear-gradient(135deg,#7c3aed,#a855f7)' } : {}}>
+                  <div className="relative">
+                    <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
+                    {/* LIVE バッジ */}
+                    {!active && (
+                      <span className="absolute -top-2 -right-4 flex items-center gap-0.5 bg-red-500 rounded-full px-1.5 leading-4 h-3.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping absolute" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-white relative" />
+                        <span className="text-[8px] font-extrabold text-white relative">LIVE</span>
+                      </span>
+                    )}
+                  </div>
+                  <span className={cn('text-[9px] font-extrabold tracking-wide',
+                    active ? 'text-white' : 'text-violet-500')}>
+                    {label}
+                  </span>
+                </div>
+                {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" style={{ background: '#7c3aed' }} />}
+              </Link>
+            )
+          }
 
           return (
             <Link key={href} href={href}
               className={cn('flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-colors',
                 active ? 'text-stone-900' : 'text-stone-400')}>
               <div className="relative">
-                {isGuild
-                  ? <span className="text-xl leading-none">⚔️</span>
-                  : Icon && <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
-                }
+                {Icon && <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />}
                 {badge > 0 && (
                   <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 bg-brand-500 rounded-full flex items-center justify-center px-1">
                     <span className="text-[9px] font-extrabold text-white leading-none">{badge > 99 ? '99+' : badge}</span>

@@ -36,6 +36,36 @@ export async function POST(req: NextRequest) {
     }, { onConflict: 'user_id' })
   }
 
+  // ── 年齢認証 (Stripe Identity) ──────────────────────────────────
+  if (event.type === 'identity.verification_session.verified') {
+    const session = event.data.object as Stripe.Identity.VerificationSession
+    const userId = session.metadata?.user_id
+    if (userId) {
+      // verified_outputs.dob から年齢を計算
+      const fullSession = await stripe.identity.verificationSessions.retrieve(session.id, {
+        expand: ['verified_outputs'],
+      })
+      const outputs = fullSession.verified_outputs as any
+      const dob = outputs?.dob
+      if (dob?.year) {
+        const today = new Date()
+        let age = today.getFullYear() - dob.year
+        const notYetBirthday =
+          today.getMonth() + 1 < dob.month ||
+          (today.getMonth() + 1 === dob.month && today.getDate() < dob.day)
+        if (notYetBirthday) age -= 1
+
+        if (age >= 20) {
+          await supabase.from('profiles').update({
+            age_verified: true,
+            age_verified_at: new Date().toISOString(),
+            age,
+          }).eq('id', userId)
+        }
+      }
+    }
+  }
+
   if (event.type === 'customer.subscription.deleted' || event.type === 'customer.subscription.updated') {
     const sub = event.data.object as Stripe.Subscription
     const userId = sub.metadata?.user_id

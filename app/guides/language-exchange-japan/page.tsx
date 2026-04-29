@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import ArticleJsonLd from '@/components/seo/ArticleJsonLd'
 
 export const metadata: Metadata = {
-  title: 'Language Exchange in Japan — Find a Partner & Actually Learn | 自由村',
+  title: 'Language Exchange in Japan — Find a Partner & Actually Learn | 休憩村',
   description: 'How to find a language exchange partner in Japan that actually works. Tips for practicing Japanese with native speakers, and how to make real friendships through language exchange.',
   keywords: ['language exchange japan', 'language exchange partner japan', 'practice japanese', 'english japanese exchange', 'language partner tokyo', 'tandem japan'],
   openGraph: {
@@ -26,7 +26,7 @@ const TIPS = [
   {
     emoji: '📱',
     title: 'Best ways to find language exchange partners in Japan',
-    content: `**自由村** — Best for foreigners already living in Japan. Matches you with locals and expats based on location, language, and purpose. You can filter specifically for language exchange and see who's near you in Tokyo, Osaka, or wherever you are.\n\n**HelloTalk & Tandem** — Good for text-based practice before you're ready to meet in person. Limited for in-person meetups.\n\n**Local meetups** — Search for "language exchange Tokyo" on Meetup.com. Regular events at cafés and bars. Good for meeting multiple people at once.`,
+    content: `**休憩村** — Best for foreigners already living in Japan. Matches you with locals and expats based on location, language, and purpose. You can filter specifically for language exchange and see who's near you in Tokyo, Osaka, or wherever you are.\n\n**HelloTalk & Tandem** — Good for text-based practice before you're ready to meet in person. Limited for in-person meetups.\n\n**Local meetups** — Search for "language exchange Tokyo" on Meetup.com. Regular events at cafés and bars. Good for meeting multiple people at once.`,
   },
   {
     emoji: '💬',
@@ -46,14 +46,14 @@ export default function LanguageExchangeJapan() {
       <ArticleJsonLd
         title="Language Exchange in Japan — Find a Partner & Actually Learn"
         description="How to find a language exchange partner in Japan, what apps work, and how to make it last."
-        url="https://自由村japan.com/guides/language-exchange-japan"
+        url="https://休憩村japan.com/guides/language-exchange-japan"
       />
       <header className="flex items-center justify-between px-5 pt-5 pb-3">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm">
             <span className="text-white font-black text-sm">N</span>
           </div>
-          <span className="font-extrabold text-gray-900 text-lg tracking-tight">自由村</span>
+          <span className="font-extrabold text-gray-900 text-lg tracking-tight">休憩村</span>
         </Link>
       </header>
 
@@ -75,7 +75,7 @@ export default function LanguageExchangeJapan() {
         <p className="text-purple-100 text-xs mb-3">Japanese speakers looking for exactly what you offer</p>
         <Link href="/signup"
           className="inline-block px-6 py-2.5 bg-white text-purple-600 rounded-xl font-bold text-sm active:scale-95 transition-all">
-          Join 自由村 free →
+          Join 休憩村 free →
         </Link>
       </div>
 
@@ -97,7 +97,7 @@ export default function LanguageExchangeJapan() {
         <div className="text-4xl mb-3">🗣️</div>
         <h2 className="font-extrabold text-gray-900 text-lg mb-2">Ready to find your language partner?</h2>
         <p className="text-gray-500 text-sm mb-5 leading-relaxed">
-          自由村 matches you with Japanese speakers in your city who want to practice your language in exchange for Japanese.
+          休憩村 matches you with Japanese speakers in your city who want to practice your language in exchange for Japanese.
         </p>
         <Link href="/signup"
           className="block w-full py-4 bg-brand-500 text-white rounded-2xl font-bold text-sm text-center shadow-md shadow-brand-200 active:scale-[0.98] transition-all">

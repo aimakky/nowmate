@@ -16,6 +16,7 @@ import VerificationGate, { type GateType } from '@/components/features/Verificat
 import MoodWeather from '@/components/features/MoodWeather'
 import DriftBottle from '@/components/features/DriftBottle'
 import { getUserTrust, getTierById, awardPoints } from '@/lib/trust'
+import { checkGenreMastery, getIndustry, INDUSTRIES } from '@/lib/guild'
 import CulturalCharter, { shouldShowCharter, markCharterShown } from '@/components/features/CulturalCharter'
 import FirstPostPrompt from '@/components/features/FirstPostPrompt'
 
@@ -38,7 +39,7 @@ function markPosted() {
 }
 
 // ─── Constants ────────────────────────────────────────────────
-const POST_CATEGORIES = ['全部', '雑談', '相談', '仕事', '趣味', '今日のひとこと', '初参加あいさつ', '今日のお題']
+const POST_CATEGORIES = ['全部', '雑談', '相談', '仕事', '趣味', '仲間募集', '今日のひとこと', '初参加あいさつ', '今日のお題']
 
 const CAT_ICONS: Record<string, string> = {
   '全部':           '📋',
@@ -46,6 +47,7 @@ const CAT_ICONS: Record<string, string> = {
   '相談':           '🤝',
   '仕事':           '💼',
   '趣味':           '🎨',
+  '仲間募集':        '🎮',
   '今日のひとこと':   '✏️',
   '初参加あいさつ':   '🌱',
   '今日のお題':       '❓',
@@ -56,6 +58,7 @@ const CAT_COLORS: Record<string, string> = {
   '相談':           '#1a9ec8',
   '仕事':           '#4f56c8',
   '趣味':           '#d44060',
+  '仲間募集':        '#7c3aed',
   '今日のひとこと':   '#d99820',
   '初参加あいさつ':   '#14a89a',
   '今日のお題':       '#7c3aed',
@@ -439,6 +442,65 @@ function PostCard({
   const [submitting,      setSubmitting]      = useState(false)
   const [localCount,      setLocalCount]      = useState(post.comment_count ?? 0)
 
+  // ── 投票（Poll）──────────────────────────────────────────────
+  const [myVote,       setMyVote]       = useState<number | null>(null)   // 自分の投票index
+  const [voteCounts,   setVoteCounts]   = useState<number[]>([])          // 各選択肢の票数
+  const [totalVotes,   setTotalVotes]   = useState(0)
+  const [voting,       setVoting]       = useState(false)
+  const [pollLoaded,   setPollLoaded]   = useState(false)
+
+  const hasPoll = Array.isArray(post.poll_options) && post.poll_options.length >= 2
+
+  useEffect(() => {
+    if (!hasPoll) return
+    async function loadPoll() {
+      const sb = createClient()
+      const { data } = await sb
+        .from('poll_votes')
+        .select('user_id, option_index')
+        .eq('post_id', post.id)
+      const rows = data ?? []
+      const counts = new Array(post.poll_options.length).fill(0)
+      rows.forEach((r: any) => { counts[r.option_index] = (counts[r.option_index] ?? 0) + 1 })
+      setVoteCounts(counts)
+      setTotalVotes(rows.length)
+      if (userId) {
+        const mine = rows.find((r: any) => r.user_id === userId)
+        if (mine) setMyVote(mine.option_index)
+      }
+      setPollLoaded(true)
+    }
+    loadPoll()
+  }, [post.id, hasPoll, userId]) // eslint-disable-line
+
+  async function castVote(idx: number) {
+    if (!userId || voting) return
+    setVoting(true)
+    const sb = createClient()
+    if (myVote === idx) {
+      // 取り消し
+      await sb.from('poll_votes').delete().eq('post_id', post.id).eq('user_id', userId)
+      setVoteCounts(prev => { const n = [...prev]; n[idx] = Math.max(0, n[idx] - 1); return n })
+      setTotalVotes(t => Math.max(0, t - 1))
+      setMyVote(null)
+    } else {
+      // upsert で新規 or 変更を一括処理
+      await sb.from('poll_votes').upsert(
+        { post_id: post.id, user_id: userId, option_index: idx },
+        { onConflict: 'post_id,user_id' }
+      )
+      setVoteCounts(prev => {
+        const n = [...prev]
+        if (myVote !== null) n[myVote] = Math.max(0, n[myVote] - 1)
+        n[idx] = (n[idx] ?? 0) + 1
+        return n
+      })
+      if (myVote === null) setTotalVotes(t => t + 1)
+      setMyVote(idx)
+    }
+    setVoting(false)
+  }
+
   async function loadComments() {
     setLoadingComments(true)
     const { data } = await createClient()
@@ -490,11 +552,14 @@ function PostCard({
         <div className="flex items-start justify-between mb-2.5">
           <div className="flex items-center gap-2.5">
             <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold text-white"
+              <div className={`relative w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold text-white ${post.user_trust?.tier === 'pillar' ? 'ring-2 ring-amber-400 ring-offset-1' : ''}`}
                 style={{ background: `linear-gradient(135deg, ${catColor} 0%, ${catColor}99 100%)` }}>
                 {post.profiles?.avatar_url
                   ? <img src={post.profiles.avatar_url} className="w-full h-full object-cover rounded-full" alt="" />
                   : post.profiles?.display_name?.[0] ?? '?'}
+                {post.user_trust?.tier === 'pillar' && (
+                  <span className="absolute -top-0.5 -right-0.5 text-[9px] leading-none">✨</span>
+                )}
               </div>
               {(() => {
                 const occ = getOccupationBadge(post.profiles?.occupation)
@@ -529,6 +594,85 @@ function PostCard({
           </div>
         </div>
         <p className="text-sm text-stone-800 leading-relaxed mb-3">{post.content}</p>
+
+        {/* ── 投票（Poll）UI ── */}
+        {hasPoll && (
+          <div className="mb-3 rounded-2xl overflow-hidden border border-stone-100"
+            style={{ background: '#fafaf9' }}>
+            <div className="px-3 py-2 border-b border-stone-100 flex items-center gap-1.5">
+              <span className="text-xs">📊</span>
+              <span className="text-[11px] font-bold text-stone-500">
+                {pollLoaded ? `${totalVotes}票` : '集計中…'}
+              </span>
+            </div>
+            <div className="p-2 space-y-2">
+              {(post.poll_options as string[]).map((opt, idx) => {
+                const count = voteCounts[idx] ?? 0
+                const pct   = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0
+                const voted = myVote === idx
+                const shown = myVote !== null  // 自分が投票済みなら結果表示
+                return (
+                  <button key={idx} onClick={() => castVote(idx)} disabled={!userId || voting}
+                    className="w-full rounded-xl overflow-hidden relative transition-all active:scale-[0.99] disabled:opacity-60"
+                    style={{
+                      border: voted ? `2px solid ${style.accent}` : '2px solid #e7e5e4',
+                      background: 'white',
+                    }}>
+                    {/* 結果バー */}
+                    {shown && (
+                      <div className="absolute inset-0 rounded-[9px] transition-all"
+                        style={{ width: `${pct}%`, background: voted ? `${style.accent}20` : '#f5f5f4' }} />
+                    )}
+                    <div className="relative flex items-center justify-between px-3 py-2.5 gap-2">
+                      <div className="flex items-center gap-2">
+                        {voted && <span className="text-xs" style={{ color: style.accent }}>✓</span>}
+                        <span className="text-xs font-bold text-stone-800">{opt}</span>
+                      </div>
+                      {shown && (
+                        <span className="text-[11px] font-extrabold flex-shrink-0"
+                          style={{ color: voted ? style.accent : '#a8a29e' }}>
+                          {pct}%
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            {!userId && (
+              <p className="text-center text-[10px] text-stone-400 pb-2">ログインすると投票できます</p>
+            )}
+          </div>
+        )}
+
+        {/* 仲間募集バッジ */}
+        {post.category === '仲間募集' && (post.lfg_platform?.length > 0 || post.lfg_time || post.lfg_game) && (
+          <div className="mb-3 p-2.5 rounded-xl border border-violet-200 bg-violet-50 space-y-1.5">
+            {post.lfg_game && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-violet-500 w-12 flex-shrink-0">🎮 タイトル</span>
+                <span className="text-[11px] font-bold text-violet-800">{post.lfg_game}</span>
+              </div>
+            )}
+            {post.lfg_platform?.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-bold text-violet-500 w-12 flex-shrink-0">🖥️ 機種</span>
+                <div className="flex gap-1 flex-wrap">
+                  {post.lfg_platform.map((p: string) => (
+                    <span key={p} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">{p}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {post.lfg_time && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-violet-500 w-12 flex-shrink-0">⏰ 時間</span>
+                <span className="text-[11px] text-violet-800">{post.lfg_time}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between pt-2 border-t border-stone-50">
           <div className="flex items-center gap-3">
             <button onClick={() => onToggleLike(post.id)}
@@ -634,7 +778,16 @@ export default function VillageDetailPage() {
   const [members,     setMembers]     = useState<any[]>([])
   const [userTrust,   setUserTrust]   = useState<any>(null)
   const [diary,       setDiary]       = useState<any[]>([])
-  const [pinnedPost,  setPinnedPost]  = useState<any>(null)
+  const [pinnedPost,      setPinnedPost]      = useState<any>(null)
+  const [newTitle,        setNewTitle]        = useState<{ genre: string } | null>(null)
+  const [joinRequestSent, setJoinRequestSent] = useState(false)
+  const [joinRequests,    setJoinRequests]    = useState<any[]>([])
+  const [lfgPlatforms,setLfgPlatforms]= useState<string[]>([])
+  const [lfgTime,     setLfgTime]     = useState('')
+  const [lfgGame,     setLfgGame]     = useState('')
+  // ── Poll（投票）投稿 ────────────────────────────────────────
+  const [showPollCreator, setShowPollCreator] = useState(false)
+  const [pollDraft,       setPollDraft]       = useState(['', ''])  // 最低2選択肢
 
   const [tab,       setTab]       = useState<'posts' | 'voice' | 'bottle' | 'members' | 'diary' | 'diplo' | 'admin' | 'more'>('posts')
   const [showMoreMenu, setShowMoreMenu] = useState(false)
@@ -738,6 +891,8 @@ export default function VillageDetailPage() {
       setUserId(user.id)
       const trust = await getUserTrust(user.id)
       setUserTrust(trust)
+      // last seen を更新（オンライン表示用）
+      createClient().rpc('update_last_seen', { p_user_id: user.id })
       // この村でのユーザー投稿数を確認 → 0件なら初投稿プロンプト表示
       const { count } = await createClient()
         .from('village_posts')
@@ -838,7 +993,7 @@ export default function VillageDetailPage() {
   const fetchMembers = useCallback(async () => {
     const { data } = await createClient()
       .from('village_members')
-      .select('user_id, role, joined_at, visit_streak, max_streak, profiles(display_name, avatar_url), user_trust(tier)')
+      .select('user_id, role, joined_at, visit_streak, max_streak, profiles(display_name, avatar_url, last_seen_at), user_trust(tier)')
       .eq('village_id', id).order('joined_at', { ascending: true }).limit(50)
     setMembers(data || [])
   }, [id])
@@ -1040,7 +1195,8 @@ export default function VillageDetailPage() {
     return () => clearInterval(t)
   }, [fetchFreeNow])
 
-  const tier = userTrust ? getTierById(userTrust.tier) : getTierById('visitor')
+  const tier       = userTrust ? getTierById(userTrust.tier) : getTierById('visitor')
+  const isPillarUser = tier.id === 'pillar'
 
   // ── Actions ───────────────────────────────────────────────
   async function toggleMembership() {
@@ -1051,6 +1207,22 @@ export default function VillageDetailPage() {
       await supabase.from('village_members').delete().eq('village_id', id).eq('user_id', userId)
       setIsMember(false); setIsHost(false)
     } else {
+      // 承認制・招待制の場合はリクエスト送信
+      const vis = village?.visibility ?? 'public'
+      if (vis === 'approval') {
+        await supabase.from('village_join_requests').upsert(
+          { village_id: id, user_id: userId, status: 'pending' },
+          { onConflict: 'village_id,user_id' }
+        )
+        setJoinRequestSent(true)
+        setJoining(false)
+        await supabase.rpc('notify_new_village_member', { p_village_id: id, p_new_user_id: userId })
+        return
+      }
+      if (vis === 'invite') {
+        setJoining(false)
+        return // 招待制は招待リンクからのみ
+      }
       await supabase.from('village_members').insert({ village_id: id, user_id: userId })
       setIsMember(true)
       // Tier2+既存メンバーに入村通知を送る
@@ -1061,6 +1233,14 @@ export default function VillageDetailPage() {
         setWelcomeText(`はじめまして！${prof?.display_name ?? ''}です。よろしくお願いします🌱`)
         setShowWelcome(true)
       }
+      // ── ジャンルマスター称号チェック ──────────────────────────
+      const isGameVillage = INDUSTRIES.some(i => i.id === village?.category)
+      if (isGameVillage && userId) {
+        const results = await checkGenreMastery(userId)
+        const earned = results.find(r => r.is_new && r.genre === village?.category)
+        if (earned) setNewTitle({ genre: earned.genre })
+      }
+
       // Milestone check
       const { data: v } = await supabase.from('villages').select('member_count, milestone_reached').eq('id', id).single()
       if (v) {
@@ -1130,9 +1310,16 @@ export default function VillageDetailPage() {
     const deadlineAt = newPostDeadline
       ? new Date(Date.now() + newPostDeadline * 3600000).toISOString()
       : null
+    const validPollOptions = pollDraft.map(s => s.trim()).filter(Boolean)
     await supabase.from('village_posts').insert({
       village_id: id, user_id: userId, content: text.trim(), category: newPostCat,
       ...(deadlineAt ? { deadline_at: deadlineAt } : {}),
+      ...(newPostCat === '仲間募集' ? {
+        lfg_platform: lfgPlatforms.length > 0 ? lfgPlatforms : null,
+        lfg_time:     lfgTime.trim() || null,
+        lfg_game:     lfgGame.trim() || null,
+      } : {}),
+      ...(showPollCreator && validPollOptions.length >= 2 ? { poll_options: validPollOptions } : {}),
     })
     // slow mode タイムスタンプ更新
     markPosted()
@@ -1148,7 +1335,10 @@ export default function VillageDetailPage() {
       setShowRevival(true)
       setTimeout(() => setShowRevival(false), 5000)
     }
-    setNewPost(''); setNgWarning(''); setNewPostDeadline(null); setShowFirstPrompt(false); setUserVillagePosts(p => p + 1); await fetchPosts(); setPosting(false)
+    setNewPost(''); setNgWarning(''); setNewPostDeadline(null); setShowFirstPrompt(false); setUserVillagePosts(p => p + 1)
+    setLfgPlatforms([]); setLfgTime(''); setLfgGame('')
+    setShowPollCreator(false); setPollDraft(['', ''])
+    await fetchPosts(); setPosting(false)
   }
 
   // charter同意後に呼ばれる
@@ -1324,13 +1514,25 @@ export default function VillageDetailPage() {
         </button>
 
         {/* Join */}
-        <button onClick={toggleMembership} disabled={joining}
-          className="absolute top-4 right-4 px-4 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 z-10"
-          style={isMember
-            ? { background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(8px)' }
-            : { background: '#fff', color: style.accent, fontWeight: 800 }}>
-          {joining ? '…' : isMember ? '参加中 ✓' : 'この村で増やす →'}
-        </button>
+        {joinRequestSent ? (
+          <div className="absolute top-4 right-4 px-4 py-1.5 rounded-full text-xs font-bold z-10"
+            style={{ background: 'rgba(217,119,6,0.85)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}>
+            🔑 承認待ち
+          </div>
+        ) : village?.visibility === 'invite' && !isMember ? (
+          <div className="absolute top-4 right-4 px-4 py-1.5 rounded-full text-xs font-bold z-10"
+            style={{ background: 'rgba(124,58,237,0.85)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}>
+            🏰 招待制
+          </div>
+        ) : (
+          <button onClick={toggleMembership} disabled={joining}
+            className="absolute top-4 right-4 px-4 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 z-10"
+            style={isMember
+              ? { background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(8px)' }
+              : { background: '#fff', color: style.accent, fontWeight: 800 }}>
+            {joining ? '…' : isMember ? '参加中 ✓' : (village?.visibility === 'approval' ? '🔑 参加申請する' : 'この村で増やす →')}
+          </button>
+        )}
 
         {/* Level badge */}
         <div className="absolute top-14 left-4 flex items-center gap-1 text-white text-[9px] font-bold px-2.5 py-1 rounded-full"
@@ -1707,9 +1909,44 @@ export default function VillageDetailPage() {
                     </button>
                   ))}
                 </div>
+                {/* 仲間募集フォーム */}
+                {newPostCat === '仲間募集' && (
+                  <div className="mb-3 p-3 rounded-2xl border border-violet-200 bg-violet-50 space-y-2">
+                    <p className="text-[10px] font-bold text-violet-600">🎮 仲間募集の詳細（任意）</p>
+                    {/* プラットフォーム */}
+                    <div>
+                      <p className="text-[10px] text-stone-500 mb-1">機種</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['PC', 'PS5', 'Switch', 'Xbox', 'スマホ', 'その他'].map(p => (
+                          <button key={p} onClick={() => setLfgPlatforms(prev =>
+                            prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
+                          )}
+                            className="px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all active:scale-95"
+                            style={lfgPlatforms.includes(p)
+                              ? { background: '#7c3aed', color: '#fff', borderColor: '#7c3aed' }
+                              : { background: '#fff', color: '#7c3aed', borderColor: '#ddd6fe' }}>
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* 時間帯 */}
+                    <input value={lfgTime} onChange={e => setLfgTime(e.target.value)}
+                      placeholder="活動時間（例：今夜21時〜、週末昼）"
+                      className="w-full px-3 py-2 rounded-xl border border-violet-200 text-xs focus:outline-none bg-white"
+                      maxLength={40} />
+                    {/* ゲームタイトル */}
+                    <input value={lfgGame} onChange={e => setLfgGame(e.target.value)}
+                      placeholder="ゲームタイトル（例：Apex、原神、スプラ3）"
+                      className="w-full px-3 py-2 rounded-xl border border-violet-200 text-xs focus:outline-none bg-white"
+                      maxLength={40} />
+                  </div>
+                )}
+
                 <div className="flex gap-2 items-end">
                   <textarea id="post-textarea" value={newPost} onChange={e => { setNewPost(e.target.value); setNgWarning('') }}
-                    placeholder="考えを出す…" rows={2} maxLength={300}
+                    placeholder={newPostCat === '仲間募集' ? '一言メッセージ（例：初心者歓迎！ランク上げたい方ぜひ）' : '考えを出す…'}
+                    rows={2} maxLength={300}
                     className="flex-1 px-3 py-2.5 rounded-2xl border border-stone-200 text-sm resize-none focus:outline-none" />
                   <button onClick={() => submitPost()} disabled={!newPost.trim() || posting || slowModeLeft > 0}
                     className="w-11 h-11 rounded-2xl flex items-center justify-center disabled:opacity-40 active:scale-90 transition-all flex-shrink-0"
@@ -1760,6 +1997,48 @@ export default function VillageDetailPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* 📊 投票（Poll）トグル */}
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={() => { setShowPollCreator(v => !v); if (showPollCreator) setPollDraft(['', '']) }}
+                    className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-95"
+                    style={showPollCreator
+                      ? { background: style.accent, color: '#fff', borderColor: style.accent }
+                      : { background: '#fafaf9', color: '#a8a29e', borderColor: '#e7e5e4' }
+                    }
+                  >
+                    📊 投票をつける
+                  </button>
+                </div>
+
+                {/* Poll 選択肢入力 */}
+                {showPollCreator && (
+                  <div className="mt-2 p-3 rounded-2xl border border-stone-200 bg-stone-50 space-y-2">
+                    <p className="text-[10px] font-bold text-stone-500">📊 投票の選択肢（最大4つ）</p>
+                    {pollDraft.map((opt, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <input
+                          value={opt}
+                          onChange={e => setPollDraft(prev => { const n = [...prev]; n[i] = e.target.value; return n })}
+                          placeholder={`選択肢 ${i + 1}`}
+                          className="flex-1 px-3 py-1.5 rounded-xl border border-stone-200 text-xs focus:outline-none bg-white"
+                          maxLength={40}
+                        />
+                        {pollDraft.length > 2 && (
+                          <button onClick={() => setPollDraft(prev => prev.filter((_, j) => j !== i))}
+                            className="text-stone-300 hover:text-red-400 transition-colors">✕</button>
+                        )}
+                      </div>
+                    ))}
+                    {pollDraft.length < 4 && (
+                      <button onClick={() => setPollDraft(prev => [...prev, ''])}
+                        className="text-[10px] font-bold text-stone-400 hover:text-stone-600 transition-colors">
+                        + 選択肢を追加
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <button onClick={() => setShowPhoneVerify(true)}
@@ -1789,7 +2068,7 @@ export default function VillageDetailPage() {
           {pinnedPost && postCat === '全部' && (
             <PostCard post={pinnedPost} style={style} likedPosts={likedPosts}
               onToggleLike={toggleLike} onResolve={setResolvePost}
-              onPin={isHost ? setPinnedPostId : undefined} onDelete={isHost ? deletePost : undefined}
+              onPin={(isHost || isPillarUser) ? setPinnedPostId : undefined} onDelete={isHost ? deletePost : undefined}
               isPinned={true} userId={userId} isHost={isHost} villageId={id} />
           )}
 
@@ -1824,7 +2103,7 @@ export default function VillageDetailPage() {
             posts.filter(p => p.id !== village?.pinned_post_id || postCat !== '全部').map(post => (
               <PostCard key={post.id} post={post} style={style} likedPosts={likedPosts}
                 onToggleLike={toggleLike} onResolve={setResolvePost}
-                onPin={isHost ? setPinnedPostId : undefined} onDelete={isHost ? deletePost : undefined}
+                onPin={(isHost || isPillarUser) ? setPinnedPostId : undefined} onDelete={isHost ? deletePost : undefined}
                 isPinned={false} userId={userId} isHost={isHost} villageId={id} />
             ))
           )}
@@ -2010,17 +2289,34 @@ export default function VillageDetailPage() {
       {tab === 'members' && (
         <div className="px-4 pb-32 space-y-2 pt-1">
           <p className="text-xs text-stone-400 font-semibold mb-3">{village.member_count} 人が住んでいます</p>
-          {members.map((m: any) => (
+          {members.map((m: any) => {
+            // オンライン判定：last_seen_at が5分以内ならオンライン
+            const lastSeenMs = m.profiles?.last_seen_at
+              ? Date.now() - new Date(m.profiles.last_seen_at).getTime()
+              : Infinity
+            const isOnline = lastSeenMs < 5 * 60 * 1000
+            return (
             <div key={m.user_id}
               className="bg-white border border-stone-100 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold text-white flex-shrink-0"
-                style={{ background: style.gradient }}>
-                {m.profiles?.display_name?.[0] ?? '?'}
+              <div className="relative flex-shrink-0">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold text-white"
+                  style={{ background: style.gradient }}>
+                  {m.profiles?.display_name?.[0] ?? '?'}
+                </div>
+                {/* オンラインバッジ */}
+                {isOnline && (
+                  <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <p className="text-sm font-bold text-stone-800 truncate">{m.profiles?.display_name ?? '住民'}</p>
                   {m.user_trust?.tier && <TrustBadge tierId={m.user_trust.tier} size="xs" />}
+                  {isOnline && (
+                    <span className="text-[9px] font-extrabold text-green-500 bg-green-50 px-1.5 py-0.5 rounded-full border border-green-100">
+                      オンライン
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <p className="text-[10px] text-stone-400">
@@ -2053,7 +2349,8 @@ export default function VillageDetailPage() {
                 )}
               </div>
             </div>
-          ))}
+          )
+          })}
         </div>
       )}
 
@@ -2668,6 +2965,40 @@ export default function VillageDetailPage() {
           </div>
         </div>
       )}
+
+      {/* ── ジャンルマスター称号獲得トースト ── */}
+      {newTitle && (() => {
+        const ind = getIndustry(newTitle.genre)
+        return (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center px-6">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setNewTitle(null)} />
+            <div className="relative bg-white rounded-3xl shadow-2xl p-7 w-full max-w-sm text-center border border-amber-200"
+              style={{ boxShadow: '0 8px 40px rgba(245,158,11,0.3)' }}>
+              <div className="relative inline-block mb-2">
+                <span className="text-6xl">{ind.emoji}</span>
+                <span className="absolute -top-1 -right-2 text-2xl animate-bounce">✨</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold mb-3"
+                style={{ background: ind.bg, color: ind.color, border: `1px solid ${ind.border}` }}>
+                🏆 称号獲得！
+              </div>
+              <p className="text-xl font-extrabold text-stone-900 mb-1">
+                {ind.emoji} {newTitle.genre}マスター
+              </p>
+              <p className="text-sm text-stone-400 leading-relaxed mb-6">
+                {newTitle.genre}ジャンルの村に3つ参加！<br />
+                プロフィールに称号が表示されます。
+              </p>
+              <button
+                onClick={() => setNewTitle(null)}
+                className="w-full py-3.5 rounded-2xl text-white font-extrabold text-sm active:scale-95 transition-all"
+                style={{ background: ind.gradient }}>
+                やった！🎉
+              </button>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

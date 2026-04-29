@@ -70,7 +70,7 @@ function SignupForm() {
           >
             <span className="text-2xl">🏕️</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-stone-900">自由村に参加する</h1>
+          <h1 className="text-2xl font-extrabold text-stone-900">休憩村に参加する</h1>
           <p className="text-stone-400 text-sm mt-1">20歳以上の方のみご利用いただけます</p>
         </div>
 

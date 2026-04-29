@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Moving to Japan Checklist 2026 — Complete Guide for Foreigners | 自由村',
+  title: 'Moving to Japan Checklist 2026 — Complete Guide for Foreigners | 休憩村',
   description: 'The complete moving to Japan checklist for 2026. Everything to do before you leave and in your first 30 days: visa, housing, bank account, health insurance, SIM card, and more.',
   keywords: ['moving to japan checklist', 'moving to japan guide 2026', 'japan expat checklist', 'what to do when moving to japan', 'japan relocation guide', 'before moving to japan'],
   openGraph: {
@@ -39,7 +39,7 @@ const FIRST_MONTH = [
   { task: 'Get a bicycle', note: 'Game-changer outside central Tokyo. Used from ¥3,000 on Mercari or Junk shops.' },
   { task: 'Register with local tax office if freelancing', note: 'Freee.jp has English support for 確定申告 setup.' },
   { task: 'Find an English-speaking doctor near you', note: 'AMDA (0120-56-2009) has multilingual referrals.' },
-  { task: 'Connect with other expats in your city', note: 'Use 自由村 — find people at your exact arrival stage.' },
+  { task: 'Connect with other expats in your city', note: 'Use 休憩村 — find people at your exact arrival stage.' },
 ]
 
 export default function MovingToJapanChecklist() {
@@ -117,7 +117,7 @@ export default function MovingToJapanChecklist() {
         <p className="text-sm text-gray-500 mb-4">Connect with expats who've done every step of this checklist. Get real answers, find friends, and survive Japan together.</p>
         <Link href="/signup"
           className="inline-block px-8 py-3.5 bg-brand-500 text-white rounded-2xl font-bold text-sm shadow-md shadow-brand-200 hover:bg-brand-600 transition">
-          Join 自由村 Free →
+          Join 休憩村 Free →
         </Link>
       </div>
     </div>

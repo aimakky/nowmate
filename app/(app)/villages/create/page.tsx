@@ -76,6 +76,7 @@ export default function CreateVillagePage() {
   const [jobLocked,   setJobLocked]   = useState(false)
   const [jobType,     setJobType]     = useState('')
   const [commStyle,   setCommStyle]   = useState<'text' | 'voice'>('text')
+  const [visibility,  setVisibility]  = useState<'public'|'approval'|'invite'>('public')
   const [creating,    setCreating]    = useState(false)
 
   const selectedType  = VILLAGE_TYPES.find(t => t.id === type)!
@@ -99,6 +100,7 @@ export default function CreateVillagePage() {
       job_locked:  jobLocked,
       job_type:    jobLocked ? jobType : null,
       comm_style:  commStyle,
+      visibility:  visibility,
     }).select().single()
 
     if (data) {
@@ -388,6 +390,38 @@ export default function CreateVillagePage() {
           <p className="text-[10px] text-violet-500 pt-1">
             🌿 村長になると、あなたが場の空気を作ります。来てほしい人に向けた言葉を書いてください。
           </p>
+        </div>
+
+        {/* ── 公開設定 ── */}
+        <div>
+          <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">公開設定</p>
+          <p className="text-[10px] text-stone-400 mb-3">招待制はプレミアムプランで利用できます</p>
+          <div className="space-y-2">
+            {([
+              { id: 'public',   icon: '🌍', label: '公開',   desc: '誰でも参加できる',           color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' },
+              { id: 'approval', icon: '🔑', label: '承認制', desc: '村長が参加を承認する',         color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+              { id: 'invite',   icon: '🏰', label: '招待制', desc: '既存メンバーの招待のみ入村可（プレミアム）', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+            ] as { id: 'public'|'approval'|'invite'; icon: string; label: string; desc: string; color: string; bg: string; border: string }[]).map(opt => (
+              <button
+                key={opt.id}
+                onClick={() => setVisibility(opt.id)}
+                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 text-left transition-all active:scale-[0.98]"
+                style={visibility === opt.id
+                  ? { borderColor: opt.color, background: opt.bg }
+                  : { borderColor: '#e7e5e4', background: '#fff' }}
+              >
+                <span className="text-xl flex-shrink-0">{opt.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-extrabold" style={{ color: visibility === opt.id ? opt.color : '#1c1917' }}>{opt.label}</p>
+                  <p className="text-[10px] text-stone-400">{opt.desc}</p>
+                </div>
+                {visibility === opt.id && (
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                    style={{ background: opt.color, color: '#fff' }}>✓</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* ── Submit ── */}
