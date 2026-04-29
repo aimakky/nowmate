@@ -88,9 +88,13 @@ export default function BottomNav() {
                   </span>
                 </div>
                 {/* LIVE バッジ */}
-                <div className="flex items-center gap-0.5 mt-0.5 z-10">
+                <div className="flex items-center gap-1 mt-0.5 z-10">
                   <span className={cn('text-[9px] font-extrabold tracking-wide',
                     active ? 'text-violet-600' : 'text-violet-400')}>{label}</span>
+                  <span className="text-[7px] font-extrabold tracking-widest px-1 py-0.5 rounded-full leading-none"
+                    style={{ background: active ? '#7c3aed' : '#8b5cf6', color: '#fff' }}>
+                    LIVE
+                  </span>
                 </div>
                 {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-violet-600" />}
               </Link>
