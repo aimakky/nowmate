@@ -66,9 +66,14 @@ function Avatar({
 
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <div className={`${sz} rounded-2xl flex items-center justify-center relative transition-all ${
-        isMe && !isMuted ? 'ring-2 ring-emerald-400 bg-emerald-50' : 'bg-stone-100'
-      }`}>
+      <div
+        className={`${sz} rounded-2xl flex items-center justify-center relative transition-all`}
+        style={{
+          background: isMe && !isMuted ? 'rgba(124,255,130,0.12)' : 'rgba(255,255,255,0.08)',
+          border: isMe && !isMuted ? '2px solid rgba(124,255,130,0.6)' : '1.5px solid rgba(255,255,255,0.1)',
+          boxShadow: isMe && !isMuted ? '0 0 12px rgba(124,255,130,0.3)' : 'none',
+        }}
+      >
         {participant.profiles?.avatar_url
           ? <img src={participant.profiles.avatar_url} className="w-full h-full object-cover rounded-2xl" alt="" />
           : <span className="text-2xl">{flag}</span>
@@ -82,12 +87,14 @@ function Avatar({
           <span className="absolute -top-1.5 -right-1 text-sm">👑</span>
         )}
         {participant.is_listener && !isMe && (
-          <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-stone-400 rounded-full flex items-center justify-center">
+          <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.15)' }}>
             <Radio size={9} className="text-white" />
           </span>
         )}
       </div>
-      <p className="text-[10px] text-stone-600 font-semibold text-center truncate w-14 px-0.5">
+      <p className="text-[10px] font-semibold text-center truncate w-14 px-0.5"
+        style={{ color: 'rgba(240,238,255,0.7)' }}>
         {participant.profiles?.display_name?.split(' ')[0] ?? '?'}
       </p>
       {/* 信頼ティアバッジ（Discourse式：発言者の質を可視化）*/}
@@ -122,7 +129,7 @@ export default function VoiceRoomPage() {
 
   // ── 広場トーク: 挙手・昇格 ───────────────────────────────
   const [isRaisingHand,  setIsRaisingHand]  = useState(false)
-  const [promoted,       setPromoted]       = useState(false)  // リスナー→登壇者に昇格された
+  const [promoted,       setPromoted]       = useState(false)
   const [promotionBanner,setPromotionBanner]= useState(false)
 
   // ── ウェルカムシステム ────────────────────────────────────
@@ -169,7 +176,6 @@ export default function VoiceRoomPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
       setUserId(user.id)
-      // プロフィール + 信頼ティア + 年齢確認を同時取得
       Promise.all([
         supabase.from('profiles').select('display_name, nationality, age_verified, age_verification_status').eq('id', user.id).single(),
         supabase.from('user_trust').select('tier').eq('user_id', user.id).maybeSingle(),
@@ -211,16 +217,13 @@ export default function VoiceRoomPage() {
     const myParticipant = participants.find(p => p.user_id === userId)
     if (!myParticipant) return
     if (!myParticipant.is_listener && isListener) {
-      // 昇格された！
       setIsListener(false)
       setIsRaisingHand(false)
       setPromotionBanner(true)
       setTimeout(() => setPromotionBanner(false), 4000)
-      // マイク取得してWebRTC開始
       ;(async () => {
         try {
           localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-          // 既存スピーカーにofferを送る
           const { data: existing } = await createClient()
             .from('voice_participants').select('user_id')
             .eq('room_id', roomId).eq('is_listener', false).neq('user_id', userId)
@@ -284,7 +287,6 @@ export default function VoiceRoomPage() {
       setWelcomeTimer(t => {
         if (t <= 1) {
           clearInterval(welcomeTimerRef.current!)
-          // 誰も挨拶しなかった → ペナルティ
           if (userId && !welcomed.has(welcomeEvent.userId)) {
             createClient().rpc('penalize_cold_room', {
               p_room_id:     roomId,
@@ -326,7 +328,6 @@ export default function VoiceRoomPage() {
   async function joinRoom(mode: 'speaker' | 'listener' | 'silent') {
     if (!userId || !roomId || joining) return
 
-    // スピーカーモードは年齢確認必須
     if (mode === 'speaker') {
       const { allowed } = canSpeakInVoiceRoom({ id: userId, age_verified: myAgeVerified, age_verification_status: myAgeStatus })
       if (!allowed) {
@@ -378,11 +379,9 @@ export default function VoiceRoomPage() {
         const pc = peerConnections.current.get(payload.from)
         if (pc && payload.candidate) await pc.addIceCandidate(new RTCIceCandidate(payload.candidate))
       })
-      // リアクション受信
       .on('broadcast', { event: 'reaction' }, ({ payload }: any) => {
         spawnFloat(payload.emoji)
       })
-      // 入室通知受信
       .on('broadcast', { event: 'joined' }, ({ payload }: any) => {
         if (payload.userId === userId) return
         setWelcomeEvent({ userId: payload.userId, name: payload.name, flag: payload.flag, deadline: Date.now() + WELCOME_TIMEOUT * 1000 })
@@ -390,9 +389,6 @@ export default function VoiceRoomPage() {
       .subscribe(async (status) => {
         if (status !== 'SUBSCRIBED') return
 
-        // スピーカーのみにofferを送る（旧: 全参加者 → 修正: スピーカーのみ）
-        // スピーカー: 既存スピーカーへ offer → 双方向音声
-        // リスナー:   既存スピーカーへ offer → 受信のみ（localStreamがnullなのでトラック送信なし）
         const { data: existing } = await supabase
           .from('voice_participants').select('user_id')
           .eq('room_id', roomId).eq('is_listener', false).neq('user_id', userId)
@@ -403,7 +399,6 @@ export default function VoiceRoomPage() {
           ch.send({ type: 'broadcast', event: 'offer', payload: { to: p.user_id, from: userId, sdp: offer } })
         }
 
-        // 入室通知をブロードキャスト
         ch.send({
           type: 'broadcast', event: 'joined',
           payload: { userId, name: myName, flag: myFlag }
@@ -428,7 +423,6 @@ export default function VoiceRoomPage() {
     router.push('/voice')
   }
 
-  // ── 手を挙げる / 下げる ──────────────────────────────────
   async function toggleRaiseHand() {
     if (!userId || !roomId || !isListener) return
     const next = !isRaisingHand
@@ -438,7 +432,6 @@ export default function VoiceRoomPage() {
       .eq('room_id', roomId).eq('user_id', userId)
   }
 
-  // ── リスナーを登壇者に昇格（ホストのみ）─────────────────
   async function promoteToSpeaker(targetUserId: string) {
     if (!isHost || !roomId) return
     await createClient().from('voice_participants')
@@ -446,7 +439,6 @@ export default function VoiceRoomPage() {
       .eq('room_id', roomId).eq('user_id', targetUserId)
   }
 
-  // ── 登壇者をリスナーに降格（ホストのみ）─────────────────
   async function demoteToListener(targetUserId: string) {
     if (!isHost || !roomId || targetUserId === userId) return
     await createClient().from('voice_participants')
@@ -459,7 +451,6 @@ export default function VoiceRoomPage() {
     setIsMuted(m => !m)
   }
 
-  // ── リアクション送信 ─────────────────────────────────────
   function sendReaction(emoji: string) {
     if (!channelRef.current) return
     channelRef.current.send({ type: 'broadcast', event: 'reaction', payload: { emoji, from: userId } })
@@ -473,7 +464,6 @@ export default function VoiceRoomPage() {
     setTimeout(() => setFloatings(prev => prev.filter(f => f.id !== id)), 2500)
   }
 
-  // ── ウェルカム！ボタン ───────────────────────────────────
   async function sendWelcome() {
     if (!welcomeEvent || !userId || welcomed.has(welcomeEvent.userId)) return
     sendReaction('👋')
@@ -486,7 +476,6 @@ export default function VoiceRoomPage() {
     setWelcomeEvent(null)
   }
 
-  // ── テキスト送信 ─────────────────────────────────────────
   async function sendChat() {
     if (!chatInput.trim() || !userId || !roomId) return
     await createClient().from('voice_chat_messages').insert({
@@ -498,7 +487,8 @@ export default function VoiceRoomPage() {
   // ─────────────────────────────────────────────────────────
   if (!room) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#080812' }}>
-      <span className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }} />
+      <span className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin"
+        style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }} />
     </div>
   )
 
@@ -512,7 +502,7 @@ export default function VoiceRoomPage() {
       {/* ── フローティングリアクション ── */}
       {floatings.map(f => (
         <div key={f.id}
-          className="fixed z-50 text-3xl pointer-events-none animate-bounce"
+          className="fixed z-50 text-3xl pointer-events-none"
           style={{ bottom: 120, left: `${f.x}%`, animation: 'floatUp 2.5s ease-out forwards' }}>
           {f.emoji}
         </div>
@@ -535,11 +525,10 @@ export default function VoiceRoomPage() {
                 <p className="text-xs font-extrabold text-white">
                   {welcomeEvent.name} さんが入室！
                 </p>
-                <p className="text-[10px] text-blue-300/70 mt-0.5">
-                  ウェルカムすると <span className="text-yellow-300 font-bold">+5pt</span> もらえます
+                <p className="text-[10px] mt-0.5" style={{ color: 'rgba(147,197,253,0.7)' }}>
+                  ウェルカムすると <span className="font-bold" style={{ color: '#FDE68A' }}>+5pt</span> もらえます
                 </p>
               </div>
-              {/* カウントダウン */}
               <div className="flex-shrink-0 text-center">
                 <div className="w-9 h-9 rounded-full flex items-center justify-center border-2 relative"
                   style={{ borderColor: welcomeTimer <= 5 ? '#ef4444' : '#60a5fa' }}>
@@ -554,8 +543,7 @@ export default function VoiceRoomPage() {
                 {welcomed.has(welcomeEvent.userId) ? '✓ 済' : '👋 ウェルカム！'}
               </button>
             </div>
-            {/* タイマーバー */}
-            <div className="h-1 bg-white/10">
+            <div className="h-1" style={{ background: 'rgba(255,255,255,0.08)' }}>
               <div className="h-full transition-all duration-1000"
                 style={{
                   width: `${(welcomeTimer / WELCOME_TIMEOUT) * 100}%`,
@@ -593,18 +581,20 @@ export default function VoiceRoomPage() {
       <div className={`flex-1 overflow-y-auto px-4 transition-all ${welcomeEvent ? 'pt-20' : 'pt-4'}`}>
 
         {micError && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-4 text-xs text-amber-700 font-medium">
+          <div className="rounded-2xl px-4 py-3 mb-4 text-xs font-medium"
+            style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#FCD34D' }}>
             ⚠️ マイクが使えません — リスナーとして参加中
           </div>
         )}
 
         {/* ── 昇格バナー ── */}
         {promotionBanner && (
-          <div className="mb-4 bg-indigo-50 border border-indigo-200 rounded-2xl px-4 py-3 flex items-center gap-3 animate-pulse-slow">
+          <div className="mb-4 rounded-2xl px-4 py-3 flex items-center gap-3"
+            style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)' }}>
             <span className="text-2xl">🎙️</span>
             <div>
-              <p className="text-sm font-extrabold text-indigo-700">登壇を許可されました！</p>
-              <p className="text-xs text-indigo-500 mt-0.5">マイクがオンになりました。話してみましょう。</p>
+              <p className="text-sm font-extrabold" style={{ color: '#a5b4fc' }}>登壇を許可されました！</p>
+              <p className="text-xs mt-0.5" style={{ color: 'rgba(165,180,252,0.7)' }}>マイクがオンになりました。話してみましょう。</p>
             </div>
           </div>
         )}
@@ -614,22 +604,27 @@ export default function VoiceRoomPage() {
           style={{ background: 'linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%)', border: '1px solid rgba(100,140,255,0.2)' }}>
           <div className="px-4 pt-3 pb-1 flex items-center gap-2">
             <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            <p className="text-[10px] font-bold text-white/60 uppercase tracking-wider">
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.5)' }}>
               🎙️ ステージ — {speakers.length}人登壇中
             </p>
           </div>
           {speakers.length === 0 ? (
             <div className="px-4 pb-4 pt-2 text-center">
-              <p className="text-xs text-white/30">まだ誰も登壇していません</p>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>まだ誰も登壇していません</p>
             </div>
           ) : (
             <div className="px-4 pb-4 pt-2">
               <div className="grid grid-cols-4 gap-3">
                 {speakers.map(p => (
                   <div key={p.user_id} className="flex flex-col items-center gap-1">
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center relative ${
-                      p.user_id === userId && !isMuted ? 'ring-2 ring-emerald-400' : ''
-                    }`} style={{ background: 'rgba(255,255,255,0.1)' }}>
+                    <div
+                      className="w-14 h-14 rounded-2xl flex items-center justify-center relative"
+                      style={{
+                        background: p.user_id === userId && !isMuted ? 'rgba(124,255,130,0.12)' : 'rgba(255,255,255,0.08)',
+                        border: p.user_id === userId && !isMuted ? '2px solid rgba(124,255,130,0.6)' : '1.5px solid rgba(255,255,255,0.1)',
+                        boxShadow: p.user_id === userId && !isMuted ? '0 0 14px rgba(124,255,130,0.3)' : 'none',
+                      }}
+                    >
                       {p.profiles?.avatar_url
                         ? <img src={p.profiles.avatar_url} className="w-full h-full object-cover rounded-2xl" alt="" />
                         : <span className="text-2xl">{getNationalityFlag(p.profiles?.nationality || '')}</span>
@@ -642,14 +637,15 @@ export default function VoiceRoomPage() {
                           <MicOff size={9} className="text-white" />
                         </span>
                       )}
-                      {/* ホスト: 降格ボタン */}
                       {isHost && p.user_id !== userId && (
                         <button onClick={() => demoteToListener(p.user_id)}
-                          className="absolute -top-1 -left-1 w-5 h-5 bg-stone-700 rounded-full flex items-center justify-center text-[9px] text-white/70 hover:bg-red-700 transition-all"
+                          className="absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-[9px] transition-all"
+                          style={{ background: 'rgba(30,30,50,0.9)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.15)' }}
                           title="リスナーに戻す">✕</button>
                       )}
                     </div>
-                    <p className="text-[10px] text-white/80 font-semibold text-center truncate w-14 px-0.5">
+                    <p className="text-[10px] font-semibold text-center truncate w-14 px-0.5"
+                      style={{ color: 'rgba(255,255,255,0.75)' }}>
                       {p.profiles?.display_name?.split(' ')[0] ?? '?'}
                     </p>
                   </div>
@@ -661,19 +657,22 @@ export default function VoiceRoomPage() {
 
         {/* ── ホスト: 挙手者リスト ── */}
         {isHost && participants.filter(p => p.raised_hand).length > 0 && (
-          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-3">
-            <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-2.5">
+          <div className="mb-4 rounded-2xl p-3"
+            style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider mb-2.5"
+              style={{ color: '#FCD34D' }}>
               ✋ 登壇リクエスト ({participants.filter(p => p.raised_hand).length})
             </p>
             <div className="space-y-2">
               {participants.filter(p => p.raised_hand).map(p => (
                 <div key={p.user_id} className="flex items-center gap-2">
                   <span className="text-sm">{getNationalityFlag(p.profiles?.nationality || '')}</span>
-                  <span className="text-xs font-bold text-stone-700 flex-1 truncate">
+                  <span className="text-xs font-bold flex-1 truncate" style={{ color: '#F0EEFF' }}>
                     {p.profiles?.display_name ?? '?'}
                   </span>
                   <button onClick={() => promoteToSpeaker(p.user_id)}
-                    className="text-[10px] font-bold px-3 py-1.5 rounded-xl bg-indigo-500 text-white active:scale-95 transition-all">
+                    className="text-[10px] font-bold px-3 py-1.5 rounded-xl text-white active:scale-95 transition-all"
+                    style={{ background: 'linear-gradient(135deg,#6366f1,#4f46e5)', boxShadow: '0 2px 8px rgba(99,102,241,0.4)' }}>
                     登壇を許可
                   </button>
                 </div>
@@ -685,14 +684,17 @@ export default function VoiceRoomPage() {
         {/* ── 観客席 ── */}
         {listeners.length > 0 && (
           <div className="mb-4">
-            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5"
+              style={{ color: 'rgba(240,238,255,0.4)' }}>
               <Radio size={11} /> 観客席 ({listeners.length})
             </p>
             <div className="flex flex-wrap gap-2">
               {listeners.map(p => (
-                <div key={p.user_id} className="flex items-center gap-1.5 bg-white border border-stone-100 rounded-full px-2.5 py-1 shadow-sm">
+                <div key={p.user_id} className="flex items-center gap-1.5 rounded-full px-2.5 py-1"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
                   <span className="text-xs">{getNationalityFlag(p.profiles?.nationality || '')}</span>
-                  <span className="text-[10px] font-medium text-stone-600 max-w-[60px] truncate">
+                  <span className="text-[10px] font-medium max-w-[60px] truncate"
+                    style={{ color: 'rgba(240,238,255,0.6)' }}>
                     {p.join_mode === 'silent' ? 'こっそり' : (p.profiles?.display_name?.split(' ')[0] ?? '?')}
                   </span>
                   {p.raised_hand && <span className="text-xs">✋</span>}
@@ -704,21 +706,23 @@ export default function VoiceRoomPage() {
 
         {/* ── 参加前 UI ── */}
         {!joined && (
-          <div className="bg-white border border-stone-100 rounded-3xl p-5 mt-2 shadow-sm">
+          <div className="rounded-3xl p-5 mt-2"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
             <p className="text-center text-2xl mb-3">🎙️</p>
-            <p className="font-bold text-stone-800 text-sm text-center mb-0.5">
+            <p className="font-bold text-sm text-center mb-0.5" style={{ color: '#F0EEFF' }}>
               {participants.length}人が参加中
             </p>
-            <p className="text-xs text-stone-400 text-center mb-1">広場トーク</p>
-            <p className="text-xs text-stone-400 text-center mb-5">どのモードで入りますか？</p>
+            <p className="text-xs text-center mb-1" style={{ color: 'rgba(240,238,255,0.4)' }}>広場トーク</p>
+            <p className="text-xs text-center mb-5" style={{ color: 'rgba(240,238,255,0.4)' }}>どのモードで入りますか？</p>
 
-            {/* 見習いはスピーカー不可（Discourse TL0サンドボックス）*/}
+            {/* 見習いはスピーカー不可 */}
             {myTier === 'visitor' && (
-              <div className="bg-indigo-50 border border-indigo-200 rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2">
+              <div className="rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2"
+                style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)' }}>
                 <span className="text-base flex-shrink-0">🪴</span>
                 <div>
-                  <p className="text-[11px] text-indigo-700 font-bold">見習いは聴くだけ参加できます</p>
-                  <p className="text-[10px] text-indigo-500 mt-0.5">
+                  <p className="text-[11px] font-bold" style={{ color: '#a5b4fc' }}>見習いは聴くだけ参加できます</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'rgba(165,180,252,0.6)' }}>
                     電話認証 + 初投稿で「住民」に昇格すると話せるようになります
                   </p>
                 </div>
@@ -727,13 +731,14 @@ export default function VoiceRoomPage() {
 
             {/* 年齢確認バナー（未確認） */}
             {!myAgeVerified && (
-              <div className="bg-brand-50 border border-brand-200 rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2">
-                <ShieldCheck size={16} className="text-brand-500 flex-shrink-0 mt-0.5" />
+              <div className="rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2"
+                style={{ background: 'rgba(157,92,255,0.1)', border: '1px solid rgba(157,92,255,0.25)' }}>
+                <ShieldCheck size={16} style={{ color: '#9D5CFF', flexShrink: 0, marginTop: 2 }} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] text-brand-700 font-bold">
+                  <p className="text-[11px] font-bold" style={{ color: '#c084fc' }}>
                     {myAgeStatus === 'pending' ? '⏳ 年齢確認処理中…' : '年齢確認で話せるようになります'}
                   </p>
-                  <p className="text-[10px] text-brand-500 mt-0.5">
+                  <p className="text-[10px] mt-0.5" style={{ color: 'rgba(192,132,252,0.65)' }}>
                     {myAgeStatus === 'pending'
                       ? '確認完了後に登壇できます'
                       : '免許証・パスポートで確認できます（聴くだけなら今すぐOK）'}
@@ -742,7 +747,8 @@ export default function VoiceRoomPage() {
                 {myAgeStatus !== 'pending' && (
                   <button
                     onClick={() => setShowAgeGate(true)}
-                    className="flex-shrink-0 text-[10px] font-bold px-2.5 py-1.5 bg-brand-500 text-white rounded-xl active:scale-95 transition-all">
+                    className="flex-shrink-0 text-[10px] font-bold px-2.5 py-1.5 rounded-xl active:scale-95 transition-all"
+                    style={{ background: '#9D5CFF', color: '#fff' }}>
                     確認する
                   </button>
                 )}
@@ -751,9 +757,10 @@ export default function VoiceRoomPage() {
 
             {/* スピーカー上限 */}
             {speakers.length >= MAX_SPEAKERS && (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2">
+              <div className="rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2"
+                style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
                 <span className="text-base flex-shrink-0">🔒</span>
-                <p className="text-[11px] text-amber-700 leading-relaxed">
+                <p className="text-[11px] leading-relaxed" style={{ color: '#FCD34D' }}>
                   話す人が{MAX_SPEAKERS}人に達しました（上限）。「聞いている」モードで参加できます。
                 </p>
               </div>
@@ -764,15 +771,18 @@ export default function VoiceRoomPage() {
               <button
                 onClick={() => joinRoom('speaker')}
                 disabled={joining || speakers.length >= MAX_SPEAKERS || myTier === 'visitor'}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 active:scale-[0.98] transition-all text-left disabled:opacity-40"
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.98] transition-all text-left disabled:opacity-40"
                 style={!myAgeVerified || speakers.length >= MAX_SPEAKERS || myTier === 'visitor'
-                  ? { borderColor: '#e7e5e4', background: '#f5f5f4' }
-                  : { borderColor: '#6366f1', background: '#eef2ff' }}>
+                  ? { background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.1)' }
+                  : { background: 'rgba(99,102,241,0.12)', border: '1.5px solid rgba(99,102,241,0.4)' }}>
                 <span className="text-2xl flex-shrink-0">
                   {!myAgeVerified ? '🔒' : '🎙️'}
                 </span>
                 <div>
-                  <p className="font-extrabold text-sm" style={{ color: !myAgeVerified || speakers.length >= MAX_SPEAKERS || myTier === 'visitor' ? '#a8a29e' : '#4338ca' }}>
+                  <p className="font-extrabold text-sm"
+                    style={{ color: !myAgeVerified || speakers.length >= MAX_SPEAKERS || myTier === 'visitor'
+                      ? 'rgba(240,238,255,0.35)'
+                      : '#a5b4fc' }}>
                     {!myAgeVerified
                       ? '登壇する（年齢確認が必要）'
                       : myTier === 'visitor'
@@ -781,32 +791,33 @@ export default function VoiceRoomPage() {
                           ? `登壇する（上限${MAX_SPEAKERS}名）`
                           : `登壇する（残り${MAX_SPEAKERS - speakers.length}枠）`}
                   </p>
-                  <p className="text-[10px] text-stone-400">
+                  <p className="text-[10px]" style={{ color: 'rgba(240,238,255,0.3)' }}>
                     {!myAgeVerified ? '年齢確認済みユーザーのみ話せます' : 'マイクをオンにしてステージへ'}
                   </p>
                 </div>
-                {joining && <span className="ml-auto w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />}
+                {joining && <span className="ml-auto w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
+                  style={{ borderColor: '#6366f1', borderTopColor: 'transparent' }} />}
               </button>
 
               {/* 観客として参加 */}
               <button onClick={() => joinRoom('listener')} disabled={joining}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 active:scale-[0.98] transition-all text-left"
-                style={{ borderColor: '#10b981', background: '#f0fdf4' }}>
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.98] transition-all text-left"
+                style={{ background: 'rgba(124,255,130,0.08)', border: '1.5px solid rgba(124,255,130,0.3)' }}>
                 <span className="text-2xl flex-shrink-0">👂</span>
                 <div>
-                  <p className="font-extrabold text-emerald-700 text-sm">観客として参加</p>
-                  <p className="text-[10px] text-emerald-400">✋ 手を挙げて登壇リクエスト可能</p>
+                  <p className="font-extrabold text-sm" style={{ color: '#7CFF82' }}>観客として参加</p>
+                  <p className="text-[10px]" style={{ color: 'rgba(124,255,130,0.55)' }}>✋ 手を挙げて登壇リクエスト可能</p>
                 </div>
               </button>
 
               {/* こっそり */}
               <button onClick={() => joinRoom('silent')} disabled={joining}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 active:scale-[0.98] transition-all text-left"
-                style={{ borderColor: '#e7e5e4', background: '#fafaf9' }}>
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.98] transition-all text-left"
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1.5px solid rgba(255,255,255,0.1)' }}>
                 <span className="text-2xl flex-shrink-0">🫥</span>
                 <div>
-                  <p className="font-extrabold text-stone-600 text-sm">こっそり聞く</p>
-                  <p className="text-[10px] text-stone-400">名前は「こっそり」と表示される</p>
+                  <p className="font-extrabold text-sm" style={{ color: 'rgba(240,238,255,0.7)' }}>こっそり聞く</p>
+                  <p className="text-[10px]" style={{ color: 'rgba(240,238,255,0.35)' }}>名前は「こっそり」と表示される</p>
                 </div>
               </button>
             </div>
@@ -816,12 +827,13 @@ export default function VoiceRoomPage() {
         {/* ── リアクションパネル（参加後）── */}
         {joined && (
           <div className="mt-4 mb-2">
-            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2.5">リアクション</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider mb-2.5"
+              style={{ color: 'rgba(240,238,255,0.4)' }}>リアクション</p>
             <div className="flex gap-2 justify-between">
               {REACTION_EMOJIS.map(emoji => (
                 <button key={emoji} onClick={() => sendReaction(emoji)}
-                  className="flex-1 aspect-square rounded-2xl flex items-center justify-center text-xl bg-white border border-stone-100 shadow-sm active:scale-90 active:bg-stone-50 transition-all"
-                  style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                  className="flex-1 aspect-square rounded-2xl flex items-center justify-center text-xl active:scale-90 transition-all"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
                   {emoji}
                 </button>
               ))}
@@ -831,38 +843,42 @@ export default function VoiceRoomPage() {
 
         {/* ── テキストチャット ── */}
         {joined && (
-          <div className="mt-3 mb-4 bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
+          <div className="mt-3 mb-28 rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
             <button
               onClick={() => setChatOpen(o => !o)}
               className="w-full px-4 py-2.5 flex items-center gap-2 text-left">
               <span className="text-sm">💬</span>
-              <span className="text-xs font-bold text-stone-600 flex-1">テキストチャット</span>
+              <span className="text-xs font-bold flex-1" style={{ color: 'rgba(240,238,255,0.7)' }}>テキストチャット</span>
               {chatUnread > 0 && (
                 <span className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white">
                   {chatUnread}
                 </span>
               )}
-              {chatOpen ? <ChevronUp size={14} className="text-stone-400" /> : <ChevronDown size={14} className="text-stone-400" />}
+              {chatOpen
+                ? <ChevronUp size={14} style={{ color: 'rgba(240,238,255,0.35)' }} />
+                : <ChevronDown size={14} style={{ color: 'rgba(240,238,255,0.35)' }} />}
             </button>
 
             {chatOpen && (
               <>
-                <div className="border-t border-stone-50 px-3 py-2 max-h-36 overflow-y-auto space-y-1.5">
+                <div className="px-3 py-2 max-h-36 overflow-y-auto space-y-1.5"
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                   {chatMsgs.length === 0 ? (
-                    <p className="text-xs text-stone-300 text-center py-2">
+                    <p className="text-xs text-center py-2" style={{ color: 'rgba(240,238,255,0.25)' }}>
                       話せなくてもここから参加できます
                     </p>
                   ) : (
                     chatMsgs.map(m => (
                       <div key={m.id} className={`flex items-start gap-1.5 ${m.user_id === userId ? 'flex-row-reverse' : ''}`}>
-                        <span className="text-[9px] text-stone-400 mt-0.5 flex-shrink-0 font-medium">
+                        <span className="text-[9px] mt-0.5 flex-shrink-0 font-medium"
+                          style={{ color: 'rgba(240,238,255,0.4)' }}>
                           {m.user_id === userId ? 'あなた' : m.name.split(' ')[0]}
                         </span>
-                        <div className={`px-2.5 py-1.5 rounded-xl text-xs max-w-[75%] leading-relaxed ${
-                          m.user_id === userId
-                            ? 'bg-indigo-500 text-white rounded-tr-sm'
-                            : 'bg-stone-100 text-stone-700 rounded-tl-sm'
-                        }`}>
+                        <div className={`px-2.5 py-1.5 rounded-xl text-xs max-w-[75%] leading-relaxed`}
+                          style={m.user_id === userId
+                            ? { background: 'rgba(99,102,241,0.35)', color: '#e0e7ff', borderRadius: '12px 2px 12px 12px' }
+                            : { background: 'rgba(255,255,255,0.08)', color: 'rgba(240,238,255,0.8)', borderRadius: '2px 12px 12px 12px' }}>
                           {m.message}
                         </div>
                       </div>
@@ -870,17 +886,24 @@ export default function VoiceRoomPage() {
                   )}
                   <div ref={chatEndRef} />
                 </div>
-                <div className="border-t border-stone-50 px-3 py-2 flex items-center gap-2">
+                <div className="px-3 py-2 flex items-center gap-2"
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                   <input
                     value={chatInput}
                     onChange={e => setChatInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && sendChat()}
                     placeholder="メッセージを送る…"
                     maxLength={100}
-                    className="flex-1 text-xs bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 focus:outline-none"
+                    className="flex-1 text-xs rounded-xl px-3 py-2 focus:outline-none"
+                    style={{
+                      background: 'rgba(255,255,255,0.07)',
+                      border: '1px solid rgba(157,92,255,0.2)',
+                      color: '#F0EEFF',
+                    }}
                   />
                   <button onClick={sendChat} disabled={!chatInput.trim()}
-                    className="w-8 h-8 bg-indigo-500 rounded-xl flex items-center justify-center disabled:opacity-40 active:scale-90 transition-all flex-shrink-0">
+                    className="w-8 h-8 rounded-xl flex items-center justify-center disabled:opacity-40 active:scale-90 transition-all flex-shrink-0"
+                    style={{ background: 'linear-gradient(135deg,#9D5CFF,#7B3FE4)', boxShadow: '0 2px 8px rgba(157,92,255,0.35)' }}>
                     <Send size={12} className="text-white" />
                   </button>
                 </div>
@@ -900,18 +923,20 @@ export default function VoiceRoomPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* 登壇者: ミュートボタン（未確認は鍵アイコン） */}
+              {/* 登壇者: ミュートボタン */}
               {!isListener && (
                 myAgeVerified ? (
                   <button onClick={toggleMute}
-                    className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90 ${
-                      isMuted ? 'bg-red-100 text-red-500' : 'bg-emerald-100 text-emerald-600'
-                    }`}>
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90"
+                    style={isMuted
+                      ? { background: 'rgba(239,68,68,0.15)', border: '1.5px solid rgba(239,68,68,0.3)', color: '#ef4444' }
+                      : { background: 'rgba(124,255,130,0.12)', border: '1.5px solid rgba(124,255,130,0.35)', color: '#7CFF82' }}>
                     {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
                   </button>
                 ) : (
                   <button onClick={() => setShowAgeGate(true)}
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center bg-stone-100 text-stone-400 transition-all active:scale-90"
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(255,255,255,0.1)', color: 'rgba(240,238,255,0.4)' }}
                     title="年齢確認が必要です">
                     <Lock size={20} />
                   </button>
@@ -920,17 +945,17 @@ export default function VoiceRoomPage() {
               {/* 観客: 手を挙げるボタン */}
               {isListener && joined && (
                 <button onClick={toggleRaiseHand}
-                  className={`flex items-center gap-2 px-4 h-12 rounded-2xl font-bold text-sm transition-all active:scale-95 ${
-                    isRaisingHand
-                      ? 'bg-amber-500 text-white shadow-md shadow-amber-200'
-                      : 'bg-amber-50 text-amber-600 border border-amber-200'
-                  }`}>
+                  className="flex items-center gap-2 px-4 h-12 rounded-2xl font-bold text-sm transition-all active:scale-95"
+                  style={isRaisingHand
+                    ? { background: '#f59e0b', color: '#fff', boxShadow: '0 4px 12px rgba(245,158,11,0.4)' }
+                    : { background: 'rgba(251,191,36,0.1)', color: '#FCD34D', border: '1px solid rgba(251,191,36,0.3)' }}>
                   <span>✋</span>
                   <span className="text-xs">{isRaisingHand ? '手を下げる' : '登壇リクエスト'}</span>
                 </button>
               )}
               <button onClick={leaveRoom}
-                className="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center active:scale-90 transition-all shadow-md shadow-red-200">
+                className="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center active:scale-90 transition-all"
+                style={{ boxShadow: '0 4px 12px rgba(239,68,68,0.4)' }}>
                 <LogOut size={18} className="text-white" />
               </button>
             </div>
@@ -950,34 +975,39 @@ export default function VoiceRoomPage() {
       {/* ── 年齢確認ゲートモーダル ── */}
       {showAgeGate && (
         <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAgeGate(false)} />
-          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowAgeGate(false)} />
+          <div className="relative w-full max-w-md rounded-3xl p-6"
+            style={{ background: '#0d0d1f', border: '1px solid rgba(157,92,255,0.3)', boxShadow: '0 0 40px rgba(157,92,255,0.2)' }}>
             <div className="flex flex-col items-center text-center mb-5">
-              <div className="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center mb-3">
-                <ShieldCheck size={32} className="text-brand-500" />
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3"
+                style={{ background: 'rgba(157,92,255,0.15)', border: '1px solid rgba(157,92,255,0.3)' }}>
+                <ShieldCheck size={32} style={{ color: '#9D5CFF' }} />
               </div>
-              <h3 className="font-extrabold text-stone-900 text-lg mb-1.5">通話で話すには年齢確認が必要</h3>
-              <p className="text-sm text-stone-500 leading-relaxed">
-                sameeは<span className="font-bold text-stone-700">20歳以上</span>限定のコミュニティです。<br />
+              <h3 className="font-extrabold text-lg mb-1.5" style={{ color: '#F0EEFF' }}>通話で話すには年齢確認が必要</h3>
+              <p className="text-sm leading-relaxed" style={{ color: 'rgba(240,238,255,0.55)' }}>
+                sameeは<span className="font-bold" style={{ color: '#F0EEFF' }}>20歳以上</span>限定のコミュニティです。<br />
                 免許証・マイナンバーカード・パスポートで確認できます。
               </p>
             </div>
             {myAgeStatus === 'pending' && (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-4 text-center">
-                <p className="text-sm font-bold text-amber-700">⏳ 確認処理中</p>
-                <p className="text-xs text-amber-600 mt-1">通常1〜2営業日でご連絡します</p>
+              <div className="rounded-2xl px-4 py-3 mb-4 text-center"
+                style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)' }}>
+                <p className="text-sm font-bold" style={{ color: '#FCD34D' }}>⏳ 確認処理中</p>
+                <p className="text-xs mt-1" style={{ color: 'rgba(252,211,77,0.7)' }}>通常1〜2営業日でご連絡します</p>
               </div>
             )}
             <div className="space-y-2.5">
               {myAgeStatus !== 'pending' && (
                 <button
                   onClick={() => { setShowAgeGate(false); router.push('/verify-age') }}
-                  className="w-full py-3.5 bg-brand-500 text-white rounded-2xl font-extrabold text-sm shadow-lg shadow-brand-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                  className="w-full py-3.5 rounded-2xl font-extrabold text-sm text-white active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(135deg,#9D5CFF,#7B3FE4)', boxShadow: '0 4px 20px rgba(157,92,255,0.4)' }}>
                   <ShieldCheck size={16} /> 年齢確認をする（無料）
                 </button>
               )}
               <button onClick={() => setShowAgeGate(false)}
-                className="w-full py-3 text-stone-400 text-sm font-medium">
+                className="w-full py-3 text-sm font-medium"
+                style={{ color: 'rgba(240,238,255,0.4)' }}>
                 閉じる（聴くだけで参加）
               </button>
             </div>
