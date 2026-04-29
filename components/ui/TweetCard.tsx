@@ -138,10 +138,18 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
 
   return (
     <>
-      <div className={`bg-white px-4 py-4 ${showBorder ? 'border-b border-stone-100' : ''}`}>
+      <div
+        className={`px-4 py-4 ${showBorder ? 'border-b' : ''}`}
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          borderColor: 'rgba(157,92,255,0.1)',
+          ...(showBorder ? {} : { borderBottom: 'none' }),
+        }}
+      >
         {/* Repost header */}
         {tweet.repost_of && (
-          <div className="flex items-center gap-1.5 text-xs text-stone-400 font-semibold mb-2 ml-1">
+          <div className="flex items-center gap-1.5 text-xs font-semibold mb-2 ml-1"
+            style={{ color: 'rgba(240,238,255,0.4)' }}>
             <Repeat2 size={12} />
             <span>{tweet.profiles?.display_name} reposted</span>
           </div>
@@ -158,23 +166,25 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button onClick={() => router.push(`/profile/${tweet.user_id}`)}
-                  className="font-extrabold text-stone-900 text-sm hover:underline leading-tight">
+                  className="font-extrabold text-sm leading-tight"
+                  style={{ color: '#F0EEFF' }}>
                   {tweet.profiles?.display_name}
                 </button>
                 <span className="text-base leading-none">{flag}</span>
-                <span className="text-xs text-stone-400">{timeAgo(tweet.created_at)}</span>
+                <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>{timeAgo(tweet.created_at)}</span>
               </div>
               {myId && (
                 <button
                   onClick={() => setShowMenu(true)}
-                  className="w-7 h-7 flex items-center justify-center rounded-full text-stone-400 hover:bg-stone-100 active:bg-stone-200 transition-colors -mr-1 flex-shrink-0">
+                  className="w-7 h-7 flex items-center justify-center rounded-full transition-colors -mr-1 flex-shrink-0 active:opacity-60"
+                  style={{ color: 'rgba(240,238,255,0.35)' }}>
                   <MoreHorizontal size={16} />
                 </button>
               )}
             </div>
 
             {/* Content */}
-            <p className="text-sm text-stone-800 leading-relaxed mb-3 whitespace-pre-wrap">
+            <p className="text-sm leading-relaxed mb-3 whitespace-pre-wrap" style={{ color: 'rgba(240,238,255,0.85)' }}>
               {tweet.content}
             </p>
 
@@ -183,11 +193,11 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
               <div className="flex items-center gap-1 mb-2 flex-wrap">
                 {activeReactions.map(r => (
                   <button key={r.key} onClick={() => toggleReaction(r.key)}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-all active:scale-90 ${
-                      myReaction === r.key
-                        ? 'bg-brand-100 text-brand-700 ring-1 ring-brand-300'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                    }`}>
+                    className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-all active:scale-90"
+                    style={myReaction === r.key
+                      ? { background: 'rgba(157,92,255,0.2)', color: '#9D5CFF', border: '1px solid rgba(157,92,255,0.4)' }
+                      : { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.55)', border: '1px solid rgba(255,255,255,0.08)' }
+                    }>
                     <span>{r.emoji}</span>
                     <span>{reactionMap[r.key]}</span>
                   </button>
@@ -203,11 +213,11 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                   <div className="relative">
                     <button
                       onClick={() => setShowPicker(p => !p)}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90 ${
-                        myReaction
-                          ? 'text-brand-600 bg-brand-50'
-                          : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
-                      }`}>
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
+                      style={myReaction
+                        ? { color: '#9D5CFF', background: 'rgba(157,92,255,0.12)' }
+                        : { color: '#9D5CFF', background: 'transparent' }
+                      }>
                       {myReaction
                         ? <span>{REACTIONS.find(r => r.key === myReaction)?.emoji}</span>
                         : <span>＋ React</span>
@@ -216,12 +226,15 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                     {showPicker && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
-                        <div className="absolute bottom-9 left-0 z-50 bg-white border border-stone-200 rounded-2xl shadow-xl p-2 flex gap-1">
+                        <div className="absolute bottom-9 left-0 z-50 rounded-2xl shadow-xl p-2 flex gap-1"
+                          style={{ background: '#1a0f2e', border: '1px solid rgba(157,92,255,0.3)', boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
                           {REACTIONS.map(r => (
                             <button key={r.key} onClick={() => toggleReaction(r.key)} title={r.label}
-                              className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all hover:scale-125 active:scale-95 ${
-                                myReaction === r.key ? 'bg-brand-100 ring-2 ring-brand-300' : 'hover:bg-stone-100'
-                              }`}>
+                              className="w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all hover:scale-125 active:scale-95"
+                              style={myReaction === r.key
+                                ? { background: 'rgba(157,92,255,0.25)', border: '1px solid rgba(157,92,255,0.5)' }
+                                : { background: 'rgba(255,255,255,0.06)' }
+                              }>
                               {r.emoji}
                             </button>
                           ))}
@@ -232,7 +245,8 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
 
                   {/* Reply */}
                   <button onClick={() => router.push(`/tweet/${tweet.id}`)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-all active:scale-90">
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
+                    style={{ color: 'rgba(240,238,255,0.4)' }}>
                     <MessageCircle size={13} />
                     {(tweet.reply_count ?? tweet.tweet_replies?.length ?? 0) > 0 && (
                       <span>{tweet.reply_count ?? tweet.tweet_replies?.length}</span>
@@ -242,7 +256,8 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                   {/* Repost */}
                   {tweet.repost_of === null && (
                     <button onClick={handleRepost} disabled={reposting}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-stone-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all active:scale-90 disabled:opacity-40">
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90 disabled:opacity-40"
+                      style={{ color: 'rgba(240,238,255,0.4)' }}>
                       <Repeat2 size={13} />
                       {(tweet.repost_count ?? 0) > 0 && <span>{tweet.repost_count}</span>}
                     </button>
@@ -250,14 +265,16 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                 </>
               ) : (
                 <div className="flex items-center gap-1.5">
-                  {!hasReactions && <span className="text-[11px] text-stone-300 font-medium">🇯🇵 Japan only</span>}
+                  {!hasReactions && (
+                    <span className="text-[11px] font-medium" style={{ color: 'rgba(240,238,255,0.25)' }}>🇯🇵 Japan only</span>
+                  )}
                   {(tweet.reply_count ?? 0) > 0 && (
-                    <span className="flex items-center gap-1 px-2 py-1 text-xs text-stone-300">
+                    <span className="flex items-center gap-1 px-2 py-1 text-xs" style={{ color: 'rgba(240,238,255,0.3)' }}>
                       <MessageCircle size={12} />{tweet.reply_count}
                     </span>
                   )}
                   {(tweet.repost_count ?? 0) > 0 && (
-                    <span className="flex items-center gap-1 px-2 py-1 text-xs text-stone-300">
+                    <span className="flex items-center gap-1 px-2 py-1 text-xs" style={{ color: 'rgba(240,238,255,0.3)' }}>
                       <Repeat2 size={12} />{tweet.repost_count}
                     </span>
                   )}
@@ -272,42 +289,48 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
       {showMenu && (
         <div className="fixed inset-0 z-[70] flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setShowMenu(false); setConfirmDel(false) }} />
-          <div className="relative bg-white rounded-t-3xl w-full max-w-md mx-auto overflow-hidden pb-safe">
+          <div className="relative rounded-t-3xl w-full max-w-md mx-auto overflow-hidden pb-safe"
+            style={{ background: '#0f0820', border: '1px solid rgba(157,92,255,0.2)', borderBottom: 'none' }}>
 
             {/* ハンドル */}
             <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 rounded-full bg-stone-200" />
+              <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(157,92,255,0.3)' }} />
             </div>
 
             {!confirmDel ? (
               <div className="px-4 pb-6">
-                <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3 px-1">投稿の操作</p>
+                <p className="text-xs font-bold uppercase tracking-wider mb-3 px-1"
+                  style={{ color: 'rgba(240,238,255,0.3)' }}>投稿の操作</p>
 
                 {isOwn ? (
                   <>
                     {/* 編集 */}
                     <button
                       onClick={() => { setEditText(tweet.content); setShowMenu(false); setShowEdit(true) }}
-                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl hover:bg-stone-50 active:bg-stone-100 transition-colors text-left">
-                      <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center flex-shrink-0">
-                        <Pencil size={16} className="text-stone-600" />
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:opacity-70 transition-opacity text-left"
+                      style={{ background: 'rgba(255,255,255,0.04)' }}>
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'rgba(157,92,255,0.15)' }}>
+                        <Pencil size={16} style={{ color: '#9D5CFF' }} />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-stone-900">編集する</p>
-                        <p className="text-xs text-stone-400">内容を修正できます</p>
+                        <p className="text-sm font-bold" style={{ color: '#F0EEFF' }}>編集する</p>
+                        <p className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>内容を修正できます</p>
                       </div>
                     </button>
 
                     {/* 削除 */}
                     <button
                       onClick={() => setConfirmDel(true)}
-                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl hover:bg-red-50 active:bg-red-100 transition-colors text-left mt-1">
-                      <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
-                        <Trash2 size={16} className="text-red-500" />
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:opacity-70 transition-opacity text-left mt-1"
+                      style={{ background: 'rgba(255,77,144,0.06)' }}>
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'rgba(255,77,144,0.12)' }}>
+                        <Trash2 size={16} style={{ color: '#FF4D90' }} />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-red-600">削除する</p>
-                        <p className="text-xs text-red-400">この操作は取り消せません</p>
+                        <p className="text-sm font-bold" style={{ color: '#FF4D90' }}>削除する</p>
+                        <p className="text-xs" style={{ color: 'rgba(255,77,144,0.6)' }}>この操作は取り消せません</p>
                       </div>
                     </button>
                   </>
@@ -316,13 +339,15 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                     {/* 通報 */}
                     <button
                       onClick={() => { setShowMenu(false); setShowReport(true) }}
-                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl hover:bg-orange-50 active:bg-orange-100 transition-colors text-left">
-                      <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0">
-                        <Flag size={16} className="text-orange-500" />
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:opacity-70 transition-opacity text-left"
+                      style={{ background: 'rgba(251,146,60,0.06)' }}>
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'rgba(251,146,60,0.12)' }}>
+                        <Flag size={16} style={{ color: '#fb923c' }} />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-orange-600">通報する</p>
-                        <p className="text-xs text-orange-400">不適切な投稿を報告する</p>
+                        <p className="text-sm font-bold" style={{ color: '#fb923c' }}>通報する</p>
+                        <p className="text-xs" style={{ color: 'rgba(251,146,60,0.6)' }}>不適切な投稿を報告する</p>
                       </div>
                     </button>
 
@@ -330,17 +355,19 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                     <button
                       onClick={handleBlock}
                       disabled={blocking || blockDone}
-                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl hover:bg-red-50 active:bg-red-100 transition-colors text-left mt-1 disabled:opacity-60">
-                      <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:opacity-70 transition-opacity text-left mt-1 disabled:opacity-60"
+                      style={{ background: 'rgba(255,77,144,0.06)' }}>
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'rgba(255,77,144,0.12)' }}>
                         {blockDone
                           ? <span className="text-base">✅</span>
-                          : <Ban size={16} className="text-red-500" />}
+                          : <Ban size={16} style={{ color: '#FF4D90' }} />}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-red-600">
+                        <p className="text-sm font-bold" style={{ color: '#FF4D90' }}>
                           {blockDone ? 'ブロックしました' : 'ブロックする'}
                         </p>
-                        <p className="text-xs text-red-400">
+                        <p className="text-xs" style={{ color: 'rgba(255,77,144,0.6)' }}>
                           {blockDone ? 'このユーザーの投稿が非表示になります' : 'このユーザーを非表示にする'}
                         </p>
                       </div>
@@ -351,7 +378,8 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                 {/* キャンセル */}
                 <button
                   onClick={() => setShowMenu(false)}
-                  className="w-full mt-3 py-3.5 rounded-2xl bg-stone-100 text-sm font-bold text-stone-600 active:bg-stone-200 transition-colors">
+                  className="w-full mt-3 py-3.5 rounded-2xl text-sm font-bold active:opacity-70 transition-opacity"
+                  style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(240,238,255,0.6)' }}>
                   キャンセル
                 </button>
               </div>
@@ -359,21 +387,26 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
               /* 削除確認 */
               <div className="px-4 pb-6">
                 <div className="text-center py-4">
-                  <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
-                    <Trash2 size={24} className="text-red-500" />
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3"
+                    style={{ background: 'rgba(255,77,144,0.12)' }}>
+                    <Trash2 size={24} style={{ color: '#FF4D90' }} />
                   </div>
-                  <p className="font-extrabold text-stone-900 text-base">本当に削除しますか？</p>
-                  <p className="text-xs text-stone-400 mt-1.5 leading-relaxed">この投稿は完全に削除されます。<br />この操作は取り消せません。</p>
+                  <p className="font-extrabold text-base" style={{ color: '#F0EEFF' }}>本当に削除しますか？</p>
+                  <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                    この投稿は完全に削除されます。<br />この操作は取り消せません。
+                  </p>
                 </div>
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
-                  className="w-full py-3.5 rounded-2xl bg-red-500 text-white text-sm font-extrabold active:opacity-80 transition-opacity disabled:opacity-50 mt-2">
+                  className="w-full py-3.5 rounded-2xl text-white text-sm font-extrabold active:opacity-80 transition-opacity disabled:opacity-50 mt-2"
+                  style={{ background: 'linear-gradient(135deg,#FF4D90,#e0195a)' }}>
                   {deleting ? '削除中…' : '削除する'}
                 </button>
                 <button
                   onClick={() => setConfirmDel(false)}
-                  className="w-full mt-2 py-3.5 rounded-2xl bg-stone-100 text-sm font-bold text-stone-600 active:bg-stone-200 transition-colors">
+                  className="w-full mt-2 py-3.5 rounded-2xl text-sm font-bold active:opacity-70 transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(240,238,255,0.6)' }}>
                   戻る
                 </button>
               </div>
@@ -396,26 +429,28 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
         <div className="fixed inset-0 z-[70] flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowEdit(false)} />
           <div
-            className="relative bg-white rounded-t-3xl w-full max-w-md mx-auto overflow-hidden"
+            className="relative rounded-t-3xl w-full max-w-md mx-auto overflow-hidden"
+            style={{ background: '#0f0820', border: '1px solid rgba(157,92,255,0.2)', borderBottom: 'none' }}
             onClick={e => e.stopPropagation()}
           >
             {/* ハンドル */}
             <div className="flex justify-center pt-3 pb-1">
-              <div className="w-10 h-1 rounded-full bg-stone-200" />
+              <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(157,92,255,0.3)' }} />
             </div>
 
             {/* ヘッダー */}
             <div className="flex items-center justify-between px-5 py-2.5">
               <button onClick={() => setShowEdit(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full active:bg-stone-100 transition-colors">
-                <X size={18} className="text-stone-500" />
+                className="w-8 h-8 flex items-center justify-center rounded-full active:opacity-60 transition-opacity"
+                style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <X size={18} style={{ color: 'rgba(240,238,255,0.55)' }} />
               </button>
-              <span className="text-sm font-extrabold text-stone-900">投稿を編集</span>
+              <span className="text-sm font-extrabold" style={{ color: '#F0EEFF' }}>投稿を編集</span>
               <button
                 onClick={handleSaveEdit}
                 disabled={!editText.trim() || editText.length > MAX || saving}
                 className="px-5 py-1.5 rounded-full text-sm font-extrabold text-white disabled:opacity-40 active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg,#1c1917,#3c3836)' }}>
+                style={{ background: 'linear-gradient(135deg,#9D5CFF,#7B3FE4)', boxShadow: '0 4px 16px rgba(157,92,255,0.4)' }}>
                 {saving ? (
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin block" />
                 ) : '保存する'}
@@ -429,13 +464,16 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                 onChange={e => setEditText(e.target.value)}
                 rows={5}
                 autoFocus
-                className="w-full text-[17px] leading-relaxed resize-none focus:outline-none text-stone-900 bg-transparent"
+                className="w-full text-[17px] leading-relaxed resize-none focus:outline-none bg-transparent"
+                style={{ color: '#F0EEFF', caretColor: '#9D5CFF' }}
               />
             </div>
 
             {/* フッター（文字数） */}
-            <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-stone-100">
-              <span className={`text-xs font-bold ${MAX - editText.length < 20 ? 'text-orange-500' : 'text-stone-300'}`}>
+            <div className="flex items-center justify-end gap-2 px-5 py-3"
+              style={{ borderTop: '1px solid rgba(157,92,255,0.15)' }}>
+              <span className="text-xs font-bold"
+                style={{ color: MAX - editText.length < 20 ? '#FF4D90' : 'rgba(240,238,255,0.3)' }}>
                 {MAX - editText.length}
               </span>
             </div>
