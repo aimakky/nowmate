@@ -110,7 +110,8 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
   const color = GAME_COLORS[room.category] ?? '#6366f1'
 
   return (
-    <div className="bg-white border border-stone-100 rounded-2xl shadow-sm overflow-hidden">
+    <div className="rounded-2xl overflow-hidden backdrop-blur-sm"
+      style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
       {/* ── ホスト行 ── */}
       <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
         <div className="relative flex-shrink-0">
@@ -121,17 +122,17 @@ function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId
               : room.host.display_name[0]}
           </div>
           {/* LIVEドット */}
-          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white flex items-center justify-center"
-            style={{ background: '#ef4444' }}>
+          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
+            style={{ background: '#8b5cf6', border: '2px solid #0a0a12' }}>
             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
           </span>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm font-extrabold text-stone-900 truncate">{room.host.display_name}</span>
-            <span className="text-xs text-stone-400">が通話ルームを開きました</span>
+            <span className="text-sm font-extrabold text-white truncate">{room.host.display_name}</span>
+            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>が通話ルームを開きました</span>
           </div>
-          <span className="text-[10px] text-stone-400">{timeAgo(room.created_at)}</span>
+          <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>{timeAgo(room.created_at)}</span>
         </div>
         <div className="flex items-center gap-1 px-2 py-0.5 rounded-full flex-shrink-0"
           style={{ background: '#ef444415', border: '1px solid #ef444430' }}>
@@ -352,53 +353,57 @@ function PostCard({
   }
 
   return (
-    <div className="bg-white border border-stone-100 rounded-2xl shadow-sm overflow-hidden">
+    <div className="rounded-2xl overflow-hidden backdrop-blur-sm"
+      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
       <div className="px-4 pt-3.5 pb-2 flex items-start gap-2.5">
-        <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg,#6366f1,#4f46e5)' }}>
+        <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 overflow-hidden"
+          style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
           {post.profiles?.avatar_url
             ? <img src={post.profiles.avatar_url} alt="" className="w-full h-full object-cover rounded-full" />
             : post.profiles?.display_name?.[0] ?? '?'}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm font-bold text-stone-900">{post.profiles?.display_name ?? '名無し'}</span>
+            <span className="text-sm font-bold text-white">{post.profiles?.display_name ?? '名無し'}</span>
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border whitespace-nowrap ${tier.color}`}>
               {tier.icon} {tier.label}
             </span>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-              style={{ background: `${catColor}18`, color: catColor }}>
+              style={{ background: `${catColor}25`, color: catColor, border: `1px solid ${catColor}40` }}>
               {post.category}
             </span>
-            <span className="text-[10px] text-stone-400">{timeAgo(post.created_at)}</span>
+            <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{timeAgo(post.created_at)}</span>
           </div>
         </div>
       </div>
 
       <div className="px-4 pb-3">
-        <p className="text-sm text-stone-800 leading-relaxed">{post.content}</p>
+        <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>{post.content}</p>
       </div>
 
-      <div className="flex items-center justify-between px-4 py-2.5 border-t border-stone-50">
+      <div className="flex items-center justify-between px-4 py-2.5"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         {showVillage && post.villages ? (
           <Link href={`/villages/${post.village_id}`} onClick={e => e.stopPropagation()}
             className="flex items-center gap-1.5 active:opacity-70 transition-opacity">
             <span className="text-sm">{post.villages.icon}</span>
-            <span className="text-[11px] font-bold text-stone-500 truncate max-w-[120px]">{post.villages.name}</span>
-            <ChevronRight size={11} className="text-stone-300 flex-shrink-0" />
+            <span className="text-[11px] font-bold truncate max-w-[120px]" style={{ color: 'rgba(255,255,255,0.45)' }}>{post.villages.name}</span>
+            <ChevronRight size={11} style={{ color: 'rgba(255,255,255,0.25)' }} className="flex-shrink-0" />
           </Link>
         ) : <span />}
         <div className="flex items-center gap-1.5">
           <button onClick={shareToX}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-90"
-            style={{ background: '#f5f5f4', color: '#a8a29e' }}>
+            style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.4)' }}>
             <Share2 size={12} />
           </button>
           <button onClick={() => onToggleLike(post.id)}
             className="flex items-center gap-1 px-3 py-1.5 rounded-xl transition-all active:scale-90"
-            style={liked ? { background: '#fff1f2', color: '#f43f5e' } : { background: '#f5f5f4', color: '#a8a29e' }}>
+            style={liked
+              ? { background: 'rgba(244,63,94,0.2)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.3)' }
+              : { background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.4)' }}>
             <Heart size={13} fill={liked ? '#f43f5e' : 'none'} strokeWidth={liked ? 0 : 1.8} />
             {post.reaction_count > 0 && <span className="text-[11px] font-bold">{post.reaction_count}</span>}
           </button>
@@ -413,17 +418,18 @@ function Skeleton() {
   return (
     <div className="space-y-3">
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="bg-white rounded-2xl border border-stone-100 p-4 animate-pulse">
+        <div key={i} className="rounded-2xl p-4 animate-pulse"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-9 h-9 bg-stone-200 rounded-full flex-shrink-0" />
+            <div className="w-9 h-9 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }} />
             <div className="flex-1 space-y-1.5">
-              <div className="h-3 bg-stone-200 rounded w-1/3" />
-              <div className="h-2.5 bg-stone-100 rounded w-1/4" />
+              <div className="h-3 rounded w-1/3" style={{ background: 'rgba(255,255,255,0.1)' }} />
+              <div className="h-2.5 rounded w-1/4" style={{ background: 'rgba(255,255,255,0.06)' }} />
             </div>
           </div>
           <div className="space-y-1.5">
-            <div className="h-3.5 bg-stone-100 rounded w-full" />
-            <div className="h-3.5 bg-stone-100 rounded w-4/5" />
+            <div className="h-3.5 rounded w-full" style={{ background: 'rgba(255,255,255,0.06)' }} />
+            <div className="h-3.5 rounded w-4/5" style={{ background: 'rgba(255,255,255,0.06)' }} />
           </div>
         </div>
       ))}
@@ -1057,7 +1063,7 @@ export default function TimelinePage() {
 
   // ── レンダリング ─────────────────────────────────────────────
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-birch">
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0a0a12' }}>
 
       {/* ヘッダー */}
       <div className="px-4 pt-12 pb-0"
@@ -1131,12 +1137,14 @@ export default function TimelinePage() {
 
         {/* 村に参加していない */}
         {tab === 'myvillage' && myVillageIds.length === 0 && !loading && (
-          <div className="bg-white border border-stone-100 rounded-2xl p-5 text-center shadow-sm">
-            <p className="text-2xl mb-2">🏕️</p>
-            <p className="text-sm font-extrabold text-stone-800 mb-1">まだギルドに参加していません</p>
-            <p className="text-xs text-stone-500 leading-relaxed mb-4">ギルドに参加すると、仲間の投稿がここに流れます。</p>
+          <div className="rounded-2xl p-6 text-center"
+            style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)' }}>
+            <p className="text-3xl mb-3">🛡️</p>
+            <p className="text-sm font-extrabold text-white mb-1">まだギルドに参加していません</p>
+            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.4)' }}>ギルドに参加すると、仲間の投稿がここに流れます。</p>
             <button onClick={() => router.push('/guilds')}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-brand-500 text-white rounded-2xl text-sm font-bold active:scale-95 transition-all">
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
+              style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', boxShadow: '0 4px 16px rgba(139,92,246,0.4)' }}>
               ギルドを探す →
             </button>
           </div>
@@ -1144,13 +1152,15 @@ export default function TimelinePage() {
 
         {/* フォロー0人 */}
         {tab === 'following' && followingIds.length === 0 && !loading && (
-          <div className="bg-white border border-stone-100 rounded-2xl p-5 text-center shadow-sm">
-            <p className="text-2xl mb-2">👥</p>
-            <p className="text-sm font-extrabold text-stone-800 mb-1">まだ誰もフォローしていません</p>
-            <p className="text-xs text-stone-500 leading-relaxed mb-4">村の住民をフォローすると、ここに投稿が流れます。</p>
-            <button onClick={() => router.push('/villages')}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-brand-500 text-white rounded-2xl text-sm font-bold active:scale-95 transition-all">
-              村を探す →
+          <div className="rounded-2xl p-6 text-center"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <p className="text-3xl mb-3">👥</p>
+            <p className="text-sm font-extrabold text-white mb-1">まだ誰もフォローしていません</p>
+            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.4)' }}>ゲーム仲間をフォローすると、ここに投稿が流れます。</p>
+            <button onClick={() => router.push('/guilds')}
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
+              style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', boxShadow: '0 4px 16px rgba(139,92,246,0.4)' }}>
+              ギルドを探す →
             </button>
           </div>
         )}
@@ -1175,7 +1185,8 @@ export default function TimelinePage() {
               onAnswered={handleAnswered}
             />
           ) : item.type === 'tweet' ? (
-            <div key={`tweet-${item.data.id}`} className="bg-white rounded-2xl overflow-hidden shadow-sm">
+            <div key={`tweet-${item.data.id}`} className="rounded-2xl overflow-hidden backdrop-blur-sm"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
               <TweetCard
                 tweet={item.data}
                 myId={userId}
@@ -1203,17 +1214,18 @@ export default function TimelinePage() {
           (tab === 'following' && followingIds.length > 0)
         ) && (
           <div className="text-center py-12">
-            <p className="text-3xl mb-3">🌿</p>
-            <p className="text-sm font-bold text-stone-600">まだ投稿がありません</p>
+            <p className="text-3xl mb-3">🎮</p>
+            <p className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.5)' }}>まだ投稿がありません</p>
           </div>
         )}
 
         {/* もっと読む */}
         {!loading && hasMore && posts.length > 0 && (
           <button onClick={() => fetchPosts(false)} disabled={loadingMore}
-            className="w-full py-3.5 bg-white border border-stone-200 rounded-2xl text-sm font-bold text-stone-600 flex items-center justify-center gap-2 active:bg-stone-50 transition-all shadow-sm disabled:opacity-50">
+            className="w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>
             {loadingMore
-              ? <span className="w-4 h-4 border-2 border-stone-400 border-t-transparent rounded-full animate-spin" />
+              ? <span className="w-4 h-4 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
               : '続きを読む'}
           </button>
         )}

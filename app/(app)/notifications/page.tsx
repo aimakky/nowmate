@@ -82,116 +82,138 @@ export default function NotificationsPage() {
   const otherNotifs    = notifs.filter(n => TYPE_CONFIG[n.type]?.section === 'other' || !TYPE_CONFIG[n.type])
   const unreadCount    = notifs.filter(n => !n.is_read).length
 
-  function NotifRow({ n, tint }: { n: Notif; tint?: string }) {
+  function NotifRow({ n, glowColor }: { n: Notif; glowColor?: string }) {
     const cfg   = TYPE_CONFIG[n.type] ?? { emoji: '🔔', label: '通知', section: 'other' as const }
     const actor = n.actor as any
+    const unread = !n.is_read
     return (
       <button
         onClick={() => handleTap(n)}
-        className={`w-full flex items-start gap-3 px-4 py-3.5 text-left transition-colors active:bg-stone-50 ${
-          !n.is_read && tint ? tint : (!n.is_read ? 'bg-brand-50/30' : '')
-        }`}
+        className="w-full flex items-start gap-3 px-4 py-3.5 text-left transition-all active:scale-[0.99]"
+        style={unread ? {
+          background: glowColor ? `${glowColor}10` : 'rgba(139,92,246,0.08)',
+        } : {}}
       >
         <div className="relative flex-shrink-0">
           <Avatar src={actor?.avatar_url} name={actor?.display_name ?? '?'} size="sm" />
           <span className="absolute -bottom-1 -right-1 text-sm leading-none">{cfg.emoji}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-stone-800 leading-snug">
+          <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.9)' }}>
             <span className="font-bold">{actor?.display_name ?? '誰か'}</span>
             {' '}
-            <span className="text-stone-600">{cfg.label}</span>
+            <span style={{ color: 'rgba(255,255,255,0.5)' }}>{cfg.label}</span>
           </p>
-          <p className="text-xs text-stone-400 mt-0.5">{timeAgo(n.created_at)}</p>
+          <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>{timeAgo(n.created_at)}</p>
         </div>
-        {!n.is_read && (
-          <span className="w-2 h-2 bg-brand-500 rounded-full flex-shrink-0 mt-1.5" />
+        {unread && (
+          <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
+            style={{ background: glowColor ?? '#8b5cf6', boxShadow: `0 0 6px ${glowColor ?? '#8b5cf6'}` }} />
         )}
       </button>
     )
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-birch">
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0a0a12' }}>
 
       {/* ── ヘッダー ── */}
-      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-stone-100 px-4 pt-4 pb-3">
+      <div className="sticky top-0 z-10 px-4 pt-12 pb-3 backdrop-blur-md"
+        style={{ background: 'rgba(10,10,18,0.92)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <div className="flex items-center justify-between">
-          <h1 className="font-extrabold text-stone-900 text-lg">通知</h1>
+          <div>
+            <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(139,92,246,0.7)' }}>NOTIFICATIONS</p>
+            <h1 className="font-extrabold text-white text-xl">通知</h1>
+          </div>
           {unreadCount > 0 && (
-            <span className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-50 text-red-500 border border-red-100">
-              🔴 {unreadCount}件未読
+            <span className="flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-full"
+              style={{ background: 'rgba(139,92,246,0.15)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.3)' }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+              {unreadCount}件未読
             </span>
           )}
         </div>
       </div>
 
       {loading ? (
-        <div className="px-4 pt-4 space-y-3">
+        <div className="px-4 pt-4 space-y-2">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-stone-100 p-4 flex gap-3 animate-pulse">
-              <div className="w-10 h-10 bg-stone-200 rounded-full flex-shrink-0" />
+            <div key={i} className="rounded-2xl p-4 flex gap-3 animate-pulse"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="w-10 h-10 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }} />
               <div className="flex-1 space-y-2 py-1">
-                <div className="h-3 bg-stone-200 rounded w-3/4" />
-                <div className="h-3 bg-stone-100 rounded w-1/3" />
+                <div className="h-3 rounded w-3/4" style={{ background: 'rgba(255,255,255,0.1)' }} />
+                <div className="h-3 rounded w-1/3" style={{ background: 'rgba(255,255,255,0.06)' }} />
               </div>
             </div>
           ))}
         </div>
       ) : notifs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-32 px-8 text-center">
-          <div className="text-6xl mb-4">🔔</div>
-          <p className="font-bold text-stone-700 text-base mb-1">通知はまだありません</p>
-          <p className="text-sm text-stone-400 leading-relaxed">
-            村に投稿・返信・共感をすると、ここに届きます
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+            style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}>
+            <span className="text-3xl">🔔</span>
+          </div>
+          <p className="font-bold text-white text-base mb-1">通知はまだありません</p>
+          <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            ギルドに投稿・返信・反応すると<br />ここに届きます
           </p>
         </div>
       ) : (
-        <div className="pb-28">
+        <div className="pb-28 pt-2">
 
           {/* ── 返信・反応 ── */}
           {reactionNotifs.length > 0 && (
-            <div>
-              <div className="px-4 pt-5 pb-2 flex items-center gap-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                <span className="text-[11px] font-bold text-red-500 uppercase tracking-wider">
+            <div className="px-4 mb-4">
+              <div className="flex items-center gap-2 py-3">
+                <div className="w-1.5 h-1.5 bg-rose-400 rounded-full animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(251,113,133,0.8)' }}>
                   返信・反応
                 </span>
               </div>
-              <div className="mx-4 rounded-2xl overflow-hidden border border-red-100 shadow-sm divide-y divide-red-50">
-                {reactionNotifs.map(n => (
-                  <NotifRow key={n.id} n={n} tint="bg-red-50/40" />
-                ))}
+              <div className="rounded-2xl overflow-hidden"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(251,113,133,0.18)', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
+                <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                  {reactionNotifs.map(n => (
+                    <NotifRow key={n.id} n={n} glowColor="#f43f5e" />
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
           {/* ── 通話 ── */}
           {voiceNotifs.length > 0 && (
-            <div>
-              <div className="px-4 pt-5 pb-2 flex items-center gap-2">
-                <span className="text-[11px] font-bold text-violet-500 uppercase tracking-wider">🎙️ 通話</span>
+            <div className="px-4 mb-4">
+              <div className="flex items-center gap-2 py-3">
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(167,139,250,0.8)' }}>🎙️ ゲーム村通話</span>
               </div>
-              <div className="mx-4 rounded-2xl overflow-hidden border border-violet-100 shadow-sm divide-y divide-violet-50 bg-white">
-                {voiceNotifs.map(n => (
-                  <NotifRow key={n.id} n={n} tint="bg-violet-50/40" />
-                ))}
+              <div className="rounded-2xl overflow-hidden"
+                style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.25)', boxShadow: '0 4px 24px rgba(139,92,246,0.15)' }}>
+                <div className="divide-y" style={{ borderColor: 'rgba(139,92,246,0.12)' }}>
+                  {voiceNotifs.map(n => (
+                    <NotifRow key={n.id} n={n} glowColor="#8b5cf6" />
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
           {/* ── その他 ── */}
           {otherNotifs.length > 0 && (
-            <div>
-              <div className="px-4 pt-5 pb-2">
-                <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wider">
+            <div className="px-4 mb-4">
+              <div className="flex items-center gap-2 py-3">
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>
                   その他
                 </span>
               </div>
-              <div className="bg-white border-y border-stone-100 divide-y divide-stone-50">
-                {otherNotifs.map(n => (
-                  <NotifRow key={n.id} n={n} />
-                ))}
+              <div className="rounded-2xl overflow-hidden"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                  {otherNotifs.map(n => (
+                    <NotifRow key={n.id} n={n} />
+                  ))}
+                </div>
               </div>
             </div>
           )}

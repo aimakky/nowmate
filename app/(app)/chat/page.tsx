@@ -142,13 +142,17 @@ export default function ChatListPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-white">
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#0a0a12' }}>
 
       {/* ヘッダー */}
-      <div className="sticky top-0 z-10 bg-white border-b border-stone-100 px-4 pt-12 pb-0">
+      <div className="sticky top-0 z-10 px-4 pt-12 pb-0 backdrop-blur-md"
+        style={{ background: 'rgba(10,10,18,0.95)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <div className="flex items-center justify-between mb-3">
-          <h1 className="font-extrabold text-stone-900 text-xl">チャット</h1>
-          <button className="text-sm font-semibold text-brand-500 active:opacity-60 transition-opacity">
+          <div>
+            <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(139,92,246,0.7)' }}>MESSAGES</p>
+            <h1 className="font-extrabold text-white text-xl">チャット</h1>
+          </div>
+          <button className="text-sm font-semibold active:opacity-60 transition-opacity" style={{ color: '#a78bfa' }}>
             編集
           </button>
         </div>
@@ -162,16 +166,16 @@ export default function ChatListPage() {
               key={t.id}
               onClick={() => setTab(t.id as 'chat' | 'request')}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold relative transition-colors"
-              style={{ color: tab === t.id ? '#7c3aed' : '#a8a29e' }}
+              style={{ color: tab === t.id ? '#c4b5fd' : 'rgba(255,255,255,0.3)' }}
             >
               {t.label}
               {t.count > 0 && (
-                <span className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] font-extrabold text-white">
+                <span className="w-4 h-4 bg-violet-500 rounded-full flex items-center justify-center text-[9px] font-extrabold text-white">
                   {t.count}
                 </span>
               )}
               {tab === t.id && (
-                <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full bg-brand-500" />
+                <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full bg-violet-500" />
               )}
             </button>
           ))}
@@ -191,41 +195,45 @@ export default function ChatListPage() {
               </div>
             ) : (
               requests.map(r => (
-                <div key={r.matchId} className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
+                <div key={r.matchId} className="rounded-2xl overflow-hidden"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
                   {/* ユーザー情報 */}
                   <div className="flex items-center gap-3 px-4 py-3">
-                    <div className="w-12 h-12 rounded-full flex-shrink-0 overflow-hidden bg-stone-100">
+                    <div className="w-12 h-12 rounded-full flex-shrink-0 overflow-hidden"
+                      style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
                       {r.other.avatar_url
                         ? <img src={r.other.avatar_url} className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center bg-brand-100">
-                            <span className="text-lg font-bold text-brand-500">{r.other.display_name[0]}</span>
+                        : <div className="w-full h-full flex items-center justify-center">
+                            <span className="text-lg font-bold text-white">{r.other.display_name[0]}</span>
                           </div>
                       }
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-stone-800 text-sm">{r.other.display_name}</p>
+                      <p className="font-bold text-white text-sm">{r.other.display_name}</p>
                       {r.lastMessage && (
-                        <p className="text-xs text-stone-400 truncate mt-0.5">{r.lastMessage.content}</p>
+                        <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>{r.lastMessage.content}</p>
                       )}
                     </div>
                   </div>
                   {/* 注意書き */}
                   <div className="px-4 pb-2">
-                    <p className="text-[10px] text-stone-400 bg-stone-50 rounded-xl px-3 py-2">
+                    <p className="text-[10px] rounded-xl px-3 py-2"
+                      style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.07)' }}>
                       🔒 承認するまで相手に既読はつきません。拒否しても相手には通知されません。
                     </p>
                   </div>
                   {/* アクション */}
-                  <div className="grid grid-cols-2 border-t border-stone-100">
+                  <div className="grid grid-cols-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                     <button
                       onClick={() => handleRequest(r.matchId, false)}
-                      className="flex items-center justify-center gap-1.5 py-3 text-sm font-bold text-stone-500 active:bg-stone-50 transition-colors border-r border-stone-100"
+                      className="flex items-center justify-center gap-1.5 py-3 text-sm font-bold active:opacity-60 transition-all"
+                      style={{ color: 'rgba(255,255,255,0.4)', borderRight: '1px solid rgba(255,255,255,0.08)' }}
                     >
                       <X size={15} /> 拒否
                     </button>
                     <button
                       onClick={() => handleRequest(r.matchId, true)}
-                      className="flex items-center justify-center gap-1.5 py-3 text-sm font-bold text-emerald-600 active:bg-emerald-50 transition-colors"
+                      className="flex items-center justify-center gap-1.5 py-3 text-sm font-bold active:opacity-60 transition-all text-emerald-400"
                     >
                       <Check size={15} /> 承認
                     </button>
@@ -241,27 +249,30 @@ export default function ChatListPage() {
         {/* オンライン中フレンド */}
         {!loading && onlineUsers.length > 0 && (
           <div className="px-4 pt-4 pb-3">
-            <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">
+            <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'rgba(255,255,255,0.3)' }}>
               オンライン中
             </p>
             <div className="flex gap-4 overflow-x-auto no-scrollbar pb-1">
               {onlineUsers.map(u => (
                 <div key={u.id} className="flex flex-col items-center gap-1.5 flex-shrink-0">
                   <div className="relative">
-                    <div className="w-14 h-14 rounded-full overflow-hidden bg-stone-100 ring-2 ring-white">
+                    <div className="w-14 h-14 rounded-full overflow-hidden"
+                      style={{ border: '2px solid rgba(139,92,246,0.4)' }}>
                       {u.avatar_url ? (
                         <img src={u.avatar_url} alt={u.display_name} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-brand-100">
-                          <span className="text-xl font-bold text-brand-500">
+                        <div className="w-full h-full flex items-center justify-center"
+                          style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
+                          <span className="text-xl font-bold text-white">
                             {u.display_name.charAt(0).toUpperCase()}
                           </span>
                         </div>
                       )}
                     </div>
-                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white" />
+                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-400 rounded-full"
+                      style={{ border: '2px solid #0a0a12' }} />
                   </div>
-                  <span className="text-[10px] font-medium text-stone-600 max-w-[52px] truncate text-center">
+                  <span className="text-[10px] font-medium max-w-[52px] truncate text-center" style={{ color: 'rgba(255,255,255,0.6)' }}>
                     {u.display_name}
                   </span>
                 </div>
@@ -272,59 +283,68 @@ export default function ChatListPage() {
 
         {/* 区切り */}
         {!loading && onlineUsers.length > 0 && (
-          <div className="h-px bg-stone-100 mx-4" />
+          <div className="h-px mx-4" style={{ background: 'rgba(255,255,255,0.07)' }} />
         )}
 
         {/* チャットリスト */}
         <div className="pt-2">
           {loading ? (
-            <div className="space-y-0">
+            <div className="space-y-2 px-4 pt-4">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="px-4 py-3 flex items-center gap-3 animate-pulse">
-                  <div className="w-14 h-14 bg-stone-100 rounded-full flex-shrink-0" />
+                <div key={i} className="flex items-center gap-3 p-3.5 rounded-2xl animate-pulse"
+                  style={{ background: 'rgba(255,255,255,0.04)' }}>
+                  <div className="w-12 h-12 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }} />
                   <div className="flex-1 space-y-2">
-                    <div className="h-3.5 bg-stone-100 rounded w-1/4" />
-                    <div className="h-3 bg-stone-50 rounded w-2/3" />
+                    <div className="h-3.5 rounded w-1/4" style={{ background: 'rgba(255,255,255,0.1)' }} />
+                    <div className="h-3 rounded w-2/3" style={{ background: 'rgba(255,255,255,0.06)' }} />
                   </div>
                 </div>
               ))}
             </div>
           ) : directs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
-              <div className="w-20 h-20 rounded-full bg-stone-50 flex items-center justify-center mb-4">
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-4"
+                style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}>
                 <span className="text-4xl">💬</span>
               </div>
-              <p className="font-extrabold text-stone-700 text-base">まだチャットがありません</p>
-              <p className="text-sm text-stone-400 mt-1.5 leading-relaxed max-w-[220px]">
+              <p className="font-extrabold text-white text-base">まだチャットがありません</p>
+              <p className="text-sm mt-1.5 leading-relaxed max-w-[220px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
                 ギルドで知り合った仲間とDMができます
               </p>
               <button onClick={() => router.push('/guilds')}
-                className="mt-5 px-6 py-3 bg-brand-500 text-white rounded-2xl text-sm font-bold shadow-md shadow-brand-200 active:scale-95 transition-all">
+                className="mt-5 px-6 py-3 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
+                style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', boxShadow: '0 4px 16px rgba(139,92,246,0.4)' }}>
                 ギルドを探す →
               </button>
             </div>
           ) : (
-            <div>
+            <div className="pt-2">
               {directs.map(c => {
                 const isMine = c.lastMessage?.sender_id === userId
                 return (
                   <Link key={c.matchId} href={`/chat/${c.matchId}`}>
-                    <div className="px-4 py-3 flex items-center gap-3 active:bg-stone-50 transition-colors">
+                    <div className="px-4 py-3 flex items-center gap-3 transition-colors"
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                       {/* アバター */}
                       <div className="relative flex-shrink-0">
-                        <div className="w-14 h-14 rounded-full overflow-hidden bg-stone-100">
+                        <div className="w-13 h-13 w-[52px] h-[52px] rounded-full overflow-hidden"
+                          style={{ background: 'rgba(139,92,246,0.3)' }}>
                           {c.other.avatar_url ? (
                             <img src={c.other.avatar_url} alt={c.other.display_name} className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-brand-100">
-                              <span className="text-xl font-bold text-brand-500">
+                            <div className="w-full h-full flex items-center justify-center"
+                              style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
+                              <span className="text-lg font-bold text-white">
                                 {c.other.display_name.charAt(0).toUpperCase()}
                               </span>
                             </div>
                           )}
                         </div>
                         {c.other.is_online && (
-                          <span className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white" />
+                          <span className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-green-400 rounded-full"
+                            style={{ border: '2px solid #0a0a12' }} />
                         )}
                       </div>
 
@@ -332,7 +352,7 @@ export default function ChatListPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-0.5">
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="font-bold text-stone-900 text-sm truncate">
+                            <span className="font-bold text-white text-sm truncate">
                               {c.other.display_name}
                             </span>
                             {c.other.trust_tier && (
@@ -340,12 +360,12 @@ export default function ChatListPage() {
                             )}
                           </div>
                           {c.lastMessage && (
-                            <span className="text-[11px] text-stone-400 flex-shrink-0 ml-2">
+                            <span className="text-[11px] flex-shrink-0 ml-2" style={{ color: 'rgba(255,255,255,0.3)' }}>
                               {timeAgo(c.lastMessage.created_at)}
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-stone-400 truncate">
+                        <p className="text-sm truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>
                           {c.lastMessage
                             ? `${isMine ? 'あなた: ' : ''}${c.lastMessage.content}`
                             : '👋 最初のメッセージを送ってみよう'}
