@@ -53,8 +53,8 @@ export default function BottomNav() {
 
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-stone-100 safe-area-pb overflow-visible">
-      <div className="max-w-[430px] mx-auto flex items-center h-16 overflow-visible">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-stone-100 safe-area-pb">
+      <div className="max-w-[430px] mx-auto flex items-center h-16">
 
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active  = pathname === href || pathname.startsWith(href + '/')
@@ -64,42 +64,12 @@ export default function BottomNav() {
           if (isGame) {
             return (
               <Link key={href} href={href}
-                className="flex-1 flex flex-col items-center justify-center gap-0 relative transition-all"
-                style={{ marginTop: '-20px' }}>
-
-                {/* グロウリング（外側） */}
-                {!active && (
-                  <span
-                    className="absolute rounded-full pointer-events-none"
-                    style={{
-                      width: 58, height: 58,
-                      top: -7,
-                      background: 'transparent',
-                      border: '2px solid rgba(139,92,246,0.35)',
-                      boxShadow: '0 0 12px rgba(139,92,246,0.25)',
-                    }}
-                  />
-                )}
-
-                {/* 浮き上がり円ボタン */}
-                <div
-                  className="flex items-center justify-center rounded-full transition-all active:scale-90"
-                  style={{
-                    width: 52, height: 52,
-                    background: active
-                      ? 'linear-gradient(135deg,#6d28d9,#a855f7)'
-                      : 'linear-gradient(135deg,#7c3aed,#9333ea)',
-                    boxShadow: active
-                      ? '0 6px 20px rgba(109,40,217,0.6), 0 0 0 4px rgba(139,92,246,0.2)'
-                      : '0 4px 16px rgba(124,58,237,0.45)',
-                  }}
-                >
-                  <Icon size={24} strokeWidth={2.2} color="#fff" />
-                </div>
-
-                <span className="text-[9px] font-extrabold tracking-wide mt-1.5 text-violet-500">
-                  {label}
-                </span>
+                className={cn('flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-colors',
+                  active ? 'text-stone-900' : 'text-stone-400')}>
+                <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
+                <span className={cn('text-[9px] font-bold tracking-wide mt-0.5',
+                  active ? 'text-stone-900' : 'text-stone-400')}>{label}</span>
+                {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-stone-900 rounded-full" />}
               </Link>
             )
           }
