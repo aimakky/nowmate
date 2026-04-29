@@ -74,27 +74,26 @@ export default function BottomNav() {
                 )}
                   style={{ background: 'linear-gradient(135deg,#8b5cf620,#6d28d920)' }}
                 />
-                {/* アイコン + LIVEドット */}
+                {/* アイコン + LIVEバッジ */}
                 <div className="relative z-10">
                   <Gamepad2
                     size={20}
                     strokeWidth={active ? 2.5 : 1.8}
                     className={active ? 'text-violet-600' : 'text-violet-400'}
                   />
-                  {/* 右上に紫パルスドット */}
-                  <span className="absolute -top-1 -right-1.5 flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-violet-600" />
+                  {/* 右上にLIVEバッジ（パルス付き） */}
+                  <span className="absolute -top-2 -right-4 flex items-center">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-40" />
+                    <span className="relative text-[7px] font-extrabold tracking-widest px-1 py-px rounded-full leading-none"
+                      style={{ background: active ? '#7c3aed' : '#8b5cf6', color: '#fff' }}>
+                      LIVE
+                    </span>
                   </span>
                 </div>
-                {/* LIVE バッジ */}
-                <div className="flex items-center gap-1 mt-0.5 z-10">
+                {/* ラベル */}
+                <div className="flex items-center gap-0.5 mt-0.5 z-10">
                   <span className={cn('text-[9px] font-extrabold tracking-wide',
                     active ? 'text-violet-600' : 'text-violet-400')}>{label}</span>
-                  <span className="text-[7px] font-extrabold tracking-widest px-1 py-0.5 rounded-full leading-none"
-                    style={{ background: active ? '#7c3aed' : '#8b5cf6', color: '#fff' }}>
-                    LIVE
-                  </span>
                 </div>
                 {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-violet-600" />}
               </Link>
