@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, ChevronRight, Moon, Mic, MicOff, X, Check } from 'lucide-react'
+import { Plus, Search, ChevronRight, Moon, Mic, MicOff, X, Check, Gamepad2 } from 'lucide-react'
 import { INDUSTRIES } from '@/lib/guild'
 import VillageCard, { type Village, VILLAGE_TYPE_STYLES, getFireStatus } from '@/components/ui/VillageCard'
 
@@ -557,8 +557,8 @@ export default function GuildPage() {
             <div className="text-center py-20">
               <div className="relative w-36 h-36 mx-auto mb-6">
                 <div className="absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.35) 0%, transparent 70%)', filter: 'blur(24px)' }} />
-                <div className="relative w-full h-full flex items-center justify-center text-8xl" style={{ filter: 'drop-shadow(0 0 20px rgba(139,92,246,0.6))' }}>
-                  🎮
+                <div className="relative w-full h-full flex items-center justify-center" style={{ filter: 'drop-shadow(0 0 20px rgba(139,92,246,0.6))' }}>
+                  <Gamepad2 size={80} strokeWidth={1.5} style={{ color: '#8B5CF6' }} />
                 </div>
               </div>
               <p className="font-extrabold text-base mb-1.5" style={{ color: '#F0EEFF' }}>
