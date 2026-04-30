@@ -298,7 +298,7 @@ export default function GuildPage() {
                   onClick={() => { setGenre(g.id); setSearch(''); setSubFilter(null) }}
                   className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95"
                   style={active
-                    ? { background: gInfo?.color ?? '#fff', color: '#fff' }
+                    ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 0 12px rgba(139,92,246,0.5)' }
                     : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.10)' }
                   }
                 >
@@ -316,7 +316,7 @@ export default function GuildPage() {
         {SUB_FILTERS.map(sf => {
           const ACTIVE_STYLES: Record<string, React.CSSProperties> = {
             popular: { background: 'rgba(251,146,60,0.2)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.4)' },
-            new:     { background: 'rgba(139,92,246,0.2)', color: '#8B5CF6', border: '1px solid rgba(139,92,246,0.4)' },
+            new:     { background: 'rgba(255,182,217,0.22)', color: '#ffb6d9', border: '1px solid rgba(255,182,217,0.45)' },
             member:  { background: 'rgba(73,225,255,0.15)', color: '#49E1FF', border: '1px solid rgba(73,225,255,0.35)' },
           }
           const INACTIVE: React.CSSProperties = { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }
