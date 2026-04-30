@@ -261,7 +261,10 @@ export default function GuildPage() {
           <div className="flex items-start justify-between gap-3 mb-3">
             <div>
               <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5 text-purple-400/60">GAME ROOM</p>
-              <h1 className="font-extrabold text-white text-2xl leading-tight">ゲーム村</h1>
+              <h1 className="font-extrabold text-white text-2xl leading-tight flex items-center gap-2">
+                <GuildHeroGamepad size={28} />
+                ゲーム村を探す
+              </h1>
               <p className="text-white/40 text-xs mt-0.5">今すぐ仲間を募集・通話ルームを開こう</p>
             </div>
             <button
