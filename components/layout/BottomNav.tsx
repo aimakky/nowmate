@@ -1,5 +1,5 @@
 'use client'
-// v3
+// v4
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Layers, Bell, Gamepad2, Shield, MessageSquare } from 'lucide-react'
@@ -74,7 +74,7 @@ export default function BottomNav() {
                   <Gamepad2
                     size={20}
                     strokeWidth={active ? 2.5 : 1.8}
-                    style={{ color: active ? activeColor : `${activeColor}80` }}
+                    style={{ color: activeColor }}
                   />
                   {/* LIVE badge */}
                   <span className="absolute -top-2 -right-4 flex items-center">
@@ -87,7 +87,7 @@ export default function BottomNav() {
                   </span>
                 </div>
                 <span className="text-[9px] font-extrabold tracking-wide mt-0.5 z-10"
-                  style={{ color: active ? activeColor : `${activeColor}80` }}>
+                  style={{ color: activeColor }}>
                   {label}
                 </span>
                 {active && (
