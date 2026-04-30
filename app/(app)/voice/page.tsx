@@ -43,18 +43,18 @@ export default function VoicePage() {
   const [creating,      setCreating]      = useState(false)
   const [pendingRoomId, setPendingRoomId] = useState<string | null>(null)
 
-  // ルーム入室前ガイドゲート
+  // ルーム入室前ガイドゲート（fail-closed: 取得失敗時もモーダルを表示し、ユーザーが意識して同意してから入室）
   async function attemptEnterRoom(roomId: string) {
     try {
       const bundle = await fetchRulesBundle()
       if (hasVoiceRulesAck(bundle.bundleVersion)) {
         router.push(`/voice/${roomId}`)
-      } else {
-        setPendingRoomId(roomId)
+        return
       }
     } catch {
-      router.push(`/voice/${roomId}`)
+      // フォールスルーしてモーダル表示
     }
+    setPendingRoomId(roomId)
   }
   const [myAgeVerified, setMyAgeVerified] = useState(false)
   const [myAgeStatus,   setMyAgeStatus]   = useState<string>('unverified')

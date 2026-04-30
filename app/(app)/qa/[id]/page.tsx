@@ -255,22 +255,32 @@ export default function QADetailPage() {
     const alreadyVoted = myHelpfulIds.has(answerId)
 
     const targetAnswer = answers.find(a => a.id === answerId)
-    if (alreadyVoted) {
-      await supabase.from('qa_helpful_votes').delete().eq('answer_id', answerId).eq('user_id', userId)
-      await supabase.from('qa_answers').update({ helpful_count: Math.max(0, (targetAnswer?.helpful_count ?? 1) - 1) }).eq('id', answerId)
-      setMyHelpfulIds(prev => { const n = new Set(prev); n.delete(answerId); return n })
-      setAnswers(prev => prev.map(a => a.id === answerId ? { ...a, helpful_count: Math.max(0, a.helpful_count - 1) } : a))
-    } else {
-      await supabase.from('qa_helpful_votes').insert({ answer_id: answerId, user_id: userId })
-      await supabase.from('qa_answers').update({ helpful_count: (targetAnswer?.helpful_count ?? 0) + 1 }).eq('id', answerId)
-      setMyHelpfulIds(prev => new Set([...prev, answerId]))
-      setAnswers(prev => prev.map(a => a.id === answerId ? { ...a, helpful_count: (a.helpful_count ?? 0) + 1 } : a))
-      // 称号チェック（いいね追加時のみ）
-      if (targetAnswer?.user_id && question?.category) {
-        awardQaTitle(supabase, targetAnswer.user_id, question.category).catch(() => {})
+    try {
+      if (alreadyVoted) {
+        const v = await supabase.from('qa_helpful_votes').delete().eq('answer_id', answerId).eq('user_id', userId)
+        if (v.error) throw v.error
+        const u = await supabase.from('qa_answers').update({ helpful_count: Math.max(0, (targetAnswer?.helpful_count ?? 1) - 1) }).eq('id', answerId)
+        if (u.error) throw u.error
+        setMyHelpfulIds(prev => { const n = new Set(prev); n.delete(answerId); return n })
+        setAnswers(prev => prev.map(a => a.id === answerId ? { ...a, helpful_count: Math.max(0, a.helpful_count - 1) } : a))
+      } else {
+        const v = await supabase.from('qa_helpful_votes').insert({ answer_id: answerId, user_id: userId })
+        if (v.error) throw v.error
+        const u = await supabase.from('qa_answers').update({ helpful_count: (targetAnswer?.helpful_count ?? 0) + 1 }).eq('id', answerId)
+        if (u.error) throw u.error
+        setMyHelpfulIds(prev => new Set([...prev, answerId]))
+        setAnswers(prev => prev.map(a => a.id === answerId ? { ...a, helpful_count: (a.helpful_count ?? 0) + 1 } : a))
+        // 称号チェック（いいね追加時のみ）
+        if (targetAnswer?.user_id && question?.category) {
+          awardQaTitle(supabase, targetAnswer.user_id, question.category).catch(() => {})
+        }
       }
+    } catch (e) {
+      console.error('[qa] toggleHelpful failed', e)
+      // 楽観的 UI 更新がない箇所なので state は変更せず
+    } finally {
+      setHelpfulLoading(null)
     }
-    setHelpfulLoading(null)
   }
 
   if (loading) return (

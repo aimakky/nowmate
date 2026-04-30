@@ -89,11 +89,15 @@ export async function awardQaTitle(
   userId: string,
   category: string,
 ): Promise<string> {
-  const { data } = await supabase.rpc('award_qa_title', {
+  const { data, error } = await supabase.rpc('award_qa_title', {
     p_user_id: userId,
     p_category: category,
   })
-  return (data as string) ?? 'none'
+  if (error) {
+    console.warn('[qa] awardQaTitle failed', { userId, category, error: error.message })
+    return 'none'
+  }
+  return (typeof data === 'string' ? data : 'none')
 }
 
 // ─── 匿名表示名（Tierアイコン + ロール） ──────────────────────

@@ -10,6 +10,7 @@ export default function VerifyAgePage() {
   const [loading,   setLoading]   = useState(true)
   const [verified,  setVerified]  = useState(false)
   const [starting,  setStarting]  = useState(false)
+  const [errMsg,    setErrMsg]    = useState<string | null>(null)
 
   useEffect(() => {
     async function check() {
@@ -25,12 +26,20 @@ export default function VerifyAgePage() {
 
   async function startVerification() {
     setStarting(true)
+    setErrMsg(null)
     try {
       const res = await fetch('/api/stripe/verify-age', { method: 'POST' })
+      if (!res.ok) {
+        const t = await res.text().catch(() => '')
+        throw new Error(`API ${res.status}: ${t.slice(0, 120)}`)
+      }
       const data = await res.json()
       if (data.already_verified) { setVerified(true); setStarting(false); return }
-      if (data.url) window.location.href = data.url
-    } catch {
+      if (data.url) { window.location.href = data.url; return }
+      throw new Error('レスポンスに URL が含まれていません')
+    } catch (e) {
+      console.error('[verify-age] startVerification failed', e)
+      setErrMsg(e instanceof Error ? e.message : '本人確認の開始に失敗しました。時間を置いて再度お試しください。')
       setStarting(false)
     }
   }
@@ -128,6 +137,14 @@ export default function VerifyAgePage() {
                 書類の情報はStripe Identity（Stripe, Inc.）が処理します。sameeのサーバーには書類の画像は保存されません。確認されるのは年齢のみです。
               </p>
             </div>
+
+            {/* エラー表示 */}
+            {errMsg && (
+              <div className="mb-3 rounded-2xl p-3 text-xs"
+                style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#fecaca' }}>
+                {errMsg}
+              </div>
+            )}
 
             {/* CTA */}
             <button

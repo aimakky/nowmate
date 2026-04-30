@@ -127,6 +127,10 @@ export async function awardPoints(
     p_points: pts,
     p_source_id: sourceId ?? null,
   })
+  if (result.error) {
+    // 信頼スコア付与失敗は UX を止めない（fire-and-forget 用途）が、原因追跡のため必ずログに残す
+    console.warn('[trust] awardPoints failed', { eventType, sourceId, error: result.error.message })
+  }
   return result
 }
 

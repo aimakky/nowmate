@@ -19,14 +19,21 @@ interface Props {
 export default function VoiceRulesModal({ onAcknowledged, onClose }: Props) {
   const [rules, setRules]     = useState<Rule[] | null>(null)
   const [version, setVersion] = useState<number>(1)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
 
   useEffect(() => {
     let alive = true
-    fetchRulesBundle().then(b => {
-      if (!alive) return
-      setRules(pickVoiceModalRules(b.rules, 5))
-      setVersion(b.bundleVersion)
-    })
+    fetchRulesBundle()
+      .then(b => {
+        if (!alive) return
+        setRules(pickVoiceModalRules(b.rules, 5))
+        setVersion(b.bundleVersion)
+      })
+      .catch((e: unknown) => {
+        if (!alive) return
+        setLoadErr(e instanceof Error ? e.message : 'ルールの取得に失敗しました')
+        setRules([])
+      })
     return () => { alive = false }
   }, [])
 
@@ -69,9 +76,15 @@ export default function VoiceRulesModal({ onAcknowledged, onClose }: Props) {
 
         {/* カード群 */}
         <div className="flex-1 overflow-y-auto px-5 pb-3 space-y-2.5">
-          {!rules && (
+          {!rules && !loadErr && (
             <div className="flex items-center justify-center py-10">
               <Loader2 size={24} className="animate-spin" style={{ color: '#3B82F6' }} />
+            </div>
+          )}
+          {loadErr && (
+            <div className="rounded-2xl p-3 text-xs"
+              style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#fecaca' }}>
+              {loadErr}
             </div>
           )}
           {rules?.map(r => <RuleCard key={r.id} rule={r} compact />)}

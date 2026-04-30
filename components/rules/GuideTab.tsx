@@ -22,13 +22,20 @@ const CATS: { id: RuleCategory | 'all'; label: string; color: string }[] = [
 export default function GuideTab() {
   const [rules, setRules] = useState<Rule[] | null>(null)
   const [active, setActive] = useState<RuleCategory | 'all'>('all')
+  const [loadErr, setLoadErr] = useState<string | null>(null)
 
   useEffect(() => {
     let alive = true
-    fetchRulesBundle().then(b => {
-      if (!alive) return
-      setRules(filterByLocation(b.rules, 'mypage'))
-    })
+    fetchRulesBundle()
+      .then(b => {
+        if (!alive) return
+        setRules(filterByLocation(b.rules, 'mypage'))
+      })
+      .catch((e: unknown) => {
+        if (!alive) return
+        setLoadErr(e instanceof Error ? e.message : 'ルールの取得に失敗しました')
+        setRules([])
+      })
     return () => { alive = false }
   }, [])
 
@@ -69,9 +76,15 @@ export default function GuideTab() {
       </div>
 
       {/* リスト */}
-      {!rules && (
+      {!rules && !loadErr && (
         <div className="flex items-center justify-center py-10">
           <Loader2 size={24} className="animate-spin" style={{ color: '#8B5CF6' }} />
+        </div>
+      )}
+      {loadErr && (
+        <div className="rounded-2xl p-3 text-xs"
+          style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#fecaca' }}>
+          {loadErr}
         </div>
       )}
       <div className="space-y-2.5">

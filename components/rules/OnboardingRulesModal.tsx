@@ -21,15 +21,22 @@ export default function OnboardingRulesModal({ userId, onAgreed }: Props) {
   const [version, setVersion] = useState<number>(1)
   const [scrolledEnd, setEnd] = useState(false)
   const [submitting, setSub]  = useState(false)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let alive = true
-    fetchRulesBundle().then(b => {
-      if (!alive) return
-      setRules(filterByLocation(b.rules, 'onboarding'))
-      setVersion(b.bundleVersion)
-    })
+    fetchRulesBundle()
+      .then(b => {
+        if (!alive) return
+        setRules(filterByLocation(b.rules, 'onboarding'))
+        setVersion(b.bundleVersion)
+      })
+      .catch((e: unknown) => {
+        if (!alive) return
+        setLoadErr(e instanceof Error ? e.message : 'ルールの取得に失敗しました')
+        setRules([])
+      })
     return () => { alive = false }
   }, [])
 
@@ -54,6 +61,8 @@ export default function OnboardingRulesModal({ userId, onAgreed }: Props) {
     try {
       await recordAgreement(userId, version)
       onAgreed()
+    } catch (e: unknown) {
+      setLoadErr(e instanceof Error ? e.message : '同意の保存に失敗しました')
     } finally {
       setSub(false)
     }
@@ -79,9 +88,19 @@ export default function OnboardingRulesModal({ userId, onAgreed }: Props) {
         onScroll={onScroll}
         className="flex-1 overflow-y-auto px-5 pb-4 space-y-3"
       >
-        {!rules && (
+        {!rules && !loadErr && (
           <div className="flex items-center justify-center py-12">
             <Loader2 size={28} className="animate-spin" style={{ color: '#8B5CF6' }} />
+          </div>
+        )}
+        {loadErr && (
+          <div className="rounded-2xl p-4 text-sm"
+            style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#fecaca' }}>
+            {loadErr}
+            <button onClick={() => { setLoadErr(null); window.location.reload() }}
+              className="mt-2 block underline" style={{ color: '#fca5a5' }}>
+              再読み込み
+            </button>
           </div>
         )}
         {sorted.map(r => <RuleCard key={r.id} rule={r} />)}
