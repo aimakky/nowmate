@@ -234,7 +234,10 @@ export default function GuildsPage() {
           <div className="flex items-start justify-between gap-3 mb-3">
             <div>
               <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: '#27DFFF' }}>GUILD</p>
-              <h1 className="font-extrabold text-2xl leading-tight" style={{ color: '#F0EEFF' }}>🛡️ ギルドを探す</h1>
+              <h1 className="font-extrabold text-2xl leading-tight flex items-center gap-2" style={{ color: '#F0EEFF' }}>
+                <GuildShieldIcon size={28} active={true} />
+                ギルドを探す
+              </h1>
               <p className="text-xs mt-0.5" style={{ color: 'rgba(240,238,255,0.3)' }}>同じゲームを愛する仲間が集まるコミュニティ</p>
             </div>
             <button
