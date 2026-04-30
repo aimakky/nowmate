@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Mic, Users, Radio, ShieldCheck, Lock } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import { canCreateVoiceRoom } from '@/lib/permissions'
+import VoiceRulesModal from '@/components/rules/VoiceRulesModal'
+import { fetchRulesBundle, hasVoiceRulesAck } from '@/lib/rules'
 
 const CATEGORIES = ['雑談', '夜話', '相談', '悩み', '笑い', '趣味']
 
@@ -39,6 +41,21 @@ export default function VoicePage() {
   const [newIsOpen,     setNewIsOpen]     = useState(true)
   const [newAgenda,     setNewAgenda]     = useState('')
   const [creating,      setCreating]      = useState(false)
+  const [pendingRoomId, setPendingRoomId] = useState<string | null>(null)
+
+  // ルーム入室前ガイドゲート
+  async function attemptEnterRoom(roomId: string) {
+    try {
+      const bundle = await fetchRulesBundle()
+      if (hasVoiceRulesAck(bundle.bundleVersion)) {
+        router.push(`/voice/${roomId}`)
+      } else {
+        setPendingRoomId(roomId)
+      }
+    } catch {
+      router.push(`/voice/${roomId}`)
+    }
+  }
   const [myAgeVerified, setMyAgeVerified] = useState(false)
   const [myAgeStatus,   setMyAgeStatus]   = useState<string>('unverified')
   const [showAgeGate,   setShowAgeGate]   = useState(false)
@@ -125,7 +142,7 @@ export default function VoicePage() {
       setShowCreate(false)
       setNewTitle('')
       setNewAgenda('')
-      router.push(`/voice/${data.id}`)
+      attemptEnterRoom(data.id)
     }
     setCreating(false)
   }
@@ -197,7 +214,7 @@ export default function VoicePage() {
 
             return (
               <div key={room.id}
-                onClick={() => router.push(`/voice/${room.id}`)}
+                onClick={() => attemptEnterRoom(room.id)}
                 className="rounded-2xl overflow-hidden cursor-pointer active:scale-[0.99] transition-all"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
 
@@ -396,6 +413,18 @@ export default function VoicePage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* 通話ルーム入室前の安心ガイド */}
+      {pendingRoomId && (
+        <VoiceRulesModal
+          onAcknowledged={() => {
+            const id = pendingRoomId
+            setPendingRoomId(null)
+            router.push(`/voice/${id}`)
+          }}
+          onClose={() => setPendingRoomId(null)}
+        />
       )}
     </div>
   )

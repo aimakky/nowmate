@@ -6,33 +6,43 @@ import { usePathname } from 'next/navigation'
 import { User } from 'lucide-react'
 import BottomNav from '@/components/layout/BottomNav'
 import FeedbackModal from '@/components/features/FeedbackModal'
+import OnboardingRulesModal from '@/components/rules/OnboardingRulesModal'
 import { createClient } from '@/lib/supabase/client'
+import { getAgreementStatus } from '@/lib/rules'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [showFeedback, setShowFeedback] = useState(false)
   const [avatarUrl, setAvatarUrl]       = useState<string | null>(null)
+  const [userId, setUserId]             = useState<string | null>(null)
+  const [needsRulesAgreement, setNeedsRulesAgreement] = useState(false)
   const pathname = usePathname()
 
   // ページ自体にヘッダーがある場合は重複を避けるため非表示にするパス
   const hideAvatar = pathname.startsWith('/villages/') || pathname.startsWith('/chat/') || pathname === '/mypage'
 
   useEffect(() => {
-    async function fetchAvatar() {
+    async function init() {
       try {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
+        setUserId(user.id)
+
         const { data } = await supabase
           .from('profiles')
           .select('avatar_url')
           .eq('id', user.id)
           .single()
         if (data?.avatar_url) setAvatarUrl(data.avatar_url)
+
+        // 安心ガイド同意チェック（version 変わってたら再同意）
+        const status = await getAgreementStatus(user.id)
+        setNeedsRulesAgreement(status.needsAgreement)
       } catch {
         // silent
       }
     }
-    fetchAvatar()
+    init()
   }, [])
 
   return (
@@ -79,6 +89,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </button>
 
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
+
+      {/* 安心ガイド同意ゲート（未同意 / version 不一致時のみ） */}
+      {needsRulesAgreement && userId && (
+        <OnboardingRulesModal
+          userId={userId}
+          onAgreed={() => setNeedsRulesAgreement(false)}
+        />
+      )}
     </div>
   )
 }

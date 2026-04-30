@@ -13,8 +13,9 @@ import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
 import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import DMPrivacySettings from '@/components/features/DMPrivacySettings'
+import GuideTab from '@/components/rules/GuideTab'
 
-type ProfileTab = 'tweets' | 'images' | 'joined_villages' | 'hosted_villages'
+type ProfileTab = 'tweets' | 'images' | 'joined_villages' | 'hosted_villages' | 'guide'
 
 // ── ツイートコンポーズシート ────────────────────────────────────
 function TweetComposeSheet({
@@ -454,6 +455,7 @@ export default function MyPage() {
             { id: 'images',          label: '画像' },
             { id: 'joined_villages', label: '参加中' },
             { id: 'hosted_villages', label: 'ホスト' },
+            { id: 'guide',           label: '安心ガイド' },
           ] as { id: ProfileTab; label: string }[]).map(tab => (
             <button
               key={tab.id}
@@ -753,6 +755,9 @@ export default function MyPage() {
             </div>
           )
         })()}
+
+        {/* 安心ガイドタブ */}
+        {activeTab === 'guide' && <GuideTab />}
 
         {/* ── 下部コンテンツ（全タブ共通） ── */}
         <div className="px-4 pt-4 space-y-3">
