@@ -1,6 +1,6 @@
 // 空状態専用の横長ゲームパッド SVG
-// 仕様：左右に丸いグリップ、紫グラデ、左に十字キー、
-//       右に赤・黄・青・緑の ABXY ボタン、中央に黒い START/SELECT ×2。
+// 仕様：左右に丸いグリップ、紫グラデ、左に「白い」十字キー、
+//       右に赤・黄・青・緑の ABXY ボタン。中央ボタンは無し。
 // 既存の SameeGamepad / Gamepad2 とは別物。/guild の空状態の中央でのみ使う。
 
 interface Props {
@@ -25,15 +25,15 @@ export default function EmptyStateGamepad({ size = 140, className }: Props) {
       }}
     >
       <defs>
-        {/* メインボディ：紫〜青紫グラデ */}
+        {/* メインボディ：紫〜青紫グラデ（やや明るめ） */}
         <linearGradient id="esg-body" x1="0.5" y1="0" x2="0.5" y2="1">
-          <stop offset="0%"   stopColor="#b39bff" />
-          <stop offset="45%"  stopColor="#7c3aed" />
-          <stop offset="100%" stopColor="#312e81" />
+          <stop offset="0%"   stopColor="#bda6ff" />
+          <stop offset="45%"  stopColor="#8b5cf6" />
+          <stop offset="100%" stopColor="#3b2a8a" />
         </linearGradient>
         {/* 上面ハイライト */}
         <linearGradient id="esg-hi" x1="0.5" y1="0" x2="0.5" y2="1">
-          <stop offset="0%"  stopColor="#ffffff" stopOpacity="0.32" />
+          <stop offset="0%"  stopColor="#ffffff" stopOpacity="0.34" />
           <stop offset="65%" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
       </defs>
@@ -68,11 +68,11 @@ export default function EmptyStateGamepad({ size = 140, className }: Props) {
         fill="url(#esg-hi)"
       />
 
-      {/* 左：黒い十字キー */}
+      {/* 左：白い十字キー */}
       <g transform="translate(50, 79)">
-        <rect x="-15" y="-5" width="30" height="10" rx="2.5" fill="#08041a" />
-        <rect x="-5" y="-15" width="10" height="30" rx="2.5" fill="#08041a" />
-        <circle r="2.6" fill="#1f1438" />
+        <rect x="-15" y="-5" width="30" height="10" rx="2.5" fill="#f5f3ff" />
+        <rect x="-5" y="-15" width="10" height="30" rx="2.5" fill="#f5f3ff" />
+        <circle r="2.6" fill="#c4b5fd" />
       </g>
 
       {/* 右：ABXY 4 ボタン（黄／赤／緑／青、ハイライト付き） */}
@@ -88,10 +88,6 @@ export default function EmptyStateGamepad({ size = 140, className }: Props) {
       {/* 左：青 */}
       <circle cx="134" cy="79" r="7.6" fill="#3b82f6" />
       <circle cx="134" cy="79" r="2.7" fill="#bfdbfe" />
-
-      {/* 中央：黒い小さな START / SELECT ×2 */}
-      <rect x="87"  y="76" width="10" height="4" rx="2" fill="#08041a" />
-      <rect x="103" y="76" width="10" height="4" rx="2" fill="#08041a" />
     </svg>
   )
 }
