@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, ChevronRight, Moon, Mic, MicOff, X, Check } from 'lucide-react'
 import { INDUSTRIES } from '@/lib/guild'
 import VillageCard, { type Village, VILLAGE_TYPE_STYLES, getFireStatus } from '@/components/ui/VillageCard'
-import GamepadIcon from '@/components/ui/icons/GamepadIcon'
 
 // ── 型定義 ──────────────────────────────────────────────────────
 type TonightSlot = {
@@ -261,10 +260,7 @@ export default function GuildPage() {
           <div className="flex items-start justify-between gap-3 mb-3">
             <div>
               <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5 text-purple-400/60">GAME ROOM</p>
-              <h1 className="font-extrabold text-white text-2xl leading-tight flex items-center gap-2">
-                <GamepadIcon size={28} active={true} />
-                ゲーム村
-              </h1>
+              <h1 className="font-extrabold text-white text-2xl leading-tight">🎮 ゲーム村</h1>
               <p className="text-white/40 text-xs mt-0.5">今すぐ仲間を募集・通話ルームを開こう</p>
             </div>
             <button
@@ -561,8 +557,8 @@ export default function GuildPage() {
             <div className="text-center py-20">
               <div className="relative w-36 h-36 mx-auto mb-6">
                 <div className="absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.35) 0%, transparent 70%)', filter: 'blur(24px)' }} />
-                <div className="relative w-full h-full flex items-center justify-center" style={{ filter: 'drop-shadow(0 0 20px rgba(139,92,246,0.7))' }}>
-                  <GamepadIcon size={120} active={true} />
+                <div className="relative w-full h-full flex items-center justify-center text-8xl" style={{ filter: 'drop-shadow(0 0 20px rgba(139,92,246,0.6))' }}>
+                  🎮
                 </div>
               </div>
               <p className="font-extrabold text-base mb-1.5" style={{ color: '#F0EEFF' }}>
