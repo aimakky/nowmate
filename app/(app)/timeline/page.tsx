@@ -8,6 +8,7 @@ import { detectNgWords } from '@/lib/moderation'
 import { Heart, RefreshCw, Users, Globe, Home, Share2, HelpCircle, Send, CheckCircle, X, Plus, Waves, Mic, MessageCircle } from 'lucide-react'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import { detectCrisisKeywords } from '@/lib/moderation'
+import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
 
 // ── 型定義 ──────────────────────────────────────────────────────
 type Tab = 'myvillage' | 'all' | 'following'
@@ -1267,8 +1268,8 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         ) && (
           <div className="text-center py-12">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-              style={{ background: 'rgba(57,255,136,0.1)', border: '1px solid rgba(57,255,136,0.2)' }}>
-              <span className="text-3xl">🎮</span>
+              style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' }}>
+              <GuildHeroGamepad size={40} />
             </div>
             <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.4)' }}>まだ投稿がありません</p>
           </div>
