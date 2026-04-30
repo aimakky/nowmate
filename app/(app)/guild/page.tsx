@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, ChevronRight, Moon, Mic, MicOff, X, Check } from 'lucide-react'
 import { INDUSTRIES } from '@/lib/guild'
 import VillageCard, { type Village, VILLAGE_TYPE_STYLES, getFireStatus } from '@/components/ui/VillageCard'
+import GameControllerIcon from '@/components/ui/icons/GameControllerIcon'
 
 // ── 型定義 ──────────────────────────────────────────────────────
 type TonightSlot = {
@@ -555,6 +556,9 @@ export default function GuildPage() {
             </div>
           ) : displayed.length === 0 ? (
             <div className="text-center py-20">
+              <div className="flex justify-center mb-6">
+                <GameControllerIcon width={140} />
+              </div>
               <p className="font-extrabold text-base mb-1.5" style={{ color: '#F0EEFF' }}>
                 {subFilter === 'member' ? 'まだゲーム村に参加していません' : 'このジャンルのゲーム村はまだありません'}
               </p>
