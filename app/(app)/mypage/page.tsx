@@ -14,8 +14,9 @@ import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import DMPrivacySettings from '@/components/features/DMPrivacySettings'
 import GuideTab from '@/components/rules/GuideTab'
+import FeaturesTab from '@/components/features-guide/FeaturesTab'
 
-type ProfileTab = 'tweets' | 'images' | 'joined_villages' | 'hosted_villages' | 'guide'
+type ProfileTab = 'tweets' | 'images' | 'joined_villages' | 'hosted_villages' | 'features' | 'guide'
 
 // ── ツイートコンポーズシート ────────────────────────────────────
 function TweetComposeSheet({
@@ -455,6 +456,7 @@ export default function MyPage() {
             { id: 'images',          label: '画像' },
             { id: 'joined_villages', label: '参加中' },
             { id: 'hosted_villages', label: 'ホスト' },
+            { id: 'features',        label: 'できること' },
             { id: 'guide',           label: '安心ガイド' },
           ] as { id: ProfileTab; label: string }[]).map(tab => (
             <button
@@ -755,6 +757,9 @@ export default function MyPage() {
             </div>
           )
         })()}
+
+        {/* できること（機能ガイド）タブ */}
+        {activeTab === 'features' && <FeaturesTab />}
 
         {/* 安心ガイドタブ */}
         {activeTab === 'guide' && <GuideTab />}
