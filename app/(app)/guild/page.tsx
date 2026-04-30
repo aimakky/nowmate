@@ -25,7 +25,7 @@ const SKILL_LEVELS = ['問わない', 'ビギナー', '中級', '上級']
 
 // ── ゲームジャンルカテゴリ ──────────────────────────────────────
 const GENRE_TABS = [
-  { id: 'all', emoji: '🎮', label: 'すべて' },
+  { id: 'all', emoji: '', label: 'すべて' },
   ...INDUSTRIES.map(i => ({ id: i.id, emoji: i.emoji, label: i.id, color: i.color })),
 ]
 
@@ -260,7 +260,7 @@ export default function GuildPage() {
           <div className="flex items-start justify-between gap-3 mb-3">
             <div>
               <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5 text-purple-400/60">GAME ROOM</p>
-              <h1 className="font-extrabold text-white text-2xl leading-tight">🎮 ゲーム村</h1>
+              <h1 className="font-extrabold text-white text-2xl leading-tight">ゲーム村</h1>
               <p className="text-white/40 text-xs mt-0.5">今すぐ仲間を募集・通話ルームを開こう</p>
             </div>
             <button
@@ -298,7 +298,7 @@ export default function GuildPage() {
                     : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.10)' }
                   }
                 >
-                  <span>{g.emoji}</span>
+                  {g.emoji && <span>{g.emoji}</span>}
                   <span className="whitespace-nowrap">{g.label}</span>
                 </button>
               )
@@ -432,7 +432,7 @@ export default function GuildPage() {
                     disabled={!tGame.trim() || tSaving}
                     className="w-full py-2.5 rounded-xl text-sm font-extrabold text-white transition-all active:scale-[0.98] disabled:opacity-40"
                     style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', boxShadow: '0 4px 14px rgba(139,92,246,0.4)', color: 'white' }}>
-                    {tSaving ? '登録中…' : '今夜の参加を登録する 🎮'}
+                    {tSaving ? '登録中…' : '今夜の参加を登録する'}
                   </button>
                 </div>
               )}
@@ -555,12 +555,6 @@ export default function GuildPage() {
             </div>
           ) : displayed.length === 0 ? (
             <div className="text-center py-20">
-              <div className="relative w-36 h-36 mx-auto mb-6">
-                <div className="absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.35) 0%, transparent 70%)', filter: 'blur(24px)' }} />
-                <div className="relative w-full h-full flex items-center justify-center text-8xl">
-                  🎮
-                </div>
-              </div>
               <p className="font-extrabold text-base mb-1.5" style={{ color: '#F0EEFF' }}>
                 {subFilter === 'member' ? 'まだゲーム村に参加していません' : 'このジャンルのゲーム村はまだありません'}
               </p>
@@ -576,7 +570,7 @@ export default function GuildPage() {
                     boxShadow: '0 8px 24px rgba(139,92,246,0.4)',
                     border: '1px solid rgba(139,92,246,0.3)',
                   }}
-                >🎮 ゲーム村を立てる</button>
+                >ゲーム村を立てる</button>
               )}
             </div>
           ) : (
