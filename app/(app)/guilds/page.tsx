@@ -410,7 +410,7 @@ export default function GuildsPage() {
                     boxShadow: '0 8px 28px rgba(39,223,255,0.4)',
                   }}
                 >
-                  🛡️ ギルドを作る
+                  ギルドを作る
                 </button>
               )}
             </div>
