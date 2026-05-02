@@ -9,15 +9,62 @@
 - ❌ 失敗
 - — 未着手
 
-> 最新検証日: 2026-05-03 / 対象 commit: `34879b4` / Vercel deploy: `dpl_2NDMGxHKVB21rvdtRYDMBT2fRuyb`
+> 最新検証日: 2026-05-03 / 対象 commit: `87c438d` / Vercel deploy: `dpl_tzvm86h96GHmaQNtNMMHnYMfC1fc`
+>
+> **重要**: 2026-05-03 の env 投入後再 probe で、`/api/livekit/token` が依然 `503 {"error":"not_configured"}` を返している。env が **production scope の Lambda runtime に届いていない**。詳細は §0-A を参照。
 
 ## 0. 前提
 
-- ❌ Vercel に `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` / `NEXT_PUBLIC_LIVEKIT_URL` の **3 環境変数** が設定済み
-  - 検証方法: `curl -X POST https://nowmatejapan.com/api/livekit/token` → `503 {"error":"not_configured"}` が返るため **未設定** 確認
-  - **次の手順**: `docs/livekit-setup.md §2-2` に沿って Vercel に投入 → 再デプロイ
-- ✅ 直近のデプロイ ID `dpl_2NDMGxHKVB21rvdtRYDMBT2fRuyb` は最新 commit `34879b4` を反映
+- ❌ Vercel に `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` / `NEXT_PUBLIC_LIVEKIT_URL` の **3 環境変数** が production runtime に反映済み
+  - 2026-05-03 再 probe: `curl -X POST https://www.nowmatejapan.com/api/livekit/token` → 依然 `503 {"error":"not_configured"}`
+  - deploy id は更新済（`dpl_tzvm86h96GHmaQNtNMMHnYMfC1fc`）だが、env が runtime に届いていない
+- ✅ 直近のデプロイ ID `dpl_tzvm86h96GHmaQNtNMMHnYMfC1fc` は最新 commit `87c438d` を反映
 - ⏳ テスト用に **2 アカウント以上** 用意（本人確認済み 1 + 未確認 1 が望ましい）
+
+### 0-A. env が Lambda runtime に届いていない場合の切り分け（重要）
+
+token route の env チェック（[`app/api/livekit/token/route.ts:52-54`](../app/api/livekit/token/route.ts:52)）:
+```ts
+const apiKey    = process.env.LIVEKIT_API_KEY
+const apiSecret = process.env.LIVEKIT_API_SECRET
+const lkUrl     = process.env.NEXT_PUBLIC_LIVEKIT_URL
+if (!apiKey || !apiSecret || !lkUrl) return 503 not_configured
+```
+
+**3 つのうち 1 つでも空なら 503 が返る**。Vercel Dashboard で以下を順に確認してください:
+
+1. **変数名の完全一致**（タイポチェック）
+   - `LIVEKIT_API_KEY` （アンダースコア、すべて大文字）
+   - `LIVEKIT_API_SECRET`
+   - `NEXT_PUBLIC_LIVEKIT_URL`（`NEXT_PUBLIC_` 必須）
+   - 例: `LIVE_KIT_API_KEY` / `LIVEKIT_KEY` / `LIVEKIT_URL`（NEXT_PUBLIC_ 抜け）はすべて NG
+
+2. **Environments 列の確認**
+   - 各変数の右側に **Production** タグが付いているか
+   - Preview のみ・Development のみだと Production Lambda は読めない
+   - 3 つすべてのチェックボックスを ON
+
+3. **値が空でないこと**
+   - Vercel UI で値は `*****` 表示。クリックして編集モードに入ると値が見える
+   - 改行・前後スペースが混入していないか（コピペ時に起こる）
+
+4. **再デプロイの順序**
+   - 環境変数は **新ビルドにのみ反映**。env 追加 → そのまま放置だと既存ビルドに反映されない
+   - Vercel Dashboard → Deployments → 最新 Production deploy の右端「⋯」→ **Redeploy** をクリック
+   - もしくは CLI で `git commit --allow-empty -m "chore: trigger redeploy" && git push`
+   - **Redeploy 時に "Use existing Build Cache" のチェックを外す** 方が確実（特に NEXT_PUBLIC_* が build-time 埋込のため）
+
+5. **反映確認**
+   - 再デプロイ後 1〜2 分待つ
+   - `curl -X POST https://www.nowmatejapan.com/api/livekit/token -H "Content-Type: application/json" -d '{}'`
+   - → `401 {"error":"unauthenticated"}` が返れば env 反映成功
+   - 依然 503 なら 1〜4 を再確認
+
+### 0-B. それでも解決しない場合
+
+- Vercel Functions のログを Dashboard → Functions → `/api/livekit/token` で確認
+- 私が token route に追加した `console.error('[livekit/token] env missing:', missing)` で **どの変数が欠けているか** が出る
+- 例: `[livekit/token] env missing: ['NEXT_PUBLIC_LIVEKIT_URL']` → URL だけ Production スコープに入っていない
 
 ## 1. PC Chrome — 単独入室
 
