@@ -155,7 +155,8 @@ export default function VoiceRoomPage() {
   const livekitRef    = useRef<Room | null>(null)
   const audioElsRef   = useRef<Map<string, HTMLAudioElement>>(new Map())
   const channelRef    = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null)
-  const [connState, setConnState] = useState<'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('idle')
+  const [connState, setConnState] = useState<'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'left'>('idle')
+  const [serviceState, setServiceState] = useState<'ok' | 'not_configured' | 'unavailable'>('ok')
 
   // ── 初期化 ───────────────────────────────────────────────
   useEffect(() => {
@@ -297,23 +298,52 @@ export default function VoiceRoomPage() {
   }, [welcomeEvent])
 
   // ── LiveKit Room 接続 ────────────────────────────────────
-  async function fetchLkToken(): Promise<{ token: string; url: string } | null> {
+  type TokenError =
+    | 'not_configured'
+    | 'unauthenticated'
+    | 'invalid_room_id'
+    | 'room_not_found'
+    | 'room_closed'
+    | 'internal'
+    | 'network'
+
+  async function fetchLkToken(): Promise<
+    | { ok: true;  token: string; url: string }
+    | { ok: false; reason: TokenError }
+  > {
     try {
       const res = await fetch('/api/livekit/token', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ roomId }),
       })
-      if (!res.ok) {
-        console.error('[livekit] token api', res.status, await res.text().catch(() => ''))
-        return null
+      if (res.ok) {
+        const j = await res.json() as { token?: string; url?: string }
+        if (!j.token || !j.url) return { ok: false, reason: 'internal' }
+        return { ok: true, token: j.token, url: j.url }
       }
-      const j = await res.json() as { token?: string; url?: string }
-      if (!j.token || !j.url) return null
-      return { token: j.token, url: j.url }
+      // 既知のエラーコードを抽出
+      let reason: TokenError = 'internal'
+      try {
+        const j = await res.json() as { error?: string }
+        if (j.error === 'not_configured'
+            || j.error === 'unauthenticated'
+            || j.error === 'invalid_room_id'
+            || j.error === 'room_not_found'
+            || j.error === 'room_closed') {
+          reason = j.error
+        }
+      } catch { /* レスポンス body が JSON でない時はステータスから推測 */
+        if (res.status === 503) reason = 'not_configured'
+        else if (res.status === 401) reason = 'unauthenticated'
+        else if (res.status === 404) reason = 'room_not_found'
+        else if (res.status === 410) reason = 'room_closed'
+      }
+      console.error('[livekit] token api', res.status, reason)
+      return { ok: false, reason }
     } catch (e) {
       console.error('[livekit] token fetch failed', e)
-      return null
+      return { ok: false, reason: 'network' }
     }
   }
 
@@ -360,10 +390,19 @@ export default function VoiceRoomPage() {
 
     // 1) LiveKit token 発行（サーバー側で Supabase auth 検証）
     const lk = await fetchLkToken()
-    if (!lk) {
-      setMicError(true)
+    if (!lk.ok) {
       setConnState('disconnected')
       setJoining(false)
+      if (lk.reason === 'not_configured') {
+        setServiceState('not_configured')
+      } else if (lk.reason === 'room_closed' || lk.reason === 'room_not_found') {
+        setServiceState('unavailable')
+      } else if (lk.reason === 'unauthenticated') {
+        router.push('/login')
+        return
+      } else {
+        setMicError(true)
+      }
       return
     }
 
@@ -384,7 +423,7 @@ export default function VoiceRoomPage() {
       await room.connect(lk.url, lk.token, { autoSubscribe: true })
     } catch (e) {
       console.error('[livekit] connect failed', e)
-      setMicError(true)
+      setServiceState('unavailable')
       setConnState('disconnected')
       setJoining(false)
       return
@@ -441,7 +480,7 @@ export default function VoiceRoomPage() {
     livekitRef.current = null
     audioElsRef.current.forEach(el => { try { el.pause() } catch { /* noop */ }; el.remove() })
     audioElsRef.current.clear()
-    setConnState('disconnected')
+    setConnState('left')
     if (channelRef.current) createClient().removeChannel(channelRef.current)
     const supabase = createClient()
     await supabase.from('voice_participants').delete().eq('room_id', roomId).eq('user_id', userId)
@@ -620,6 +659,31 @@ export default function VoiceRoomPage() {
           </div>
         )}
 
+        {/* LiveKit 環境変数未設定（運用者作業待ち） */}
+        {serviceState === 'not_configured' && (
+          <div className="rounded-2xl px-4 py-4 mb-4"
+            style={{ background: 'rgba(167,139,250,0.10)', border: '1px solid rgba(167,139,250,0.30)', color: '#e0d4ff' }}>
+            <p className="text-sm font-bold mb-1">通話機能を準備中です</p>
+            <p className="text-xs leading-relaxed" style={{ color: 'rgba(224,212,255,0.65)' }}>
+              通話サービスの設定中につき、現在ご利用いただけません。少し時間を置いて再度お試しください。
+            </p>
+            {process.env.NODE_ENV !== 'production' && (
+              <p className="text-[11px] mt-2 font-mono" style={{ color: 'rgba(224,212,255,0.5)' }}>
+                [admin] LIVEKIT_API_KEY / LIVEKIT_API_SECRET / NEXT_PUBLIC_LIVEKIT_URL を Vercel に設定し再デプロイしてください
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ルーム自体が利用不可（閉じた / 削除 / connect 失敗） */}
+        {serviceState === 'unavailable' && (
+          <div className="rounded-2xl px-4 py-3 mb-4"
+            style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#fecaca' }}>
+            <p className="text-sm font-bold mb-1">この通話には入れません</p>
+            <p className="text-xs">部屋が閉じられたか、接続に失敗しました。一覧に戻ってお試しください。</p>
+          </div>
+        )}
+
         {connState === 'reconnecting' && (
           <div className="rounded-2xl px-4 py-3 mb-4 text-xs font-medium flex items-center gap-2"
             style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.3)', color: '#FCD34D' }}>
@@ -631,6 +695,12 @@ export default function VoiceRoomPage() {
           <div className="rounded-2xl px-4 py-3 mb-4 text-xs font-medium"
             style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#fecaca' }}>
             通話接続が切れました。退出して再入室してください。
+          </div>
+        )}
+        {connState === 'left' && (
+          <div className="rounded-2xl px-4 py-3 mb-4 text-xs font-medium"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(240,238,255,0.55)' }}>
+            通話から退出しました
           </div>
         )}
 
