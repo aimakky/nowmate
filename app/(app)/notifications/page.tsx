@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
 import Avatar from '@/components/ui/Avatar'
-import { User } from 'lucide-react'
+import { Bell } from 'lucide-react'
 
 type Notif = {
   id: string
@@ -122,15 +122,12 @@ export default function NotificationsPage() {
       <div className="sticky top-0 z-10 px-4 pt-12 pb-3 backdrop-blur-md"
         style={{ background: 'rgba(8,8,18,0.92)', borderBottom: '1px solid rgba(255,201,40,0.2)' }}>
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ border: '2px solid rgba(255,201,40,0.6)', background: 'rgba(255,201,40,0.1)' }}>
-              <User size={16} style={{ color: '#FFC928' }} />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#FFC928' }}>NOTIFICATIONS</p>
-              <h1 className="font-extrabold text-2xl leading-tight" style={{ color: '#F0EEFF' }}>通知</h1>
-            </div>
+          <div>
+            <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#FFC928' }}>NOTIFICATIONS</p>
+            <h1 className="font-extrabold text-2xl leading-tight flex items-center gap-2" style={{ color: '#F0EEFF' }}>
+              <Bell size={22} strokeWidth={2.2} style={{ color: '#FFC928' }} />
+              通知
+            </h1>
           </div>
           {unreadCount > 0 && (
             <span className="flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-full"

@@ -7,7 +7,7 @@ import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
-import { Edit2, MessageSquareDashed, Check, X } from 'lucide-react'
+import { Edit2, MessageSquareDashed, Check, X, MessageSquare } from 'lucide-react'
 
 interface DirectChat {
   matchId: string
@@ -150,7 +150,10 @@ export default function ChatListPage() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(255,79,216,0.7)' }}>MESSAGES</p>
-            <h1 className="font-extrabold text-xl" style={{ color: '#F0EEFF' }}>チャット</h1>
+            <h1 className="font-extrabold text-xl flex items-center gap-2" style={{ color: '#F0EEFF' }}>
+              <MessageSquare size={20} strokeWidth={2.2} style={{ color: '#FF4FD8' }} />
+              チャット
+            </h1>
           </div>
           <button className="text-sm font-semibold active:opacity-60 transition-opacity" style={{ color: '#FF4FD8' }}>
             編集
