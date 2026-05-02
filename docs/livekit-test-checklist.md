@@ -9,9 +9,15 @@
 - ❌ 失敗
 - — 未着手
 
-> 最新検証日: 2026-05-03 / 対象 commit: `87c438d` / Vercel deploy: `dpl_tzvm86h96GHmaQNtNMMHnYMfC1fc`
+> 最新検証日: 2026-05-03 / 対象 commit: `aa167ab` / Vercel deploy: `dpl_CNfPrUKEv7oMP49sQBbnsRwgCDUe`
 >
-> **重要**: 2026-05-03 の env 投入後再 probe で、`/api/livekit/token` が依然 `503 {"error":"not_configured"}` を返している。env が **production scope の Lambda runtime に届いていない**。詳細は §0-A を参照。
+> **重要 (2026-05-03 最新 probe)**: `/api/debug/env-check` で **3 つすべて `false`** が確定。
+> ```
+> { "LIVEKIT_API_KEY": false, "LIVEKIT_API_SECRET": false, "NEXT_PUBLIC_LIVEKIT_URL": false, "env": "production" }
+> ```
+> deploy id は前回確認時から **不変** = Redeploy が走っていない。env 投入と Redeploy の両方が必要。詳細手順は §0-A。
+>
+> **debug endpoint は env 反映確認まで残す**（削除条件は「3 つとも true + token API 401」）。
 
 ## 0. 前提
 
