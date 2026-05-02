@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag } from '@/lib/utils'
 import { ArrowLeft, Mic, MicOff, Radio, LogOut, Send, ChevronUp, ChevronDown, ShieldCheck, Lock } from 'lucide-react'
 import { awardPoints, getTierById } from '@/lib/trust'
 import { canSpeakInVoiceRoom, type AgeVerificationStatus } from '@/lib/permissions'
-import { Room, RoomEvent, Track, type RemoteTrack, type RemoteTrackPublication, type RemoteParticipant } from 'livekit-client'
+import { Room, RoomEvent, Track, type RemoteTrack, type RemoteTrackPublication, type RemoteParticipant, type Participant as LkParticipant } from 'livekit-client'
+import { logVoice, userTag, startTimer, endTimer } from '@/lib/voice-telemetry'
 
 // ─── 定数 ────────────────────────────────────────────────────
 const CAT_EMOJI: Record<string, string> = {
@@ -52,27 +53,31 @@ interface WelcomeEvent {
 
 // ─── ユーザーアバター ─────────────────────────────────────────
 function Avatar({
-  participant, isMe, isMuted, isHost, size = 'md',
+  participant, isMe, isMuted, isHost, isSpeaking, size = 'md',
 }: {
   participant: Participant
   isMe: boolean
   isMuted?: boolean
   isHost: boolean
+  /** いま発声中（LiveKit ActiveSpeakersChanged から判定） */
+  isSpeaking?: boolean
   size?: 'sm' | 'md'
 }) {
   const sz = size === 'sm' ? 'w-11 h-11 text-xl' : 'w-16 h-16 text-2xl'
   const flag = getNationalityFlag(participant.profiles?.nationality || '')
   const tierId = participant.user_trust?.tier ?? 'visitor'
   const tier = getTierById(tierId)
+  const speakingHi = isSpeaking
+  const meHi = isMe && !isMuted
 
   return (
     <div className="flex flex-col items-center gap-0.5">
       <div
-        className={`${sz} rounded-2xl flex items-center justify-center relative transition-all`}
+        className={`${sz} rounded-2xl flex items-center justify-center relative transition-all ${speakingHi ? 'animate-[pulse_1.2s_ease-in-out_infinite]' : ''}`}
         style={{
-          background: isMe && !isMuted ? 'rgba(124,255,130,0.12)' : 'rgba(255,255,255,0.08)',
-          border: isMe && !isMuted ? '2px solid rgba(124,255,130,0.6)' : '1.5px solid rgba(255,255,255,0.1)',
-          boxShadow: isMe && !isMuted ? '0 0 12px rgba(124,255,130,0.3)' : 'none',
+          background: speakingHi ? 'rgba(124,255,130,0.18)' : meHi ? 'rgba(124,255,130,0.12)' : 'rgba(255,255,255,0.08)',
+          border:     speakingHi ? '2px solid rgba(124,255,130,0.85)' : meHi ? '2px solid rgba(124,255,130,0.6)' : '1.5px solid rgba(255,255,255,0.1)',
+          boxShadow:  speakingHi ? '0 0 16px rgba(124,255,130,0.55)' : meHi ? '0 0 12px rgba(124,255,130,0.3)' : 'none',
         }}
       >
         {participant.profiles?.avatar_url
@@ -155,8 +160,13 @@ export default function VoiceRoomPage() {
   const livekitRef    = useRef<Room | null>(null)
   const audioElsRef   = useRef<Map<string, HTMLAudioElement>>(new Map())
   const channelRef    = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null)
+  const tokenPrefetchRef = useRef<{ token: string; url: string; fetchedAt: number } | null>(null)
   const [connState, setConnState] = useState<'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'left'>('idle')
   const [serviceState, setServiceState] = useState<'ok' | 'not_configured' | 'unavailable'>('ok')
+  const [activeSpeakerIds, setActiveSpeakerIds] = useState<Set<string>>(new Set())
+  const [silenceLong, setSilenceLong] = useState(false)
+  const [showFirstHint, setShowFirstHint] = useState(false)
+  const lastSpeakAtRef = useRef<number>(Date.now())
 
   // ── 初期化 ───────────────────────────────────────────────
   useEffect(() => {
@@ -271,6 +281,56 @@ export default function VoiceRoomPage() {
     }
   }, [])
 
+  // ── 初回到達 + token プリフェッチで体感高速化 ──────────────
+  useEffect(() => {
+    if (!roomId || !userId || joined) return
+    logVoice('voice.entry.viewed', { roomId, userTag: userTag(userId) })
+    // 初回ヒント（sessionStorage で 1 度だけ）
+    try {
+      const k = `samee_voice_first_hint_${roomId}`
+      if (!sessionStorage.getItem(k)) {
+        setShowFirstHint(true)
+        sessionStorage.setItem(k, '1')
+      }
+    } catch { /* noop */ }
+    // 入室前に裏で token を取得しておく（500ms 短縮効果）
+    ;(async () => {
+      const r = await fetchLkToken({ silentForUser: true })
+      if (r.ok) {
+        tokenPrefetchRef.current = { token: r.token, url: r.url, fetchedAt: Date.now() }
+      }
+    })()
+  }, [roomId, userId, joined])
+
+  // ── アクティブ話者検知（誰がいま話しているか） ─────────────
+  useEffect(() => {
+    if (!joined || !livekitRef.current) return
+    const room = livekitRef.current
+    const onActive = (speakers: LkParticipant[]) => {
+      const ids = new Set(speakers.map(s => s.identity))
+      setActiveSpeakerIds(ids)
+      if (ids.size > 0) {
+        lastSpeakAtRef.current = Date.now()
+        if (silenceLong) setSilenceLong(false)
+      }
+    }
+    room.on(RoomEvent.ActiveSpeakersChanged, onActive)
+    return () => { room.off(RoomEvent.ActiveSpeakersChanged, onActive) }
+  }, [joined, silenceLong])
+
+  // ── 無音検知（30 秒以上誰も話してない時に控えめなヒント） ──
+  useEffect(() => {
+    if (!joined) return
+    const t = setInterval(() => {
+      const idle = Date.now() - lastSpeakAtRef.current
+      if (idle > 30_000 && !silenceLong) {
+        setSilenceLong(true)
+        logVoice('voice.silence.detected', { roomId, ms: idle })
+      }
+    }, 5000)
+    return () => clearInterval(t)
+  }, [joined, silenceLong, roomId])
+
   // ── ウェルカムタイマー ───────────────────────────────────
   useEffect(() => {
     if (!welcomeEvent) return
@@ -304,13 +364,16 @@ export default function VoiceRoomPage() {
     | 'invalid_room_id'
     | 'room_not_found'
     | 'room_closed'
+    | 'rate_limited'
     | 'internal'
     | 'network'
 
-  async function fetchLkToken(): Promise<
+  async function fetchLkToken(opts?: { silentForUser?: boolean }): Promise<
     | { ok: true;  token: string; url: string }
     | { ok: false; reason: TokenError }
   > {
+    const t0 = Date.now()
+    if (!opts?.silentForUser) logVoice('voice.token.requested', { roomId, userTag: userTag(userId) })
     try {
       const res = await fetch('/api/livekit/token', {
         method: 'POST',
@@ -319,7 +382,11 @@ export default function VoiceRoomPage() {
       })
       if (res.ok) {
         const j = await res.json() as { token?: string; url?: string }
-        if (!j.token || !j.url) return { ok: false, reason: 'internal' }
+        if (!j.token || !j.url) {
+          if (!opts?.silentForUser) logVoice('voice.token.failed', { roomId, reason: 'internal', ms: Date.now() - t0 })
+          return { ok: false, reason: 'internal' }
+        }
+        if (!opts?.silentForUser) logVoice('voice.token.success', { roomId, ms: Date.now() - t0 })
         return { ok: true, token: j.token, url: j.url }
       }
       // 既知のエラーコードを抽出
@@ -330,18 +397,21 @@ export default function VoiceRoomPage() {
             || j.error === 'unauthenticated'
             || j.error === 'invalid_room_id'
             || j.error === 'room_not_found'
-            || j.error === 'room_closed') {
-          reason = j.error
+            || j.error === 'room_closed'
+            || j.error === 'rate_limited') {
+          reason = j.error as TokenError
         }
       } catch { /* レスポンス body が JSON でない時はステータスから推測 */
         if (res.status === 503) reason = 'not_configured'
         else if (res.status === 401) reason = 'unauthenticated'
         else if (res.status === 404) reason = 'room_not_found'
         else if (res.status === 410) reason = 'room_closed'
+        else if (res.status === 429) reason = 'rate_limited'
       }
-      console.error('[livekit] token api', res.status, reason)
+      if (!opts?.silentForUser) logVoice('voice.token.failed', { roomId, reason, ms: Date.now() - t0 })
       return { ok: false, reason }
     } catch (e) {
+      if (!opts?.silentForUser) logVoice('voice.token.failed', { roomId, reason: 'network', ms: Date.now() - t0 })
       console.error('[livekit] token fetch failed', e)
       return { ok: false, reason: 'network' }
     }
@@ -361,8 +431,8 @@ export default function VoiceRoomPage() {
         track.detach().forEach(e => e.remove())
         audioElsRef.current.delete(participant.identity)
       })
-      .on(RoomEvent.Reconnecting,    () => setConnState('reconnecting'))
-      .on(RoomEvent.Reconnected,     () => setConnState('connected'))
+      .on(RoomEvent.Reconnecting,    () => { setConnState('reconnecting'); logVoice('voice.reconnect.started', { roomId }) })
+      .on(RoomEvent.Reconnected,     () => { setConnState('connected');    logVoice('voice.reconnect.recovered', { roomId }) })
       .on(RoomEvent.Disconnected,    () => setConnState('disconnected'))
       .on(RoomEvent.ConnectionStateChanged, (s) => {
         // 'connected' | 'reconnecting' | 'disconnected' などをマップ
@@ -383,27 +453,42 @@ export default function VoiceRoomPage() {
       }
     }
 
+    logVoice('voice.entry.cta_clicked', { roomId, userTag: userTag(userId), mode })
+    startTimer(`session_${roomId}`)
     setJoining(true)
     setConnState('connecting')
+    setMicError(false)
+    setServiceState('ok')
     const asListener = mode !== 'speaker'
     setIsListener(asListener)
 
-    // 1) LiveKit token 発行（サーバー側で Supabase auth 検証）
-    const lk = await fetchLkToken()
-    if (!lk.ok) {
-      setConnState('disconnected')
-      setJoining(false)
-      if (lk.reason === 'not_configured') {
-        setServiceState('not_configured')
-      } else if (lk.reason === 'room_closed' || lk.reason === 'room_not_found') {
-        setServiceState('unavailable')
-      } else if (lk.reason === 'unauthenticated') {
-        router.push('/login')
+    // 1) LiveKit token: プリフェッチ済みなら使い、無ければ取りに行く（最大 60 秒キャッシュ）
+    let lkToken: string, lkUrl: string
+    const pre = tokenPrefetchRef.current
+    if (pre && Date.now() - pre.fetchedAt < 60_000) {
+      lkToken = pre.token
+      lkUrl   = pre.url
+    } else {
+      const lk = await fetchLkToken()
+      if (!lk.ok) {
+        setConnState('disconnected')
+        setJoining(false)
+        if (lk.reason === 'not_configured') {
+          setServiceState('not_configured')
+        } else if (lk.reason === 'room_closed' || lk.reason === 'room_not_found') {
+          setServiceState('unavailable')
+        } else if (lk.reason === 'unauthenticated') {
+          router.push('/login')
+          return
+        } else if (lk.reason === 'rate_limited') {
+          setServiceState('unavailable')
+        } else {
+          setServiceState('unavailable')
+        }
         return
-      } else {
-        setMicError(true)
       }
-      return
+      lkToken = lk.token
+      lkUrl   = lk.url
     }
 
     // 2) Room 作成 + 接続
@@ -419,10 +504,13 @@ export default function VoiceRoomPage() {
     })
     attachLkRoomEvents(room)
 
+    const tConnect0 = Date.now()
+    logVoice('voice.connect.started', { roomId, userTag: userTag(userId) })
     try {
-      await room.connect(lk.url, lk.token, { autoSubscribe: true })
+      await room.connect(lkUrl, lkToken, { autoSubscribe: true })
     } catch (e) {
       console.error('[livekit] connect failed', e)
+      logVoice('voice.connect.failed', { roomId, ms: Date.now() - tConnect0, reason: e instanceof Error ? e.message : 'unknown' })
       setServiceState('unavailable')
       setConnState('disconnected')
       setJoining(false)
@@ -430,13 +518,17 @@ export default function VoiceRoomPage() {
     }
     livekitRef.current = room
     setConnState('connected')
+    logVoice('voice.connect.success', { roomId, ms: Date.now() - tConnect0, size: room.numParticipants })
 
     // 3) speaker ならマイク publish（getUserMedia は LiveKit が user gesture 文脈で実行）
     if (!asListener) {
+      logVoice('voice.mic.requested', { roomId })
       try {
         await room.localParticipant.setMicrophoneEnabled(true)
+        logVoice('voice.mic.granted', { roomId })
       } catch (e) {
         console.error('[livekit] enable mic failed', e)
+        logVoice('voice.mic.denied', { roomId, reason: e instanceof Error ? e.message : 'unknown' })
         setMicError(true)
         setIsListener(true)
       }
@@ -475,6 +567,9 @@ export default function VoiceRoomPage() {
 
   async function leaveRoom() {
     if (!userId || !roomId) return
+    const dur = endTimer(`session_${roomId}`)
+    if (dur !== undefined) logVoice('voice.session.duration', { roomId, ms: dur })
+    logVoice('voice.session.left', { roomId, userTag: userTag(userId) })
     // LiveKit 切断 + 全 track の track.stop()（disconnect 内で実行）
     try { await livekitRef.current?.disconnect() } catch { /* noop */ }
     livekitRef.current = null
@@ -518,9 +613,42 @@ export default function VoiceRoomPage() {
     try {
       await room.localParticipant.setMicrophoneEnabled(!next)
       setIsMuted(next)
+      logVoice('voice.mic.toggled', { roomId, mode: next ? 'muted' : 'unmuted' })
     } catch (e) {
       console.error('[livekit] toggle mute failed', e)
     }
+  }
+
+  /** マイク許可拒否後の再リクエスト（モバイル UX 改善） */
+  async function retryMic() {
+    const room = livekitRef.current
+    if (!room) return
+    logVoice('voice.mic.requested', { roomId, mode: 'retry' })
+    try {
+      await room.localParticipant.setMicrophoneEnabled(true)
+      setMicError(false)
+      setIsMuted(false)
+      setIsListener(false)
+      logVoice('voice.mic.granted', { roomId, mode: 'retry' })
+    } catch (e) {
+      logVoice('voice.mic.denied', { roomId, mode: 'retry', reason: e instanceof Error ? e.message : 'unknown' })
+    }
+  }
+
+  /** 接続失敗・切断後の再接続トリガ — 既存の joinRoom を呼び直す */
+  async function retryConnect() {
+    setServiceState('ok')
+    setConnState('idle')
+    setJoined(false)
+    livekitRef.current = null
+    audioElsRef.current.forEach(el => el.remove())
+    audioElsRef.current.clear()
+    if (channelRef.current) {
+      try { createClient().removeChannel(channelRef.current) } catch { /* noop */ }
+      channelRef.current = null
+    }
+    // 直前の mode を保持してないので listener 既定で再試行（speaker は別 CTA から）
+    await joinRoom('listener')
   }
 
   function sendReaction(emoji: string) {
@@ -564,8 +692,9 @@ export default function VoiceRoomPage() {
     </div>
   )
 
-  const speakers  = participants.filter(p => !p.is_listener)
-  const listeners = participants.filter(p => p.is_listener)
+  // 派生データはメモ化（participants が変わった時だけ再計算）
+  const speakers  = useMemo(() => participants.filter(p => !p.is_listener), [participants])
+  const listeners = useMemo(() => participants.filter(p => p.is_listener),  [participants])
   const isHost    = room.host_id === userId
 
   return (
@@ -640,11 +769,19 @@ export default function VoiceRoomPage() {
               {room.category} · {getNationalityFlag(room.profiles?.nationality || '')} {room.profiles?.display_name}
             </p>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-            style={{ background: 'rgba(124,255,130,0.1)', border: '1px solid rgba(124,255,130,0.25)' }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse"
-              style={{ background: '#7CFF82', boxShadow: '0 0 6px rgba(124,255,130,0.8)' }} />
-            <span className="text-xs font-extrabold tracking-wider" style={{ color: '#7CFF82' }}>LIVE</span>
+          <div className="flex items-center gap-1.5">
+            {participants.length > 0 && (
+              <span className="text-[10px] font-bold px-2 py-1 rounded-full"
+                style={{ background: 'rgba(167,139,250,0.12)', color: '#c4b5fd', border: '1px solid rgba(167,139,250,0.3)' }}>
+                {participants.length}人
+              </span>
+            )}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+              style={{ background: 'rgba(124,255,130,0.1)', border: '1px solid rgba(124,255,130,0.25)' }}>
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse"
+                style={{ background: '#7CFF82', boxShadow: '0 0 6px rgba(124,255,130,0.8)' }} />
+              <span className="text-xs font-extrabold tracking-wider" style={{ color: '#7CFF82' }}>LIVE</span>
+            </div>
           </div>
         </div>
       </div>
@@ -653,9 +790,21 @@ export default function VoiceRoomPage() {
       <div className={`flex-1 overflow-y-auto px-4 transition-all ${welcomeEvent ? 'pt-20' : 'pt-4'}`}>
 
         {micError && (
-          <div className="rounded-2xl px-4 py-3 mb-4 text-xs font-medium"
-            style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#FCD34D' }}>
-            ⚠️ マイクが使えません — ブラウザのマイク許可を確認してリスナーとして参加中
+          <div className="rounded-2xl px-4 py-3 mb-4"
+            style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
+            <p className="text-xs font-medium" style={{ color: '#FCD34D' }}>
+              マイクが使えません。今は聞き専で参加しています。
+            </p>
+            <p className="text-[11px] mt-1" style={{ color: 'rgba(252,211,77,0.65)' }}>
+              アドレスバーの 🔒 → サイトの設定 → マイクを「許可」にすると話せます。
+            </p>
+            <button
+              onClick={retryMic}
+              className="mt-2 text-[11px] font-bold px-3 py-1.5 rounded-full active:scale-95"
+              style={{ background: 'rgba(252,211,77,0.18)', color: '#FCD34D', border: '1px solid rgba(252,211,77,0.4)' }}
+            >
+              もう一度マイクを試す
+            </button>
           </div>
         )}
 
@@ -680,7 +829,23 @@ export default function VoiceRoomPage() {
           <div className="rounded-2xl px-4 py-3 mb-4"
             style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#fecaca' }}>
             <p className="text-sm font-bold mb-1">この通話には入れません</p>
-            <p className="text-xs">部屋が閉じられたか、接続に失敗しました。一覧に戻ってお試しください。</p>
+            <p className="text-xs">部屋が閉じられたか、接続に失敗しました。少し時間を置いて再度お試しください。</p>
+            <div className="mt-2 flex gap-2">
+              <button
+                onClick={retryConnect}
+                className="text-[11px] font-bold px-3 py-1.5 rounded-full active:scale-95"
+                style={{ background: 'rgba(239,68,68,0.18)', color: '#fecaca', border: '1px solid rgba(239,68,68,0.4)' }}
+              >
+                もう一度試す
+              </button>
+              <button
+                onClick={() => router.push('/voice')}
+                className="text-[11px] font-bold px-3 py-1.5 rounded-full active:scale-95"
+                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.7)', border: '1px solid rgba(255,255,255,0.12)' }}
+              >
+                通話一覧に戻る
+              </button>
+            </div>
           </div>
         )}
 
@@ -692,15 +857,53 @@ export default function VoiceRoomPage() {
           </div>
         )}
         {connState === 'disconnected' && joined && (
-          <div className="rounded-2xl px-4 py-3 mb-4 text-xs font-medium"
-            style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#fecaca' }}>
-            通話接続が切れました。退出して再入室してください。
+          <div className="rounded-2xl px-4 py-3 mb-4"
+            style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)' }}>
+            <p className="text-xs font-medium" style={{ color: '#fecaca' }}>
+              通話の接続が切れました
+            </p>
+            <button
+              onClick={retryConnect}
+              className="mt-2 text-[11px] font-bold px-3 py-1.5 rounded-full active:scale-95"
+              style={{ background: 'rgba(239,68,68,0.18)', color: '#fecaca', border: '1px solid rgba(239,68,68,0.4)' }}
+            >
+              もう一度入る
+            </button>
           </div>
         )}
         {connState === 'left' && (
           <div className="rounded-2xl px-4 py-3 mb-4 text-xs font-medium"
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(240,238,255,0.55)' }}>
             通話から退出しました
+          </div>
+        )}
+
+        {/* 初回ヒント（sessionStorage で 1 度だけ） */}
+        {showFirstHint && !joined && (
+          <div className="rounded-2xl px-4 py-3 mb-4"
+            style={{ background: 'rgba(124,58,237,0.10)', border: '1px solid rgba(167,139,250,0.30)' }}>
+            <p className="text-xs font-bold mb-1" style={{ color: '#c4b5fd' }}>はじめての通話？</p>
+            <ul className="text-[11px] space-y-0.5 leading-relaxed" style={{ color: 'rgba(196,181,253,0.85)' }}>
+              <li>・最初は「観客として参加」がおすすめ。聞くだけで OK。</li>
+              <li>・「お疲れさま」だけ言って退出する人もたくさんいます。</li>
+              <li>・気まずくなったら、何も言わずに退出ボタンで OK。</li>
+            </ul>
+            <button
+              onClick={() => setShowFirstHint(false)}
+              className="mt-2 text-[10px] font-bold underline"
+              style={{ color: 'rgba(196,181,253,0.6)' }}
+            >
+              閉じる
+            </button>
+          </div>
+        )}
+
+        {/* 無音ヒント（30 秒以上誰も話してない時） */}
+        {silenceLong && joined && connState === 'connected' && (
+          <div className="rounded-2xl px-4 py-2.5 mb-4 text-[11px] flex items-center gap-2"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(240,238,255,0.55)' }}>
+            <span>🤫</span>
+            <span>今はみんな静か。「お疲れさま」から始めてみる？</span>
           </div>
         )}
 
@@ -732,14 +935,17 @@ export default function VoiceRoomPage() {
           ) : (
             <div className="px-4 pb-4 pt-2">
               <div className="grid grid-cols-4 gap-3">
-                {speakers.map(p => (
+                {speakers.map(p => {
+                  const sp = activeSpeakerIds.has(p.user_id)
+                  const meHi = p.user_id === userId && !isMuted
+                  return (
                   <div key={p.user_id} className="flex flex-col items-center gap-1">
                     <div
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center relative"
+                      className={`w-14 h-14 rounded-2xl flex items-center justify-center relative transition-all ${sp ? 'animate-[pulse_1.2s_ease-in-out_infinite]' : ''}`}
                       style={{
-                        background: p.user_id === userId && !isMuted ? 'rgba(124,255,130,0.12)' : 'rgba(255,255,255,0.08)',
-                        border: p.user_id === userId && !isMuted ? '2px solid rgba(124,255,130,0.6)' : '1.5px solid rgba(255,255,255,0.1)',
-                        boxShadow: p.user_id === userId && !isMuted ? '0 0 14px rgba(124,255,130,0.3)' : 'none',
+                        background: sp ? 'rgba(124,255,130,0.18)' : meHi ? 'rgba(124,255,130,0.12)' : 'rgba(255,255,255,0.08)',
+                        border:     sp ? '2px solid rgba(124,255,130,0.85)' : meHi ? '2px solid rgba(124,255,130,0.6)' : '1.5px solid rgba(255,255,255,0.1)',
+                        boxShadow:  sp ? '0 0 18px rgba(124,255,130,0.55)' : meHi ? '0 0 14px rgba(124,255,130,0.3)' : 'none',
                       }}
                     >
                       {p.profiles?.avatar_url
@@ -762,11 +968,11 @@ export default function VoiceRoomPage() {
                       )}
                     </div>
                     <p className="text-[10px] font-semibold text-center truncate w-14 px-0.5"
-                      style={{ color: 'rgba(255,255,255,0.75)' }}>
+                      style={{ color: sp ? '#7CFF82' : 'rgba(255,255,255,0.75)' }}>
                       {p.profiles?.display_name?.split(' ')[0] ?? '?'}
                     </p>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           )}

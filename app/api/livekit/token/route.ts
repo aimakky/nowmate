@@ -28,6 +28,25 @@ interface TokenBody {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+// In-memory rate limiter (token bucket).
+// Same Lambda インスタンス内で 1 ユーザーあたり毎分 12 回まで（5 秒あたり 1 回ペース）。
+// 本番で複数インスタンスや edge にまたがる場合は Upstash Redis 等に置き換える。
+const RATE_WINDOW_MS = 60_000
+const RATE_MAX       = 12
+const rateBuckets = new Map<string, number[]>()
+function rateLimit(userId: string): boolean {
+  const now = Date.now()
+  const arr = rateBuckets.get(userId) ?? []
+  const fresh = arr.filter(t => now - t < RATE_WINDOW_MS)
+  if (fresh.length >= RATE_MAX) {
+    rateBuckets.set(userId, fresh)
+    return false
+  }
+  fresh.push(now)
+  rateBuckets.set(userId, fresh)
+  return true
+}
+
 export async function POST(request: NextRequest) {
   // 1) 環境変数チェック — 未設定は 503（一時的に使えない、再試行可能）として扱う
   const apiKey    = process.env.LIVEKIT_API_KEY
@@ -68,10 +87,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
   }
 
-  // 4) ルームの存在 + closed 状態チェック
+  // 4) Rate limit（per-user）— DoS 防止 + 課金保護
+  if (!rateLimit(user.id)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  }
+
+  // 5) ルームの存在 + closed 状態チェック + ホスト判定
   const { data: room, error: roomErr } = await supabase
     .from('voice_rooms')
-    .select('id, status')
+    .select('id, status, host_id')
     .eq('id', roomId)
     .maybeSingle()
   if (roomErr) {
@@ -85,7 +109,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'room_closed' }, { status: 410 })
   }
 
-  // 5) display_name を identity-name に使用（任意フィールド）
+  // 6) display_name を identity-name に使用（任意フィールド）
   const { data: profile } = await supabase
     .from('profiles')
     .select('display_name')
@@ -93,11 +117,16 @@ export async function POST(request: NextRequest) {
     .maybeSingle()
   const displayName = (profile?.display_name as string | undefined) ?? `User-${user.id.slice(0, 6)}`
 
-  // 6) AccessToken 生成
+  // 7) AccessToken 生成 — participant metadata に role を埋め込み
+  //    （他クライアントから RemoteParticipant.metadata で host 判定可能）
+  const isHost = room.host_id === user.id
+  const metadata = JSON.stringify({ role: isHost ? 'host' : 'member' })
+
   const at = new AccessToken(apiKey, apiSecret, {
     identity: user.id,
-    name: displayName,
-    ttl: 60 * 60, // 1h
+    name:     displayName,
+    metadata,
+    ttl:      60 * 60, // 1h
   })
   at.addGrant({
     room:           `samee-voice-${roomId}`,
@@ -108,5 +137,11 @@ export async function POST(request: NextRequest) {
   })
 
   const token = await at.toJwt()
-  return NextResponse.json({ token, url: lkUrl, roomName: `samee-voice-${roomId}` })
+  // クライアントには必要最小限のフィールドだけ返す（roomName は client 側で生成可能だが
+  // 取り違え防止のため返す）
+  return NextResponse.json({
+    token,
+    url:      lkUrl,
+    roomName: `samee-voice-${roomId}`,
+  })
 }
