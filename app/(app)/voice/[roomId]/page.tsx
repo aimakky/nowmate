@@ -7,6 +7,7 @@ import { getNationalityFlag } from '@/lib/utils'
 import { ArrowLeft, Mic, MicOff, Radio, LogOut, Send, ChevronUp, ChevronDown, ShieldCheck, Lock } from 'lucide-react'
 import { awardPoints, getTierById } from '@/lib/trust'
 import { canSpeakInVoiceRoom, type AgeVerificationStatus } from '@/lib/permissions'
+import { Room, RoomEvent, Track, type RemoteTrack, type RemoteTrackPublication, type RemoteParticipant } from 'livekit-client'
 
 // ─── 定数 ────────────────────────────────────────────────────
 const CAT_EMOJI: Record<string, string> = {
@@ -148,27 +149,13 @@ export default function VoiceRoomPage() {
   const [chatUnread,  setChatUnread]  = useState(0)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // ── WebRTC ───────────────────────────────────────────────
-  const localStreamRef  = useRef<MediaStream | null>(null)
-  const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map())
-  const audioRefs       = useRef<Map<string, HTMLAudioElement>>(new Map())
-  const channelRef      = useRef<any>(null)
-
-  const ICE_SERVERS = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    // TURN servers — モバイル・企業ネットでのNAT越え（STUNだけだと30-50%失敗）
-    { urls: 'turn:openrelay.metered.ca:80',               username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443',              username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turns:openrelay.metered.ca:443',             username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:80?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-    // カスタムTURN（本番用 — .envに設定）
-    ...(process.env.NEXT_PUBLIC_TURN_URL ? [{
-      urls:       process.env.NEXT_PUBLIC_TURN_URL,
-      username:   process.env.NEXT_PUBLIC_TURN_USERNAME ?? '',
-      credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL ?? '',
-    }] : []),
-  ]
+  // ── LiveKit (SFU) ────────────────────────────────────────
+  // Mesh WebRTC は廃止。音声 transport は LiveKit Cloud / Server に集約。
+  // Supabase Realtime は reaction / joined ブロードキャストにのみ使用。
+  const livekitRef    = useRef<Room | null>(null)
+  const audioElsRef   = useRef<Map<string, HTMLAudioElement>>(new Map())
+  const channelRef    = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null)
+  const [connState, setConnState] = useState<'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('idle')
 
   // ── 初期化 ───────────────────────────────────────────────
   useEffect(() => {
@@ -211,7 +198,8 @@ export default function VoiceRoomPage() {
     setParticipants((data || []) as unknown as Participant[])
   }, [roomId])
 
-  // ── 自分の昇格を検知してマイク取得・WebRTC開始 ───────────
+  // ── 自分の昇格を検知してマイク有効化 ─────────────────────
+  // LiveKit に既に接続済みなので、token は再取得せず mic だけ enable する
   useEffect(() => {
     if (!joined || !userId || !isListener) return
     const myParticipant = participants.find(p => p.user_id === userId)
@@ -223,17 +211,12 @@ export default function VoiceRoomPage() {
       setTimeout(() => setPromotionBanner(false), 4000)
       ;(async () => {
         try {
-          localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-          const { data: existing } = await createClient()
-            .from('voice_participants').select('user_id')
-            .eq('room_id', roomId).eq('is_listener', false).neq('user_id', userId)
-          for (const p of existing || []) {
-            const pc = createPC(p.user_id)
-            const offer = await pc.createOffer()
-            await pc.setLocalDescription(offer)
-            channelRef.current?.send({ type: 'broadcast', event: 'offer', payload: { to: p.user_id, from: userId, sdp: offer } })
-          }
-        } catch { setMicError(true) }
+          await livekitRef.current?.localParticipant.setMicrophoneEnabled(true)
+          setIsMuted(false)
+        } catch (e) {
+          console.error('[livekit] enable mic on promote failed', e)
+          setMicError(true)
+        }
       })()
     }
   }, [participants, isListener, joined, userId, roomId])
@@ -277,6 +260,16 @@ export default function VoiceRoomPage() {
     }
   }, [chatOpen, chatMsgs])
 
+  // ── アンマウント時に LiveKit を必ず切断（タブ閉じ・前画面戻る等） ──
+  useEffect(() => {
+    return () => {
+      try { livekitRef.current?.disconnect() } catch { /* noop */ }
+      livekitRef.current = null
+      audioElsRef.current.forEach(el => { try { el.pause() } catch { /* noop */ }; el.remove() })
+      audioElsRef.current.clear()
+    }
+  }, [])
+
   // ── ウェルカムタイマー ───────────────────────────────────
   useEffect(() => {
     if (!welcomeEvent) return
@@ -303,26 +296,50 @@ export default function VoiceRoomPage() {
     return () => { clearInterval(welcomeTimerRef.current!) }
   }, [welcomeEvent])
 
-  // ── WebRTC ───────────────────────────────────────────────
-  function createPC(remoteUserId: string): RTCPeerConnection {
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
-    peerConnections.current.set(remoteUserId, pc)
-    localStreamRef.current?.getTracks().forEach(t => pc.addTrack(t, localStreamRef.current!))
-    pc.ontrack = (e) => {
-      const audio = new Audio()
-      audio.srcObject = e.streams[0]
-      audio.autoplay = true
-      audioRefs.current.set(remoteUserId, audio)
-    }
-    pc.onicecandidate = (e) => {
-      if (e.candidate && channelRef.current) {
-        channelRef.current.send({
-          type: 'broadcast', event: 'ice',
-          payload: { to: remoteUserId, from: userId, candidate: e.candidate }
-        })
+  // ── LiveKit Room 接続 ────────────────────────────────────
+  async function fetchLkToken(): Promise<{ token: string; url: string } | null> {
+    try {
+      const res = await fetch('/api/livekit/token', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ roomId }),
+      })
+      if (!res.ok) {
+        console.error('[livekit] token api', res.status, await res.text().catch(() => ''))
+        return null
       }
+      const j = await res.json() as { token?: string; url?: string }
+      if (!j.token || !j.url) return null
+      return { token: j.token, url: j.url }
+    } catch (e) {
+      console.error('[livekit] token fetch failed', e)
+      return null
     }
-    return pc
+  }
+
+  function attachLkRoomEvents(room: Room) {
+    room
+      .on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _pub: RemoteTrackPublication, participant: RemoteParticipant) => {
+        if (track.kind !== Track.Kind.Audio) return
+        const el = track.attach() as HTMLAudioElement
+        el.style.display = 'none'
+        el.setAttribute('data-lk-user', participant.identity)
+        document.body.appendChild(el)
+        audioElsRef.current.set(participant.identity, el)
+      })
+      .on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, _pub: RemoteTrackPublication, participant: RemoteParticipant) => {
+        track.detach().forEach(e => e.remove())
+        audioElsRef.current.delete(participant.identity)
+      })
+      .on(RoomEvent.Reconnecting,    () => setConnState('reconnecting'))
+      .on(RoomEvent.Reconnected,     () => setConnState('connected'))
+      .on(RoomEvent.Disconnected,    () => setConnState('disconnected'))
+      .on(RoomEvent.ConnectionStateChanged, (s) => {
+        // 'connected' | 'reconnecting' | 'disconnected' などをマップ
+        if (s === 'connected')         setConnState('connected')
+        else if (s === 'reconnecting') setConnState('reconnecting')
+        else if (s === 'disconnected') setConnState('disconnected')
+      })
   }
 
   async function joinRoom(mode: 'speaker' | 'listener' | 'silent') {
@@ -337,18 +354,56 @@ export default function VoiceRoomPage() {
     }
 
     setJoining(true)
+    setConnState('connecting')
     const asListener = mode !== 'speaker'
     setIsListener(asListener)
 
+    // 1) LiveKit token 発行（サーバー側で Supabase auth 検証）
+    const lk = await fetchLkToken()
+    if (!lk) {
+      setMicError(true)
+      setConnState('disconnected')
+      setJoining(false)
+      return
+    }
+
+    // 2) Room 作成 + 接続
+    const room = new Room({
+      adaptiveStream: true,
+      dynacast:       true,
+      // モバイル・iOS Safari 安定化のための既定値
+      publishDefaults: {
+        audioPreset: { maxBitrate: 32000 },
+        dtx:         true,
+        red:         true,
+      },
+    })
+    attachLkRoomEvents(room)
+
+    try {
+      await room.connect(lk.url, lk.token, { autoSubscribe: true })
+    } catch (e) {
+      console.error('[livekit] connect failed', e)
+      setMicError(true)
+      setConnState('disconnected')
+      setJoining(false)
+      return
+    }
+    livekitRef.current = room
+    setConnState('connected')
+
+    // 3) speaker ならマイク publish（getUserMedia は LiveKit が user gesture 文脈で実行）
     if (!asListener) {
       try {
-        localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-      } catch {
+        await room.localParticipant.setMicrophoneEnabled(true)
+      } catch (e) {
+        console.error('[livekit] enable mic failed', e)
         setMicError(true)
         setIsListener(true)
       }
     }
 
+    // 4) Supabase 参加レコード upsert（既存 UI ロジックが参照）
     const supabase = createClient()
     await supabase.from('voice_participants').upsert({
       room_id: roomId, user_id: userId,
@@ -356,52 +411,22 @@ export default function VoiceRoomPage() {
       join_mode: mode,
     })
 
-    // ── シグナリングチャンネル設定 ─────────────────────
+    // 5) reaction / joined ブロードキャスト用の Supabase channel（音声シグナリングは含めない）
     const ch = supabase.channel(`voice:${roomId}`)
     channelRef.current = ch
-
     ch
-      .on('broadcast', { event: 'offer' }, async ({ payload }: any) => {
-        if (payload.to !== userId) return
-        const pc = createPC(payload.from)
-        await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
-        const answer = await pc.createAnswer()
-        await pc.setLocalDescription(answer)
-        ch.send({ type: 'broadcast', event: 'answer', payload: { to: payload.from, from: userId, sdp: answer } })
-      })
-      .on('broadcast', { event: 'answer' }, async ({ payload }: any) => {
-        if (payload.to !== userId) return
-        const pc = peerConnections.current.get(payload.from)
-        if (pc) await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
-      })
-      .on('broadcast', { event: 'ice' }, async ({ payload }: any) => {
-        if (payload.to !== userId) return
-        const pc = peerConnections.current.get(payload.from)
-        if (pc && payload.candidate) await pc.addIceCandidate(new RTCIceCandidate(payload.candidate))
-      })
-      .on('broadcast', { event: 'reaction' }, ({ payload }: any) => {
+      .on('broadcast', { event: 'reaction' }, ({ payload }: { payload: { emoji: string } }) => {
         spawnFloat(payload.emoji)
       })
-      .on('broadcast', { event: 'joined' }, ({ payload }: any) => {
+      .on('broadcast', { event: 'joined' }, ({ payload }: { payload: { userId: string; name: string; flag: string } }) => {
         if (payload.userId === userId) return
         setWelcomeEvent({ userId: payload.userId, name: payload.name, flag: payload.flag, deadline: Date.now() + WELCOME_TIMEOUT * 1000 })
       })
-      .subscribe(async (status) => {
+      .subscribe((status) => {
         if (status !== 'SUBSCRIBED') return
-
-        const { data: existing } = await supabase
-          .from('voice_participants').select('user_id')
-          .eq('room_id', roomId).eq('is_listener', false).neq('user_id', userId)
-        for (const p of existing || []) {
-          const pc = createPC(p.user_id)
-          const offer = await pc.createOffer()
-          await pc.setLocalDescription(offer)
-          ch.send({ type: 'broadcast', event: 'offer', payload: { to: p.user_id, from: userId, sdp: offer } })
-        }
-
         ch.send({
           type: 'broadcast', event: 'joined',
-          payload: { userId, name: myName, flag: myFlag }
+          payload: { userId, name: myName, flag: myFlag },
         })
       })
 
@@ -411,11 +436,12 @@ export default function VoiceRoomPage() {
 
   async function leaveRoom() {
     if (!userId || !roomId) return
-    peerConnections.current.forEach(pc => pc.close())
-    peerConnections.current.clear()
-    localStreamRef.current?.getTracks().forEach(t => t.stop())
-    audioRefs.current.forEach(a => { a.pause(); a.srcObject = null })
-    audioRefs.current.clear()
+    // LiveKit 切断 + 全 track の track.stop()（disconnect 内で実行）
+    try { await livekitRef.current?.disconnect() } catch { /* noop */ }
+    livekitRef.current = null
+    audioElsRef.current.forEach(el => { try { el.pause() } catch { /* noop */ }; el.remove() })
+    audioElsRef.current.clear()
+    setConnState('disconnected')
     if (channelRef.current) createClient().removeChannel(channelRef.current)
     const supabase = createClient()
     await supabase.from('voice_participants').delete().eq('room_id', roomId).eq('user_id', userId)
@@ -446,9 +472,16 @@ export default function VoiceRoomPage() {
       .eq('room_id', roomId).eq('user_id', targetUserId)
   }
 
-  function toggleMute() {
-    localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = isMuted })
-    setIsMuted(m => !m)
+  async function toggleMute() {
+    const room = livekitRef.current
+    if (!room) return
+    const next = !isMuted
+    try {
+      await room.localParticipant.setMicrophoneEnabled(!next)
+      setIsMuted(next)
+    } catch (e) {
+      console.error('[livekit] toggle mute failed', e)
+    }
   }
 
   function sendReaction(emoji: string) {
@@ -583,7 +616,21 @@ export default function VoiceRoomPage() {
         {micError && (
           <div className="rounded-2xl px-4 py-3 mb-4 text-xs font-medium"
             style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#FCD34D' }}>
-            ⚠️ マイクが使えません — リスナーとして参加中
+            ⚠️ マイクが使えません — ブラウザのマイク許可を確認してリスナーとして参加中
+          </div>
+        )}
+
+        {connState === 'reconnecting' && (
+          <div className="rounded-2xl px-4 py-3 mb-4 text-xs font-medium flex items-center gap-2"
+            style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.3)', color: '#FCD34D' }}>
+            <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            通話に再接続中…
+          </div>
+        )}
+        {connState === 'disconnected' && joined && (
+          <div className="rounded-2xl px-4 py-3 mb-4 text-xs font-medium"
+            style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#fecaca' }}>
+            通話接続が切れました。退出して再入室してください。
           </div>
         )}
 
