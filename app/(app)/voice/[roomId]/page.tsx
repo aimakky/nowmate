@@ -51,66 +51,6 @@ interface WelcomeEvent {
   deadline: number  // Date.now() + 15000
 }
 
-// ─── ユーザーアバター ─────────────────────────────────────────
-function Avatar({
-  participant, isMe, isMuted, isHost, isSpeaking, size = 'md',
-}: {
-  participant: Participant
-  isMe: boolean
-  isMuted?: boolean
-  isHost: boolean
-  /** いま発声中（LiveKit ActiveSpeakersChanged から判定） */
-  isSpeaking?: boolean
-  size?: 'sm' | 'md'
-}) {
-  const sz = size === 'sm' ? 'w-11 h-11 text-xl' : 'w-16 h-16 text-2xl'
-  const flag = getNationalityFlag(participant.profiles?.nationality || '')
-  const tierId = participant.user_trust?.tier ?? 'visitor'
-  const tier = getTierById(tierId)
-  const speakingHi = isSpeaking
-  const meHi = isMe && !isMuted
-
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <div
-        className={`${sz} rounded-2xl flex items-center justify-center relative transition-all ${speakingHi ? 'animate-[pulse_1.2s_ease-in-out_infinite]' : ''}`}
-        style={{
-          background: speakingHi ? 'rgba(124,255,130,0.18)' : meHi ? 'rgba(124,255,130,0.12)' : 'rgba(255,255,255,0.08)',
-          border:     speakingHi ? '2px solid rgba(124,255,130,0.85)' : meHi ? '2px solid rgba(124,255,130,0.6)' : '1.5px solid rgba(255,255,255,0.1)',
-          boxShadow:  speakingHi ? '0 0 16px rgba(124,255,130,0.55)' : meHi ? '0 0 12px rgba(124,255,130,0.3)' : 'none',
-        }}
-      >
-        {participant.profiles?.avatar_url
-          ? <img src={participant.profiles.avatar_url} className="w-full h-full object-cover rounded-2xl" alt="" />
-          : <span className="text-2xl">{flag}</span>
-        }
-        {isMe && isMuted && (
-          <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-            <MicOff size={10} className="text-white" />
-          </span>
-        )}
-        {isHost && (
-          <span className="absolute -top-1.5 -right-1 text-sm">👑</span>
-        )}
-        {participant.is_listener && !isMe && (
-          <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
-            style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.15)' }}>
-            <Radio size={9} className="text-white" />
-          </span>
-        )}
-      </div>
-      <p className="text-[10px] font-semibold text-center truncate w-14 px-0.5"
-        style={{ color: 'rgba(240,238,255,0.7)' }}>
-        {participant.profiles?.display_name?.split(' ')[0] ?? '?'}
-      </p>
-      {/* 信頼ティアバッジ（Discourse式：発言者の質を可視化）*/}
-      <span className={`inline-flex items-center gap-0.5 text-[8px] font-bold px-1.5 py-0 rounded-full border truncate max-w-[3.5rem] ${tier.color}`}>
-        {tier.icon} {tier.label}
-      </span>
-    </div>
-  )
-}
-
 // ─── メインページ ─────────────────────────────────────────────
 export default function VoiceRoomPage() {
   const { roomId } = useParams<{ roomId: string }>()
