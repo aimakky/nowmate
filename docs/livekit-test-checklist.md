@@ -9,22 +9,19 @@
 - ❌ 失敗
 - — 未着手
 
-> 最新検証日: 2026-05-03 / 対象 commit: `aa167ab` / Vercel deploy: `dpl_CNfPrUKEv7oMP49sQBbnsRwgCDUe`
+> 最新検証日: 2026-05-04 / 対象 commit: `0a8daee` 直前の baseline 確認時点 / Vercel deploy: `dpl_MqBmpQ6crtQN9DybRyhkoWjmKxe8`
 >
-> **重要 (2026-05-03 最新 probe)**: `/api/debug/env-check` で **3 つすべて `false`** が確定。
-> ```
-> { "LIVEKIT_API_KEY": false, "LIVEKIT_API_SECRET": false, "NEXT_PUBLIC_LIVEKIT_URL": false, "env": "production" }
-> ```
-> deploy id は前回確認時から **不変** = Redeploy が走っていない。env 投入と Redeploy の両方が必要。詳細手順は §0-A。
->
-> **debug endpoint は env 反映確認まで残す**（削除条件は「3 つとも true + token API 401」）。
+> **2026-05-04 確認済**:
+> - `/api/debug/env-check` で **3 つすべて `true`** ✅
+> - `/api/livekit/token` (空 body) → `400 invalid_room_id` ✅
+> - `/api/livekit/token` (UUID + 未認証) → `401 unauthenticated` ✅
+> - **debug endpoint は本コミットで削除済み**（削除条件「3 つとも true + 401」を満たしたため）
 
 ## 0. 前提
 
-- ❌ Vercel に `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` / `NEXT_PUBLIC_LIVEKIT_URL` の **3 環境変数** が production runtime に反映済み
-  - 2026-05-03 再 probe: `curl -X POST https://www.nowmatejapan.com/api/livekit/token` → 依然 `503 {"error":"not_configured"}`
-  - deploy id は更新済（`dpl_tzvm86h96GHmaQNtNMMHnYMfC1fc`）だが、env が runtime に届いていない
-- ✅ 直近のデプロイ ID `dpl_tzvm86h96GHmaQNtNMMHnYMfC1fc` は最新 commit `87c438d` を反映
+- ✅ Vercel に `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` / `NEXT_PUBLIC_LIVEKIT_URL` の **3 環境変数** が production runtime に反映済み（2026-05-04 確認）
+- ✅ 直近のデプロイは最新 commit を反映
+- ✅ Token API は `400 invalid_room_id` / `401 unauthenticated` を正しく返却
 - ⏳ テスト用に **2 アカウント以上** 用意（本人確認済み 1 + 未確認 1 が望ましい）
 
 ### 0-A. env が Lambda runtime に届いていない場合の切り分け（重要）
