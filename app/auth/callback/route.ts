@@ -35,10 +35,12 @@ export async function GET(request: NextRequest) {
           .from('profiles')
           .select('id')
           .eq('id', user.id)
-          .single()
+          .maybeSingle()
 
-        // If profile exists → go to home, otherwise → onboarding
-        const redirectTo = profile ? '/home' : '/onboarding'
+        // 旧: existing → '/home'（旧 occupation 系の死にかけページ）
+        // 新: existing → next クエリ（既定 /timeline）、プロフィール無し → /onboarding
+        const safeNext = (next.startsWith('/') && !next.startsWith('//')) ? next : '/timeline'
+        const redirectTo = profile ? safeNext : '/onboarding'
         return NextResponse.redirect(`${origin}${redirectTo}`)
       }
     }

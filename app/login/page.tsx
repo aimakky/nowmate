@@ -18,19 +18,49 @@ export default function LoginPage() {
     setError('')
     const { error: err } = await createClient().auth.signInWithPassword({ email, password })
     if (err) { setError('メールアドレスまたはパスワードが正しくありません'); setLoading(false); return }
-    router.push('/villages')
+    // 旧: '/villages'（旧 nowmate の「村を探す」一覧。samee の世界観と無関係）。
+    // → 現在のメイン入口である /timeline へ統一。BottomNav の TL がここで active になる。
+    router.push('/timeline')
     router.refresh()
   }
 
   async function handleGoogle() {
+    // 旧: redirectTo=/onboarding 直行 → SSR cookie が書かれないリスク + 既存ユーザーも
+    // オンボに飛ばされる。
+    // → /auth/callback?next=/timeline 経由で server 側に session を確定させる。
+    //   callback 側で「プロフィール有り → /timeline、無し → /onboarding」を分岐する。
     await createClient().auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${location.origin}/onboarding` },
+      options: { redirectTo: `${location.origin}/auth/callback?next=/timeline` },
     })
   }
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ background: '#080812' }}>
+
+      {/* ── 認証中の全画面ローディング（旧 UI が一瞬出るのを防ぐためのカバー） ── */}
+      {loading && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center"
+          style={{ background: 'rgba(8,8,18,0.92)', backdropFilter: 'blur(8px)' }}>
+          <div className="flex flex-col items-center gap-3">
+            <div
+              className="w-14 h-14 rounded-3xl flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, #9D5CFF 0%, #FF4D90 100%)',
+                boxShadow: '0 0 30px rgba(157,92,255,0.5)',
+              }}
+            >
+              <span className="text-2xl">✦</span>
+            </div>
+            <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(240,238,255,0.6)' }}>
+              SAMEE
+            </p>
+            <span className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
+              style={{ borderColor: 'rgba(157,92,255,0.6)', borderTopColor: 'transparent' }} />
+          </div>
+        </div>
+      )}
+
       {/* Background grid */}
       <div className="absolute inset-0 pointer-events-none"
         style={{

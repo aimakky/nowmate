@@ -1,2 +1,3 @@
 import { redirect } from 'next/navigation'
-export default function ActivityPage() { redirect('/villages') }
+// 旧: /villages（旧 nowmate 一覧）→ samee の主動線である /timeline へ統一
+export default function ActivityPage() { redirect('/timeline') }

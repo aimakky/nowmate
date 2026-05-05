@@ -122,11 +122,11 @@ export default function BottlePage() {
               漂流瓶は村の機能です。<br />村に参加してから使えます。
             </p>
             <button
-              onClick={() => router.push('/villages')}
+              onClick={() => router.push('/guilds')}
               className="mt-4 px-6 py-2.5 rounded-2xl text-sm font-bold text-white"
               style={{ background: 'linear-gradient(135deg, #1e40af, #1d4ed8)' }}
             >
-              村を探す →
+              ギルドを探す →
             </button>
           </div>
         )}
