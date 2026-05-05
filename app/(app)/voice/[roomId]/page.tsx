@@ -94,6 +94,15 @@ export default function VoiceRoomPage() {
   const [chatUnread,  setChatUnread]  = useState(0)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
+  // ── YouTube 同時視聴（Supabase Realtime channel 経由・DB 永続化なし） ──
+  // 誰かが URL を貼ると 'youtube' broadcast が飛び、ルーム全員の videoId state が
+  // 同期されて iframe を表示する。停止時は 'youtube_stop'。
+  // ページリロードや退室で消える ephemeral 設計（次フェーズで永続化検討）。
+  const [youtubeVideoId, setYoutubeVideoId]   = useState<string | null>(null)
+  const [showYoutubeInput, setShowYoutubeInput] = useState(false)
+  const [youtubeInput,   setYoutubeInput]     = useState('')
+  const [youtubeError,   setYoutubeError]     = useState('')
+
   // ── LiveKit (SFU) ────────────────────────────────────────
   // Mesh WebRTC は廃止。音声 transport は LiveKit Cloud / Server に集約。
   // Supabase Realtime は reaction / joined ブロードキャストにのみ使用。
@@ -493,6 +502,11 @@ export default function VoiceRoomPage() {
         if (payload.userId === userId) return
         setWelcomeEvent({ userId: payload.userId, name: payload.name, flag: payload.flag, deadline: Date.now() + WELCOME_TIMEOUT * 1000 })
       })
+      // YouTube 同時視聴：他の参加者からの URL をピックアップ → iframe 表示
+      .on('broadcast', { event: 'youtube' }, ({ payload }: { payload: { videoId: string; from: string } }) => {
+        if (payload?.videoId) setYoutubeVideoId(payload.videoId)
+      })
+      .on('broadcast', { event: 'youtube_stop' }, () => setYoutubeVideoId(null))
       .subscribe((status) => {
         if (status !== 'SUBSCRIBED') return
         ch.send({
@@ -503,6 +517,45 @@ export default function VoiceRoomPage() {
 
     setJoined(true)
     setJoining(false)
+  }
+
+  // ── YouTube 同時視聴 ─────────────────────────────────────
+  /** youtube.com/watch?v= / youtu.be/ / youtube.com/shorts/ から 11 文字の videoId を抽出 */
+  function extractYoutubeId(url: string): string | null {
+    const trimmed = url.trim()
+    if (!trimmed) return null
+    // youtu.be/<id> / youtube.com/(watch\?v=|shorts/|embed/)<id>
+    const m = trimmed.match(
+      /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/,
+    )
+    return m?.[1] ?? null
+  }
+  function shareYoutube() {
+    const id = extractYoutubeId(youtubeInput)
+    if (!id) {
+      setYoutubeError('有効な YouTube の URL を入力してください。')
+      return
+    }
+    setYoutubeError('')
+    setYoutubeVideoId(id)
+    setShowYoutubeInput(false)
+    setYoutubeInput('')
+    // Supabase channel で全員に同期（既存の reaction / joined と同じ仕組み）
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'youtube',
+      payload: { videoId: id, from: userId },
+    })
+    logVoice('voice.youtube.shared', { roomId })
+  }
+  function stopYoutube() {
+    setYoutubeVideoId(null)
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'youtube_stop',
+      payload: { from: userId },
+    })
+    logVoice('voice.youtube.stopped', { roomId })
   }
 
   async function leaveRoom() {
@@ -1088,6 +1141,84 @@ export default function VoiceRoomPage() {
         )}
 
         {/* ── リアクションパネル（参加後）── */}
+        {/* ── YouTube 同時視聴パネル ── */}
+        {joined && (
+          <div className="mt-4 rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="flex items-center justify-between px-4 py-2.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-base">▶️</span>
+                <span className="text-xs font-bold truncate" style={{ color: 'rgba(240,238,255,0.7)' }}>
+                  {youtubeVideoId ? '同時視聴中' : 'YouTube を一緒に見る'}
+                </span>
+              </div>
+              {youtubeVideoId ? (
+                <button onClick={stopYoutube}
+                  className="text-[10px] font-bold px-2.5 py-1 rounded-full active:scale-95 transition-all"
+                  style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)' }}>
+                  停止
+                </button>
+              ) : (
+                <button onClick={() => { setShowYoutubeInput(s => !s); setYoutubeError('') }}
+                  className="text-[10px] font-bold px-2.5 py-1 rounded-full active:scale-95 transition-all"
+                  style={{ background: 'rgba(157,92,255,0.18)', color: '#c4b5fd', border: '1px solid rgba(157,92,255,0.35)' }}>
+                  {showYoutubeInput ? 'キャンセル' : '＋ URL を共有'}
+                </button>
+              )}
+            </div>
+
+            {/* URL 入力 */}
+            {showYoutubeInput && !youtubeVideoId && (
+              <div className="px-3 pb-3 space-y-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <input
+                  type="url"
+                  value={youtubeInput}
+                  onChange={e => { setYoutubeInput(e.target.value); if (youtubeError) setYoutubeError('') }}
+                  placeholder="https://youtu.be/... または https://youtube.com/watch?v=..."
+                  className="w-full px-3 py-2 rounded-xl text-xs focus:outline-none"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(157,92,255,0.25)',
+                    color: '#F0EEFF',
+                    caretColor: '#9D5CFF',
+                  }}
+                />
+                {youtubeError && (
+                  <p className="text-[10px] font-bold" style={{ color: '#fca5a5' }}>⚠️ {youtubeError}</p>
+                )}
+                <button onClick={shareYoutube} disabled={!youtubeInput.trim()}
+                  className="w-full py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40 active:scale-95 transition-all"
+                  style={{ background: 'linear-gradient(135deg,#9D5CFF,#7B3FE4)', boxShadow: '0 4px 14px rgba(157,92,255,0.35)' }}>
+                  ルームに共有する
+                </button>
+                <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                  ※ ルーム全員が同じ動画を見られます。再生位置の同期はありません（各自で操作）。
+                </p>
+              </div>
+            )}
+
+            {/* 埋め込みプレイヤー */}
+            {youtubeVideoId && (
+              <div className="px-3 pb-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="relative w-full overflow-hidden rounded-xl"
+                  style={{ paddingBottom: '56.25%', background: '#000' }}>
+                  <iframe
+                    src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=0&rel=0&modestbranding=1`}
+                    className="absolute inset-0 w-full h-full"
+                    title="YouTube 同時視聴"
+                    allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                </div>
+                <p className="text-[10px] mt-2 leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                  同じ動画をルーム全員で見られます。再生・停止・シークは各自で操作してください。
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {joined && (
           <div className="mt-4 mb-2">
             <p className="text-[10px] font-bold uppercase tracking-wider mb-2.5"

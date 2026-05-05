@@ -28,6 +28,9 @@ export type VoiceEventName =
   // 滞在/離脱
   | 'voice.session.duration'     // 入室→退出までの秒
   | 'voice.silence.detected'     // 30 秒以上発話 0
+  // YouTube 同時視聴（broadcast 経由・DB なし）
+  | 'voice.youtube.shared'       // 誰かが URL を共有
+  | 'voice.youtube.stopped'      // 共有を停止
 
 interface BaseProps {
   roomId?:    string
