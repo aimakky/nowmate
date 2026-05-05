@@ -18,6 +18,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShieldCheck, ChevronRight, Phone, FileText, Loader2 } from 'lucide-react'
 import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
+import VerifiedBadge from '@/components/ui/VerifiedBadge'
 
 export type AgeVerificationStatus = 'unverified' | 'pending' | 'age_verified' | 'rejected' | string
 
@@ -93,16 +94,19 @@ export default function TrustVerificationCard({ userId, phoneVerified, ageVerifi
     >
       {/* ── ヘッダー ── */}
       <div className="px-4 pt-4 pb-3">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
           <ShieldCheck size={14} style={{ color: allVerified ? '#7CFF82' : '#EAF2FF' }} />
           <p className="text-[10px] font-extrabold uppercase tracking-widest"
             style={{ color: 'rgba(240,238,255,0.5)' }}>安心認証</p>
-          {allVerified && (
+          {/* 全完了時は緑タグ、本人確認(20歳以上)単体完了時はバッジでも示す */}
+          {allVerified ? (
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
               style={{ color: '#7CFF82', background: 'rgba(124,255,130,0.1)', border: '1px solid rgba(124,255,130,0.3)' }}>
               すべて確認済み
             </span>
-          )}
+          ) : isAgeVerified ? (
+            <VerifiedBadge verified size="md" />
+          ) : null}
         </div>
 
         {/* ── ステータス 3 行 ── */}

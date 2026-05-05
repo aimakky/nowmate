@@ -6,8 +6,10 @@ import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag, timeAgo } from '@/lib/utils'
 import { MessageCircle, Repeat2, MoreHorizontal, Pencil, Trash2, X, Flag, Ban } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
+import VerifiedBadge from '@/components/ui/VerifiedBadge'
 import ReportModal from '@/components/features/ReportModal'
 import { getTierById } from '@/lib/trust'
+import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 
 export const REACTIONS = [
   { key: 'heart',   emoji: '❤️', label: 'Love' },
@@ -26,7 +28,15 @@ export interface TweetData {
   reply_count: number
   repost_count: number
   repost_of: string | null
-  profiles: { display_name: string; nationality: string; avatar_url: string | null }
+  profiles: {
+    display_name: string
+    nationality: string
+    avatar_url: string | null
+    // Phase 1: 既存スキーマの age_verified を optional として受け取れるように。
+    // クエリ側で select に追加していなければ undefined → バッジ非表示。
+    age_verified?: boolean | null
+    age_verification_status?: string | null
+  }
   tweet_reactions: { user_id: string; reaction: string }[]
   tweet_replies?: { id: string }[]
   // 投稿者の Trust Tier（任意・取得側がマージ済みなら表示する）
@@ -44,9 +54,16 @@ interface Props {
   onUpdate: () => void
   showBorder?: boolean
   canInteract?: boolean
+  /**
+   * 親側で投稿者の verified 状態を持っている場合に明示的に上書きできる。
+   * 例: マイページで自分の投稿一覧を表示するとき、profile.age_verified を渡す。
+   */
+  verified?: boolean
 }
 
-export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, canInteract = true }: Props) {
+export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, canInteract = true, verified }: Props) {
+  // 投稿者の verified 判定: 明示 props 優先、次に tweet.profiles の既存カラム
+  const isVerified = verified ?? isVerifiedByExistingSchema(tweet.profiles)
   const router = useRouter()
   const [showPicker,  setShowPicker]  = useState(false)
   const [reposting,   setReposting]   = useState(false)
@@ -173,6 +190,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                   style={{ color: '#F0EEFF' }}>
                   {tweet.profiles?.display_name}
                 </button>
+                {isVerified && <VerifiedBadge verified size="sm" />}
                 {tweet.user_trust?.tier && (
                   <span
                     className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 leading-none"

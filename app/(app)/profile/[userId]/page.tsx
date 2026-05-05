@@ -7,6 +7,8 @@ import { getNationalityFlag, timeAgo } from '@/lib/utils'
 import { ArrowLeft, Heart, ChevronRight, MessageSquare, MoreHorizontal, Flag, Ban } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
+import VerifiedBadge from '@/components/ui/VerifiedBadge'
+import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 import Link from 'next/link'
 import { getCategoryStyle, getTitleName, TITLE_LEVEL_STYLE } from '@/lib/qa'
 import ReportModal from '@/components/features/ReportModal'
@@ -198,9 +200,10 @@ if (loading) return (
         <div className="flex items-start gap-4 mb-4">
           <Avatar src={profile.avatar_url} name={profile.display_name} size="lg" tier={trustTier} />
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-0.5">
+            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
               <p className="font-extrabold text-stone-900 text-lg leading-tight">{profile.display_name}</p>
               <span className="text-xl">{flag}</span>
+              {isVerifiedByExistingSchema(profile) && <VerifiedBadge verified size="md" />}
             </div>
             {trustTier && (
               <div className="mb-1">

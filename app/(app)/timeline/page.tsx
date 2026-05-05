@@ -1086,7 +1086,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
     const supabase = createClient()
     const { data, error } = await supabase
       .from('tweets')
-      .select('*, profiles!tweets_user_id_fkey(display_name, nationality, avatar_url), tweet_reactions!tweet_reactions_tweet_id_fkey(user_id, reaction), tweet_replies!tweet_replies_tweet_id_fkey(id)')
+      .select('*, profiles!tweets_user_id_fkey(display_name, nationality, avatar_url, age_verified, age_verification_status), tweet_reactions!tweet_reactions_tweet_id_fkey(user_id, reaction), tweet_replies!tweet_replies_tweet_id_fkey(id)')
       .is('reply_to_id', null)
       .order('created_at', { ascending: false })
       .limit(40)

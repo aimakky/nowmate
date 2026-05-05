@@ -225,7 +225,7 @@ export default function MyPage() {
           .limit(30),
         supabase
           .from('tweets')
-          .select('*, profiles!tweets_user_id_fkey(display_name, nationality, avatar_url), tweet_reactions!tweet_reactions_tweet_id_fkey(user_id, reaction), tweet_replies!tweet_replies_tweet_id_fkey(id)')
+          .select('*, profiles!tweets_user_id_fkey(display_name, nationality, avatar_url, age_verified, age_verification_status), tweet_reactions!tweet_reactions_tweet_id_fkey(user_id, reaction), tweet_replies!tweet_replies_tweet_id_fkey(id)')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(30),
