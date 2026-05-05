@@ -35,10 +35,12 @@ export async function fetchTierProgress(userId: string): Promise<TierProgress | 
 }
 
 // ─── Tier 定義 ────────────────────────────────────────────────
+// ラベルは samee の村世界観に統一（旧: 見習い/住民/信頼の住民/村の柱、
+// および timeline 旧: メンバー/ギルドメンバー/常連メンバー/ギルドマスター）
 export const TRUST_TIERS = [
   {
     id: 'visitor',
-    label: '見習い',
+    label: '見学者',
     icon: '🪴',
     min: 0,
     color: 'bg-stone-50 text-stone-600 border-stone-200',
@@ -47,7 +49,7 @@ export const TRUST_TIERS = [
   },
   {
     id: 'resident',
-    label: '住民',
+    label: '住人',
     icon: '🏡',
     min: 100,
     color: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -65,7 +67,7 @@ export const TRUST_TIERS = [
   },
   {
     id: 'trusted',
-    label: '信頼の住民',
+    label: '信頼住人',
     icon: '🌳',
     min: 600,
     color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -74,7 +76,7 @@ export const TRUST_TIERS = [
   },
   {
     id: 'pillar',
-    label: '村の柱',
+    label: '中心メンバー',
     icon: '✨',
     min: 1000,
     color: 'bg-amber-50 text-amber-700 border-amber-200',

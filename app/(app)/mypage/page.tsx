@@ -262,7 +262,21 @@ export default function MyPage() {
       .order('created_at', { ascending: false })
       .limit(30)
     if (error) console.error('loadTweets error:', error)
-    setTweets((data ?? []) as TweetData[])
+
+    // 投稿者本人 1 名分の Trust Tier をマージ（TweetCard のバッジ表示用）
+    const rows = (data ?? []) as any[]
+    if (rows.length > 0) {
+      const { data: trustRow } = await client
+        .from('user_trust')
+        .select('tier')
+        .eq('user_id', uid)
+        .maybeSingle()
+      const tier = (trustRow as any)?.tier as string | undefined
+      for (const r of rows) {
+        r.user_trust = tier ? { tier } : null
+      }
+    }
+    setTweets(rows as TweetData[])
     setTweetLoading(false)
   }
 
@@ -841,11 +855,12 @@ export default function MyPage() {
 
                 {/* スコアバー */}
                 {tierProgress && (() => {
+                  // ラベルは lib/trust.ts の TRUST_TIERS と整合（短縮表示は許容）
                   const tiers = [
-                    { id: 'resident', min: 100,  label: '住民',  color: '#B8C7D9' },
-                    { id: 'regular',  min: 300,  label: '常連',  color: '#7CFF82' },
-                    { id: 'trusted',  min: 600,  label: '信頼',  color: '#EAF2FF' },
-                    { id: 'pillar',   min: 1000, label: '柱',    color: '#FF4D90' },
+                    { id: 'resident', min: 100,  label: '住人',     color: '#B8C7D9' },
+                    { id: 'regular',  min: 300,  label: '常連',     color: '#7CFF82' },
+                    { id: 'trusted',  min: 600,  label: '信頼住人', color: '#EAF2FF' },
+                    { id: 'pillar',   min: 1000, label: '中心',     color: '#FF4D90' },
                   ]
                   const next = tiers.find(t => trust.score < t.min)
                   if (!next) return (

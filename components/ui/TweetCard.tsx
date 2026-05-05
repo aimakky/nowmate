@@ -7,6 +7,7 @@ import { getNationalityFlag, timeAgo } from '@/lib/utils'
 import { MessageCircle, Repeat2, MoreHorizontal, Pencil, Trash2, X, Flag, Ban } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import ReportModal from '@/components/features/ReportModal'
+import { getTierById } from '@/lib/trust'
 
 export const REACTIONS = [
   { key: 'heart',   emoji: '❤️', label: 'Love' },
@@ -28,6 +29,8 @@ export interface TweetData {
   profiles: { display_name: string; nationality: string; avatar_url: string | null }
   tweet_reactions: { user_id: string; reaction: string }[]
   tweet_replies?: { id: string }[]
+  // 投稿者の Trust Tier（任意・取得側がマージ済みなら表示する）
+  user_trust?: { tier: string } | null
   original?: {
     content: string
     user_id: string
@@ -170,6 +173,18 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                   style={{ color: '#F0EEFF' }}>
                   {tweet.profiles?.display_name}
                 </button>
+                {tweet.user_trust?.tier && (
+                  <span
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 leading-none"
+                    style={{
+                      background: 'rgba(57,255,136,0.12)',
+                      color: '#39FF88',
+                      border: '1px solid rgba(57,255,136,0.3)',
+                    }}
+                  >
+                    {getTierById(tweet.user_trust.tier).label}
+                  </span>
+                )}
                 <span className="text-base leading-none">{flag}</span>
                 <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>{timeAgo(tweet.created_at)}</span>
               </div>

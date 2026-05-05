@@ -10,6 +10,7 @@ import { Heart, RefreshCw, Users, Globe, Home, Share2, HelpCircle, Send, CheckCi
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import { detectCrisisKeywords } from '@/lib/moderation'
 import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
+import { getTierById } from '@/lib/trust'
 
 // ── 型定義 ──────────────────────────────────────────────────────
 type Tab = 'myvillage' | 'all' | 'following'
@@ -361,12 +362,9 @@ function PostCard({
   showVillage?: boolean
 }) {
   const liked = likedIds.has(post.id)
-  const roleLabel = {
-    visitor:  'メンバー',
-    regular:  'ギルドメンバー',
-    trusted:  '常連メンバー',
-    pillar:   'ギルドマスター',
-  }[post.user_trust?.tier ?? 'visitor'] ?? 'メンバー'
+  // Trust Tier ラベルは lib/trust.ts の TRUST_TIERS を canonical 定義として使用。
+  // 全 5 段階（見学者 / 住人 / 常連 / 信頼住人 / 中心メンバー）が自動反映される。
+  const roleLabel = getTierById(post.user_trust?.tier ?? 'visitor').label
 
   function shareToX() {
     const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'samee'
@@ -1093,7 +1091,26 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       .order('created_at', { ascending: false })
       .limit(40)
     if (error) console.error('fetchTweets error:', error)
-    setTweetFeed((data ?? []) as TweetData[])
+
+    // Trust Tier を別クエリで取得して各 tweet にマージ（PostgREST embed の
+    // FK ヒントが tweets テーブルでは確実に通る保証がないため、separate fetch
+    // のほうが安全。失敗しても tweets の表示はそのまま継続される）
+    const rows = (data ?? []) as any[]
+    if (rows.length > 0) {
+      const userIds = Array.from(new Set(rows.map(t => t.user_id)))
+      const { data: trustData } = await supabase
+        .from('user_trust')
+        .select('user_id, tier')
+        .in('user_id', userIds)
+      const trustMap = new Map(
+        (trustData ?? []).map((t: any) => [t.user_id, t.tier as string])
+      )
+      for (const r of rows) {
+        const tier = trustMap.get(r.user_id)
+        r.user_trust = tier ? { tier } : null
+      }
+    }
+    setTweetFeed(rows as TweetData[])
     setTweetLoading(false)
   }, [])
 
