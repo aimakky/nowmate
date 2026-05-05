@@ -41,11 +41,13 @@ export default function NotificationsPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
 
+    // priority は text の 'high' / 'normal'。文字列の昇順だと 'high' < 'normal' になるので、
+    // ascending: true が「重要が上」になる。旧実装は ascending: false で 'normal' が上に来ていた。
     const { data } = await supabase
       .from('notifications')
       .select('*, actor:actor_id(display_name, avatar_url)')
       .eq('user_id', user.id)
-      .order('priority', { ascending: false })
+      .order('priority',   { ascending: true  })
       .order('created_at', { ascending: false })
       .limit(80)
 

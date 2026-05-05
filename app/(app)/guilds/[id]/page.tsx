@@ -55,7 +55,10 @@ function PostCard({
   post, currentUserId, genre,
 }: { post: Post; currentUserId: string | null; genre: typeof INDUSTRIES[0] | null }) {
   const [liked,     setLiked]     = useState(false)
-  const [likeCount, setLikeCount] = useState(Math.floor(Math.random() * 8))
+  // 旧: Math.floor(Math.random() * 8) で毎回ランダムなフェイク値。
+  // ユーザーが見るたびに「いいね数」が勝手に変わるので 0 で固定する。
+  // 実データ連動が必要になったら post.reaction_count or guild_reactions 集計に切替。
+  const [likeCount, setLikeCount] = useState(0)
   const tier  = post.profiles?.trust_tier ?? 1
   const tInfo = tierLabel(tier)
   const isOwn = post.user_id === currentUserId
