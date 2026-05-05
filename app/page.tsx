@@ -33,8 +33,34 @@ export default async function TopPage() {
     .eq('is_active', true)
   const userCount = Math.max(count ?? 0, 1)
 
+  // Google Knowledge Graph 等にブランド名 (YVOICE / Your Voice Online) と
+  // 公式 URL を伝える structured data。旧名 (Samee / 自由村) からの遷移を
+  // 検索エンジン側で早めに認識させるため、ルート LP にだけ埋める。
+  const orgJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'YVOICE',
+    alternateName: ['Your Voice Online', 'ワイボイス', 'ワイボ'],
+    url: 'https://nowmatejapan.com',
+    logo: 'https://nowmatejapan.com/opengraph-image',
+    description: 'YVOICE (Your Voice Online) は 20 歳以上限定の大人向けゲーム通話コミュニティ。電話番号認証・本人確認・Trust Tier 制度で民度を守る。',
+  }
+  const siteJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'YVOICE',
+    alternateName: 'Your Voice Online',
+    url: 'https://nowmatejapan.com',
+    inLanguage: 'ja-JP',
+  }
+
   return (
     <div className="min-h-screen flex flex-col max-w-[430px] mx-auto" style={{ background: '#080810' }}>
+      {/* JSON-LD for Knowledge Graph branding */}
+      <script type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
+      <script type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }} />
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           HEADER

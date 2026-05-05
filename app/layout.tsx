@@ -14,8 +14,10 @@ export const metadata: Metadata = {
     'ボイスチャット', 'ゲーム仲間', '20歳以上',
     'FPS 仲間', 'RPG 仲間', '通話ルーム',
   ],
+  applicationName: 'YVOICE',
   authors:     [{ name: 'YVOICE' }],
   creator:     'YVOICE',
+  publisher:   'YVOICE',
   metadataBase: new URL('https://nowmatejapan.com'),
   openGraph: {
     type:       'website',

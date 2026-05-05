@@ -1,7 +1,10 @@
 import { ImageResponse } from 'next/og'
 
+// ルートの OGP 画像。SNS シェア・Google 検索結果サムネイルに表示される
+// ため YVOICE ブランディングに統一。旧コンテンツ (自由村 + 英語 expat
+// コピー) は完全に削除済み。
 export const runtime = 'edge'
-export const alt = '自由村 — Just landed? We\'ve got you.'
+export const alt = 'YVOICE — Your Voice Online｜大人のゲーム通話コミュニティ'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -10,7 +13,7 @@ export default function OGImage() {
     (
       <div
         style={{
-          background: 'linear-gradient(135deg, #2d4d37 0%, #4A7C59 50%, #5a9e78 100%)',
+          background: 'linear-gradient(135deg, #0d0b1f 0%, #1a1235 50%, #2a1655 100%)',
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -21,65 +24,84 @@ export default function OGImage() {
           position: 'relative',
         }}
       >
-        {/* Background pattern */}
+        {/* 紫グロー */}
         <div style={{
-          position: 'absolute', inset: 0, opacity: 0.1,
-          backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
+          position: 'absolute', top: 0, right: 0, width: 600, height: 600,
+          background: 'radial-gradient(circle at 80% 20%, rgba(157,92,255,0.35) 0%, transparent 60%)',
+          display: 'flex',
+        }} />
+        {/* ピンクグロー */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, width: 600, height: 600,
+          background: 'radial-gradient(circle at 20% 80%, rgba(255,77,144,0.22) 0%, transparent 60%)',
+          display: 'flex',
         }} />
 
-        {/* Logo */}
+        {/* "YOUR VOICE ONLINE" 小見出し */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 16,
+          color: 'rgba(196,181,253,0.85)',
+          fontSize: 28,
+          fontWeight: 800,
+          letterSpacing: '0.32em',
+          marginBottom: 28,
+        }}>
+          YOUR VOICE ONLINE
+        </div>
+
+        {/* YVOICE ロゴ */}
+        <div style={{
+          color: 'white',
+          fontWeight: 900,
+          fontSize: 168,
+          letterSpacing: -6,
+          lineHeight: 1,
+          marginBottom: 36,
+          textShadow: '0 4px 40px rgba(157,92,255,0.4)',
+          background: 'linear-gradient(135deg, #ffffff 0%, #e0d4ff 100%)',
+          backgroundClip: 'text',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+        }}>
+          YVOICE
+        </div>
+
+        {/* タグライン */}
+        <div style={{
+          color: 'rgba(255,255,255,0.92)',
+          fontSize: 40,
+          fontWeight: 800,
+          textAlign: 'center',
+          lineHeight: 1.3,
+          marginBottom: 18,
+        }}>
+          大人のゲーム通話コミュニティ
+        </div>
+
+        {/* サブテキスト */}
+        <div style={{
+          color: 'rgba(196,181,253,0.7)',
+          fontSize: 22,
+          fontWeight: 600,
+          textAlign: 'center',
           marginBottom: 40,
         }}>
-          <div style={{
-            width: 64, height: 64, background: 'white', borderRadius: 18,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span style={{ color: '#4A7C59', fontWeight: 900, fontSize: 32 }}>V</span>
-          </div>
-          <span style={{ color: 'white', fontWeight: 900, fontSize: 48, letterSpacing: -2 }}>自由村</span>
-        </div>
-
-        {/* Headline */}
-        <div style={{
-          color: 'white', fontSize: 64, fontWeight: 900,
-          textAlign: 'center', lineHeight: 1.1, marginBottom: 24,
-          textShadow: '0 2px 20px rgba(0,0,0,0.2)',
-        }}>
-          Just landed?<br />We've got you.
-        </div>
-
-        {/* Subtext */}
-        <div style={{
-          color: 'rgba(255,255,255,0.85)', fontSize: 28,
-          textAlign: 'center', maxWidth: 700, lineHeight: 1.4,
-          marginBottom: 48,
-        }}>
-          Making friends in Japan is hard. 自由村 makes it easy.
-        </div>
-
-        {/* Flags */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
-          {['🇺🇸','🇧🇷','🇨🇳','🇰🇷','🇻🇳','🇮🇳','🇵🇭','🇳🇵','🇮🇩','🇹🇭'].map((flag, i) => (
-            <div key={i} style={{
-              width: 56, height: 56, background: 'rgba(255,255,255,0.2)',
-              borderRadius: 28, display: 'flex', alignItems: 'center',
-              justifyContent: 'center', fontSize: 30,
-            }}>
-              {flag}
-            </div>
-          ))}
+          20歳以上限定 ・ 電話番号認証 ・ Trust Tier 制度
         </div>
 
         {/* URL */}
         <div style={{
-          color: 'rgba(255,255,255,0.7)', fontSize: 22, fontWeight: 600,
-          background: 'rgba(0,0,0,0.15)', paddingLeft: 24, paddingRight: 24,
-          paddingTop: 10, paddingBottom: 10, borderRadius: 50,
+          color: 'rgba(255,255,255,0.55)',
+          fontSize: 22,
+          fontWeight: 700,
+          background: 'rgba(157,92,255,0.16)',
+          paddingLeft: 28,
+          paddingRight: 28,
+          paddingTop: 10,
+          paddingBottom: 10,
+          borderRadius: 50,
+          border: '1px solid rgba(157,92,255,0.32)',
         }}>
-          自由村japan.com
+          nowmatejapan.com
         </div>
       </div>
     ),

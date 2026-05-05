@@ -1,12 +1,14 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 
+// 旧 nowmate (海外移住者向け B2B ピッチ) の遺産ページ。現在の YVOICE
+// サービスとは無関係なため Google には index させない。
 export const metadata: Metadata = {
-  title: '自由村 for Business — Improve Expat Employee Retention in Japan',
-  description: 'Help your international employees build real connections in Japan. 自由村 reduces expat isolation, improves wellbeing, and lowers turnover. Partner with us.',
-  openGraph: {
-    title: '自由村 for Business — Expat Employee Retention in Japan',
-    description: 'Foreign employees who build social networks in Japan stay longer. 自由村 helps them get there.',
+  title: 'YVOICE — Legacy Page',
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: { index: false, follow: false },
   },
 }
 
