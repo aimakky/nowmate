@@ -72,7 +72,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </Link>
       )}
 
-      <div style={{ paddingBottom: isOnboarding ? '0' : 'max(calc(4rem + env(safe-area-inset-bottom, 8px)), 5.5rem)' }}>
+      {/*
+        画面切り替え時に前ページの DOM・useState・skeleton が一瞬残る残像問題への対策。
+        pathname を key にして child wrapper を route ごとに mount/unmount し、
+        前ページの client state（`loading=true` の自前 skeleton 等）を確実にクリアする。
+        layout 自身の state（avatarUrl 等）は保持される。
+      */}
+      <div
+        key={pathname}
+        style={{ paddingBottom: isOnboarding ? '0' : 'max(calc(4rem + env(safe-area-inset-bottom, 8px)), 5.5rem)' }}
+      >
         {children}
       </div>
       {!isOnboarding && <BottomNav />}

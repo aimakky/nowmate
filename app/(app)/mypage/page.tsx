@@ -21,7 +21,16 @@ import TrustVerificationCard from '@/components/features/TrustVerificationCard'
 // 整理後: 投稿 / 参加中 / プロフィール / 安心 の 4 タブ。
 //  - images は 投稿 に統合（タブとしては削除、画像投稿データは残置）
 //  - hosted_villages（自分が作ったギルド・村）は 参加中 タブ内に「オーナー」subsection として表示
-type ProfileTab = 'tweets' | 'joined_villages' | 'features' | 'guide'
+//  - following / followers は統計カードクリックで切り替わる「擬似タブ」として追加。
+//    上部のタブバー (4 タブ) には出さず、統計カード自体を active 表示の起点にする。
+type ProfileTab = 'tweets' | 'joined_villages' | 'features' | 'guide' | 'following' | 'followers'
+
+type FollowUser = {
+  id: string
+  display_name: string | null
+  avatar_url: string | null
+  VILLIA_id: string | null
+}
 
 // ── ツイートコンポーズシート ────────────────────────────────────
 function TweetComposeSheet({
@@ -178,6 +187,11 @@ export default function MyPage() {
   const [showIndustry,   setShowIndustry]   = useState(true)
   const [savingIndustry, setSavingIndustry] = useState(false)
 
+  // フォロー中 / フォロワー一覧（lazy load）。null = 未取得、[] = 0件、配列 = 取得済
+  const [followingList,  setFollowingList]  = useState<FollowUser[] | null>(null)
+  const [followersList,  setFollowersList]  = useState<FollowUser[] | null>(null)
+  const [followListLoading, setFollowListLoading] = useState(false)
+
   useEffect(() => {
     async function load() {
       const supabase = createClient()
@@ -284,6 +298,55 @@ export default function MyPage() {
     setTweets(rows as TweetData[])
     setTweetLoading(false)
   }
+
+  // フォロー中 / フォロワーの一覧を遅延取得。
+  // user_follows の relation: follower_id がフォローする側、following_id がされる側。
+  //   フォロー中 = 自分が follower_id になっているレコードの相手 (following_id) を集める
+  //   フォロワー = 自分が following_id になっているレコードの相手 (follower_id) を集める
+  async function loadFollowList(uid: string, kind: 'following' | 'followers') {
+    setFollowListLoading(true)
+    const supabase = createClient()
+    const { data: rows, error } = kind === 'following'
+      ? await supabase.from('user_follows').select('following_id').eq('follower_id', uid)
+      : await supabase.from('user_follows').select('follower_id').eq('following_id', uid)
+
+    if (error) {
+      console.error('[mypage] loadFollowList error:', error)
+      if (kind === 'following') setFollowingList([])
+      else setFollowersList([])
+      setFollowListLoading(false)
+      return
+    }
+
+    const ids = (rows ?? []).map((r: any) => kind === 'following' ? r.following_id : r.follower_id).filter(Boolean)
+    if (ids.length === 0) {
+      if (kind === 'following') setFollowingList([])
+      else setFollowersList([])
+      setFollowListLoading(false)
+      return
+    }
+
+    const { data: profs, error: pErr } = await supabase
+      .from('profiles')
+      .select('id, display_name, avatar_url, VILLIA_id')
+      .in('id', ids)
+    if (pErr) console.error('[mypage] follow profiles fetch error:', pErr)
+    const list = (profs ?? []) as FollowUser[]
+    if (kind === 'following') setFollowingList(list)
+    else setFollowersList(list)
+    setFollowListLoading(false)
+  }
+
+  // タブ切替時、未取得ならその場でロード
+  useEffect(() => {
+    if (!userId) return
+    if (activeTab === 'following' && followingList === null && !followListLoading) {
+      loadFollowList(userId, 'following')
+    } else if (activeTab === 'followers' && followersList === null && !followListLoading) {
+      loadFollowList(userId, 'followers')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, userId])
 
   async function handleLogout() {
     await createClient().auth.signOut()
@@ -418,24 +481,44 @@ export default function MyPage() {
         </div>
       </div>
 
-      {/* ── 統計カード ── */}
+      {/* ── 統計カード（クリックで擬似タブ切替）──
+          フォロー中 / フォロワー / 投稿 を押すと activeTab が切り替わる。
+          投稿は通常の 'tweets' タブと同じ。フォロー系は ProfileTab 拡張 ('following' / 'followers')。 */}
       <div className="relative z-10 mx-4 mb-3 rounded-2xl overflow-hidden"
         style={{ background: 'rgba(234,242,255,0.04)', border: '1px solid rgba(234,242,255,0.14)', boxShadow: '0 0 24px rgba(234,242,255,0.06)' }}>
         <div className="flex">
-          {[
-            { count: followingCount, label: 'フォロー中' },
-            { count: followersCount, label: 'フォロワー' },
-            { count: tweets.length,  label: '投稿' },
-          ].map((stat, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center py-4 relative">
-              {i > 0 && (
-                <div className="absolute left-0 top-3 bottom-3 w-px"
-                  style={{ background: 'rgba(184,199,217,0.18)' }} />
-              )}
-              <span className="font-extrabold text-xl" style={{ color: '#EAF2FF' }}>{stat.count}</span>
-              <span className="text-xs mt-0.5" style={{ color: 'rgba(184,199,217,0.6)' }}>{stat.label}</span>
-            </div>
-          ))}
+          {([
+            { tab: 'following', count: followingCount, label: 'フォロー中' },
+            { tab: 'followers', count: followersCount, label: 'フォロワー' },
+            { tab: 'tweets',    count: tweets.length,  label: '投稿' },
+          ] as { tab: ProfileTab; count: number; label: string }[]).map((stat, i) => {
+            const on = activeTab === stat.tab
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setActiveTab(stat.tab)}
+                aria-pressed={on}
+                className="flex-1 flex flex-col items-center py-4 relative active:opacity-70 transition-opacity"
+                style={{
+                  background: on ? 'rgba(234,242,255,0.06)' : 'transparent',
+                }}
+              >
+                {i > 0 && (
+                  <div className="absolute left-0 top-3 bottom-3 w-px"
+                    style={{ background: 'rgba(184,199,217,0.18)' }} />
+                )}
+                <span className="font-extrabold text-xl" style={{ color: on ? '#EAF2FF' : '#EAF2FF' }}>{stat.count}</span>
+                <span className="text-xs mt-0.5" style={{ color: on ? '#EAF2FF' : 'rgba(184,199,217,0.6)' }}>{stat.label}</span>
+                {on && (
+                  <span
+                    className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full"
+                    style={{ background: 'linear-gradient(90deg, #EAF2FF, #B8C7D9)', boxShadow: '0 0 8px rgba(234,242,255,0.5)' }}
+                  />
+                )}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -707,6 +790,96 @@ export default function MyPage() {
 
         {/* 安心ガイドタブ */}
         {activeTab === 'guide' && <GuideTab />}
+
+        {/* フォロー中 / フォロワー擬似タブ（統計カードクリックで開く） */}
+        {(activeTab === 'following' || activeTab === 'followers') && (() => {
+          const list = activeTab === 'following' ? followingList : followersList
+          const emptyText = activeTab === 'following'
+            ? 'まだフォロー中のユーザーはいません'
+            : 'まだフォロワーはいません'
+          const emptySub = activeTab === 'following'
+            ? '気になる人を見つけたらフォローしてみよう'
+            : '投稿や通話で交流するとフォロワーが増えます'
+
+          // ロード中（一覧未取得 or fetch中）
+          if (list === null || followListLoading) {
+            return (
+              <div className="space-y-0">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="px-4 py-3.5 animate-pulse flex items-center gap-3"
+                    style={{ borderBottom: '1px solid rgba(234,242,255,0.05)' }}>
+                    <div className="w-10 h-10 rounded-full flex-shrink-0"
+                      style={{ background: 'rgba(234,242,255,0.06)' }} />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 rounded w-1/3" style={{ background: 'rgba(234,242,255,0.09)' }} />
+                      <div className="h-3 rounded w-1/4" style={{ background: 'rgba(234,242,255,0.05)' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          }
+
+          // 0件
+          if (list.length === 0) {
+            return (
+              <div className="flex flex-col items-center py-20 text-center px-6">
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                  style={{ background: 'rgba(234,242,255,0.06)', border: '1px solid rgba(234,242,255,0.12)' }}
+                >
+                  <Users size={28} style={{ color: 'rgba(234,242,255,0.3)' }} />
+                </div>
+                <p className="font-bold text-sm" style={{ color: 'rgba(240,238,255,0.55)' }}>{emptyText}</p>
+                <p className="text-xs mt-1.5" style={{ color: 'rgba(240,238,255,0.3)' }}>{emptySub}</p>
+                {activeTab === 'following' && (
+                  <Link
+                    href="/users"
+                    className="mt-5 px-5 py-2.5 rounded-full text-sm font-bold text-white active:scale-95 transition-all"
+                    style={{ background: 'linear-gradient(135deg, #EAF2FF 0%, #B8C7D9 100%)', boxShadow: '0 4px 20px rgba(234,242,255,0.24)' }}
+                  >
+                    ユーザーを探す
+                  </Link>
+                )}
+              </div>
+            )
+          }
+
+          // 一覧
+          return (
+            <div>
+              {list.map(u => (
+                <Link
+                  key={u.id}
+                  href={`/profile/${u.id}`}
+                  className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
+                  style={{ borderBottom: '1px solid rgba(234,242,255,0.05)' }}
+                >
+                  <div
+                    className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(234,242,255,0.07)', border: '1px solid rgba(234,242,255,0.18)' }}
+                  >
+                    {u.avatar_url
+                      ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+                      : <span className="text-base">🙂</span>
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>
+                      {u.display_name || '名無し'}
+                    </p>
+                    {u.VILLIA_id && (
+                      <p className="text-[11px] font-mono truncate" style={{ color: 'rgba(240,238,255,0.3)' }}>
+                        #{u.VILLIA_id}
+                      </p>
+                    )}
+                  </div>
+                  <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
+                </Link>
+              ))}
+            </div>
+          )
+        })()}
 
         {/* ── 下部コンテンツ（全タブ共通） ── */}
         <div className="px-4 pt-4 space-y-3">
