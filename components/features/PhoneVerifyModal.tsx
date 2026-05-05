@@ -147,12 +147,14 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
   }, [cooldownSec])
 
   // サーバ短コードを ErrState に変換。message は UX 重視の長文。
+  // not_configured（運営側の準備中）と send_failed（送信実行で失敗）は
+  // ユーザーが取れるアクションが違うので文言も分ける。
   function classifyError(code: string | undefined, status: number): ErrState {
     if (code === 'sms_not_configured' || status === 503) {
       return {
         kind: 'not_configured',
         message:
-          'SMS認証の送信に失敗しました。\n電話番号・通信状況を確認して、1〜2分後にもう一度お試しください。',
+          '電話認証は現在準備中です。\nしばらくお待ちいただくか、サポートまでご連絡ください。',
       }
     }
     if (status === 429 || code === 'rate_limited') {
@@ -174,7 +176,7 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
       return {
         kind: 'send_failed',
         message:
-          'SMS認証の送信に失敗しました。\n電話番号・通信状況を確認して、1〜2分後にもう一度お試しください。',
+          'SMSの送信に失敗しました。\n電話番号・通信状況を確認して、1〜2分後にもう一度お試しください。',
       }
     }
     if (code === 'invalid_otp') {
