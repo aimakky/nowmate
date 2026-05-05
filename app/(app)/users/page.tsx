@@ -14,6 +14,7 @@ import Link from 'next/link'
 import { ArrowLeft, Search, Users, Check, UserPlus, Mail, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { startDM } from '@/lib/dm'
+import VerifiedBadge from '@/components/ui/VerifiedBadge'
 
 interface UserResult {
   id:           string
@@ -21,6 +22,7 @@ interface UserResult {
   avatar_url:   string | null
   bio:          string | null
   VILLIA_id:    string | null
+  age_verified?: boolean | null
   followState:  'none' | 'following'
   friendState:  'none' | 'sent' | 'received' | 'friends'
   matchId?:     string
@@ -54,7 +56,7 @@ export default function UsersPage() {
 
     let q = supabase
       .from('profiles')
-      .select('id, display_name, avatar_url, bio, VILLIA_id')
+      .select('id, display_name, avatar_url, bio, VILLIA_id, age_verified')
       .eq('is_active', true)
       .order('updated_at', { ascending: false })
       .limit(40)
@@ -132,6 +134,7 @@ export default function UsersPage() {
         avatar_url:   p.avatar_url,
         bio:          p.bio,
         VILLIA_id:    p.VILLIA_id,
+        age_verified: (p as { age_verified?: boolean | null }).age_verified ?? null,
         followState:  followingSet.has(p.id) ? 'following' : 'none',
         friendState,
         matchId,
@@ -351,6 +354,7 @@ export default function UsersPage() {
                           style={{ color: '#F0EEFF' }}>
                           {u.display_name ?? '名無し'}
                         </p>
+                        <VerifiedBadge verified={u.age_verified} size="sm" />
                         {isMe && (
                           <span
                             className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"

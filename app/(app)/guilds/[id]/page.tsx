@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Users, Send, Heart, MessageSquare, MoreHorizontal, Info, FileText, Hash, Crown, Mic, Shield } from 'lucide-react'
 import { INDUSTRIES } from '@/lib/guild'
 import { startDM } from '@/lib/dm'
+import VerifiedBadge from '@/components/ui/VerifiedBadge'
 
 // ─── 型 ─────────────────────────────────────────────────────────
 type Guild = {
@@ -20,7 +21,13 @@ type Post = {
 }
 type Member = {
   user_id: string; role: string
-  profiles: { display_name: string; avatar_url: string | null; last_seen_at: string | null }
+  profiles: {
+    display_name: string
+    avatar_url: string | null
+    last_seen_at: string | null
+    age_verified?: boolean | null
+    age_verification_status?: string | null
+  }
 }
 
 // ─── ヘルパー ────────────────────────────────────────────────────
@@ -180,7 +187,7 @@ export default function GuildDetailPage() {
 
       const { data: mb } = await supabase
         .from('village_members')
-        .select('user_id, role, profiles(display_name, avatar_url, last_seen_at)')
+        .select('user_id, role, profiles(display_name, avatar_url, last_seen_at, age_verified, age_verification_status)')
         .eq('village_id', id)
         .order('role', { ascending: true })
         .limit(30)
@@ -564,6 +571,7 @@ function MemberRow({
           <p className="text-sm font-bold truncate" style={{ color: online ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)' }}>
             {m.profiles?.display_name ?? '名無し'}
           </p>
+          <VerifiedBadge verified={m.profiles?.age_verified} size="sm" />
           {isOwn && (
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none flex-shrink-0"
               style={{ color: '#818cf8', background: 'rgba(129,140,248,0.12)', border: '1px solid rgba(129,140,248,0.2)' }}>
