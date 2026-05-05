@@ -342,7 +342,7 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
           boxShadow: '0 24px 60px rgba(0,0,0,0.45), 0 0 0 1px rgba(139,92,246,0.18)',
         }}
       >
-        {/* sameeらしい紫アクセントの帯（案A） */}
+        {/* YVOICE らしい紫アクセントの帯（案A） */}
         <div
           className="h-1.5"
           style={{ background: 'linear-gradient(90deg, #8b5cf6 0%, #ec4899 100%)' }}

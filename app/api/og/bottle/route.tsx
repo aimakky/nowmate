@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
           <div style={{
             color: 'rgba(255,255,255,0.4)', fontSize: '16px', fontWeight: 700, letterSpacing: '0.05em',
           }}>
-            nowmatejapan.com / villia
+            YVOICE / ワイボ
           </div>
         </div>
       </div>

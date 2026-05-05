@@ -56,7 +56,7 @@ function CompleteContent() {
         <h1 className="font-extrabold text-stone-900 text-2xl mb-2">認証完了！🎉</h1>
         <p className="text-stone-500 text-sm leading-relaxed">
           年齢確認が完了しました。<br />
-          sameeのすべての機能をご利用いただけます。
+          YVOICEのすべての機能をご利用いただけます。
         </p>
       </div>
       <button
@@ -75,7 +75,7 @@ function CompleteContent() {
       <div className="text-center">
         <h1 className="font-extrabold text-stone-900 text-2xl mb-2">ご利用いただけません</h1>
         <p className="text-stone-500 text-sm leading-relaxed">
-          sameeは20歳以上限定のコミュニティです。<br />
+          YVOICEは20歳以上限定のコミュニティです。<br />
           {age !== null && age > 0 ? `確認された年齢: ${age}歳` : ''}
         </p>
       </div>

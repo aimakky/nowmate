@@ -53,7 +53,7 @@ export default function LoginPage() {
               <span className="text-2xl">✦</span>
             </div>
             <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(240,238,255,0.6)' }}>
-              SAMEE
+              YVOICE
             </p>
             <span className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
               style={{ borderColor: 'rgba(157,92,255,0.6)', borderTopColor: 'transparent' }} />
@@ -88,7 +88,7 @@ export default function LoginPage() {
             <span className="text-2xl">✦</span>
           </div>
           <h1 className="text-2xl font-extrabold mb-1" style={{ color: '#F0EEFF' }}>おかえりなさい</h1>
-          <p className="text-sm" style={{ color: 'rgba(240,238,255,0.45)' }}>sameeにログインする</p>
+          <p className="text-sm" style={{ color: 'rgba(240,238,255,0.45)' }}>YVOICEにログインする</p>
         </div>
 
         {/* Google */}

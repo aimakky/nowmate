@@ -1,7 +1,12 @@
-# samee — Claude Code プロジェクトルール
+# YVOICE — Claude Code プロジェクトルール
 
-このファイルは samee リポジトリの永続ルール集です。
+このファイルは YVOICE（ワイボイス、略：ワイボ）リポジトリの永続ルール集です。
 Claude Code はこのリポジトリで作業するとき、ここに書かれているルールを必ず守ってください。
+
+> 旧名称 (samee / nowmate / nowmatejapan / 自由村) はリポジトリ root ディレクトリ名・
+> ライブドメイン・GitHub repo 名・Vercel project 名・Supabase project 名にだけ
+> 残置されています。これらはサービス停止リスクのため別フェーズで移行します。
+> ユーザー可視テキストは原則として YVOICE に統一してください。
 
 ---
 

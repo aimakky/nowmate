@@ -367,8 +367,8 @@ function PostCard({
   const roleLabel = getTierById(post.user_trust?.tier ?? 'visitor').label
 
   function shareToX() {
-    const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'samee'
-    const text = `${post.content}\n\n— ${village}より\n#samee #ゲームコミュニティ\nnowmatejapan.com`
+    const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'YVOICE'
+    const text = `${post.content}\n\n— ${village}より\n#YVOICE #ゲームコミュニティ\nnowmatejapan.com`
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
 

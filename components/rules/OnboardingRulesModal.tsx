@@ -78,7 +78,7 @@ export default function OnboardingRulesModal({ userId, onAgreed }: Props) {
         <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: '#c4b5fd' }}>SAFETY GUIDE</p>
         <h2 className="font-extrabold text-2xl leading-tight" style={{ color: '#F0EEFF' }}>安心ガイド</h2>
         <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.45)' }}>
-          sameeを安心して使うための約束です。最後まで読んでから始めましょう。
+          YVOICEを安心して使うための約束です。最後まで読んでから始めましょう。
         </p>
       </div>
 

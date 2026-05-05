@@ -1394,7 +1394,7 @@ export default function VoiceRoomPage() {
               </div>
               <h3 className="font-extrabold text-lg mb-1.5" style={{ color: '#F0EEFF' }}>通話で話すには年齢確認が必要</h3>
               <p className="text-sm leading-relaxed" style={{ color: 'rgba(240,238,255,0.55)' }}>
-                sameeは<span className="font-bold" style={{ color: '#F0EEFF' }}>20歳以上</span>限定のコミュニティです。<br />
+                YVOICEは<span className="font-bold" style={{ color: '#F0EEFF' }}>20歳以上</span>限定のコミュニティです。<br />
                 免許証・マイナンバーカード・パスポートで確認できます。
               </p>
             </div>

@@ -35,7 +35,7 @@ export async function fetchTierProgress(userId: string): Promise<TierProgress | 
 }
 
 // ─── Tier 定義 ────────────────────────────────────────────────
-// ラベルは samee の村世界観に統一（旧: 見習い/住民/信頼の住民/村の柱、
+// ラベルは YVOICE の村世界観に統一（旧: 見習い/住民/信頼の住民/村の柱、
 // および timeline 旧: メンバー/ギルドメンバー/常連メンバー/ギルドマスター）
 export const TRUST_TIERS = [
   {

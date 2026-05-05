@@ -324,7 +324,7 @@ export default function VoicePage() {
               </div>
               <h3 className="font-extrabold text-lg mb-1.5" style={{ color: '#F0EEFF' }}>通話機能は年齢確認が必要です</h3>
               <p className="text-sm leading-relaxed" style={{ color: 'rgba(240,238,255,0.55)' }}>
-                sameeの通話ルーム作成・参加は、<br />
+                YVOICEの通話ルーム作成・参加は、<br />
                 <span className="font-bold" style={{ color: '#F0EEFF' }}>20歳以上</span>であることの確認が必要です。
               </p>
             </div>

@@ -3,10 +3,10 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'samee — 20歳以上限定の大人ゲーム通話コミュニティ',
+  title: 'YVOICE — 20歳以上限定の大人ゲーム通話コミュニティ',
   description: '野良VCに疲れた大人へ。20歳以上限定・聞き専OK・電話番号は非公開。落ち着いて話せるゲーム通話コミュニティ。FPS・RPG・スマホゲームなど10ジャンルのギルド。',
   openGraph: {
-    title: 'samee — 20歳以上限定の大人ゲーム通話コミュニティ',
+    title: 'YVOICE — 20歳以上限定の大人ゲーム通話コミュニティ',
     description: '野良VCに疲れた大人へ。落ち着いて話せるゲーム通話コミュニティ。',
     images: [{ url: '/og-image.png', width: 1200, height: 630 }],
   },
@@ -54,7 +54,7 @@ export default async function TopPage() {
           >
             <span className="text-white font-black text-sm">s</span>
           </div>
-          <span className="font-extrabold text-white text-lg tracking-tight">samee</span>
+          <span className="font-extrabold text-white text-lg tracking-tight">YVOICE</span>
           <span
             className="text-[9px] font-extrabold px-2 py-0.5 rounded-full"
             style={{ background: 'rgba(139,92,246,0.18)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.35)' }}
@@ -179,7 +179,7 @@ export default async function TopPage() {
               style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
               <span className="text-white font-black text-[10px]">s</span>
             </div>
-            <span className="text-xs font-bold text-white">samee</span>
+            <span className="text-xs font-bold text-white">YVOICE</span>
             <div className="ml-auto flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-[10px] text-emerald-400 font-bold">42人オンライン</span>
@@ -253,12 +253,12 @@ export default async function TopPage() {
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          WHY SAMEE — 攻撃的でない比較
+          WHY YVOICE — 攻撃的でない比較
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="px-5 pb-10">
         <p className="text-[10px] font-extrabold uppercase tracking-widest text-center mb-5"
           style={{ color: '#94a3b8' }}>
-          なぜ samee か
+          なぜ YVOICE か
         </p>
         <div className="space-y-2.5">
           {[
@@ -295,7 +295,7 @@ export default async function TopPage() {
                     {item.concern}
                   </p>
                   <p className="text-xs font-bold leading-snug" style={{ color: item.color }}>
-                    → samee：{item.answer}
+                    → YVOICE：{item.answer}
                   </p>
                 </div>
               </div>
@@ -410,7 +410,7 @@ export default async function TopPage() {
               信頼が見えるから、安心してつながれる
             </h2>
             <p className="text-xs mb-5 leading-relaxed" style={{ color: '#cbd5e1' }}>
-              活動するほどできることが増える、samee 独自の信頼度システム。
+              活動するほどできることが増える、YVOICE 独自の信頼度システム。
             </p>
             <div className="space-y-2">
               {[
@@ -445,7 +445,7 @@ export default async function TopPage() {
       <section className="px-5 pb-10">
         <p className="text-[10px] font-extrabold uppercase tracking-widest text-center mb-5"
           style={{ color: '#94a3b8' }}>
-          sameeでできること
+          YVOICEでできること
         </p>
         <div className="grid grid-cols-2 gap-3">
           {[
@@ -580,7 +580,7 @@ export default async function TopPage() {
               ゲームを楽しもう。
             </h2>
             <p className="text-xs mb-7" style={{ color: 'rgba(203,213,225,0.7)' }}>
-              大人のゲーム通話コミュニティ、samee
+              大人のゲーム通話コミュニティ、YVOICE
             </p>
             <Link
               href="/signup"
@@ -612,7 +612,7 @@ export default async function TopPage() {
             style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
             <span className="text-white font-black text-xs">s</span>
           </div>
-          <span className="font-bold" style={{ color: '#cbd5e1' }}>samee</span>
+          <span className="font-bold" style={{ color: '#cbd5e1' }}>YVOICE</span>
         </div>
         <p className="text-xs mb-3" style={{ color: '#94a3b8' }}>
           20歳以上限定の大人ゲーム通話コミュニティ
@@ -628,7 +628,7 @@ export default async function TopPage() {
           <Link href="/contact"      className="hover:text-white transition">お問い合わせ</Link>
           <Link href="/for-business" className="hover:text-white transition">企業向け</Link>
         </div>
-        <p className="text-xs mt-4" style={{ color: '#475569' }}>© 2026 samee</p>
+        <p className="text-xs mt-4" style={{ color: '#475569' }}>© 2026 YVOICE</p>
       </footer>
 
     </div>

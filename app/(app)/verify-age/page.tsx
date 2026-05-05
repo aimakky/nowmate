@@ -72,7 +72,7 @@ export default function VerifyAgePage() {
                 <ShieldCheck size={40} className="text-green-400" />
               </div>
               <h2 className="font-extrabold text-white text-xl mb-2">認証済み ✓</h2>
-              <p className="text-green-300/70 text-sm">年齢認証が完了しています。<br />sameeのすべての機能をご利用いただけます。</p>
+              <p className="text-green-300/70 text-sm">年齢認証が完了しています。<br />YVOICEのすべての機能をご利用いただけます。</p>
             </div>
             <button
               onClick={() => router.back()}
@@ -90,7 +90,7 @@ export default function VerifyAgePage() {
               <div className="text-5xl mb-3">🛡️</div>
               <h2 className="font-extrabold text-white text-xl mb-2">本人確認（年齢認証）</h2>
               <p className="text-white/60 text-xs leading-relaxed">
-                sameeは<span className="text-purple-300 font-bold">20歳以上限定</span>のコミュニティです。<br />
+                YVOICEは<span className="text-purple-300 font-bold">20歳以上限定</span>のコミュニティです。<br />
                 運転免許証・マイナンバーカード・パスポートで<br />
                 本人確認を行います。
               </p>
@@ -134,7 +134,7 @@ export default function VerifyAgePage() {
             <div className="bg-purple-50 border border-purple-100 rounded-2xl px-4 py-3">
               <p className="text-xs text-purple-700 leading-relaxed">
                 🔒 <span className="font-bold">プライバシー保護</span><br />
-                書類の情報はStripe Identity（Stripe, Inc.）が処理します。sameeのサーバーには書類の画像は保存されません。確認されるのは年齢のみです。
+                書類の情報はStripe Identity（Stripe, Inc.）が処理します。YVOICEのサーバーには書類の画像は保存されません。確認されるのは年齢のみです。
               </p>
             </div>
 

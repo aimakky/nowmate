@@ -63,11 +63,11 @@ export default function GuideTab() {
         <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: '#c4b5fd' }}>SAFETY GUIDE</p>
         <h2 className="font-extrabold text-xl leading-tight" style={{ color: '#F0EEFF' }}>安心ガイド</h2>
         <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.4)' }}>
-          sameeを安心して使うためのルール一覧です。
+          YVOICEを安心して使うためのルール一覧です。
         </p>
       </div>
 
-      {/* sameeの安心ポイント — 上部の集約カード */}
+      {/* YVOICEの安心ポイント — 上部の集約カード */}
       <div
         className="rounded-2xl p-4 space-y-2"
         style={{
@@ -77,7 +77,7 @@ export default function GuideTab() {
       >
         <div className="flex items-center gap-2 mb-1">
           <ShieldCheck size={14} style={{ color: '#c4b5fd' }} />
-          <p className="text-[11px] font-extrabold tracking-wider" style={{ color: '#c4b5fd' }}>sameeの安心ポイント</p>
+          <p className="text-[11px] font-extrabold tracking-wider" style={{ color: '#c4b5fd' }}>YVOICEの安心ポイント</p>
         </div>
         {[
           { Icon: BadgeCheck, color: '#10B981', text: '20歳以上限定の大人コミュニティ' },

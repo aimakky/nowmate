@@ -73,11 +73,11 @@ export default function GrowthPortfolio(props: Props) {
   function buildShareText() {
     const lines = GROWTH_TYPES.map(g => `${g.icon} ${g.label} +${g.getValue(props)}`)
     return [
-      `自由村で積み上げた成長レポート 📊`,
+      `YVOICE で積み上げた成長レポート 📊`,
       lines.join('  '),
       `総合成長度 ${overallPct}%`,
       `「使うたびに、何かが増える」`,
-      `#自由村 nowmatejapan.com`,
+      `#YVOICE #ワイボ nowmatejapan.com`,
     ].join('\n')
   }
 

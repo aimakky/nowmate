@@ -103,7 +103,7 @@ export default function FeaturesTab() {
         <h2 className="font-extrabold text-xl leading-tight" style={{ color: '#F0EEFF' }}>できること</h2>
         {/* 旧: bundle.meta.catchcopies[0] (DB 内に「大人だけの、ちょっと静かな
             通話アプリ」が残っていて通話だけのアプリに見える)。
-            samee はゲーム + 通話 + コミュニティ全体なのでコード側で固定。 */}
+            YVOICE はゲーム + 通話 + コミュニティ全体なのでコード側で固定。 */}
         <p className="text-sm mt-1 leading-relaxed" style={{ color: 'rgba(240,238,255,0.6)' }}>
           ゲームや雑談を、安心して楽しめる大人のコミュニティ。
         </p>

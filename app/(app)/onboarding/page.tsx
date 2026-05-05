@@ -230,7 +230,7 @@ export default function OnboardingPage() {
                 <div className="text-5xl mb-4">🚫</div>
                 <h3 className="font-extrabold text-white text-lg mb-2">ご利用いただけません</h3>
                 <p className="text-white/60 text-xs leading-relaxed">
-                  sameeは<span className="text-red-300 font-bold">20歳以上</span>の方のみご利用いただけます。<br />
+                  YVOICEは<span className="text-red-300 font-bold">20歳以上</span>の方のみご利用いただけます。<br />
                   ご理解ください。
                 </p>
                 <button
@@ -245,7 +245,7 @@ export default function OnboardingPage() {
                   <div className="text-5xl mb-4">🎮</div>
                   <h3 className="font-extrabold text-white text-lg mb-2">大人のゲームコミュニティ</h3>
                   <p className="text-white/60 text-xs leading-relaxed">
-                    sameeは<span className="text-purple-300 font-bold">20歳以上限定</span>の民度重視コミュニティです。<br />
+                    YVOICEは<span className="text-purple-300 font-bold">20歳以上限定</span>の民度重視コミュニティです。<br />
                     年齢確認のため、生まれた年を入力してください。
                   </p>
                 </div>
@@ -277,7 +277,7 @@ export default function OnboardingPage() {
 
                 {/* 2つの場所の説明 */}
                 <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest px-1">sameeの2つの場所</p>
+                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest px-1">YVOICEの2つの場所</p>
                   {/* 村 */}
                   <div className="bg-white border border-stone-100 rounded-2xl p-4">
                     <div className="flex items-center gap-2 mb-2">
@@ -413,7 +413,7 @@ export default function OnboardingPage() {
             {/* 次へ後に文化カードが出ることを予告 */}
             <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
               <p className="text-xs text-amber-700 leading-relaxed">
-                📖 次のステップで「sameeのルール」を5枚のカードで紹介します（1分以内）
+                📖 次のステップで「YVOICEのルール」を5枚のカードで紹介します（1分以内）
               </p>
             </div>
           </div>
