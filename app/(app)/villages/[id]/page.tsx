@@ -909,28 +909,46 @@ export default function VillageDetailPage() {
 
   // ── Fetchers ─────────────────────────────────────────────
   const fetchVillage = useCallback(async () => {
-    // villages テーブルには profiles への FK が複数あるため（host_id 等）、
-    // PostgREST に「どの FK を使うか」を host_id で明示する。明示しないと
-    // "more than one relationship was found" で取得ごと失敗する。
-    // 旧 occupation 系の job_locked / job_type 列指定も削除済み。
-    const { data, error } = await createClient()
+    // villages → profiles の embed は本番で
+    //  "more than one relationship was found for 'villages' and 'profiles'"
+    // という曖昧性エラーで完全に失敗していた（FK が複数あり、!host_id hint
+    // でも production では解決できなかった）。
+    // 一番堅い方法は embed を諦めて host profile を別クエリで取り、
+    // 同じ shape（village.profiles）に詰め直すこと。これなら FK 構成が
+    // どう変わっても壊れない。
+    const supabase = createClient()
+    const { data, error } = await supabase
       .from('villages')
-      .select('*, profiles!host_id(display_name)')
+      .select('*')
       .eq('id', id)
       .single()
     if (error) {
-      // 旧実装は error を完全にサイレントにしていたため、村が見つからない時
-      // ページが何も描画されない真っ黒画面になっていた。原因追跡のため必ずログ。
       console.error('[villages/[id]] fetchVillage error:', error)
       setVillageFetchError(error.message ?? 'unknown')
-    } else if (data) {
-      setVillage(data)
-      setRules(data.rules ?? ['', '', ''])
-      setIsAbandoned(data.is_abandoned ?? false)
-      setVillageFetchError(null)
-    } else {
-      setVillageFetchError('village_not_found')
+      setLoading(false)
+      return
     }
+    if (!data) {
+      setVillageFetchError('village_not_found')
+      setLoading(false)
+      return
+    }
+
+    // host profile を別途取得して同じキーに詰め直す
+    let hostProfile: { display_name: string | null } | null = null
+    if (data.host_id) {
+      const { data: hp } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', data.host_id)
+        .maybeSingle()
+      hostProfile = hp as { display_name: string | null } | null
+    }
+
+    setVillage({ ...data, profiles: hostProfile })
+    setRules(data.rules ?? ['', '', ''])
+    setIsAbandoned(data.is_abandoned ?? false)
+    setVillageFetchError(null)
     setLoading(false)
   }, [id])
 
