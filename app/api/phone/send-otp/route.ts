@@ -22,15 +22,8 @@ function makeSupabaseClient(accessToken?: string) {
 }
 
 // ── Twilio SMS送信 ──────────────────────────────────────────────────────
-async function sendSms(to: string, body: string) {
-  const sid   = process.env.TWILIO_ACCOUNT_SID
-  const token = process.env.TWILIO_AUTH_TOKEN
-  const from  = process.env.TWILIO_PHONE_NUMBER
-
-  if (!sid || !token || !from) {
-    throw new Error('Twilio環境変数が未設定です (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_PHONE_NUMBER)')
-  }
-
+// 環境変数チェックはルートハンドラ側で行う（クライアントへ env 名を漏らさないため）
+async function sendSms(sid: string, token: string, from: string, to: string, body: string) {
   const res = await fetch(
     `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
     {
@@ -44,14 +37,32 @@ async function sendSms(to: string, body: string) {
   )
 
   if (!res.ok) {
-    const err = await res.json()
-    throw new Error(err.message ?? 'SMS送信失敗')
+    // Twilio のエラー本文はサーバーログだけに残し、クライアントには汎用メッセージ
+    const err = await res.json().catch(() => ({}))
+    console.error('[phone/send-otp] twilio error', err)
+    throw new Error('sms_send_failed')
   }
   return res.json()
 }
 
 // ── POST /api/phone/send-otp ────────────────────────────────────────────
 export async function POST(req: Request) {
+  // 1) Twilio env チェック — 未設定なら 503 not_configured（LiveKit と同じパターン）。
+  //    内部の変数名（TWILIO_ACCOUNT_SID 等）はクライアントに絶対漏らさない。
+  //    どの env が欠けているかはサーバーログのみに残す。
+  const sid   = process.env.TWILIO_ACCOUNT_SID
+  const token = process.env.TWILIO_AUTH_TOKEN
+  const from  = process.env.TWILIO_PHONE_NUMBER
+  if (!sid || !token || !from) {
+    const missing = [
+      !sid   && 'TWILIO_ACCOUNT_SID',
+      !token && 'TWILIO_AUTH_TOKEN',
+      !from  && 'TWILIO_PHONE_NUMBER',
+    ].filter(Boolean)
+    console.error('[phone/send-otp] env missing:', missing)
+    return NextResponse.json({ error: 'sms_not_configured' }, { status: 503 })
+  }
+
   try {
     const authHeader = req.headers.get('Authorization') ?? ''
     const accessToken = authHeader.replace('Bearer ', '').trim()
@@ -61,12 +72,12 @@ export async function POST(req: Request) {
     // ユーザー確認
     const { data: { user }, error: authErr } = await supabase.auth.getUser()
     if (authErr || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+      return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
     }
 
     const { phone } = await req.json()
-    if (!phone) {
-      return NextResponse.json({ error: '電話番号が必要です' }, { status: 400 })
+    if (!phone || typeof phone !== 'string') {
+      return NextResponse.json({ error: 'invalid_phone' }, { status: 400 })
     }
 
     // 6桁OTP生成
@@ -86,16 +97,17 @@ export async function POST(req: Request) {
       expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
     })
     if (insertErr) {
-      console.error('OTP insert error:', insertErr)
-      return NextResponse.json({ error: 'OTPの保存に失敗しました' }, { status: 500 })
+      console.error('[phone/send-otp] OTP insert error:', insertErr)
+      return NextResponse.json({ error: 'otp_save_failed' }, { status: 500 })
     }
 
-    // SMS送信
-    await sendSms(phone, `【自由村】認証コード: ${otp}\n有効期限10分。他人に教えないでください。`)
+    // SMS送信（旧ブランド「自由村」→ samee に修正）
+    await sendSms(sid, token, from, phone, `【samee】認証コード: ${otp}\n有効期限10分。他人に教えないでください。`)
 
     return NextResponse.json({ success: true })
   } catch (e: any) {
-    console.error('send-otp error:', e)
-    return NextResponse.json({ error: e.message ?? 'SMS送信に失敗しました' }, { status: 500 })
+    console.error('[phone/send-otp] error:', e)
+    // 内部メッセージはクライアントに渡さない（汎用コードのみ）
+    return NextResponse.json({ error: 'sms_send_failed' }, { status: 500 })
   }
 }

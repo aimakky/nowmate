@@ -24,6 +24,21 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
     return n
   }
 
+  // サーバが返すエラーコードを日本語メッセージに変換。
+  // サーバ側は内部状態を漏らさないために短いコードだけ返す（sms_not_configured 等）。
+  function formatErrorMessage(code: string | undefined, status: number): string {
+    if (code === 'sms_not_configured' || status === 503) {
+      return '電話認証は現在ご利用いただけません。しばらくしてから再度お試しください。'
+    }
+    if (code === 'unauthenticated' || status === 401) return 'ログインし直してから再度お試しください。'
+    if (code === 'invalid_phone')                    return '電話番号の形式が正しくありません。'
+    if (code === 'otp_save_failed')                  return '認証コードの保存に失敗しました。再度お試しください。'
+    if (code === 'sms_send_failed')                  return 'SMSの送信に失敗しました。電話番号をご確認ください。'
+    if (code === 'invalid_otp')                      return '認証コードが正しくありません。'
+    if (code === 'expired_otp')                      return '認証コードの有効期限が切れました。再度送信してください。'
+    return 'エラーが発生しました。しばらくしてから再度お試しください。'
+  }
+
   // ─── SMS送信 ──────────────────────────────────────────────
   async function sendOtp() {
     if (!phone.trim()) return
@@ -42,9 +57,9 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
       body: JSON.stringify({ phone: formatPhone(phone) }),
     })
 
-    const json = await res.json()
+    const json = await res.json().catch(() => ({}))
     if (!res.ok || json.error) {
-      setError(json.error ?? 'SMS送信に失敗しました')
+      setError(formatErrorMessage(json.error, res.status))
     } else {
       setStep('otp')
     }
@@ -69,9 +84,9 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
       body: JSON.stringify({ phone: formatPhone(phone), otp }),
     })
 
-    const json = await res.json()
+    const json = await res.json().catch(() => ({}))
     if (!res.ok || json.error) {
-      setError(json.error ?? '認証に失敗しました')
+      setError(formatErrorMessage(json.error, res.status))
     } else {
       setStep('success')
       setTimeout(() => { onVerified(); onClose() }, 1500)
@@ -153,6 +168,7 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
                 onChange={e => setPhone(e.target.value)}
                 placeholder="090-1234-5678"
                 className="flex-1 px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm focus:outline-none focus:border-brand-400"
+                style={{ background: '#ffffff', color: '#111827', WebkitTextFillColor: '#111827', caretColor: '#4f46e5' }}
                 autoFocus
               />
             </div>
@@ -195,6 +211,7 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
               onChange={e => setOtp(e.target.value.slice(0, 6))}
               placeholder="123456"
               className="w-full px-4 py-4 rounded-2xl border-2 border-stone-200 text-2xl font-bold text-center tracking-[0.5em] focus:outline-none focus:border-brand-400 mb-2"
+              style={{ background: '#ffffff', color: '#111827', WebkitTextFillColor: '#111827', caretColor: '#4f46e5' }}
               autoFocus
             />
 
