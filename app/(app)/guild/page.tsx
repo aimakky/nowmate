@@ -10,7 +10,7 @@ import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
 import GuildShieldIcon from '@/components/ui/icons/GuildShieldIcon'
 import GuildsContent from '@/components/features/GuildsContent'
 
-// 上部タブの高さ（即時ゲーム村 / ギルド の切替バー）
+// 上部タブの高さ（いますぐ村 / ギルド の切替バー）
 const TOP_TAB_HEIGHT = 44
 
 // ── 型定義 ──────────────────────────────────────────────────────
@@ -96,7 +96,7 @@ function GuildSmallCard({ village, isMember, onJoin }: {
 // ── メインページ ────────────────────────────────────────────────
 export default function GuildPage() {
   const router = useRouter()
-  // 上部タブ: 即時ゲーム村 / ギルド を 1 ページ内で切り替える
+  // 上部タブ: いますぐ村 / ギルド を 1 ページ内で切り替える
   const [topTab, setTopTab] = useState<'instant' | 'guild'>('instant')
 
   // URL ?tab=guild が来た場合（旧 /guilds 互換 or 内部リンク）はギルド側を初期表示。
@@ -265,7 +265,7 @@ export default function GuildPage() {
   return (
     <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
 
-      {/* ── 上部タブ：即時ゲーム村 / ギルド ── */}
+      {/* ── 上部タブ：いますぐ村 / ギルド ── */}
       <div
         className="sticky top-0 z-30 flex"
         style={{
@@ -282,7 +282,7 @@ export default function GuildPage() {
           style={{ color: topTab === 'instant' ? '#c4b5fd' : 'rgba(240,238,255,0.45)' }}
         >
           <GuildHeroGamepad size={14} />
-          即時ゲーム村
+          いますぐ村
           {topTab === 'instant' && (
             <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
               style={{ background: '#8B5CF6', boxShadow: '0 0 8px rgba(139,92,246,0.7)' }} />
@@ -307,7 +307,7 @@ export default function GuildPage() {
         <GuildsContent embedded headerTopOffset={TOP_TAB_HEIGHT} />
       )}
 
-      {/* ── 即時ゲーム村タブ（既存コンテンツ）以下、topTab === 'instant' のときのみ表示 ── */}
+      {/* ── いますぐ村タブ（既存コンテンツ）以下、topTab === 'instant' のときのみ表示 ── */}
       {topTab === 'instant' && (
       <>
       {/* ── ヘッダー ── */}
@@ -687,7 +687,7 @@ export default function GuildPage() {
         </div>
       </div>
 
-      {/* ── FAB（即時ゲーム村作成） ── */}
+      {/* ── FAB（いますぐ村作成） ── */}
       <button
         onClick={() => router.push('/guild/create')}
         className="fixed right-5 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"

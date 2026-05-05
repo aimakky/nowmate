@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-// 旧: ギルドが独立タブだったが、ゲーム村ページ内の上部タブ (即時ゲーム村 / ギルド)
+// 旧: ギルドが独立タブだったが、ゲーム村ページ内の上部タブ (いますぐ村 / ギルド)
 // に統合したため、ナビ枠は「フレンド」(/users) に転用。/guild?tab=guild で
 // ギルド側を直接開くこともできる。/guilds 自体は互換維持で残してある。
 const NAV_ITEMS = [
