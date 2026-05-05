@@ -235,7 +235,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                       }>
                       {myReaction
                         ? <span>{REACTIONS.find(r => r.key === myReaction)?.emoji}</span>
-                        : <span>＋ React</span>
+                        : <span>＋ リアクション</span>
                       }
                     </button>
                     {showPicker && (

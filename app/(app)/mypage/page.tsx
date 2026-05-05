@@ -17,7 +17,11 @@ import GuideTab from '@/components/rules/GuideTab'
 import FeaturesTab from '@/components/features-guide/FeaturesTab'
 import TrustVerificationCard from '@/components/features/TrustVerificationCard'
 
-type ProfileTab = 'tweets' | 'images' | 'joined_villages' | 'hosted_villages' | 'features' | 'guide'
+// 旧: tweets / images / joined_villages / hosted_villages / features / guide の 6 タブ。
+// 整理後: 投稿 / 参加中 / プロフィール / 安心 の 4 タブ。
+//  - images は 投稿 に統合（タブとしては削除、画像投稿データは残置）
+//  - hosted_villages（自分が作ったギルド・村）は 参加中 タブ内に「オーナー」subsection として表示
+type ProfileTab = 'tweets' | 'joined_villages' | 'features' | 'guide'
 
 // ── ツイートコンポーズシート ────────────────────────────────────
 function TweetComposeSheet({
@@ -472,11 +476,9 @@ export default function MyPage() {
         <div className="flex">
           {([
             { id: 'tweets',          label: '投稿' },
-            { id: 'images',          label: '画像' },
             { id: 'joined_villages', label: '参加中' },
-            { id: 'hosted_villages', label: 'ホスト' },
-            { id: 'features',        label: 'できること' },
-            { id: 'guide',           label: '安心ガイド' },
+            { id: 'features',        label: 'プロフィール' },
+            { id: 'guide',           label: '安心' },
           ] as { id: ProfileTab; label: string }[]).map(tab => (
             <button
               key={tab.id}
@@ -552,49 +554,18 @@ export default function MyPage() {
           </div>
         )}
 
-        {/* 画像タブ */}
-        {activeTab === 'images' && (
-          <div>
-            {imagePosts.length === 0 ? (
-              <div className="flex flex-col items-center py-16 text-center px-6">
-                <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-                  style={{ background: 'rgba(234,242,255,0.06)', border: '1px solid rgba(234,242,255,0.12)' }}
-                >
-                  <span className="text-3xl">🖼️</span>
-                </div>
-                <p className="font-bold text-sm" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ画像投稿がありません</p>
-                <p className="text-xs mt-1.5" style={{ color: 'rgba(240,238,255,0.3)' }}>ギルドに画像付きで投稿しよう</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-0.5" style={{ background: 'rgba(234,242,255,0.06)' }}>
-                {imagePosts.map((post: any) => (
-                  <div
-                    key={post.id}
-                    className="aspect-square overflow-hidden active:opacity-80 transition-opacity"
-                    style={{ background: 'rgba(234,242,255,0.05)' }}
-                    onClick={() => router.push(`/guild/${post.id}`)}
-                  >
-                    <img
-                      src={post.image_url}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {/* 画像タブは 投稿 に統合したため削除済み。imagePosts データは将来 投稿 タブで利用予定 */}
 
-        {/* 参加中タブ */}
+        {/* 参加中タブ — 参加中のギルド・村に加え、自分が作った（ホスト）ものも 1 画面に集約 */}
         {activeTab === 'joined_villages' && (() => {
           const gameCats = new Set(INDUSTRIES.map(i => i.id))
           const myVillages = joinedVillages.filter((v: any) => !gameCats.has(v.category))
           const myGuilds   = joinedVillages.filter((v: any) =>  gameCats.has(v.category))
+          const ownedAll   = hostedVillages
+          const hasAnything = joinedVillages.length > 0 || ownedAll.length > 0
           return (
             <div>
-              {joinedVillages.length === 0 ? (
+              {!hasAnything ? (
                 <div className="flex flex-col items-center py-16 text-center">
                   <span className="text-4xl mb-3">🏘️</span>
                   <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだギルド・ゲーム村に参加していません</p>
@@ -611,6 +582,45 @@ export default function MyPage() {
                 </div>
               ) : (
                 <div>
+                  {/* 👑 オーナー subsection（旧「ホスト」タブをここに統合） */}
+                  {ownedAll.length > 0 && (
+                    <>
+                      <div className="px-4 py-2 flex items-center gap-2"
+                        style={{ background: 'rgba(255,201,40,0.06)' }}>
+                        <Crown size={11} style={{ color: '#FFC928' }} />
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#FFC928' }}>
+                          オーナー（自分が作った場所）
+                        </p>
+                      </div>
+                      {ownedAll.map((v: any) => {
+                        const genreInfo = INDUSTRIES.find(i => i.id === v.category)
+                        return (
+                          <Link key={`owned-${v.id}`} href={`/villages/${v.id}`}
+                            className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
+                            style={{ borderBottom: '1px solid rgba(234,242,255,0.05)' }}>
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
+                              style={{
+                                background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg,#FFC928,#FF9500)',
+                                boxShadow: '0 0 12px rgba(255,201,40,0.25)',
+                              }}>{v.icon}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
+                                <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                                  style={{ background: 'rgba(255,201,40,0.15)', color: '#FFC928', border: '1px solid rgba(255,201,40,0.3)' }}>
+                                  <Crown size={8} /> 団長
+                                </span>
+                              </div>
+                              <p className="text-[11px]" style={{ color: '#B8C7D9' }}>
+                                <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
+                              </p>
+                            </div>
+                            <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
+                          </Link>
+                        )
+                      })}
+                    </>
+                  )}
                   {/* 🏕️ 村セクション */}
                   {myVillages.length > 0 && (
                     <>
@@ -679,103 +689,6 @@ export default function MyPage() {
           )
         })()}
 
-        {/* 作った村タブ */}
-        {activeTab === 'hosted_villages' && (() => {
-          const gameCats = new Set(INDUSTRIES.map(i => i.id))
-          const ownedVillages = hostedVillages.filter((v: any) => !gameCats.has(v.category))
-          const ownedGuilds   = hostedVillages.filter((v: any) =>  gameCats.has(v.category))
-          return (
-            <div>
-              {hostedVillages.length === 0 ? (
-                <div className="flex flex-col items-center py-16 text-center">
-                  <Crown size={36} style={{ color: 'rgba(234,242,255,0.18)' }} className="mb-3" />
-                  <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだギルド・ゲーム村を作っていません</p>
-                  <div className="flex gap-2 mt-4">
-                    <button onClick={() => router.push('/guilds/create')}
-                      className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
-                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(234,242,255,0.12)' }}
-                    >🛡️ ギルドを作る</button>
-                    <button onClick={() => router.push('/guild/create')}
-                      className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
-                      style={{ background: 'linear-gradient(135deg, #EAF2FF 0%, #B8C7D9 100%)', boxShadow: '0 4px 16px rgba(234,242,255,0.24)' }}
-                    >🎮 ゲーム村を作る</button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  {/* 🏕️ オーナー村セクション */}
-                  {ownedVillages.length > 0 && (
-                    <>
-                      <div className="px-4 py-2" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: 'rgba(240,238,255,0.3)' }}>🏕️ オーナー村</p>
-                      </div>
-                      {ownedVillages.map((v: any) => {
-                        const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
-                        return (
-                          <Link key={v.id} href={`/villages/${v.id}`}
-                            className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
-                            style={{ borderBottom: '1px solid rgba(234,242,255,0.05)' }}>
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
-                              style={{ background: vs.gradient, boxShadow: '0 0 12px rgba(234,242,255,0.18)' }}>{v.icon}</div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
-                                <span
-                                  className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                                  style={{ background: 'rgba(255,196,0,0.1)', color: '#FFD700', border: '1px solid rgba(255,196,0,0.3)' }}
-                                >
-                                  <Crown size={8} /> 村長
-                                </span>
-                              </div>
-                              <p className="text-[11px]" style={{ color: '#B8C7D9' }}>
-                                <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
-                              </p>
-                            </div>
-                            <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
-                          </Link>
-                        )
-                      })}
-                    </>
-                  )}
-                  {/* 🎮 オーナーギルドセクション */}
-                  {ownedGuilds.length > 0 && (
-                    <>
-                      <div className="px-4 py-2" style={{ background: 'rgba(234,242,255,0.04)' }}>
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#EAF2FF' }}>🎮 オーナーギルド</p>
-                      </div>
-                      {ownedGuilds.map((v: any) => {
-                        const genreInfo = INDUSTRIES.find(i => i.id === v.category)
-                        return (
-                          <Link key={v.id} href={`/villages/${v.id}`}
-                            className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
-                            style={{ borderBottom: '1px solid rgba(234,242,255,0.05)' }}>
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
-                              style={{ background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg, #EAF2FF, #B8C7D9)', boxShadow: '0 0 12px rgba(234,242,255,0.18)' }}>{v.icon}</div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
-                                <span
-                                  className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                                  style={{ background: 'rgba(234,242,255,0.09)', color: '#EAF2FF', border: '1px solid rgba(234,242,255,0.18)' }}
-                                >
-                                  <Crown size={8} /> 団長
-                                </span>
-                              </div>
-                              <p className="text-[11px]" style={{ color: '#B8C7D9' }}>
-                                <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
-                              </p>
-                            </div>
-                            <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
-                          </Link>
-                        )
-                      })}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        })()}
 
         {/* できること（機能ガイド）タブ */}
         {activeTab === 'features' && <FeaturesTab />}

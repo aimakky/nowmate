@@ -62,10 +62,13 @@ export default function BottomNav() {
           const badge  = badges[href] ?? 0
 
           if (live) {
+            // Active のときだけ LIVE バッジを強調。非 active 時は他のタブと同じ
+            // 「色 59% 透明度 + 細めのストローク」に揃え、ゲーム村だけが過剰に
+            // 主張しないようにする。
             return (
               <Link key={href} href={href}
-                className="flex-1 flex flex-col items-center justify-center py-1 gap-0 relative">
-                {/* Active glow bg */}
+                className="flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-colors">
+                {/* Active glow bg — active 時のみ */}
                 {active && (
                   <div className="absolute inset-x-2 inset-y-1 rounded-2xl"
                     style={{ background: `${activeColor}1F`, border: `1px solid ${activeColor}33` }} />
@@ -74,20 +77,26 @@ export default function BottomNav() {
                   <Gamepad2
                     size={20}
                     strokeWidth={active ? 2.5 : 1.8}
-                    style={{ color: activeColor }}
+                    style={{ color: active ? activeColor : `${activeColor}59` }}
                   />
-                  {/* LIVE badge */}
+                  {/* LIVE バッジ：active 時は脈打ち + 鮮やかなグラデ、
+                      非 active 時は彩度を落として補助マーカーに留める */}
                   <span className="absolute -top-2 -right-4 flex items-center">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-40"
-                      style={{ background: activeColor }} />
-                    <span className="relative text-[7px] font-extrabold tracking-widest px-1 py-px rounded-full leading-none"
-                      style={{ background: 'linear-gradient(135deg,#8B5CF6,#FF4D90)', color: '#fff' }}>
+                    {active && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-40"
+                        style={{ background: activeColor }} />
+                    )}
+                    <span
+                      className="relative text-[7px] font-extrabold tracking-widest px-1 py-px rounded-full leading-none"
+                      style={active
+                        ? { background: 'linear-gradient(135deg,#8B5CF6,#FF4D90)', color: '#fff' }
+                        : { background: `${activeColor}26`, color: `${activeColor}B3`, border: `1px solid ${activeColor}33` }}>
                       LIVE
                     </span>
                   </span>
                 </div>
                 <span className="text-[9px] font-extrabold tracking-wide mt-0.5 z-10"
-                  style={{ color: activeColor }}>
+                  style={{ color: active ? activeColor : `${activeColor}59` }}>
                   {label}
                 </span>
                 {active && (

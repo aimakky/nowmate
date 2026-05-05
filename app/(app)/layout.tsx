@@ -77,19 +77,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       {!isOnboarding && <BottomNav />}
 
-      {/* Floating feedback button — オンボーディング中は非表示 */}
+      {/* AI ガイド（旧: 電球だけの謎ボタン）— オンボーディング中は非表示 */}
       {!isOnboarding && (
         <button
           onClick={() => setShowFeedback(true)}
-          className="fixed bottom-24 left-4 z-30 w-11 h-11 rounded-2xl flex items-center justify-center text-lg active:scale-95 transition-all"
+          className="fixed bottom-24 left-4 z-30 flex items-center gap-1.5 pl-2.5 pr-3 py-2 rounded-full active:scale-95 transition-all"
           style={{
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+            background: 'rgba(20,16,40,0.85)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            border: '1px solid rgba(157,92,255,0.28)',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.35), 0 0 12px rgba(157,92,255,0.15)',
           }}
-          title="Share feedback"
+          title="AIガイド：困ったときの相談・使い方"
+          aria-label="AIガイドを開く"
         >
-          💡
+          <span className="text-base leading-none">💡</span>
+          <span className="text-[10px] font-bold tracking-wide" style={{ color: '#EAF2FF' }}>
+            AIガイド
+          </span>
         </button>
       )}
 

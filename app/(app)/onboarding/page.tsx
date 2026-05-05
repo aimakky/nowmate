@@ -370,7 +370,7 @@ export default function OnboardingPage() {
               <textarea
                 value={bio}
                 onChange={e => setBio(e.target.value.slice(0, 150))}
-                placeholder="好きなことや趣味、一言で自己紹介してみましょう"
+                placeholder="例：一緒に遊べる仲間を探しています / 気軽に話せる仲間募集中"
                 rows={3}
                 className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 leading-relaxed"
                 style={{ background: '#ffffff', color: '#1c1917', WebkitTextFillColor: '#1c1917', caretColor: '#4f46e5' }}

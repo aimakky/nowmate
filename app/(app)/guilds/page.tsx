@@ -231,22 +231,18 @@ export default function GuildsPage() {
           style={{ backgroundImage: `radial-gradient(1px 1px at 15% 25%, #27DFFF, transparent), radial-gradient(1.5px 1.5px at 75% 20%, #0891B2, transparent), radial-gradient(1px 1px at 88% 65%, #49E1FF, transparent), radial-gradient(1px 1px at 40% 80%, #27DFFF, transparent), radial-gradient(1.5px 1.5px at 55% 45%, rgba(240,238,255,0.8), transparent)` }} />
 
         <div className="relative">
-          <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex items-start justify-between gap-3 mb-1">
             <div>
               <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: '#27DFFF' }}>GUILD</p>
               <h1 className="font-extrabold text-2xl leading-tight flex items-center gap-2" style={{ color: '#F0EEFF' }}>
                 <GuildShieldIcon size={28} active={true} />
-                ギルドを探す
+                同じゲームが好きな仲間とつながろう
               </h1>
-              <p className="text-xs mt-0.5" style={{ color: 'rgba(240,238,255,0.3)' }}>同じゲームを愛する仲間が集まるコミュニティ</p>
+              <p className="text-xs mt-1 leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                継続的に集まれるコミュニティを見つける場所
+              </p>
             </div>
-            <button
-              onClick={() => router.push('/guilds/create')}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold flex-shrink-0 active:scale-95 transition-all"
-              style={{ background: 'rgba(39,223,255,0.15)', color: '#27DFFF', border: '1px solid rgba(39,223,255,0.3)' }}
-            >
-              <Plus size={13} /> 作る
-            </button>
+            {/* 旧 "+ 作る" 右上ボタンは右下 FAB と重複していたため削除し、作成導線を 1 つに統一した */}
           </div>
 
           {/* 検索 */}
@@ -397,8 +393,10 @@ export default function GuildsPage() {
               <p className="font-extrabold text-lg mb-2" style={{ color: '#F0EEFF' }}>
                 {subFilter === 'member' ? 'まだギルドに参加していません' : 'このジャンルのギルドはまだありません'}
               </p>
-              <p className="text-sm mb-8" style={{ color: 'rgba(240,238,255,0.4)' }}>
-                {subFilter === 'member' ? '気に入ったギルドに参加しよう' : '最初のギルドを作ってみましょう'}
+              <p className="text-sm mb-8 leading-relaxed px-6" style={{ color: 'rgba(240,238,255,0.45)' }}>
+                {subFilter === 'member'
+                  ? '同じゲームが好きな仲間とつながるギルドに参加しましょう'
+                  : '最初のギルドを作って、同じゲームが好きな仲間を集めましょう'}
               </p>
               {subFilter !== 'member' && (
                 <button

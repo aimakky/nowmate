@@ -258,22 +258,18 @@ export default function GuildPage() {
           style={{ backgroundImage: `radial-gradient(1px 1px at 10% 20%, #a78bfa, transparent), radial-gradient(1.5px 1.5px at 70% 15%, #818cf8, transparent), radial-gradient(1px 1px at 85% 60%, #c4b5fd, transparent), radial-gradient(1px 1px at 35% 75%, #a78bfa, transparent), radial-gradient(1.5px 1.5px at 50% 40%, white, transparent), radial-gradient(1px 1px at 92% 35%, white, transparent)` }} />
 
         <div className="relative">
-          <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex items-start justify-between gap-3 mb-1">
             <div>
               <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5 text-purple-400/60">GAME ROOM</p>
               <h1 className="font-extrabold text-white text-2xl leading-tight flex items-center gap-2">
                 <GuildHeroGamepad size={28} />
-                ゲーム村を探す
+                今すぐ一緒に遊ぶ人を探そう
               </h1>
-              <p className="text-white/40 text-xs mt-0.5">今すぐ仲間を募集・通話ルームを開こう</p>
+              <p className="text-white/45 text-xs mt-1 leading-relaxed">
+                通話ルームを開いて仲間を募集する場所
+              </p>
             </div>
-            <button
-              onClick={() => router.push('/guild/create')}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold flex-shrink-0 active:scale-95 transition-all"
-              style={{ background: 'rgba(139,92,246,0.25)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.35)' }}
-            >
-              <Plus size={13} /> 作る
-            </button>
+            {/* 旧 "+ 作る" 右上ボタンは右下 FAB と重複していたため削除し、作成導線を 1 つに統一した */}
           </div>
 
           {/* 検索 */}
