@@ -12,7 +12,8 @@ interface Props {
 // ─── 電話番号エラーの種類（ログ・分岐・UX用） ────────────────────
 //  format         : クライアント側バリデーション NG（送信前）
 //  not_configured : サーバ側 Twilio env 未設定（503）
-//  send_failed    : Twilio 経由の SMS 送信失敗（500/400 系）
+//  send_failed    : Twilio 経由の SMS 送信失敗（500/400 系・samee 内側）
+//  provider_error : Twilio 自身が返したエラー（番号 BAN など）
 //  rate_limited   : 短時間に複数回叩いた（429）
 //  unauthenticated: ログイン切れ（401）
 //  network        : fetch 自体が失敗（オフライン等）
@@ -21,6 +22,7 @@ type ErrKind =
   | 'format'
   | 'not_configured'
   | 'send_failed'
+  | 'provider_error'
   | 'rate_limited'
   | 'unauthenticated'
   | 'network'
@@ -32,6 +34,24 @@ type ErrKind =
 interface ErrState {
   kind: ErrKind
   message: string
+}
+
+// 内部 kind を運用ログ用の UPPER_SNAKE_CASE コードに変換。
+// 監視ツール（Sentry 等）に流す際もこのコードで揃える。
+function toErrorCode(kind: ErrKind): string {
+  switch (kind) {
+    case 'format':          return 'INVALID_PHONE_FORMAT'
+    case 'send_failed':     return 'SMS_SEND_FAILED'
+    case 'provider_error':  return 'PROVIDER_ERROR'
+    case 'rate_limited':    return 'RATE_LIMITED'
+    case 'not_configured':  return 'ENV_NOT_CONFIGURED'
+    case 'unauthenticated': return 'UNAUTHENTICATED'
+    case 'network':         return 'NETWORK_ERROR'
+    case 'invalid_otp':     return 'INVALID_OTP'
+    case 'expired_otp':     return 'EXPIRED_OTP'
+    case 'unknown':
+    default:                return 'UNKNOWN_ERROR'
+  }
 }
 
 const RESEND_COOLDOWN_SEC = 60   // SMS 再送のクールダウン
@@ -78,7 +98,32 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
   const [err,     setErr]     = useState<ErrState>({ kind: null, message: '' })
   const [hasSent, setHasSent] = useState(false)             // 一度送信を試みたか（ボタン文言切替に使用）
   const [cooldownSec, setCooldownSec] = useState(0)         // SMS 再送までの残秒数
+  const [userId,  setUserId]  = useState<string | null>(null)  // 問い合わせ URL に同梱
   const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // ─── ログイン中のユーザーID（問い合わせ導線に最低限の情報を載せる） ──
+  useEffect(() => {
+    let alive = true
+    createClient().auth.getUser().then(({ data: { user } }) => {
+      if (alive && user) setUserId(user.id)
+    })
+    return () => { alive = false }
+  }, [])
+
+  // 問い合わせ URL を組み立てる。電話番号は下4桁のみ・原文は送らない。
+  function buildContactUrl(): string {
+    const code = toErrorCode(err.kind)
+    const ts = new Date().toISOString()
+    const last4 = phone.replace(/\D/g, '').slice(-4)
+    const params = new URLSearchParams({
+      reason: 'phone_verify',
+      code,
+      ts,
+    })
+    if (userId) params.set('uid', userId)
+    if (last4 && last4.length === 4) params.set('phone_last4', last4)
+    return `/contact?${params.toString()}`
+  }
 
   // ─── クールダウンタイマー ────────────────────────────────────
   useEffect(() => {
@@ -155,7 +200,13 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
         kind: 'format',
         message: '電話番号の形式を確認してください。\n例：09012345678',
       }
-      console.warn('[phone-verify] format error:', { raw: phone, normalized: e164 })
+      console.warn('[phone-verify] format error', {
+        code: toErrorCode('format'),
+        ts:   new Date().toISOString(),
+        // 入力原文は送らない。下4桁だけ・桁数だけ。
+        digits_len:  phone.replace(/\D/g, '').length,
+        last4:       phone.replace(/\D/g, '').slice(-4) || null,
+      })
       setErr(e)
       setHasSent(true)
       return
@@ -179,7 +230,14 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
 
       if (!res.ok || json.error) {
         const e = classifyError(json.error, res.status)
-        console.error('[phone-verify] send failed:', { kind: e.kind, code: json.error, status: res.status })
+        // 構造化ログ：監視ツール導入後に grep / Sentry で原因切り分けに使う
+        console.error('[phone-verify] send failed', {
+          code:        toErrorCode(e.kind),
+          server_code: json.error ?? null,
+          status:      res.status,
+          ts:          new Date().toISOString(),
+          uid:         userId ?? null,
+        })
         setErr(e)
         setHasSent(true)
       } else {
@@ -193,7 +251,12 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
         kind: 'network',
         message: '通信に失敗しました。電波・回線をご確認のうえ再度お試しください。',
       }
-      console.error('[phone-verify] network error:', netErr)
+      console.error('[phone-verify] send network error', {
+        code: toErrorCode(e.kind),
+        ts:   new Date().toISOString(),
+        uid:  userId ?? null,
+        err:  netErr instanceof Error ? netErr.message : String(netErr),
+      })
       setErr(e)
       setHasSent(true)
     } finally {
@@ -222,7 +285,13 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
 
       if (!res.ok || json.error) {
         const e = classifyError(json.error, res.status)
-        console.error('[phone-verify] verify failed:', { kind: e.kind, code: json.error, status: res.status })
+        console.error('[phone-verify] verify failed', {
+          code:        toErrorCode(e.kind),
+          server_code: json.error ?? null,
+          status:      res.status,
+          ts:          new Date().toISOString(),
+          uid:         userId ?? null,
+        })
         setErr(e)
       } else {
         setStep('success')
@@ -233,7 +302,12 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
         kind: 'network',
         message: '通信に失敗しました。電波・回線をご確認のうえ再度お試しください。',
       }
-      console.error('[phone-verify] verify network error:', netErr)
+      console.error('[phone-verify] verify network error', {
+        code: toErrorCode(e.kind),
+        ts:   new Date().toISOString(),
+        uid:  userId ?? null,
+        err:  netErr instanceof Error ? netErr.message : String(netErr),
+      })
       setErr(e)
     } finally {
       setLoading(false)
@@ -328,10 +402,13 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
             </button>
             <button
               onClick={dismissForLater}
-              className="w-full py-2.5 mt-2 text-xs font-bold text-stone-400 active:opacity-60 transition-opacity"
+              className="w-full py-2.5 mt-2 text-xs font-bold text-stone-500 active:opacity-60 transition-opacity"
             >
               あとで認証する
             </button>
+            <p className="text-center text-[10px] mt-1" style={{ color: '#a8a29e' }}>
+              ※ 通話・投稿には認証が必要です
+            </p>
           </div>
         )}
 
@@ -385,18 +462,18 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
               ※ 日本の携帯番号（070/080/090）。ハイフン・スペースありでも大丈夫です。
             </p>
 
-            {/* エラー表示（種類によって扱いを変える） */}
+            {/* エラー表示（赤を強くしすぎない・amber 寄りの柔らかい警告色に） */}
             {err.kind && (
               <div
                 className="rounded-xl px-3 py-2.5 mb-4 text-xs leading-relaxed flex items-start gap-2"
                 style={{
-                  background: 'rgba(239,68,68,0.08)',
-                  border: '1px solid rgba(239,68,68,0.25)',
-                  color: '#b91c1c',
+                  background: 'rgba(251,146,60,0.10)',
+                  border: '1px solid rgba(251,146,60,0.30)',
+                  color: '#9a3412',
                   whiteSpace: 'pre-line',
                 }}
               >
-                <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                <AlertCircle size={14} className="flex-shrink-0 mt-0.5" style={{ color: '#ea580c' }} />
                 <span>{err.message}</span>
               </div>
             )}
@@ -416,29 +493,35 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
                 : sendButtonLabel}
             </button>
 
-            {/* エラー時の補助動線 — 番号確認 / あとで認証 / サポート */}
+            {/* エラー時の補助動線 — 主要 2 アクションを横並びチップ、問い合わせは
+                テキストリンクに格下げ（スマホ幅で 3 個並べると詰まるため） */}
             {err.kind && err.kind !== 'format' && (
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => { setErr({ kind: null, message: '' }); /* 入力欄に focus を戻す */ }}
-                  className="py-2.5 rounded-xl text-[11px] font-bold border transition-all active:scale-95"
-                  style={{ background: 'rgba(139,92,246,0.06)', borderColor: 'rgba(139,92,246,0.25)', color: '#7c3aed' }}
-                >
-                  番号を確認
-                </button>
-                <button
-                  onClick={dismissForLater}
-                  className="py-2.5 rounded-xl text-[11px] font-bold border transition-all active:scale-95"
-                  style={{ background: 'rgba(120,113,108,0.05)', borderColor: 'rgba(120,113,108,0.18)', color: '#78716c' }}
-                >
-                  あとで認証
-                </button>
+              <div className="mt-4">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => { setErr({ kind: null, message: '' }) }}
+                    className="py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95"
+                    style={{ background: 'rgba(139,92,246,0.08)', borderColor: 'rgba(139,92,246,0.30)', color: '#7c3aed' }}
+                  >
+                    番号を修正
+                  </button>
+                  <button
+                    onClick={dismissForLater}
+                    className="py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95"
+                    style={{ background: 'rgba(120,113,108,0.06)', borderColor: 'rgba(120,113,108,0.20)', color: '#57534e' }}
+                  >
+                    あとで認証
+                  </button>
+                </div>
+                <p className="text-center text-[10px] mt-2" style={{ color: '#a8a29e' }}>
+                  ※ 通話・投稿には認証が必要です
+                </p>
                 <a
-                  href="/contact"
-                  className="py-2.5 rounded-xl text-[11px] font-bold border transition-all active:scale-95 flex items-center justify-center gap-1"
-                  style={{ background: 'rgba(120,113,108,0.05)', borderColor: 'rgba(120,113,108,0.18)', color: '#78716c' }}
+                  href={buildContactUrl()}
+                  className="flex items-center justify-center gap-1 w-full py-2 mt-1 text-[11px] font-bold transition-opacity active:opacity-60"
+                  style={{ color: '#7c3aed' }}
                 >
-                  <Mail size={11} /> 問い合わせ
+                  <Mail size={11} /> 問い合わせる →
                 </a>
               </div>
             )}
@@ -482,13 +565,13 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
               <div
                 className="rounded-xl px-3 py-2.5 mb-4 text-xs leading-relaxed flex items-start gap-2"
                 style={{
-                  background: 'rgba(239,68,68,0.08)',
-                  border: '1px solid rgba(239,68,68,0.25)',
-                  color: '#b91c1c',
+                  background: 'rgba(251,146,60,0.10)',
+                  border: '1px solid rgba(251,146,60,0.30)',
+                  color: '#9a3412',
                   whiteSpace: 'pre-line',
                 }}
               >
-                <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                <AlertCircle size={14} className="flex-shrink-0 mt-0.5" style={{ color: '#ea580c' }} />
                 <span>{err.message}</span>
               </div>
             )}
