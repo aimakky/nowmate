@@ -7,7 +7,7 @@ import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
-import { Edit2, MessageSquareDashed, Check, X, MessageSquare } from 'lucide-react'
+import { Edit2, MessageSquareDashed, Check, X, MessageSquare, UserPlus } from 'lucide-react'
 
 interface DirectChat {
   matchId: string
@@ -155,9 +155,24 @@ export default function ChatListPage() {
               チャット
             </h1>
           </div>
-          <button className="text-sm font-semibold active:opacity-60 transition-opacity" style={{ color: '#FF4FD8' }}>
-            編集
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/users"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold active:scale-95 transition-all"
+              style={{
+                background:'rgba(255,79,216,0.12)',
+                color:'#FF4FD8',
+                border:'1px solid rgba(255,79,216,0.3)',
+              }}
+              title="ユーザーを探す"
+            >
+              <UserPlus size={13} />
+              <span>探す</span>
+            </Link>
+            <button className="text-sm font-semibold active:opacity-60 transition-opacity" style={{ color: '#FF4FD8' }}>
+              編集
+            </button>
+          </div>
         </div>
         {/* タブ */}
         <div className="flex">

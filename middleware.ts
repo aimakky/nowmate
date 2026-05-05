@@ -29,6 +29,7 @@ export async function middleware(request: NextRequest) {
     '/timeline', '/guilds', '/guild', '/notifications', '/voice', '/villages',
     '/tweet', '/explore', '/create', '/post', '/search', '/qa', '/bottle',
     '/community', '/activity', '/now', '/likes-me', '/verify-age', '/upgrade',
+    '/users',
   ]
   const isProtected = protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))
 

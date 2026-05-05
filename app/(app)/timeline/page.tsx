@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
 import { detectNgWords } from '@/lib/moderation'
@@ -385,7 +386,10 @@ function PostCard({
       <div className="px-4 pt-3.5 pb-3">
         {/* ヘッダー */}
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <Link
+            href={`/profile/${post.user_id}`}
+            className="flex items-center gap-2.5 min-w-0 flex-1 active:opacity-70 transition-opacity"
+          >
             {/* アバター */}
             <div
               className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold text-white"
@@ -418,7 +422,7 @@ function PostCard({
                 {timeAgo(post.created_at)}
               </span>
             </div>
-          </div>
+          </Link>
           {/* ... ボタン */}
           <button className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full active:bg-white/5 transition-all"
             style={{ color: 'rgba(240,238,255,0.25)' }}>

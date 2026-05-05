@@ -305,11 +305,15 @@ export default function MyPage() {
 
       {/* ── ヘッダー行 ── */}
       <div className="relative z-10 flex items-center justify-between px-5 pt-12 pb-0">
-        {/* 左：人アイコン（円形） */}
-        <div className="w-10 h-10 rounded-full flex items-center justify-center"
-          style={{ border: '1.5px solid rgba(234,242,255,0.35)', background: 'rgba(234,242,255,0.06)' }}>
+        {/* 左：ユーザーを探す（人アイコンタップで /users へ） */}
+        <Link
+          href="/users"
+          className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all"
+          style={{ border: '1.5px solid rgba(234,242,255,0.35)', background: 'rgba(234,242,255,0.06)' }}
+          title="ユーザーを探す"
+        >
           <User size={18} style={{ color: '#EAF2FF' }} />
-        </div>
+        </Link>
         {/* 右：設定アイコン（六角形） */}
         <Link
           href="/settings"
