@@ -1,7 +1,7 @@
 {
-  "name": "YVOICE — 大人のゲーム通話コミュニティ",
+  "name": "YVOICE — Your Voice Online｜大人のゲーム通話コミュニティ",
   "short_name": "YVOICE",
-  "description": "20歳以上限定。安心してゲーム仲間と通話できる、大人のゲームコミュニティ。",
+  "description": "Your Voice Online。20歳以上限定で、ゲーム仲間と声でつながる大人のゲーム通話コミュニティ。",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#080812",

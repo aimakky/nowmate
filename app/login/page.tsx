@@ -88,7 +88,7 @@ export default function LoginPage() {
             <span className="text-2xl">✦</span>
           </div>
           <h1 className="text-2xl font-extrabold mb-1" style={{ color: '#F0EEFF' }}>おかえりなさい</h1>
-          <p className="text-sm" style={{ color: 'rgba(240,238,255,0.45)' }}>YVOICEにログインする</p>
+          <p className="text-sm" style={{ color: 'rgba(240,238,255,0.45)' }}>YVOICE — Your Voice Online にログイン</p>
         </div>
 
         {/* Google */}

@@ -63,7 +63,7 @@ export default function GuideTab() {
         <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: '#c4b5fd' }}>SAFETY GUIDE</p>
         <h2 className="font-extrabold text-xl leading-tight" style={{ color: '#F0EEFF' }}>安心ガイド</h2>
         <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.4)' }}>
-          YVOICEを安心して使うためのルール一覧です。
+          YVOICE — Your Voice Online。安心して使うためのルール一覧です。
         </p>
       </div>
 

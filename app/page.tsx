@@ -129,9 +129,13 @@ export default async function TopPage() {
           </span>
         </h1>
 
-        {/* サブコピー */}
+        {/* サブコピー — Your Voice Online の意味づけを併記 */}
+        <p className="text-[10px] text-center font-bold tracking-[0.18em] uppercase mb-1.5 mx-auto relative" style={{ color: 'rgba(167,139,250,0.7)' }}>
+          Your Voice Online
+        </p>
         <p className="text-sm text-center leading-relaxed mb-8 mx-auto max-w-[320px] relative" style={{ color: '#cbd5e1' }}>
-          20歳以上限定の、落ち着いて話せるゲーム通話コミュニティ。
+          ゲーム仲間と声でつながる、<br />
+          20歳以上限定の大人向けゲーム通話コミュニティ。
         </p>
 
         {/* CTA — LP 全体で統一 */}
@@ -580,7 +584,7 @@ export default async function TopPage() {
               ゲームを楽しもう。
             </h2>
             <p className="text-xs mb-7" style={{ color: 'rgba(203,213,225,0.7)' }}>
-              大人のゲーム通話コミュニティ、YVOICE
+              YVOICE — Your Voice Online<br />大人のゲーム通話コミュニティ
             </p>
             <Link
               href="/signup"
@@ -614,6 +618,9 @@ export default async function TopPage() {
           </div>
           <span className="font-bold" style={{ color: '#cbd5e1' }}>YVOICE</span>
         </div>
+        <p className="text-[10px] mb-1 tracking-widest uppercase font-bold" style={{ color: 'rgba(167,139,250,0.7)' }}>
+          Your Voice Online
+        </p>
         <p className="text-xs mb-3" style={{ color: '#94a3b8' }}>
           20歳以上限定の大人ゲーム通話コミュニティ
         </p>
