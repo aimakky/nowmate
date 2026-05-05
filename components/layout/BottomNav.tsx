@@ -20,6 +20,8 @@ export default function BottomNav() {
   const [notifCount, setNotifCount] = useState(0)
 
   useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null
+
     async function fetchBadges() {
       try {
         const supabase = createClient()
@@ -33,9 +35,29 @@ export default function BottomNav() {
         setNotifCount(nc ?? 0)
       } catch { /* silent */ }
     }
-    fetchBadges()
-    const interval = setInterval(fetchBadges, 30_000)
-    return () => clearInterval(interval)
+
+    function startPolling() {
+      if (interval) return
+      fetchBadges()
+      interval = setInterval(fetchBadges, 30_000)
+    }
+    function stopPolling() {
+      if (interval) { clearInterval(interval); interval = null }
+    }
+
+    // タブが見えている時だけポーリング。バックグラウンドでは止めて、
+    // 100 ユーザー × 常時ポーリングという固定負荷を避ける。
+    function onVisibility() {
+      if (document.visibilityState === 'visible') startPolling()
+      else stopPolling()
+    }
+
+    onVisibility()  // 初回起動
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      stopPolling()
+    }
   }, [])
 
   useEffect(() => {

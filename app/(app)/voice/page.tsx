@@ -103,11 +103,22 @@ export default function VoicePage() {
 
   useEffect(() => {
     const supabase = createClient()
+    // postgres_changes はテーブル全体への broadcast のため、参加者の
+    // 入退室が頻発するピーク時には N ユーザー × M イベントの fan-out
+    // で fetchRooms が叩かれる。900ms デバウンスでまとめて 1 回に集約。
+    let pending: ReturnType<typeof setTimeout> | null = null
+    const debouncedFetch = () => {
+      if (pending) clearTimeout(pending)
+      pending = setTimeout(() => { pending = null; fetchRooms() }, 900)
+    }
     const channel = supabase.channel('voice_rooms_updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'voice_participants' }, fetchRooms)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'voice_rooms' }, fetchRooms)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'voice_participants' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'voice_rooms' }, debouncedFetch)
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      if (pending) clearTimeout(pending)
+      supabase.removeChannel(channel)
+    }
   }, [fetchRooms])
 
   async function handleCreate() {
