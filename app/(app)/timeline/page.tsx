@@ -535,7 +535,9 @@ function ComposeModal({
   userProfile: { display_name: string; avatar_url: string | null } | null
   villages: Village[]
   onClose: () => void
-  onPosted: () => void
+  // 投稿成功時に呼ばれる。投稿モードの場合のみ optimistic prepend 用に
+  // 投稿内容を渡す（RLS の SELECT 設定に関わらず投稿者の画面に必ず表示するため）
+  onPosted: (newPost?: { content: string; category: string }) => void
 }) {
   const [mode,        setMode]        = useState<'post' | 'bottle'>('post')
   const [text,        setText]        = useState('')
@@ -562,17 +564,20 @@ function ComposeModal({
     if (!text.trim() || sending) return
     const ng = detectNgWords(text)
     if (ng) { setErrMsg(`「${ng}」は使えません`); return }
+    const submittedContent  = text.trim()
+    const submittedCategory = category
     setSending(true)
     const { error } = await createClient().from('village_posts').insert({
       village_id: null,
       user_id:    userId,
-      content:    text.trim(),
-      category,
+      content:    submittedContent,
+      category:   submittedCategory,
     })
     setSending(false)
     if (!error) {
       setSent(true)
-      setTimeout(onPosted, 1000)
+      // 1秒は重く感じるので 500ms に短縮。投稿内容を渡して親で optimistic prepend
+      setTimeout(() => onPosted({ content: submittedContent, category: submittedCategory }), 500)
     } else {
       // 投稿失敗を必ずユーザーに伝える（旧実装は完全サイレントだった）
       console.error('[timeline] handlePost insert error:', error)
@@ -987,8 +992,20 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
           user_trust: Array.isArray(p.user_trust) ? p.user_trust[0] ?? null : p.user_trust,
         })) as TPost[]
 
-      if (reset) setPosts(filtered)
-      else setPosts(prev => [...prev, ...filtered])
+      console.log('[timeline] fetched', filtered.length, 'posts (tab:', tab, ')')
+
+      if (reset) {
+        // 既存の optimistic 投稿（temp- プレフィックス）を残し、DB から取得した
+        // 本物のレコードと重複しないようマージする。RLS の SELECT が null-village
+        // 投稿を隠していても、投稿者本人には自分の投稿が見え続ける保険。
+        setPosts(prev => {
+          const optimistic = prev.filter(p => p.id.startsWith('temp-'))
+          // 既に DB 側に同じ content の本物がいたら optimistic を捨てる
+          const realContents = new Set(filtered.map(f => `${f.user_id}|${f.content}`))
+          const stillNeeded = optimistic.filter(o => !realContents.has(`${o.user_id}|${o.content}`))
+          return [...stillNeeded, ...filtered]
+        })
+      } else setPosts(prev => [...prev, ...filtered])
 
       offsetRef.current = from + PAGE_SIZE
       setHasMore(filtered.length === PAGE_SIZE)
@@ -1316,8 +1333,27 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
           userProfile={userProfile}
           villages={myVillages}
           onClose={() => setShowCompose(false)}
-          onPosted={() => {
+          onPosted={(newPost) => {
             setShowCompose(false)
+            // Optimistic prepend — RLS の SELECT 設定がどうあれ、
+            // 投稿した本人の画面には必ずすぐに反映させる
+            if (newPost && userId) {
+              const optimistic: TPost = {
+                id:             `temp-${Date.now()}`,
+                content:        newPost.content,
+                category:       newPost.category,
+                created_at:     new Date().toISOString(),
+                village_id:     '',  // null だが型上 string なので空文字
+                user_id:        userId,
+                reaction_count: 0,
+                profiles:       userProfile
+                  ? { display_name: userProfile.display_name, avatar_url: userProfile.avatar_url }
+                  : { display_name: 'あなた', avatar_url: null },
+                villages:       null,
+                user_trust:     { tier: userTier, is_shadow_banned: false },
+              }
+              setPosts(prev => [optimistic, ...prev])
+            }
             fetchPosts(true)
             if (tab === 'myvillage') fetchQA(userId, myVillageIds)
           }}
