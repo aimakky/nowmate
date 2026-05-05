@@ -7,6 +7,11 @@ import { Plus, Search, ChevronRight, Moon, Mic, MicOff, X, Check } from 'lucide-
 import { INDUSTRIES } from '@/lib/guild'
 import VillageCard, { type Village, VILLAGE_TYPE_STYLES, getFireStatus } from '@/components/ui/VillageCard'
 import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
+import GuildShieldIcon from '@/components/ui/icons/GuildShieldIcon'
+import GuildsContent from '@/components/features/GuildsContent'
+
+// 上部タブの高さ（即時ゲーム村 / ギルド の切替バー）
+const TOP_TAB_HEIGHT = 44
 
 // ── 型定義 ──────────────────────────────────────────────────────
 type TonightSlot = {
@@ -91,6 +96,17 @@ function GuildSmallCard({ village, isMember, onJoin }: {
 // ── メインページ ────────────────────────────────────────────────
 export default function GuildPage() {
   const router = useRouter()
+  // 上部タブ: 即時ゲーム村 / ギルド を 1 ページ内で切り替える
+  const [topTab, setTopTab] = useState<'instant' | 'guild'>('instant')
+
+  // URL ?tab=guild が来た場合（旧 /guilds 互換 or 内部リンク）はギルド側を初期表示。
+  // SSR 時に useSearchParams() を使うと Suspense 境界が必要になり build エラーに
+  // なるため、mount 後に window.location から拾うシンプルな方式に切替えた。
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('tab') === 'guild') setTopTab('guild')
+  }, [])
   const [villages,      setVillages]      = useState<Village[]>([])
   const [laneData,      setLaneData]      = useState<Record<string, Village[]>>({})
   const [loading,       setLoading]       = useState(true)
@@ -249,9 +265,54 @@ export default function GuildPage() {
   return (
     <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
 
+      {/* ── 上部タブ：即時ゲーム村 / ギルド ── */}
+      <div
+        className="sticky top-0 z-30 flex"
+        style={{
+          height: TOP_TAB_HEIGHT,
+          background: 'rgba(8,8,18,0.95)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
+        <button
+          onClick={() => setTopTab('instant')}
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-extrabold transition-all relative"
+          style={{ color: topTab === 'instant' ? '#c4b5fd' : 'rgba(240,238,255,0.45)' }}
+        >
+          <GuildHeroGamepad size={14} />
+          即時ゲーム村
+          {topTab === 'instant' && (
+            <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
+              style={{ background: '#8B5CF6', boxShadow: '0 0 8px rgba(139,92,246,0.7)' }} />
+          )}
+        </button>
+        <button
+          onClick={() => setTopTab('guild')}
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-extrabold transition-all relative"
+          style={{ color: topTab === 'guild' ? '#27DFFF' : 'rgba(240,238,255,0.45)' }}
+        >
+          <GuildShieldIcon size={14} active={topTab === 'guild'} />
+          ギルド
+          {topTab === 'guild' && (
+            <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
+              style={{ background: '#27DFFF', boxShadow: '0 0 8px rgba(39,223,255,0.7)' }} />
+          )}
+        </button>
+      </div>
+
+      {/* ── ギルドタブ（旧 /guilds の中身） ── */}
+      {topTab === 'guild' && (
+        <GuildsContent embedded headerTopOffset={TOP_TAB_HEIGHT} />
+      )}
+
+      {/* ── 即時ゲーム村タブ（既存コンテンツ）以下、topTab === 'instant' のときのみ表示 ── */}
+      {topTab === 'instant' && (
+      <>
       {/* ── ヘッダー ── */}
-      <div className="sticky top-0 z-10 px-4 pt-12 pb-0"
-        style={{ background: 'linear-gradient(160deg, #0f0f1a 0%, #1a1035 60%, #1a1035 100%)' }}>
+      <div className="sticky z-10 px-4 pt-12 pb-0"
+        style={{ top: TOP_TAB_HEIGHT, background: 'linear-gradient(160deg, #0f0f1a 0%, #1a1035 60%, #1a1035 100%)' }}>
 
         {/* 星背景 */}
         <div className="absolute inset-0 opacity-40 pointer-events-none"
@@ -626,7 +687,7 @@ export default function GuildPage() {
         </div>
       </div>
 
-      {/* ── FAB ── */}
+      {/* ── FAB（即時ゲーム村作成） ── */}
       <button
         onClick={() => router.push('/guild/create')}
         className="fixed right-5 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
@@ -635,9 +696,12 @@ export default function GuildPage() {
           background: 'linear-gradient(135deg,#8b5cf6 0%,#6d28d9 100%)',
           boxShadow: '0 8px 24px rgba(139,92,246,0.5)',
         }}
+        aria-label="ゲーム村を作る"
       >
         <Plus size={22} className="text-white" />
       </button>
+      </>
+      )}
     </div>
   )
 }

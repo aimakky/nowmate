@@ -2,17 +2,20 @@
 // v4
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Layers, Bell, Gamepad2, Shield, MessageSquare } from 'lucide-react'
+import { Layers, Bell, Gamepad2, MessageSquare, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+// 旧: ギルドが独立タブだったが、ゲーム村ページ内の上部タブ (即時ゲーム村 / ギルド)
+// に統合したため、ナビ枠は「フレンド」(/users) に転用。/guild?tab=guild で
+// ギルド側を直接開くこともできる。/guilds 自体は互換維持で残してある。
 const NAV_ITEMS = [
-  { href: '/timeline',      label: 'TL',      icon: Layers,        live: false, activeColor: '#39FF88' },
-  { href: '/guilds',        label: 'ギルド',   icon: Shield,        live: false, activeColor: '#27DFFF' },
+  { href: '/timeline',      label: 'TL',       icon: Layers,        live: false, activeColor: '#39FF88' },
+  { href: '/users',         label: 'フレンド', icon: UserPlus,      live: false, activeColor: '#27DFFF' },
   { href: '/guild',         label: 'ゲーム村', icon: Gamepad2,      live: true,  activeColor: '#8B5CF6' },
   { href: '/chat',          label: 'チャット', icon: MessageSquare, live: false, activeColor: '#FF4FD8' },
-  { href: '/notifications', label: '通知',    icon: Bell,          live: false, activeColor: '#FFC928' },
+  { href: '/notifications', label: '通知',     icon: Bell,          live: false, activeColor: '#FFC928' },
 ]
 
 export default function BottomNav() {
