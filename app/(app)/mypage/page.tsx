@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { TrustCard } from '@/components/ui/TrustBadge'
 import TrustBadge from '@/components/ui/TrustBadge'
-import PhoneVerifyModal from '@/components/features/PhoneVerifyModal'
+// PhoneVerifyModal は TrustVerificationCard 内部で管理される
 import { getUserTrust, fetchTierProgress, type TierProgress } from '@/lib/trust'
 import { Settings, LogOut, ChevronRight, Crown, Users, Copy, Check, Pencil, X, Eye, EyeOff, User } from 'lucide-react'
 import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
@@ -15,6 +15,7 @@ import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import DMPrivacySettings from '@/components/features/DMPrivacySettings'
 import GuideTab from '@/components/rules/GuideTab'
 import FeaturesTab from '@/components/features-guide/FeaturesTab'
+import TrustVerificationCard from '@/components/features/TrustVerificationCard'
 
 type ProfileTab = 'tweets' | 'images' | 'joined_villages' | 'hosted_villages' | 'features' | 'guide'
 
@@ -167,7 +168,7 @@ export default function MyPage() {
   const [userId,         setUserId]         = useState<string | null>(null)
   const [activeTab,      setActiveTab]      = useState<ProfileTab>('tweets')
   const [loading,        setLoading]        = useState(true)
-  const [showPhoneVerify,setShowPhoneVerify]= useState(false)
+  // 電話認証モーダルの状態は TrustVerificationCard が内部で持つため不要
   const [showCompose,    setShowCompose]    = useState(false)
   const [idCopied,       setIdCopied]       = useState(false)
   const [showIndustry,   setShowIndustry]   = useState(true)
@@ -784,19 +785,22 @@ export default function MyPage() {
 
         {/* ── 下部コンテンツ（全タブ共通） ── */}
         <div className="px-4 pt-4 space-y-3">
-          {trust && !trust.phone_verified && (
-            <button
-              onClick={() => setShowPhoneVerify(true)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left active:scale-[0.99] transition-all"
-              style={{ background: 'rgba(234,242,255,0.05)', border: '1px solid rgba(234,242,255,0.15)' }}
-            >
-              <span className="text-2xl">📱</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold" style={{ color: '#EAF2FF' }}>電話番号を認証する</p>
-                <p className="text-xs mt-0.5" style={{ color: 'rgba(234,242,255,0.38)' }}>投稿・通話が解放されます · +30pt</p>
-              </div>
-              <ChevronRight size={16} style={{ color: 'rgba(234,242,255,0.3)' }} />
-            </button>
+
+          {/* ── 安心認証カード（電話番号 / 本人確認 / 年齢確認の状態を集約） ── */}
+          {profile && userId && (
+            <TrustVerificationCard
+              userId={userId}
+              phoneVerified={!!trust?.phone_verified}
+              ageVerificationStatus={(profile as any).age_verification_status ?? 'unverified'}
+              onChanged={async () => {
+                // 認証完了後に trust と profile を即時再取得（楽観更新ではなく真値を取り直す）
+                const supabase = createClient()
+                const t = await getUserTrust(userId)
+                if (t) setTrust(t)
+                const { data: p } = await supabase.from('profiles').select('*').eq('id', userId).single()
+                if (p) setProfile(p)
+              }}
+            />
           )}
 
           {/* ── DM プライバシー設定 ── */}
@@ -975,20 +979,7 @@ export default function MyPage() {
         />
       )}
 
-      {/* ── モーダル ── */}
-      {showPhoneVerify && (
-        <PhoneVerifyModal
-          onClose={() => setShowPhoneVerify(false)}
-          onVerified={async () => {
-            const supabase = createClient()
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) {
-              const t = await getUserTrust(user.id)
-              setTrust(t)
-            }
-          }}
-        />
-      )}
+      {/* PhoneVerifyModal は TrustVerificationCard 内で管理されるため、ここでは不要 */}
     </div>
   )
 }
