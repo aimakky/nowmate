@@ -357,7 +357,8 @@ export default function OnboardingPage() {
                 placeholder="例：たろう、ゆきこ、さくら"
                 maxLength={20}
                 autoFocus
-                className="w-full px-4 py-3.5 rounded-2xl border-2 border-stone-200 text-sm focus:outline-none focus:border-indigo-400 bg-white"
+                className="w-full px-4 py-3.5 rounded-2xl border-2 border-stone-200 text-sm focus:outline-none focus:border-indigo-400"
+                style={{ background: '#ffffff', color: '#1c1917', WebkitTextFillColor: '#1c1917', caretColor: '#4f46e5' }}
               />
               <p className="text-[10px] text-stone-400 mt-1">2〜20文字。後から変更できます。</p>
             </div>
@@ -371,7 +372,8 @@ export default function OnboardingPage() {
                 onChange={e => setBio(e.target.value.slice(0, 150))}
                 placeholder="好きなことや趣味、一言で自己紹介してみましょう"
                 rows={3}
-                className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 bg-white leading-relaxed"
+                className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 leading-relaxed"
+                style={{ background: '#ffffff', color: '#1c1917', WebkitTextFillColor: '#1c1917', caretColor: '#4f46e5' }}
               />
               <p className="text-right text-[10px] text-stone-400 mt-1">{bio.length}/150</p>
             </div>
@@ -502,7 +504,8 @@ export default function OnboardingPage() {
                   : '村のみんなへ、はじめまして！'}
                 rows={4}
                 autoFocus
-                className="w-full px-4 py-3.5 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 bg-white leading-relaxed"
+                className="w-full px-4 py-3.5 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 leading-relaxed"
+                style={{ background: '#ffffff', color: '#1c1917', WebkitTextFillColor: '#1c1917', caretColor: '#4f46e5' }}
               />
               <div className="flex items-center justify-between mt-1 px-1">
                 <p className="text-[10px] text-stone-400">村の中だけで見えます</p>
