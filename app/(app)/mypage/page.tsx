@@ -786,10 +786,10 @@ export default function MyPage() {
                 {tierProgress && (() => {
                   // ラベルは lib/trust.ts の TRUST_TIERS と整合（短縮表示は許容）
                   const tiers = [
-                    { id: 'resident', min: 100,  label: '住人',     color: '#B8C7D9' },
-                    { id: 'regular',  min: 300,  label: '常連',     color: '#7CFF82' },
-                    { id: 'trusted',  min: 600,  label: '信頼住人', color: '#EAF2FF' },
-                    { id: 'pillar',   min: 1000, label: '中心',     color: '#FF4D90' },
+                    { id: 'resident', min: 100,  label: '村人',       color: '#B8C7D9' },
+                    { id: 'regular',  min: 300,  label: '常連',       color: '#7CFF82' },
+                    { id: 'trusted',  min: 600,  label: '信頼の村人', color: '#EAF2FF' },
+                    { id: 'pillar',   min: 1000, label: '柱',         color: '#FF4D90' },
                   ]
                   const next = tiers.find(t => trust.score < t.min)
                   if (!next) return (

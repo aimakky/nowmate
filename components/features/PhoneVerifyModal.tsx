@@ -367,7 +367,7 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
               電話番号を認証する
             </h3>
             <p className="text-sm text-stone-500 leading-relaxed mb-5">
-              認証すると「住人」になれて、投稿・通話に参加できます。<br />
+              認証すると「村人」になれて、投稿・通話に参加できます。<br />
               <span className="font-bold" style={{ color: '#7c3aed' }}>+30pt 獲得</span>
             </p>
 
@@ -375,7 +375,7 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
               {[
                 { icon: '💬', text: '村に投稿できる' },
                 { icon: '🎙️', text: '通話で話せる' },
-                { icon: '🌿', text: '住人として認められる' },
+                { icon: '🌿', text: '村人として認められる' },
               ].map(({ icon, text }) => (
                 <div key={text} className="flex items-center gap-2.5">
                   <span className="text-base">{icon}</span>
@@ -615,7 +615,7 @@ export default function PhoneVerifyModal({ onClose, onVerified }: Props) {
             </div>
             <h3 className="font-extrabold text-stone-900 text-lg mb-2">認証完了！</h3>
             <p className="text-sm text-stone-500 mb-3">
-              あなたは「住人」になりました
+              あなたは「村人」になりました
             </p>
             <div
               className="inline-flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-full"

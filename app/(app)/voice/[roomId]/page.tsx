@@ -1031,15 +1031,15 @@ export default function VoiceRoomPage() {
             <p className="text-xs text-center mb-1" style={{ color: 'rgba(240,238,255,0.4)' }}>広場トーク</p>
             <p className="text-xs text-center mb-5" style={{ color: 'rgba(240,238,255,0.4)' }}>どのモードで入りますか？</p>
 
-            {/* 見学者はスピーカー不可 */}
+            {/* 見習いはスピーカー不可 */}
             {myTier === 'visitor' && (
               <div className="rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2"
                 style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)' }}>
                 <span className="text-base flex-shrink-0">🪴</span>
                 <div>
-                  <p className="text-[11px] font-bold" style={{ color: '#a5b4fc' }}>見学者は聴くだけ参加できます</p>
+                  <p className="text-[11px] font-bold" style={{ color: '#a5b4fc' }}>見習いは聴くだけ参加できます</p>
                   <p className="text-[10px] mt-0.5" style={{ color: 'rgba(165,180,252,0.6)' }}>
-                    電話認証 + 初投稿で「住人」に昇格すると話せるようになります
+                    電話認証 + 初投稿で「村人」に昇格すると話せるようになります
                   </p>
                 </div>
               </div>
@@ -1102,7 +1102,7 @@ export default function VoiceRoomPage() {
                     {!myAgeVerified
                       ? '登壇する（年齢確認が必要）'
                       : myTier === 'visitor'
-                        ? '登壇する（住人以上で解放）'
+                        ? '登壇する（村人以上で解放）'
                         : speakers.length >= MAX_SPEAKERS
                           ? `登壇する（上限${MAX_SPEAKERS}名）`
                           : `登壇する（残り${MAX_SPEAKERS - speakers.length}枠）`}

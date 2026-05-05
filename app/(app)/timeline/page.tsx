@@ -363,7 +363,7 @@ function PostCard({
 }) {
   const liked = likedIds.has(post.id)
   // Trust Tier ラベルは lib/trust.ts の TRUST_TIERS を canonical 定義として使用。
-  // 全 5 段階（見学者 / 住人 / 常連 / 信頼住人 / 中心メンバー）が自動反映される。
+  // 全 5 段階（見習い / 村人 / 常連 / 信頼の村人 / 村の柱）が自動反映される。
   const roleLabel = getTierById(post.user_trust?.tier ?? 'visitor').label
 
   function shareToX() {

@@ -40,7 +40,7 @@ export async function fetchTierProgress(userId: string): Promise<TierProgress | 
 export const TRUST_TIERS = [
   {
     id: 'visitor',
-    label: '見学者',
+    label: '見習い',
     icon: '🪴',
     min: 0,
     color: 'bg-stone-50 text-stone-600 border-stone-200',
@@ -49,7 +49,7 @@ export const TRUST_TIERS = [
   },
   {
     id: 'resident',
-    label: '住人',
+    label: '村人',
     icon: '🏡',
     min: 100,
     color: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -67,7 +67,7 @@ export const TRUST_TIERS = [
   },
   {
     id: 'trusted',
-    label: '信頼住人',
+    label: '信頼の村人',
     icon: '🌳',
     min: 600,
     color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -76,7 +76,7 @@ export const TRUST_TIERS = [
   },
   {
     id: 'pillar',
-    label: '中心メンバー',
+    label: '村の柱',
     icon: '✨',
     min: 1000,
     color: 'bg-amber-50 text-amber-700 border-amber-200',

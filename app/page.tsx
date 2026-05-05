@@ -211,7 +211,7 @@ export default async function TopPage() {
               </div>
               {[
                 { name: 'Ryota_29', msg: 'ヴァロ今夜やる人いる？', tier: '常連', tierColor: '#60a5fa', online: true },
-                { name: 'Mai_gamer', msg: '参加します！ダイヤ帯です', tier: '信頼住人', tierColor: '#a78bfa', online: true },
+                { name: 'Mai_gamer', msg: '参加します！ダイヤ帯です', tier: '信頼の村人', tierColor: '#a78bfa', online: true },
                 { name: 'Kenji_FPS', msg: 'もう1人募集！', tier: '常連', tierColor: '#60a5fa', online: false },
               ].map((m, i) => (
                 <div key={i} className="flex items-start gap-2">
@@ -414,11 +414,11 @@ export default async function TopPage() {
             </p>
             <div className="space-y-2">
               {[
-                { icon: '🪴', label: '見学者',     desc: '登録直後 — まずは雰囲気を見学',     color: '#94a3b8' },
-                { icon: '🏡', label: '住人',       desc: '電話認証後 — 投稿・通話に参加',     color: '#60a5fa' },
+                { icon: '🪴', label: '見習い',     desc: '登録直後 — まずは雰囲気を見学',     color: '#94a3b8' },
+                { icon: '🏡', label: '村人',       desc: '電話認証後 — 投稿・通話に参加',     color: '#60a5fa' },
                 { icon: '🌿', label: '常連',       desc: '活動継続 — 通話ルームを作れる',     color: '#34d399' },
-                { icon: '🌳', label: '信頼住人',   desc: '実績あり — ギルドを作れる',         color: '#86efac' },
-                { icon: '✨', label: '中心メンバー', desc: '最高ランク — 全機能 + 金フレーム', color: '#fbbf24' },
+                { icon: '🌳', label: '信頼の村人', desc: '実績あり — ギルドを作れる',         color: '#86efac' },
+                { icon: '✨', label: '村の柱',     desc: '最高ランク — 全機能 + 金フレーム', color: '#fbbf24' },
               ].map(t => (
                 <div key={t.label} className="flex items-center gap-3 rounded-xl px-3 py-2.5"
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -495,12 +495,12 @@ export default async function TopPage() {
             {
               text: 'ランクもプレイ時間も似た人と集まれるなら、誘いやすいし誘われやすそう。',
               name: 'フリーランス · 33歳 · RPG',
-              tier: '信頼住人', tierColor: '#a78bfa',
+              tier: '信頼の村人', tierColor: '#a78bfa',
             },
             {
               text: 'ジャンルマスター称号って楽しそう。ゲームみたいで好き。',
               name: '会社員 · 26歳 · スマホゲームメイン',
-              tier: '住人', tierColor: '#4ade80',
+              tier: '村人', tierColor: '#4ade80',
             },
           ].map((v, i) => (
             <div
