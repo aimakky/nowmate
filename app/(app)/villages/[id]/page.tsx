@@ -909,12 +909,13 @@ export default function VillageDetailPage() {
 
   // ── Fetchers ─────────────────────────────────────────────
   const fetchVillage = useCallback(async () => {
-    // 旧 occupation 系の job_locked / job_type 列指定は削除（* で既に含まれる
-    // か、production にカラムが無ければ PostgREST が列不在エラーを返して
-    // データが null になり画面が真っ黒になる原因になっていた）
+    // villages テーブルには profiles への FK が複数あるため（host_id 等）、
+    // PostgREST に「どの FK を使うか」を host_id で明示する。明示しないと
+    // "more than one relationship was found" で取得ごと失敗する。
+    // 旧 occupation 系の job_locked / job_type 列指定も削除済み。
     const { data, error } = await createClient()
       .from('villages')
-      .select('*, profiles(display_name)')
+      .select('*, profiles!host_id(display_name)')
       .eq('id', id)
       .single()
     if (error) {
