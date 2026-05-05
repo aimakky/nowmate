@@ -520,8 +520,14 @@ export default function OnboardingPage() {
         )}
       </div>
 
-      {/* Bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-stone-100 px-5 py-4 max-w-md mx-auto">
+      {/* Bottom CTA — z-50 で他の fixed 要素より前面、safe-area-inset-bottom で iOS ホームインジケータを回避 */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-stone-100 px-5 pt-4 max-w-md mx-auto"
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}
+      >
+        {step === 0 && birthYear && currentAge < 20 && (
+          <p className="text-xs text-red-500 mb-2 text-center font-bold">20歳以上の方のみ利用できます</p>
+        )}
         {error && <p className="text-xs text-red-500 mb-3 text-center">{error}</p>}
         <button
           onClick={handleNext}

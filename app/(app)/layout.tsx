@@ -17,8 +17,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [needsRulesAgreement, setNeedsRulesAgreement] = useState(false)
   const pathname = usePathname()
 
+  // オンボーディング中は下部ナビ・アバター・フィードバックボタンを全て隠す（CTAボタンと干渉するため）
+  const isOnboarding = pathname === '/onboarding' || pathname.startsWith('/onboarding/')
+
   // ページ自体にヘッダーがある場合は重複を避けるため非表示にするパス
-  const hideAvatar = pathname.startsWith('/villages/') || pathname.startsWith('/chat/') || pathname === '/mypage'
+  const hideAvatar = isOnboarding || pathname.startsWith('/villages/') || pathname.startsWith('/chat/') || pathname === '/mypage'
 
   useEffect(() => {
     async function init() {
@@ -69,24 +72,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </Link>
       )}
 
-      <div style={{ paddingBottom: 'max(calc(4rem + env(safe-area-inset-bottom, 8px)), 5.5rem)' }}>
+      <div style={{ paddingBottom: isOnboarding ? '0' : 'max(calc(4rem + env(safe-area-inset-bottom, 8px)), 5.5rem)' }}>
         {children}
       </div>
-      <BottomNav />
+      {!isOnboarding && <BottomNav />}
 
-      {/* Floating feedback button */}
-      <button
-        onClick={() => setShowFeedback(true)}
-        className="fixed bottom-24 left-4 z-30 w-11 h-11 rounded-2xl flex items-center justify-center text-lg active:scale-95 transition-all"
-        style={{
-          background: 'rgba(255,255,255,0.05)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-        }}
-        title="Share feedback"
-      >
-        💡
-      </button>
+      {/* Floating feedback button — オンボーディング中は非表示 */}
+      {!isOnboarding && (
+        <button
+          onClick={() => setShowFeedback(true)}
+          className="fixed bottom-24 left-4 z-30 w-11 h-11 rounded-2xl flex items-center justify-center text-lg active:scale-95 transition-all"
+          style={{
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+          }}
+          title="Share feedback"
+        >
+          💡
+        </button>
+      )}
 
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
 
