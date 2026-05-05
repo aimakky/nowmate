@@ -14,14 +14,20 @@ import {
 import FeatureCard from './FeatureCard'
 
 // カテゴリの表示名・色マッピング（DB に未知カテゴリが追加されてもフォールバック）
+// 旧: 6 カテゴリ + 「すべて」で iPhone 幅で右端が見切れていたため、
+// 「見る」(browse) は「つながる」(community) に近い概念なので統合。
 const CAT_META: Record<string, { label: string; color: string }> = {
   voice:     { label: '話す',         color: '#3B82F6' },
   community: { label: 'つながる',     color: '#10B981' },
   fun:       { label: '遊ぶ',         color: '#FBBF24' },
   safety:    { label: '守る',         color: '#EF4444' },
   system:    { label: 'しくみ',       color: '#A78BFA' },
-  browse:    { label: '見る',         color: '#94A3B8' },
+  // browse は community 配下に統合（タブには出さない）。
+  // DB に browse 機能が残っていてもラベル色が引けるよう定義は残す。
+  browse:    { label: 'つながる',     color: '#10B981' },
 }
+// タブとして表示するカテゴリ（browse を除外）
+const VISIBLE_CATS = ['voice', 'community', 'fun', 'safety', 'system'] as const
 function catMeta(id: string) {
   return CAT_META[id] ?? { label: id, color: '#94A3B8' }
 }
@@ -95,11 +101,12 @@ export default function FeaturesTab() {
       <div>
         <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: '#FBBF24' }}>FEATURE GUIDE</p>
         <h2 className="font-extrabold text-xl leading-tight" style={{ color: '#F0EEFF' }}>できること</h2>
-        {bundle?.meta.catchcopies?.[0] && (
-          <p className="text-sm mt-1" style={{ color: 'rgba(240,238,255,0.55)' }}>
-            {bundle.meta.catchcopies[0]}
-          </p>
-        )}
+        {/* 旧: bundle.meta.catchcopies[0] (DB 内に「大人だけの、ちょっと静かな
+            通話アプリ」が残っていて通話だけのアプリに見える)。
+            samee はゲーム + 通話 + コミュニティ全体なのでコード側で固定。 */}
+        <p className="text-sm mt-1 leading-relaxed" style={{ color: 'rgba(240,238,255,0.6)' }}>
+          ゲームや雑談を、安心して楽しめる大人のコミュニティ。
+        </p>
       </div>
 
       {/* 3ステップ */}
@@ -124,9 +131,9 @@ export default function FeaturesTab() {
         </div>
       ) : null}
 
-      {/* カテゴリタブ */}
-      <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 px-4 pb-1">
-        {(['all', ...Object.keys(CAT_META)] as const).map(c => {
+      {/* カテゴリタブ — 末尾に右余白を入れてスクロール末尾の見切れを防ぐ */}
+      <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 pl-4 pr-6 pb-1">
+        {(['all', ...VISIBLE_CATS] as const).map(c => {
           const on = activeCat === c
           const meta = c === 'all' ? { label: 'すべて', color: '#c4b5fd' } : catMeta(c)
           return (

@@ -396,8 +396,19 @@ export default function MyPage() {
               }
             </button>
           )}
-          {profile.bio && (
-            <p className="text-sm mt-1.5 leading-relaxed" style={{ color: 'rgba(240,238,255,0.6)' }}>{profile.bio}</p>
+          {profile.bio ? (
+            <Link href="/settings" className="block mt-1.5 active:opacity-70 transition-opacity">
+              <p className="text-sm leading-relaxed inline" style={{ color: 'rgba(240,238,255,0.6)' }}>
+                {profile.bio}
+              </p>
+              <Pencil size={10} className="inline ml-1.5 align-baseline" style={{ color: 'rgba(240,238,255,0.3)' }} />
+            </Link>
+          ) : (
+            <Link href="/settings" className="inline-flex items-center gap-1 mt-1.5 text-xs font-medium active:opacity-70 transition-opacity"
+              style={{ color: 'rgba(157,92,255,0.7)' }}>
+              <Pencil size={11} />
+              <span>自己紹介を書く（例：一緒に遊べる仲間を探しています）</span>
+            </Link>
           )}
           {trust && (
             <div className="mt-2">
@@ -477,7 +488,7 @@ export default function MyPage() {
           {([
             { id: 'tweets',          label: '投稿' },
             { id: 'joined_villages', label: '参加中' },
-            { id: 'features',        label: 'プロフィール' },
+            { id: 'features',        label: '使い方' },
             { id: 'guide',           label: '安心' },
           ] as { id: ProfileTab; label: string }[]).map(tab => (
             <button
@@ -499,7 +510,8 @@ export default function MyPage() {
       </div>
 
       {/* ── タブコンテンツ ── */}
-      <div className="pb-32 relative z-10">
+      {/* 末尾の余白：BottomNav (64px) + safe-area + AIガイド/FAB のクリアランス */}
+      <div className="relative z-10" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 9rem)' }}>
 
         {/* 投稿タブ */}
         {activeTab === 'tweets' && (

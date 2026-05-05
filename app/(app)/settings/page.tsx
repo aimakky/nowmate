@@ -150,10 +150,29 @@ export default function SettingsPage() {
           <textarea
             value={bio}
             onChange={e => setBio(e.target.value.slice(0, 200))}
-            placeholder="どんな人か教えてください（任意）"
+            placeholder="例：一緒に遊べる仲間を探しています / 気軽に話せる仲間募集中 / 今夜遊べる仲間を探しています"
             rows={4}
             className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 bg-white leading-relaxed"
+            style={{ background: '#ffffff', color: '#1c1917', WebkitTextFillColor: '#1c1917', caretColor: '#4f46e5' }}
           />
+          {/* 候補チップ：1 タップで定型文を挿入 */}
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {[
+              '一緒に遊べる仲間を探しています',
+              '気軽に話せる仲間募集中',
+              '今夜遊べる仲間を探しています',
+            ].map(s => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setBio(s)}
+                className="text-[10px] font-bold px-2.5 py-1 rounded-full border active:scale-95 transition-all"
+                style={{ background: 'rgba(79,70,229,0.08)', color: '#4f46e5', borderColor: 'rgba(79,70,229,0.25)' }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
           <p className="text-right text-[10px] text-stone-400 mt-1">{bio.length}/200</p>
         </div>
 

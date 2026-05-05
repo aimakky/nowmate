@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ShieldCheck, BadgeCheck, Flag, MicOff } from 'lucide-react'
 import RuleCard from './RuleCard'
 import {
   fetchRulesBundle,
@@ -10,14 +10,26 @@ import {
   type RuleCategory,
 } from '@/lib/rules'
 
+// 旧パレットは critical=オレンジ + safety=赤 で警告色が連続していた。
+// 重要警告は critical のみ赤系に集約し、それ以外は青/緑/紫/グレーへ分散。
 const CATS: { id: RuleCategory | 'all'; label: string; color: string }[] = [
   { id: 'all',       label: 'すべて',  color: '#c4b5fd' },
-  { id: 'critical',  label: '最重要',   color: '#F97316' },
+  { id: 'critical',  label: '最重要',   color: '#EF4444' },
   { id: 'voice',     label: '通話',     color: '#3B82F6' },
   { id: 'community', label: 'コミュニティ', color: '#10B981' },
-  { id: 'safety',    label: '安全',     color: '#EF4444' },
+  { id: 'safety',    label: '安全',     color: '#8B5CF6' },
   { id: 'system',    label: 'その他',   color: '#94A3B8' },
 ]
+
+// rule.color は DB に保存されているがカテゴリと不整合な場合がある（多くが赤系）。
+// レンダリング側で category ベースに上書きして全体の色トーンを揃える。
+const CAT_ACCENT: Record<string, string> = {
+  critical:  '#EF4444',
+  voice:     '#3B82F6',
+  community: '#10B981',
+  safety:    '#8B5CF6',
+  system:    '#94A3B8',
+}
 
 export default function GuideTab() {
   const [rules, setRules] = useState<Rule[] | null>(null)
@@ -55,8 +67,33 @@ export default function GuideTab() {
         </p>
       </div>
 
-      {/* カテゴリタブ */}
-      <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 px-4 pb-1">
+      {/* sameeの安心ポイント — 上部の集約カード */}
+      <div
+        className="rounded-2xl p-4 space-y-2"
+        style={{
+          background: 'linear-gradient(135deg, rgba(139,92,246,0.10) 0%, rgba(59,130,246,0.08) 100%)',
+          border: '1px solid rgba(139,92,246,0.28)',
+        }}
+      >
+        <div className="flex items-center gap-2 mb-1">
+          <ShieldCheck size={14} style={{ color: '#c4b5fd' }} />
+          <p className="text-[11px] font-extrabold tracking-wider" style={{ color: '#c4b5fd' }}>sameeの安心ポイント</p>
+        </div>
+        {[
+          { Icon: BadgeCheck, color: '#10B981', text: '20歳以上限定の大人コミュニティ' },
+          { Icon: ShieldCheck, color: '#3B82F6', text: '本人確認で通話・DMをより安全に' },
+          { Icon: Flag,        color: '#F59E0B', text: '通報・ブロックで荒らしに対応' },
+          { Icon: MicOff,      color: '#EF4444', text: '録音・録画は禁止（規約違反）' },
+        ].map(({ Icon, color, text }) => (
+          <div key={text} className="flex items-center gap-2.5">
+            <Icon size={13} style={{ color, flexShrink: 0 }} strokeWidth={2.4} />
+            <span className="text-xs leading-relaxed" style={{ color: 'rgba(240,238,255,0.78)' }}>{text}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* カテゴリタブ — 末尾に右余白を入れてスクロール末尾の見切れを防ぐ */}
+      <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 pl-4 pr-6 pb-1">
         {CATS.map(c => {
           const on = active === c.id
           return (
@@ -88,7 +125,11 @@ export default function GuideTab() {
         </div>
       )}
       <div className="space-y-2.5">
-        {visible.map(r => <RuleCard key={r.id} rule={r} />)}
+        {visible.map(r => {
+          // DB の rule.color は赤系に偏っているため、category ベースの色で上書き
+          const accent = CAT_ACCENT[r.category as string] ?? r.color
+          return <RuleCard key={r.id} rule={{ ...r, color: accent }} />
+        })}
         {rules && visible.length === 0 && (
           <p className="text-center py-8 text-xs" style={{ color: 'rgba(240,238,255,0.35)' }}>
             このカテゴリのルールはありません。

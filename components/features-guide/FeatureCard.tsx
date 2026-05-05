@@ -34,9 +34,10 @@ function hexA(hex: string, a: number): string {
 
 function lockLabel(reason: FeatureLockReason, f: FeatureGuide): string | null {
   if (!reason) return null
-  if (reason === 'verified') return '本人確認で解放'
-  if (reason === 'age')      return `${f.requiredAge ?? 20}歳以上で解放`
-  if (reason === 'tier')     return `Tier ${f.minTrustTier} で解放`
+  // 「解放」表現はロック感が強かったので「認証後に利用可能」など柔らかい文言へ
+  if (reason === 'verified') return '認証後に利用可能'
+  if (reason === 'age')      return `${f.requiredAge ?? 20}歳以上で利用可能`
+  if (reason === 'tier')     return `Tier ${f.minTrustTier} 以上で利用可能`
   return null
 }
 
