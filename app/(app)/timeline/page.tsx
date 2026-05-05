@@ -570,7 +570,14 @@ function ComposeModal({
       category,
     })
     setSending(false)
-    if (!error) { setSent(true); setTimeout(onPosted, 1000) }
+    if (!error) {
+      setSent(true)
+      setTimeout(onPosted, 1000)
+    } else {
+      // 投稿失敗を必ずユーザーに伝える（旧実装は完全サイレントだった）
+      console.error('[timeline] handlePost insert error:', error)
+      setErrMsg(`投稿に失敗しました（${error.code ?? error.message ?? 'unknown'}）`)
+    }
   }
 
   async function handleBottle() {
@@ -826,7 +833,9 @@ function ComposeModal({
 export default function TimelinePage() {
   const router = useRouter()
 
-  const [tab,          setTab]          = useState<Tab>('myvillage')
+  // 既定タブは 'all'（みんな）。'myvillage' を既定にすると、村未参加ユーザーや
+  // village_id=null で保存される通常タイムライン投稿が一切表示されないため。
+  const [tab,          setTab]          = useState<Tab>('all')
   const [posts,        setPosts]        = useState<TPost[]>([])
   const [qaBottles,    setQaBottles]    = useState<QABottle[]>([])
   const [loading,      setLoading]      = useState(true)
@@ -964,7 +973,8 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       if (tab === 'myvillage') q = q.in('village_id', myVillageIds)
       else if (tab === 'following') q = q.in('user_id', followingIds)
 
-      const { data } = await q
+      const { data, error: qErr } = await q
+      if (qErr) console.error('[timeline] fetchPosts query error:', qErr)
       const filtered = (data || [])
         .filter((p: any) => {
           const trust = Array.isArray(p.user_trust) ? p.user_trust[0] : p.user_trust
