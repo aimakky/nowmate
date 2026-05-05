@@ -109,6 +109,58 @@ export default function FeaturesTab() {
         </p>
       </div>
 
+      {/* ── いま使える機能（実装済み） ── */}
+      <div className="rounded-2xl p-4 space-y-3"
+        style={{ background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.22)' }}>
+        <p className="text-[11px] font-extrabold tracking-wider mb-1" style={{ color: '#FBBF24' }}>
+          いま使える機能
+        </p>
+        {[
+          { icon: '📋', name: 'タイムライン',       color: '#39FF88', desc: '近況・ゲームの募集・ひとことが流れる場所' },
+          { icon: '🎮', name: 'いますぐ村',         color: '#8B5CF6', desc: '今すぐ一緒に遊ぶ人を探せる場所' },
+          { icon: '🛡️', name: 'ギルド',             color: '#27DFFF', desc: '同じゲームが好きな仲間が集まる継続的なコミュニティ' },
+          { icon: '🎙️', name: '通話ルーム',         color: '#A78BFA', desc: 'ルーム内で声で話せる。聞き専でも参加可' },
+          { icon: '💬', name: 'チャット / DM',      color: '#FF4FD8', desc: '個別のメッセージ。フレンドや申請承認で開始' },
+          { icon: '🔍', name: 'ユーザー検索',       color: '#27DFFF', desc: '名前・自己紹介でフレンドを探す（フォロー / 申請も可）' },
+          { icon: '📺', name: 'YouTube 同時視聴',   color: '#EF4444', desc: 'ルームで同じ動画をみんなで見ながら通話' },
+          { icon: '🍶', name: '漂流瓶（ひとこと）', color: '#3B82F6', desc: '匿名で気持ちを村に流す。誰かが返事してくれることも' },
+          { icon: '🔔', name: '通知',               color: '#FFC928', desc: 'いいね・コメント・申請・ルーム開始を確認' },
+          { icon: '👤', name: 'プロフィール',       color: '#c4b5fd', desc: '自己紹介・投稿・参加中・認証状態を編集 / 確認' },
+        ].map(({ icon, name, color, desc }) => (
+          <div key={name} className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
+              <span className="text-base">{icon}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-extrabold leading-snug" style={{ color: '#F0EEFF' }}>{name}</p>
+              <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'rgba(240,238,255,0.55)' }}>{desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── 今後対応予定 ── */}
+      <div className="rounded-2xl p-4 space-y-2"
+        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(240,238,255,0.10)' }}>
+        <p className="text-[10px] font-extrabold tracking-widest uppercase mb-1" style={{ color: 'rgba(240,238,255,0.5)' }}>
+          今後対応予定
+        </p>
+        {[
+          { icon: '🖥️', name: '画面共有',          desc: 'PC ブラウザでゲーム画面をルーム内に共有（準備中）' },
+          { icon: '👥', name: '男女別 / 人数制限ルーム', desc: 'ルーム作成時に参加条件・上限人数を設定（準備中）' },
+          { icon: '🏆', name: 'ギルド大会',        desc: 'ギルド同士の対戦・ランキング（準備中）' },
+        ].map(({ icon, name, desc }) => (
+          <div key={name} className="flex items-start gap-3 opacity-80">
+            <span className="text-base flex-shrink-0">{icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold leading-snug" style={{ color: 'rgba(240,238,255,0.7)' }}>{name}</p>
+              <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'rgba(240,238,255,0.45)' }}>{desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* 3ステップ */}
       {bundle?.meta.starterFlow?.length ? (
         <div className="rounded-2xl p-4"
