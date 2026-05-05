@@ -797,6 +797,8 @@ export default function VillageDetailPage() {
   const [isHost,    setIsHost]    = useState(false)
   const [userId,    setUserId]    = useState<string | null>(null)
   const [loading,   setLoading]   = useState(true)
+  // 村が取れなかった原因をユーザーに見せるための state（旧実装は黙って return null していた）
+  const [villageFetchError, setVillageFetchError] = useState<string | null>(null)
   const [newPost,        setNewPost]        = useState('')
   const [newPostCat,     setNewPostCat]     = useState('雑談')
   const [newPostDeadline,setNewPostDeadline]= useState<number | null>(null) // 時間（h）
@@ -907,12 +909,26 @@ export default function VillageDetailPage() {
 
   // ── Fetchers ─────────────────────────────────────────────
   const fetchVillage = useCallback(async () => {
-    const { data } = await createClient()
-      .from('villages').select('*, profiles(display_name), job_locked, job_type').eq('id', id).single()
-    if (data) {
+    // 旧 occupation 系の job_locked / job_type 列指定は削除（* で既に含まれる
+    // か、production にカラムが無ければ PostgREST が列不在エラーを返して
+    // データが null になり画面が真っ黒になる原因になっていた）
+    const { data, error } = await createClient()
+      .from('villages')
+      .select('*, profiles(display_name)')
+      .eq('id', id)
+      .single()
+    if (error) {
+      // 旧実装は error を完全にサイレントにしていたため、村が見つからない時
+      // ページが何も描画されない真っ黒画面になっていた。原因追跡のため必ずログ。
+      console.error('[villages/[id]] fetchVillage error:', error)
+      setVillageFetchError(error.message ?? 'unknown')
+    } else if (data) {
       setVillage(data)
       setRules(data.rules ?? ['', '', ''])
       setIsAbandoned(data.is_abandoned ?? false)
+      setVillageFetchError(null)
+    } else {
+      setVillageFetchError('village_not_found')
     }
     setLoading(false)
   }, [id])
@@ -1458,11 +1474,40 @@ export default function VillageDetailPage() {
 
   // ─────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-birch">
-      <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#080812' }}>
+      <span className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }} />
     </div>
   )
-  if (!village) return null
+  if (!village) {
+    // 旧実装は return null で黒画面のままだった。原因を画面に出して、戻れるようにする。
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center"
+        style={{ background: '#080812' }}>
+        <p className="text-4xl mb-4">🌫️</p>
+        <p className="text-base font-extrabold mb-2" style={{ color: '#F0EEFF' }}>
+          このゲーム村は表示できません
+        </p>
+        <p className="text-xs leading-relaxed mb-6" style={{ color: 'rgba(240,238,255,0.5)' }}>
+          {villageFetchError === 'village_not_found'
+            ? '村が見つかりませんでした。削除されたか、URL が間違っている可能性があります。'
+            : villageFetchError
+              ? `読み込みに失敗しました（${villageFetchError}）`
+              : '読み込みに失敗しました。時間をおいて再度お試しください。'}
+        </p>
+        <button
+          onClick={() => router.push('/guild')}
+          className="px-6 py-2.5 rounded-2xl text-sm font-bold active:scale-95 transition-all"
+          style={{
+            background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)',
+            color: '#fff',
+            boxShadow: '0 4px 20px rgba(139,92,246,0.4)',
+          }}
+        >
+          ← ゲーム村一覧に戻る
+        </button>
+      </div>
+    )
+  }
 
   const style        = VILLAGE_TYPE_STYLES[village.type] ?? VILLAGE_TYPE_STYLES['雑談']
   const level        = getLevelInfo(village.member_count)
