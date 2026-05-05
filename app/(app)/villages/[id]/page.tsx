@@ -791,6 +791,9 @@ export default function VillageDetailPage() {
   const [pollDraft,       setPollDraft]       = useState(['', ''])  // 最低2選択肢
 
   const [tab,       setTab]       = useState<'posts' | 'voice' | 'bottle' | 'members' | 'diary' | 'diplo' | 'admin' | 'more'>('posts')
+  // voice 系の村では「通話に参加する」を最優先にしたいので、初回ロード時に
+  // 自動で voice タブへ切り替える。一度ユーザーが他のタブに動いたら追従しない。
+  const [tabAutoSetDone, setTabAutoSetDone] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [postCat,   setPostCat]   = useState('全部')
   const [isMember,  setIsMember]  = useState(false)
@@ -951,6 +954,17 @@ export default function VillageDetailPage() {
     setVillageFetchError(null)
     setLoading(false)
   }, [id])
+
+  // 通話メインの村（comm_style === 'voice'）に来たら、最初に voice タブを開く。
+  // 以前はホームから始まっていたため、ユーザーが「通話ルームに来た」と直感的に
+  // 認識できなかった。ユーザーが手動でタブを動かしたあとは追従しない。
+  useEffect(() => {
+    if (!village || tabAutoSetDone) return
+    if (village.comm_style === 'voice' && tab === 'posts') {
+      setTab('voice')
+    }
+    setTabAutoSetDone(true)
+  }, [village, tabAutoSetDone, tab])
 
   // 廃村チェック（ページ読み込み時）
   const checkAbandonment = useCallback(async () => {
@@ -1710,7 +1724,9 @@ export default function VillageDetailPage() {
             </div>
           )}
         </div>
-      ) : userTrust?.tier === 'visitor' ? (
+      ) : userTrust?.tier === 'visitor' && tab !== 'voice' ? (
+        // 通話タブでは voice メインカード内に inline 認証 CTA があるので、
+        // ここのグローバルピルは重複表示を避ける目的で非表示にする。
         <div onClick={() => setShowPhoneVerify(true)}
           className="mx-4 mt-3 rounded-2xl px-4 py-3 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all"
           style={{ background: `${style.accent}15`, border: `1px solid ${style.accent}30` }}>
@@ -2237,8 +2253,124 @@ export default function VillageDetailPage() {
       )}
 
       {/* ════════ VOICE TAB ════════ */}
-      {tab === 'voice' && (
+      {tab === 'voice' && (() => {
+        // 通話ルームメインカード用の派生値
+        const liveCount = voiceRooms.reduce(
+          (sum: number, r: any) => sum + (r.voice_participants?.length ?? 0),
+          0,
+        )
+        const isPhoneVerified = !!(userTrust as any)?.phone_verified
+        // 「聞くだけで参加 / マイクON で参加」両方の動線。
+        // 既存ルームがあれば join、なければ新規 create。
+        // 実際のマイク ON/OFF は遷移先 /voice/[roomId] で扱う設計。
+        const handleJoinAsListener = () => {
+          const room = voiceRooms[0]
+          if (room) joinVoiceRoom(room.id)
+          else if (isMember) createVoiceRoom()
+        }
+        const handleJoinAsSpeaker = () => {
+          const room = voiceRooms[0]
+          if (room) joinVoiceRoom(room.id)
+          else if (isMember) createVoiceRoom()
+        }
+        return (
         <div className="px-4 pb-32 space-y-3 pt-1">
+
+          {/* ══ 通話ルームメインカード — voice タブの一等地 ══ */}
+          <div
+            className="rounded-3xl overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, #1a0f2e 0%, #2d1b4e 100%)',
+              border: `1px solid ${style.accent}55`,
+              boxShadow: `0 8px 28px rgba(0,0,0,0.45), 0 0 24px ${style.accent}22`,
+            }}
+          >
+            {/* タイトル + 参加状況 */}
+            <div className="px-5 pt-5 pb-3 text-center">
+              <div className="flex items-center justify-center gap-2 mb-1.5">
+                <span className="text-2xl">🎙️</span>
+                <p className="text-base font-extrabold" style={{ color: '#F0EEFF' }}>
+                  {village.name}の通話ルーム
+                </p>
+              </div>
+              <p className="text-xs" style={{ color: 'rgba(240,238,255,0.55)' }}>
+                {liveCount > 0
+                  ? `今は ${liveCount}人が参加中`
+                  : voiceRooms.length > 0
+                    ? `${voiceRooms.length}件の広場が開いています`
+                    : '今は誰もいません'}
+              </p>
+              {/* タグ（村の雰囲気・安心度） */}
+              <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(124,255,130,0.12)', color: '#7CFF82', border: '1px solid rgba(124,255,130,0.3)' }}
+                >
+                  🌱 静かな村
+                </span>
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(255,201,40,0.12)', color: '#FFC928', border: '1px solid rgba(255,201,40,0.3)' }}
+                >
+                  安心度 ★★★★★
+                </span>
+              </div>
+              <p className="text-[10px] mt-1.5" style={{ color: 'rgba(240,238,255,0.35)' }}>
+                落ち着いて話したい人向け · 録音禁止
+              </p>
+            </div>
+
+            {/* 認証カード（電話番号未認証時 inline） / 参加ボタン群 */}
+            {!isPhoneVerified ? (
+              <div
+                className="mx-4 mb-4 rounded-2xl p-3.5"
+                style={{ background: 'rgba(157,92,255,0.08)', border: '1px solid rgba(157,92,255,0.32)' }}
+              >
+                <p className="text-[12px] font-bold leading-relaxed" style={{ color: '#c4b5fd' }}>
+                  通話するには電話番号認証が必要です
+                </p>
+                <p className="text-[10px] leading-relaxed mt-0.5" style={{ color: 'rgba(196,181,253,0.65)' }}>
+                  安心な村づくりのため、初回のみお願いします
+                </p>
+                <button
+                  onClick={() => setShowPhoneVerify(true)}
+                  className="w-full mt-3 py-3 rounded-xl text-sm font-extrabold text-white active:scale-[0.98] transition-all"
+                  style={{
+                    background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)',
+                    boxShadow: '0 4px 14px rgba(157,92,255,0.4)',
+                  }}
+                >
+                  🔐 認証して通話に参加
+                </button>
+              </div>
+            ) : (
+              <div className="px-4 pb-4 space-y-2">
+                {/* 聞くだけで参加（メイン CTA・心理的ハードル低） */}
+                <button
+                  onClick={handleJoinAsListener}
+                  className="w-full py-4 rounded-2xl text-base font-extrabold text-white flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                  style={{
+                    background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)',
+                    boxShadow: '0 6px 22px rgba(157,92,255,0.5)',
+                  }}
+                >
+                  👂 聞くだけで参加する
+                </button>
+                {/* マイク ON で参加（サブ CTA） */}
+                <button
+                  onClick={handleJoinAsSpeaker}
+                  className="w-full py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(157,92,255,0.32)',
+                    color: '#c4b5fd',
+                  }}
+                >
+                  <Mic size={14} /> マイクONで参加する
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* ── 今ヒマパネル ── */}
           {isMember && (
@@ -2348,12 +2480,17 @@ export default function VillageDetailPage() {
             ))
           )}
         </div>
-      )}
+        )
+      })()}
 
       {/* ════════ MEMBERS TAB ════════ */}
       {tab === 'members' && (
         <div className="px-4 pb-32 space-y-2 pt-1">
-          <p className="text-xs text-stone-400 font-semibold mb-3">{village.member_count} 人が住んでいます</p>
+          <p className="text-xs text-stone-400 font-semibold mb-1">{village.member_count} 人が住んでいます</p>
+          {/* 用語の補足：「住民」「村長」が初見でも分かるように一行ヒント */}
+          <p className="text-[10px] mb-3" style={{ color: 'rgba(120,113,108,0.7)' }}>
+            👥 住民：この村に参加している人　/　👑 村長：この村を作った人
+          </p>
           {members.map((m: any) => {
             // オンライン判定：last_seen_at が5分以内ならオンライン
             const lastSeenMs = m.profiles?.last_seen_at
