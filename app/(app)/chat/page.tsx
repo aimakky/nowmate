@@ -8,6 +8,7 @@ import TrustBadge from '@/components/ui/TrustBadge'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
 import { Edit2, MessageSquareDashed, Check, X, MessageSquare, UserPlus } from 'lucide-react'
+import VerifiedBadge from '@/components/ui/VerifiedBadge'
 
 interface DirectChat {
   matchId: string
@@ -17,6 +18,7 @@ interface DirectChat {
     avatar_url: string | null
     is_online: boolean
     trust_tier?: string | null
+    age_verified?: boolean | null
   }
   lastMessage: { content: string; created_at: string; sender_id: string } | null
   isRequest?: boolean
@@ -65,7 +67,7 @@ export default function ChatListPage() {
         const [{ data: profileData }, { data: trustData }, { data: msgData }] = await Promise.all([
           supabase
             .from('profiles')
-            .select('id, display_name, avatar_url, is_online')
+            .select('id, display_name, avatar_url, is_online, age_verified, age_verification_status')
             .in('id', otherIds),
           supabase
             .from('user_trust')
@@ -235,7 +237,10 @@ export default function ChatListPage() {
                       }
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm" style={{ color: '#F0EEFF' }}>{r.other.display_name}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="font-bold text-sm" style={{ color: '#F0EEFF' }}>{r.other.display_name}</p>
+                        <VerifiedBadge verified={r.other.age_verified} size="sm" />
+                      </div>
                       {r.lastMessage && (
                         <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(240,238,255,0.4)' }}>{r.lastMessage.content}</p>
                       )}
@@ -443,6 +448,7 @@ export default function ChatListPage() {
                             <span className="font-bold text-sm truncate" style={{ color: '#F0EEFF' }}>
                               {c.other.display_name}
                             </span>
+                            <VerifiedBadge verified={c.other.age_verified} size="sm" />
                             {c.other.trust_tier && (
                               <TrustBadge tierId={c.other.trust_tier} size="xs" showLabel={false} />
                             )}

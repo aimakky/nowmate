@@ -4,7 +4,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Send, MoreVertical, ChevronLeft } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
+import VerifiedBadge from '@/components/ui/VerifiedBadge'
 import ChatBubble from '@/components/features/ChatBubble'
+import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 import ReportModal from '@/components/features/ReportModal'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag } from '@/lib/utils'
@@ -223,6 +225,9 @@ export default function ChatDetailPage() {
             <div className="flex items-center gap-1 flex-wrap">
               <span className="font-semibold text-gray-900 text-sm truncate">{other.display_name}</span>
               <span className="text-xs flex-shrink-0">{getNationalityFlag(other.nationality)}</span>
+              {isVerifiedByExistingSchema(other as { age_verified?: boolean | null; age_verification_status?: string | null }) && (
+                <VerifiedBadge verified size="sm" />
+              )}
               {(() => {
                 const occBadge = getOccupationBadge((other as any).occupation)
                 return occBadge ? (

@@ -9,6 +9,8 @@ import { awardPoints, getTierById } from '@/lib/trust'
 import { canSpeakInVoiceRoom, type AgeVerificationStatus } from '@/lib/permissions'
 import { Room, RoomEvent, Track, type RemoteTrack, type RemoteTrackPublication, type RemoteParticipant, type Participant as LkParticipant } from 'livekit-client'
 import { logVoice, userTag, startTimer, endTimer } from '@/lib/voice-telemetry'
+import VerifiedBadge from '@/components/ui/VerifiedBadge'
+import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 
 // ─── 定数 ────────────────────────────────────────────────────
 const CAT_EMOJI: Record<string, string> = {
@@ -26,7 +28,14 @@ interface Participant {
   join_mode:   'speaker' | 'listener' | 'silent'
   raised_hand: boolean
   role:        'host' | 'speaker' | 'listener'
-  profiles:    { display_name: string; nationality: string; avatar_url: string | null }
+  profiles:    {
+    display_name: string
+    nationality: string
+    avatar_url: string | null
+    // Phase 1: 既存スキーマの age_verified（任意。クエリで select に含めれば来る）
+    age_verified?: boolean | null
+    age_verification_status?: string | null
+  }
   user_trust?: { tier: string } | null
 }
 
@@ -153,7 +162,7 @@ export default function VoiceRoomPage() {
     if (!roomId) return
     const { data } = await createClient()
       .from('voice_participants')
-      .select('user_id, is_listener, join_mode, raised_hand, role, profiles(display_name, nationality, avatar_url), user_trust(tier)')
+      .select('user_id, is_listener, join_mode, raised_hand, role, profiles(display_name, nationality, avatar_url, age_verified, age_verification_status), user_trust(tier)')
       .eq('room_id', roomId)
     setParticipants((data || []) as unknown as Participant[])
   }, [roomId])
@@ -964,6 +973,9 @@ export default function VoiceRoomPage() {
                       style={{ color: sp ? '#7CFF82' : 'rgba(255,255,255,0.75)' }}>
                       {p.profiles?.display_name?.split(' ')[0] ?? '?'}
                     </p>
+                    {isVerifiedByExistingSchema(p.profiles) && (
+                      <VerifiedBadge verified size="sm" />
+                    )}
                   </div>
                 )})}
               </div>
@@ -1013,6 +1025,9 @@ export default function VoiceRoomPage() {
                     style={{ color: 'rgba(240,238,255,0.6)' }}>
                     {p.join_mode === 'silent' ? 'こっそり' : (p.profiles?.display_name?.split(' ')[0] ?? '?')}
                   </span>
+                  {p.join_mode !== 'silent' && isVerifiedByExistingSchema(p.profiles) && (
+                    <VerifiedBadge verified size="sm" />
+                  )}
                   {p.raised_hand && <span className="text-xs">✋</span>}
                 </div>
               ))}
