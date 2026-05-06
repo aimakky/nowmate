@@ -1,5 +1,11 @@
 'use client'
 
+// マイページと同様に Vercel Edge のキャッシュを完全無効化。
+// タブ・カード等の UI 変更が iPhone Safari に即座に反映されるよう、
+// HTML レイヤでキャッシュさせない方針。
+export const fetchCache = 'force-no-store'
+export const revalidate = 0
+
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
