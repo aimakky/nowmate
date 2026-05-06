@@ -10,6 +10,7 @@ import VerifiedBadge from '@/components/ui/VerifiedBadge'
 import ReportModal from '@/components/features/ReportModal'
 import { getTierById } from '@/lib/trust'
 import { isVerifiedByExistingSchema } from '@/lib/identity-types'
+import { getUserDisplayName } from '@/lib/user-display'
 
 export const REACTIONS = [
   { key: 'heart',   emoji: '❤️', label: 'Love' },
@@ -174,7 +175,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
           <div className="flex items-center gap-1.5 text-xs font-semibold mb-2 ml-1"
             style={{ color: 'rgba(240,238,255,0.4)' }}>
             <Repeat2 size={12} />
-            <span>{tweet.profiles?.display_name} reposted</span>
+            <span>{getUserDisplayName(tweet.profiles)} reposted</span>
           </div>
         )}
 
@@ -191,7 +192,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
                 <button onClick={() => router.push(profileHref)}
                   className="font-extrabold text-sm leading-tight"
                   style={{ color: '#F0EEFF' }}>
-                  {tweet.profiles?.display_name}
+                  {getUserDisplayName(tweet.profiles)}
                 </button>
                 {isVerified && <VerifiedBadge verified size="sm" />}
                 {tweet.user_trust?.tier && (
@@ -455,7 +456,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
       {showReport && (
         <ReportModal
           reportedId={tweet.user_id}
-          reportedName={tweet.profiles?.display_name ?? 'このユーザー'}
+          reportedName={getUserDisplayName(tweet.profiles, 'このユーザー')}
           onClose={() => setShowReport(false)}
         />
       )}

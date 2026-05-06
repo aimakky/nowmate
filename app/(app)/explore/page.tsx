@@ -63,20 +63,46 @@ export default function ExplorePage() {
   const fetchPosts = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
+    // Note: 現在 /explore は next.config.js で /villages に redirect されているため
+    // この fetch は通常実行されないが、redirect 解除時の安全のため embed 撤廃済。
+    // profiles の embed (PostgREST) を撤廃し別 query で merge (docs/development-checklist.md 遵守)
     let query = supabase
       .from('posts')
-      .select('*, profiles(display_name, nationality), post_joins(user_id), post_messages(id)')
+      .select('*, post_joins(user_id), post_messages(id)')
       .eq('status', 'active')
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(100)
     if (filterTag) query = query.eq('tag', filterTag)
     if (filterArea) query = query.eq('area', filterArea)
-    const { data } = await query
-    setPosts((data || []) as Post[])
-    if (currentUserId && data) {
+    const { data, error } = await query
+    if (error) console.error('[explore] fetchPosts error:', error)
+
+    const rawPosts = (data ?? []) as any[]
+
+    // 投稿者 profiles を別 query で取得 (fail-open)
+    const userIds = Array.from(new Set(
+      rawPosts.map(p => p.user_id).filter((id: any): id is string => typeof id === 'string' && id.length > 0)
+    ))
+    const profMap = new Map<string, any>()
+    if (userIds.length > 0) {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, display_name, nationality')
+        .in('id', userIds)
+      for (const p of (profs ?? []) as any[]) {
+        profMap.set(p.id, p)
+      }
+    }
+    const enriched = rawPosts.map(p => ({
+      ...p,
+      profiles: profMap.get(p.user_id) ?? null,
+    })) as Post[]
+
+    setPosts(enriched)
+    if (currentUserId) {
       setJoinedIds(new Set(
-        data.filter((p: Post) => p.post_joins?.some(j => j.user_id === currentUserId)).map((p: Post) => p.id)
+        enriched.filter((p: Post) => p.post_joins?.some(j => j.user_id === currentUserId)).map((p: Post) => p.id)
       ))
     }
     setLoading(false)

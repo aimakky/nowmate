@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
 import Avatar from '@/components/ui/Avatar'
 import { Bell } from 'lucide-react'
+import { getUserDisplayName } from '@/lib/user-display'
 
 type Notif = {
   id: string
@@ -43,15 +44,45 @@ export default function NotificationsPage() {
 
     // priority は text の 'high' / 'normal'。文字列の昇順だと 'high' < 'normal' になるので、
     // ascending: true が「重要が上」になる。旧実装は ascending: false で 'normal' が上に来ていた。
-    const { data } = await supabase
+    //
+    // PostgREST embed (actor:actor_id(...)) を撤廃。embed 解決失敗で親 row が
+    // 消える脆弱性 (= ミヤさん投稿が TL に出ない問題と同じ構造) を回避するため、
+    // actor profile は別 query で in() 取得し client-side で merge する。
+    // docs/development-checklist.md の「禁止事項 1: PostgREST embed 禁止」遵守。
+    const { data: rawNotifs, error } = await supabase
       .from('notifications')
-      .select('*, actor:actor_id(display_name, avatar_url)')
+      .select('*')
       .eq('user_id', user.id)
       .order('priority',   { ascending: true  })
       .order('created_at', { ascending: false })
       .limit(80)
+    if (error) console.error('[notifications] fetch error:', error)
 
-    setNotifs((data || []) as Notif[])
+    const rows = (rawNotifs ?? []) as any[]
+
+    // actor_id 集合を作って profiles を別 query で取得 (fail-open)
+    const actorIds = Array.from(new Set(
+      rows.map(n => n.actor_id).filter((id: any): id is string => typeof id === 'string' && id.length > 0)
+    ))
+    const actorMap = new Map<string, { display_name: string; avatar_url: string | null }>()
+    if (actorIds.length > 0) {
+      const { data: actors, error: aErr } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url')
+        .in('id', actorIds)
+      if (aErr) console.error('[notifications] actor profiles error:', aErr)
+      for (const p of (actors ?? []) as any[]) {
+        actorMap.set(p.id, { display_name: p.display_name ?? '', avatar_url: p.avatar_url ?? null })
+      }
+    }
+
+    // 各 notification に actor を merge
+    const merged = rows.map(n => ({
+      ...n,
+      actor: n.actor_id ? actorMap.get(n.actor_id) ?? null : null,
+    }))
+
+    setNotifs(merged as Notif[])
     setLoading(false)
 
     // 既読化
@@ -98,12 +129,12 @@ export default function NotificationsPage() {
         } : {}}
       >
         <div className="relative flex-shrink-0">
-          <Avatar src={actor?.avatar_url} name={actor?.display_name ?? '?'} size="sm" />
+          <Avatar src={actor?.avatar_url} name={getUserDisplayName(actor, '?')} size="sm" />
           <span className="absolute -bottom-1 -right-1 text-sm leading-none">{cfg.emoji}</span>
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.9)' }}>
-            <span className="font-bold">{actor?.display_name ?? '誰か'}</span>
+            <span className="font-bold">{getUserDisplayName(actor, '誰か')}</span>
             {' '}
             <span style={{ color: 'rgba(255,255,255,0.5)' }}>{cfg.label}</span>
           </p>

@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { INDUSTRIES } from '@/lib/guild'
 import { startDM } from '@/lib/dm'
 import VerifiedBadge from '@/components/ui/VerifiedBadge'
+import { getUserDisplayName } from '@/lib/user-display'
 
 // ─── 型 ─────────────────────────────────────────────────────────
 type Guild = {
@@ -93,7 +94,7 @@ function PostCard({
         {/* ネームライン */}
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <span className="text-sm font-extrabold" style={{ color: 'rgba(255,255,255,0.9)' }}>
-            {post.profiles?.display_name ?? '名無し'}
+            {getUserDisplayName(post.profiles)}
           </span>
           {/* Discordロール風ティアバッジ */}
           <span
@@ -835,7 +836,7 @@ function MemberRow({
             <Crown size={10} style={{ color: genre?.color ?? '#8b5cf6', flexShrink: 0 }} />
           )}
           <p className="text-sm font-bold truncate" style={{ color: online ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)' }}>
-            {m.profiles?.display_name ?? '名無し'}
+            {getUserDisplayName(m.profiles)}
           </p>
           <VerifiedBadge verified={m.profiles?.age_verified} size="sm" />
           {isOwn && (

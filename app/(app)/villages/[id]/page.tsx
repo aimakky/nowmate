@@ -22,6 +22,7 @@ import FirstPostPrompt from '@/components/features/FirstPostPrompt'
 
 import { detectNgWords } from '@/lib/moderation'
 import { startDM } from '@/lib/dm'
+import { getUserDisplayName } from '@/lib/user-display'
 
 // ─── Slow mode: 投稿間隔制限 ─────────────────────────────────
 const SLOW_MODE_MS  = 2 * 60 * 1000  // 2分
@@ -160,7 +161,7 @@ function ResolveModal({
                 {m.profiles?.display_name?.[0] ?? '?'}
               </div>
               <span className={`text-sm font-medium flex-1 ${selectedHelper === m.user_id ? 'text-emerald-700' : 'text-stone-700'}`}>
-                {m.profiles?.display_name ?? '住民'}
+                {getUserDisplayName(m.profiles, '住民')}
               </span>
               {selectedHelper === m.user_id && (
                 <span className="text-[10px] bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">+25pt</span>
@@ -573,7 +574,7 @@ function PostCard({
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <p className="text-xs font-bold text-stone-800">{post.profiles?.display_name ?? '住民'}</p>
+                <p className="text-xs font-bold text-stone-800">{getUserDisplayName(post.profiles, '住民')}</p>
                 {post.user_trust?.tier && <TrustBadge tierId={post.user_trust.tier} size="xs" />}
               </div>
               <p className="text-[10px] text-stone-400">{timeAgo(post.created_at)}</p>
@@ -734,7 +735,7 @@ function PostCard({
                   </div>
                   <div className="flex-1 bg-white rounded-2xl px-3 py-2 shadow-sm border border-stone-100">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-[11px] font-bold text-stone-800">{c.profiles?.display_name ?? '住民'}</span>
+                      <span className="text-[11px] font-bold text-stone-800">{getUserDisplayName(c.profiles, '住民')}</span>
                       <span className="text-[9px] text-stone-400">{timeAgo(c.created_at)}</span>
                     </div>
                     <p className="text-xs text-stone-700 leading-relaxed mt-0.5">{c.content}</p>
@@ -2555,7 +2556,7 @@ export default function VillageDetailPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-sm font-bold text-stone-800 truncate">{m.profiles?.display_name ?? '住民'}</p>
+                  <p className="text-sm font-bold text-stone-800 truncate">{getUserDisplayName(m.profiles, '住民')}</p>
                   {m.user_trust?.tier && <TrustBadge tierId={m.user_trust.tier} size="xs" />}
                   {isOnline && (
                     <span className="text-[9px] font-extrabold text-green-500 bg-green-50 px-1.5 py-0.5 rounded-full border border-green-100">
@@ -3066,7 +3067,7 @@ export default function VillageDetailPage() {
                     {m.profiles?.display_name?.[0] ?? '?'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-stone-800 truncate">{m.profiles?.display_name ?? '住民'}</p>
+                    <p className="text-sm font-bold text-stone-800 truncate">{getUserDisplayName(m.profiles, '住民')}</p>
                     <p className="text-[10px] text-stone-400">{timeAgo(m.joined_at)}に参加</p>
                   </div>
                   <button onClick={() => kickMember(m.user_id)} disabled={kickingUser === m.user_id}

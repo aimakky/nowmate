@@ -4,9 +4,6 @@
 // 注入する方式に統一。'use client' ページでは route segment config
 // (export const revalidate = 0 等) が build error を起こすため使わない。
 
-// BUILD_VERSION: デプロイ反映確認用の visible マーカー。
-const BUILD_VERSION = 'v3-2026-05-06-cache-fix'
-
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -46,20 +43,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ background: '#080812' }}>
-
-      {/* デプロイ反映確認用の visible build marker。
-          /login で {BUILD_VERSION} の文字が見えれば deploy 完了済。
-          見えない場合は Vercel Edge cache が古いままという証拠。 */}
-      <div
-        className="fixed top-2 right-2 z-[200] text-[10px] font-mono px-2 py-0.5 rounded"
-        style={{
-          background: 'rgba(157,92,255,0.25)',
-          color: '#F0EEFF',
-          border: '1px solid rgba(157,92,255,0.6)',
-        }}
-      >
-        BUILD: {BUILD_VERSION}
-      </div>
 
       {/* ── 認証中の全画面ローディング（旧 UI が一瞬出るのを防ぐためのカバー） ── */}
       {loading && (

@@ -779,23 +779,6 @@ export default function MyPage() {
         </div>
       )}
 
-      {/* キャッシュ反映確認用の小さな build marker。
-          ユーザーがこれを見れば最新コードを取得できているか即座に判別可能。
-          反映が確認できたら除去予定 (ノイズ削減のため)。 */}
-      <div className="relative z-10 mx-4 mb-1 flex justify-end">
-        <span
-          className="text-[9px] font-bold px-2 py-0.5 rounded-full"
-          style={{
-            background: 'rgba(157,92,255,0.18)',
-            color: '#C4B5FD',
-            border: '1px solid rgba(157,92,255,0.4)',
-            letterSpacing: '0.05em',
-          }}
-        >
-          v2.0 · 投稿 / 写真 / 動画
-        </span>
-      </div>
-
       {/* ── タブ (投稿 / 写真 / 動画) — profile/[userId] と統一 ── */}
       <div className="relative z-10 mx-4 mb-1 rounded-2xl overflow-hidden sticky top-2"
         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)', boxShadow: '0 0 16px rgba(157,92,255,0.08)' }}>

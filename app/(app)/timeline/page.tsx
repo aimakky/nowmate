@@ -11,6 +11,7 @@ import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import { detectCrisisKeywords } from '@/lib/moderation'
 import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
 import { getTierById } from '@/lib/trust'
+import { getUserDisplayName } from '@/lib/user-display'
 
 // ── 型定義 ──────────────────────────────────────────────────────
 type Tab = 'myvillage' | 'all' | 'following'
@@ -413,7 +414,7 @@ function PostCard({
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-sm font-bold leading-tight" style={{ color: '#F0EEFF' }}>
-                  {post.profiles?.display_name ?? '名無し'}
+                  {getUserDisplayName(post.profiles)}
                 </span>
                 <span
                   className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
