@@ -1,10 +1,8 @@
 'use client'
 
-// マイページと同様に Vercel Edge のキャッシュを完全無効化。
-// タブ・カード等の UI 変更が iPhone Safari に即座に反映されるよう、
-// HTML レイヤでキャッシュさせない方針。
-export const fetchCache = 'force-no-store'
-export const revalidate = 0
+// Vercel Edge cache 対策は middleware.ts で全レスポンスに no-store を
+// 注入する方式に統一。'use client' ページでは route segment config が
+// build error を起こすため使わない。
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
