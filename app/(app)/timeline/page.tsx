@@ -1012,7 +1012,15 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         }
       }
 
-      const filtered = rawPosts
+      // 防御策: 同一 id の重複除去 (key 衝突で消える事故を防ぐ)
+      const seenPostIds = new Set<string>()
+      const dedupedRawPosts = rawPosts.filter(p => {
+        if (!p?.id || seenPostIds.has(p.id)) return false
+        seenPostIds.add(p.id)
+        return true
+      })
+
+      const filtered = dedupedRawPosts
         .filter((p: any) => {
           const t = trustMap.get(p.user_id)
           // user_trust 行が無い場合は OK 扱い (fail-open)。
@@ -1028,6 +1036,19 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
             user_trust: t ? { tier: t.tier ?? '', is_shadow_banned: t.is_shadow_banned ?? false } : null,
           }
         }) as TPost[]
+
+      if (typeof window !== 'undefined') {
+        const droppedByDedupe = rawPosts.length - dedupedRawPosts.length
+        const droppedByShadowBan = dedupedRawPosts.length - filtered.length
+        console.log('[timeline] fetchPosts ok:', {
+          rawCount: rawPosts.length,
+          afterDedupe: dedupedRawPosts.length,
+          afterShadowBan: filtered.length,
+          droppedByDedupe,
+          droppedByShadowBan,
+          tab,
+        })
+      }
 
       if (reset) {
         // 既存の optimistic 投稿（temp- プレフィックス）を残し、DB から取得した
@@ -1147,18 +1168,45 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       return
     }
     const supabase = createClient()
+    // limit 40 → 100 に拡張。アクティブユーザー多数時に古めの投稿が見切れる
+    // 可能性を減らす。
     let q = supabase
       .from('tweets')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(40)
+      .limit(100)
     if (userIds !== undefined) {
       q = q.in('user_id', userIds)
     }
     const { data, error } = await q
     if (error) console.error('[timeline] fetchTweets query error:', error)
 
-    const rows = (data ?? []) as any[]
+    const rawRows = (data ?? []) as any[]
+
+    // 防御策: 同一 id の重複を除去 (RLS の OR ポリシー等で重複返却される可能性
+    // を排除)。同一 user_id 投稿が React の key 衝突で消えるバグを根絶する。
+    const seen = new Set<string>()
+    const rows = rawRows.filter(r => {
+      if (!r?.id || seen.has(r.id)) return false
+      seen.add(r.id)
+      return true
+    })
+
+    // 投稿数の内訳を console に出力 (本番デバッグ用、永続)。
+    // 「{ユーザー}の投稿が TL に N 件しか出ない」問題の調査で、profile 取得
+    // 件数と TL 取得件数を比較するため。
+    if (typeof window !== 'undefined') {
+      const byUser = new Map<string, number>()
+      for (const r of rows) byUser.set(r.user_id, (byUser.get(r.user_id) ?? 0) + 1)
+      console.log('[timeline] fetchTweets ok:', {
+        rawCount: rawRows.length,
+        uniqueCount: rows.length,
+        userCount: byUser.size,
+        perUser: Array.from(byUser.entries()).slice(0, 5),
+        scope: userIds === undefined ? 'all' : `following:${userIds.length}`,
+      })
+    }
+
     if (rows.length === 0) {
       setTweetFeed([])
       setTweetLoading(false)
