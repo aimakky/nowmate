@@ -20,7 +20,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Moon, Mic, MicOff, Check, ChevronRight, Trophy, X, Briefcase } from 'lucide-react'
+// Trophy / X / Briefcase は WorkCupTeaserCard で使用していたが、削除に伴い未使用化
+import { Plus, Search, Moon, Mic, MicOff, Check, ChevronRight } from 'lucide-react'
 import { INDUSTRIES } from '@/lib/guild'
 import { type Village } from '@/components/ui/VillageCard'
 import GuildsContent from '@/components/features/GuildsContent'
@@ -535,9 +536,6 @@ export default function GuildPage() {
             </div>
           </div>
 
-          {/* ── 職業別ゲーム大会 Coming Soon カード ── */}
-          <WorkCupTeaserCard />
-
           {/* ── ゲーム村一覧 (シンプル縦並び) ── */}
           <div className="px-4 pt-4 pb-32">
             {loading ? (
@@ -612,195 +610,11 @@ export default function GuildPage() {
   )
 }
 
-// ─── 職業別ゲーム大会 Coming Soon カード ──────────────────────
-// 将来予定の機能告知。本実装はまだなく、タップで簡単な詳細モーダルを
-// 開くだけの「興味あり」表示。DB / API / 大会ロジックは未実装。
-//
-// 配置: /guild「いますぐ村」タブの「今夜あそぶ人を探す」直下、ゲーム村
+// ─── 職業別ゲーム大会 Coming Soon カード (削除済) ──────────────
+// 旧 WorkCupTeaserCard コンポーネントは未確定機能の Coming Soon 告知だったが、
+// ユーザー判断で UI から完全に取り除いた。実装計画ドキュメント (docs/work-cup-plan.md)
+// も併せて削除。再開する場合は git 履歴 (commit e7881b5 周辺) から復活可能。
+// 過去の配置: /guild「いますぐ村」タブの「今夜あそぶ人を探す」直下、ゲーム村
 // 一覧の上。最も目に入りやすいが、メインの一覧導線は壊さない位置。
 //
 // 実装ロードマップは docs/work-cup-plan.md 参照。
-function WorkCupTeaserCard() {
-  const [open, setOpen] = useState(false)
-  return (
-    <>
-      <div className="px-4 pt-3">
-        <div
-          onClick={() => setOpen(true)}
-          className="rounded-2xl overflow-hidden cursor-pointer active:scale-[0.99] transition-all"
-          style={{
-            background: 'linear-gradient(135deg, rgba(157,92,255,0.16), rgba(124,58,237,0.10))',
-            border: '1px solid rgba(157,92,255,0.30)',
-          }}
-        >
-          <div className="flex items-center gap-3 px-4 py-3.5">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{
-                background: 'linear-gradient(135deg, rgba(157,92,255,0.30), rgba(124,58,237,0.20))',
-                border: '1px solid rgba(157,92,255,0.40)',
-              }}>
-              <Trophy size={20} style={{ color: '#c4b5fd' }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                <p className="text-[14px] font-extrabold truncate" style={{ color: SIMPLE_COLORS.textPrimary }}>
-                  職業別ゲーム大会
-                </p>
-                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full"
-                  style={{
-                    background: 'rgba(157,92,255,0.22)',
-                    color: '#c4b5fd',
-                    border: '1px solid rgba(157,92,255,0.4)',
-                  }}>
-                  Coming Soon
-                </span>
-              </div>
-              <p className="text-[11px] leading-relaxed truncate" style={{ color: SIMPLE_COLORS.textSecondary }}>
-                職業対抗 Apex リーグを準備中
-              </p>
-            </div>
-            <ChevronRight size={14} style={{ color: SIMPLE_COLORS.textTertiary }} className="flex-shrink-0" />
-          </div>
-        </div>
-      </div>
-
-      {open && (
-        <div className="fixed inset-0 z-[60] flex flex-col justify-end">
-          <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div
-            className="relative w-full max-w-md mx-auto rounded-t-3xl overflow-hidden"
-            style={{
-              background: '#0d0b1f',
-              border: '1px solid rgba(157,92,255,0.20)',
-              borderBottom: 'none',
-              maxHeight: '85vh',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex justify-center pt-3 pb-1">
-              <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.18)' }} />
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2">
-              <button
-                onClick={() => setOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center active:opacity-60"
-                style={{ background: 'rgba(255,255,255,0.06)' }}
-                aria-label="閉じる"
-              >
-                <X size={16} style={{ color: 'rgba(255,255,255,0.6)' }} />
-              </button>
-              <p className="text-sm font-extrabold flex-1" style={{ color: SIMPLE_COLORS.textPrimary }}>
-                職業別ゲーム大会 (準備中)
-              </p>
-            </div>
-
-            <div className="px-5 pt-2 pb-6 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 60px)' }}>
-              {/* ヒーロー */}
-              <div className="flex flex-col items-center text-center pt-3 pb-5">
-                <div
-                  className="w-16 h-16 rounded-3xl flex items-center justify-center mb-3"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(157,92,255,0.30), rgba(124,58,237,0.20))',
-                    border: '1px solid rgba(157,92,255,0.45)',
-                    boxShadow: '0 4px 20px rgba(157,92,255,0.30)',
-                  }}
-                >
-                  <Trophy size={28} style={{ color: '#c4b5fd' }} />
-                </div>
-                <h2 className="font-extrabold text-lg mb-1" style={{ color: SIMPLE_COLORS.textPrimary }}>
-                  職業対抗 Apex リーグ
-                </h2>
-                <p className="text-xs leading-relaxed" style={{ color: SIMPLE_COLORS.textSecondary }}>
-                  職業でつながる、大人のゲーム大会
-                </p>
-              </div>
-
-              {/* バッジ */}
-              <div className="flex items-center gap-1.5 flex-wrap justify-center mb-5">
-                {[
-                  '近日実装予定', '20歳以上限定', 'Apex 対応予定', 'グループ通話対応予定',
-                ].map(b => (
-                  <span key={b} className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                    style={{
-                      background: 'rgba(157,92,255,0.14)',
-                      color: '#c4b5fd',
-                      border: '1px solid rgba(157,92,255,0.30)',
-                    }}>
-                    {b}
-                  </span>
-                ))}
-              </div>
-
-              {/* 説明 */}
-              <div className="rounded-2xl p-4 mb-3"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
-                <p className="text-[10px] font-extrabold uppercase tracking-widest mb-1.5"
-                  style={{ color: SIMPLE_COLORS.textTertiary }}>
-                  どんな機能？
-                </p>
-                <p className="text-sm leading-relaxed" style={{ color: SIMPLE_COLORS.textSecondary }}>
-                  営業職、エンジニア、看護師、美容師、接客業など、同じ職業の仲間と
-                  チームを組んで対戦できる機能を準備中です。
-                </p>
-              </div>
-
-              {/* 想定チーム例 */}
-              <div className="rounded-2xl p-4 mb-3"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
-                <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2"
-                  style={{ color: SIMPLE_COLORS.textTertiary }}>
-                  想定チーム例
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    '営業職', 'エンジニア', '看護師', '美容師', '接客業',
-                    '公務員', 'フリーランス', '経営者', '夜勤明け',
-                  ].map(j => (
-                    <span key={j} className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full"
-                      style={{
-                        background: 'rgba(255,255,255,0.04)',
-                        color: SIMPLE_COLORS.textSecondary,
-                        border: '1px solid rgba(157,92,255,0.18)',
-                      }}>
-                      <Briefcase size={9} />
-                      {j}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* 連携予定 */}
-              <div className="rounded-2xl p-4 mb-3"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
-                <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2"
-                  style={{ color: SIMPLE_COLORS.textTertiary }}>
-                  連携予定
-                </p>
-                <ul className="space-y-1.5">
-                  {[
-                    'ゲーム村 — 大会告知と練習募集',
-                    'ギルド — 職業別チーム結成',
-                    'グループ通話 — チーム練習・本番VC',
-                    'タイムライン — 結果共有・盛り上げ',
-                    'プロフィール — 参加履歴・称号バッジ',
-                  ].map(item => (
-                    <li key={item} className="flex items-start gap-2 text-xs" style={{ color: SIMPLE_COLORS.textSecondary }}>
-                      <span style={{ color: '#c4b5fd' }}>•</span>
-                      <span className="flex-1">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* 注意 */}
-              <p className="text-[10px] leading-relaxed text-center" style={{ color: SIMPLE_COLORS.textTertiary }}>
-                ⚠️ 現在準備中の機能です。リリース時期は YVOICE の運営状況に
-                応じて調整します。20 歳以上限定 / 本人確認推奨。
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  )
-}
