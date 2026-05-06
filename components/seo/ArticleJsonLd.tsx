@@ -1,3 +1,5 @@
+import { SITE_URL } from '@/lib/site'
+
 interface Props {
   title: string
   description: string
@@ -14,12 +16,12 @@ export default function ArticleJsonLd({ title, description, url, datePublished =
     url,
     datePublished,
     dateModified: new Date().toISOString().split('T')[0],
-    author: { '@type': 'Organization', name: 'YVOICE', url: 'https://nowmatejapan.com' },
+    author: { '@type': 'Organization', name: 'YVOICE', url: SITE_URL },
     publisher: {
       '@type': 'Organization',
       name: 'YVOICE',
-      url: 'https://nowmatejapan.com',
-      logo: { '@type': 'ImageObject', url: 'https://nowmatejapan.com/opengraph-image' },
+      url: SITE_URL,
+      logo: { '@type': 'ImageObject', url: `${SITE_URL}/opengraph-image` },
     },
   }
 

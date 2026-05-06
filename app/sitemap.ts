@@ -1,16 +1,16 @@
 import { MetadataRoute } from 'next'
+import { SITE_URL } from '@/lib/site'
 
-// 旧 (自由村 / 海外移住者向け nowmate) 時代の base URL は壊れた
-// `https://自由村japan.com` を指していた。YVOICE 移行後の live ドメインは
-// 引き続き nowmatejapan.com (旧 GitHub repo / Vercel project 名のため即時
-// 移行できない) なので、ここでは ASCII の正しい URL に統一する。
+// base URL は lib/site.ts の SITE_URL から取得。
+// 環境変数 NEXT_PUBLIC_SITE_URL 未設定なら nowmatejapan.com (旧)、
+// 設定時は yvoiceonline.com (新) に追従。
 //
-// /guides/* 配下は旧 nowmate (英語の Japan expat ガイド) の遺産で、現在の
-// YVOICE (20 歳以上の日本人ゲーマー向け通話コミュニティ) と完全に無関係。
-// app/guides/layout.tsx 側で noindex を出す。sitemap でも参照しないことで
-// Google に「もう存在しない」と認識させる。
+// /guides/* と /for-business は旧 nowmate (海外移住者向け) の遺産で
+// 現在の YVOICE (20 歳以上の日本人ゲーマー向け通話コミュニティ) と
+// 完全無関係。app/guides/layout.tsx と app/for-business/page.tsx 側で
+// noindex 済み、sitemap からも除外。
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = 'https://nowmatejapan.com'
+  const base = SITE_URL
   const now = new Date()
 
   return [

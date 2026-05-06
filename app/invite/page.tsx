@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { SITE_URL } from '@/lib/site'
 
 export default function InvitePage() {
   const [copied, setCopied] = useState(false)
@@ -19,7 +20,10 @@ export default function InvitePage() {
     load()
   }, [])
 
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://get自由村.com'
+  // 旧フォールバック 'https://get自由村.com' は壊れたドメイン (日本語が
+  // URL エンコードで化ける) のため排除。SITE_URL (env 連動) に統一し、
+  // 旧/新ドメインどちらでも自然に動くように。
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : SITE_URL
   const shareUrl = 自由村Id ? `${baseUrl}/signup?ref=${自由村Id}` : `${baseUrl}/signup`
   const tweetText = `Surviving Japan alone is hard 🗾 I use 自由村 — step-by-step setup guides + connect with expats who've been there. Join free 👇`
 

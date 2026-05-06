@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import GoogleAnalytics from '@/components/analytics/GoogleAnalytics'
+import { SITE_URL } from '@/lib/site'
 
-// 注: metadataBase は live ドメイン (nowmatejapan.com) を当面そのまま参照する。
-// ブランド表示は YVOICE に統一済み。ドメイン移行時に metadataBase を差し替える。
+// metadataBase / openGraph URL は lib/site.ts の SITE_URL を参照する。
+// 環境変数 NEXT_PUBLIC_SITE_URL が未設定なら旧ドメイン (nowmatejapan.com)
+// にフォールバックし、設定時に新ドメイン (yvoiceonline.com) に切替わる。
 export const metadata: Metadata = {
   title:    { default: 'YVOICE — Your Voice Online｜大人のゲーム通話コミュニティ', template: '%s | YVOICE' },
   description:
@@ -18,11 +20,11 @@ export const metadata: Metadata = {
   authors:     [{ name: 'YVOICE' }],
   creator:     'YVOICE',
   publisher:   'YVOICE',
-  metadataBase: new URL('https://nowmatejapan.com'),
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     type:       'website',
     locale:     'ja_JP',
-    url:        'https://nowmatejapan.com',
+    url:        SITE_URL,
     siteName:   'YVOICE',
     title:      'YVOICE — Your Voice Online｜大人のゲーム通話コミュニティ',
     description:'Your Voice Online — ゲーム仲間と声でつながる場所。20歳以上限定・電話認証・Trust Tier で安心。',

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import YVoiceIcon from '@/components/ui/icons/YVoiceIcon'
+import { SITE_URL } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'YVOICE — 20歳以上限定の大人ゲーム通話コミュニティ',
@@ -42,8 +43,8 @@ export default async function TopPage() {
     '@type': 'Organization',
     name: 'YVOICE',
     alternateName: ['Your Voice Online', 'ワイボイス', 'ワイボ'],
-    url: 'https://nowmatejapan.com',
-    logo: 'https://nowmatejapan.com/opengraph-image',
+    url: SITE_URL,
+    logo: `${SITE_URL}/opengraph-image`,
     description: 'YVOICE (Your Voice Online) は 20 歳以上限定の大人向けゲーム通話コミュニティ。電話番号認証・本人確認・Trust Tier 制度で民度を守る。',
   }
   const siteJsonLd = {
@@ -51,7 +52,7 @@ export default async function TopPage() {
     '@type': 'WebSite',
     name: 'YVOICE',
     alternateName: 'Your Voice Online',
-    url: 'https://nowmatejapan.com',
+    url: SITE_URL,
     inLanguage: 'ja-JP',
   }
 

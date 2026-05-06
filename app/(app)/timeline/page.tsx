@@ -368,7 +368,10 @@ function PostCard({
 
   function shareToX() {
     const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'YVOICE'
-    const text = `${post.content}\n\n— ${village}より\n#YVOICE #ゲームコミュニティ\nnowmatejapan.com`
+    // SITE_HOST は lib/site.ts の export。NEXT_PUBLIC_SITE_URL の host 部分。
+    // 旧ドメイン → 新ドメイン移行時に追従するためベタ書き禁止。
+    const host = (typeof window !== 'undefined' ? window.location.host : '') || 'nowmatejapan.com'
+    const text = `${post.content}\n\n— ${village}より\n#YVOICE #ゲームコミュニティ\n${host}`
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
 

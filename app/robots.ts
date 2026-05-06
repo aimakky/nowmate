@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next'
+import { SITE_URL } from '@/lib/site'
 
 // /guides と /for-business は旧 nowmate (海外移住者向けコミュニティ) の遺産
 // ページで、YVOICE (20 歳以上のゲーム通話コミュニティ) のサービスとは無関係。
@@ -14,6 +15,6 @@ export default function robots(): MetadataRoute.Robots {
         '/guides', '/for-business',
       ],
     },
-    sitemap: 'https://nowmatejapan.com/sitemap.xml',
+    sitemap: `${SITE_URL}/sitemap.xml`,
   }
 }

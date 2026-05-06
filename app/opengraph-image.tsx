@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og'
+import { SITE_HOST } from '@/lib/site'
 
 // ルートの OGP 画像。SNS シェア・Google 検索結果サムネイルに表示される
 // ため YVOICE ブランディングに統一。旧コンテンツ (自由村 + 英語 expat
@@ -101,7 +102,7 @@ export default function OGImage() {
           borderRadius: 50,
           border: '1px solid rgba(157,92,255,0.32)',
         }}>
-          nowmatejapan.com
+          {SITE_HOST}
         </div>
       </div>
     ),
