@@ -4,21 +4,22 @@
 // 既存の voice_rooms テーブルをそのまま再利用し、room_type='group_voice_room'
 // で識別する。DB 変更なし (既存スキーマで room_type は varchar)。
 //
-// 機能スコープ (初期):
-// - 進行中のグループ通話一覧 (active かつ room_type='group_voice_room')
-// - グループ通話の作成 (タイトル + 任意で agenda)
-// - 作成すると既存の /voice/[roomId] へ遷移して LiveKit セッション開始
-// - 空状態
+// v2 (UI restructure):
+//   - 旧シアン (#27DFFF) + 緑 (#39FF88) の二色 brand → YVOICE 紫一色に統一
+//   - 巨大ヒーローや作成ボタンを上部から削除し、右下 FAB に集約
+//   - ルームカードを「アイコン + 名前 + 人数 + 状態 + 矢印」のシンプル一覧に
+//     (ゲーム村と同じ仕様)
+//   - 配色は SIMPLE_COLORS の dark purple base に統一
+//   - ダーク紫基調を完全維持 (白基調にはしない)
 //
-// 招待・参加フレンド選択は将来拡張。今は作成後に FriendAvatarRail と
-// 既存共有導線 (URL) で誘う運用。
+// 機能・データ取得・LiveKit 中核処理は完全維持。
 
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Users, Mic, Plus, X, ChevronRight, Headphones, Loader2 } from 'lucide-react'
 import { canCreateVoiceRoom } from '@/lib/permissions'
+import { SIMPLE_COLORS } from '@/components/ui/SimpleCard'
 
 type GroupRoom = {
   id: string
@@ -121,7 +122,6 @@ export default function GroupPage() {
     const title = (newTitle.trim() || defaultTitle()).slice(0, 40)
     setCreating(true)
     const supabase = createClient()
-    // 既存 voice page と同じ insert 形式 + room_type だけ 'group_voice_room' に
     const { data, error } = await supabase.from('voice_rooms').insert({
       host_id: userId,
       title,
@@ -139,7 +139,6 @@ export default function GroupPage() {
       setCreating(false)
       return
     }
-    // ホストとして自分を participants に登録
     await supabase.from('voice_participants').insert({
       room_id: data.id,
       user_id: userId,
@@ -155,73 +154,72 @@ export default function GroupPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
-      {/* タイトルブロック */}
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: SIMPLE_COLORS.pageBg }}>
+
+      {/* ── コンパクトヘッダー ── */}
       <div className="px-5 pt-5 pb-3">
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{
-                background: 'rgba(39,223,255,0.15)',
-                border: '1px solid rgba(39,223,255,0.35)',
-              }}
-            >
-              <Users size={16} style={{ color: '#27DFFF' }} />
-            </div>
-            <h1 className="text-xl font-extrabold" style={{ color: '#F0EEFF' }}>グループ</h1>
-          </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-extrabold active:scale-95 transition-all"
+        <div className="flex items-center gap-2 mb-1">
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center"
             style={{
-              background: 'linear-gradient(135deg, #27DFFF, #39FF88)',
-              color: '#0a0a18',
-              boxShadow: '0 4px 16px rgba(39,223,255,0.35)',
+              background: 'rgba(157,92,255,0.18)',
+              border: '1px solid rgba(157,92,255,0.35)',
             }}
-            aria-label="グループ通話を作成"
           >
-            <Plus size={13} />
-            作成
-          </button>
+            <Users size={16} style={{ color: '#c4b5fd' }} />
+          </div>
+          <h1 className="text-lg font-extrabold" style={{ color: SIMPLE_COLORS.textPrimary }}>
+            グループ
+          </h1>
         </div>
-        <p className="text-xs leading-relaxed" style={{ color: 'rgba(240,238,255,0.45)' }}>
-          フレンドとグループ通話できます。今すぐ話したい人を集めて始めましょう。
+        <p className="text-xs" style={{ color: SIMPLE_COLORS.textSecondary }}>
+          フレンドとグループ通話できます
         </p>
       </div>
 
-      {/* 進行中グループ通話 */}
-      <div className="px-4">
-        <div className="flex items-center justify-between mb-2 mt-2">
-          <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: 'rgba(240,238,255,0.4)' }}>
-            進行中のグループ通話
-          </p>
-          <Link
-            href="/voice"
-            className="text-[10px] font-bold flex items-center gap-0.5 active:opacity-70"
-            style={{ color: 'rgba(240,238,255,0.4)' }}
-          >
-            通話ルーム全部
-            <ChevronRight size={10} />
-          </Link>
-        </div>
-
+      {/* ── 一覧 ── */}
+      <div className="px-4 pb-32">
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 size={20} className="animate-spin" style={{ color: '#27DFFF' }} />
+          <div className="space-y-2.5">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="rounded-2xl px-4 py-3.5 animate-pulse flex items-center gap-3"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(157,92,255,0.12)',
+                }}>
+                <div className="w-12 h-12 rounded-2xl flex-shrink-0"
+                  style={{ background: 'rgba(157,92,255,0.12)' }} />
+                <div className="flex-1 h-4 rounded" style={{ background: 'rgba(157,92,255,0.10)' }} />
+                <div className="w-14 h-7 rounded-full" style={{ background: 'rgba(157,92,255,0.12)' }} />
+              </div>
+            ))}
           </div>
         ) : rooms.length === 0 ? (
           <EmptyState onCreate={() => setShowCreate(true)} />
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {rooms.map(r => (
-              <RoomCard key={r.id} room={r} />
+              <RoomCard key={r.id} room={r} onClick={() => router.push(`/voice/${r.id}`)} />
             ))}
           </div>
         )}
       </div>
 
-      {/* 作成ボトムシート */}
+      {/* ── FAB (グループ通話作成、紫アクセント) ── */}
+      <button
+        onClick={() => setShowCreate(true)}
+        className="fixed right-5 w-14 h-14 rounded-2xl flex items-center justify-center active:scale-90 transition-all z-30"
+        style={{
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+          background: SIMPLE_COLORS.accent,
+          boxShadow: '0 8px 24px rgba(157,92,255,0.5), 0 0 20px rgba(157,92,255,0.3)',
+        }}
+        aria-label="グループ通話を作る"
+      >
+        <Plus size={22} className="text-white" />
+      </button>
+
+      {/* ── 作成ボトムシート ── */}
       {showCreate && (
         <CreateSheet
           defaultTitle={defaultTitle()}
@@ -243,35 +241,28 @@ export default function GroupPage() {
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div
-      className="flex flex-col items-center text-center px-6 py-12 rounded-3xl"
+    <div className="flex flex-col items-center text-center px-6 py-14 rounded-3xl"
       style={{
-        background: 'linear-gradient(180deg, rgba(39,223,255,0.06), rgba(57,255,136,0.04))',
-        border: '1px dashed rgba(39,223,255,0.32)',
-      }}
-    >
-      <div
-        className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
-        style={{
-          background: 'rgba(39,223,255,0.14)',
-          border: '1px solid rgba(39,223,255,0.35)',
-        }}
-      >
-        <Headphones size={22} style={{ color: '#27DFFF' }} />
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px dashed rgba(157,92,255,0.30)',
+      }}>
+      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+        style={{ background: 'rgba(157,92,255,0.16)', border: '1px solid rgba(157,92,255,0.35)' }}>
+        <Headphones size={22} style={{ color: '#c4b5fd' }} />
       </div>
-      <p className="font-extrabold text-sm mb-1" style={{ color: '#F0EEFF' }}>
+      <p className="font-extrabold text-sm mb-1.5" style={{ color: SIMPLE_COLORS.textPrimary }}>
         まだグループ通話はありません
       </p>
-      <p className="text-xs mb-5 leading-relaxed" style={{ color: 'rgba(240,238,255,0.5)' }}>
+      <p className="text-xs mb-5 leading-relaxed" style={{ color: SIMPLE_COLORS.textSecondary }}>
         フレンドを誘って、今すぐ話してみましょう。
       </p>
       <button
         onClick={onCreate}
         className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full text-xs font-extrabold active:scale-95 transition-all"
         style={{
-          background: 'linear-gradient(135deg, #27DFFF, #39FF88)',
-          color: '#0a0a18',
-          boxShadow: '0 4px 18px rgba(39,223,255,0.35)',
+          background: SIMPLE_COLORS.accent,
+          color: '#ffffff',
+          boxShadow: '0 4px 14px rgba(157,92,255,0.4)',
         }}
       >
         <Mic size={13} />
@@ -281,53 +272,55 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
   )
 }
 
-function RoomCard({ room }: { room: GroupRoom }) {
+// ── シンプルカード (アイコン + 名前 + 人数 + 状態 + 矢印) ──
+function RoomCard({ room, onClick }: { room: GroupRoom; onClick: () => void }) {
   const participants = room.voice_participants ?? []
-  const visible = participants.slice(0, 4)
+  const visible = participants.slice(0, 3)
   const more = Math.max(0, participants.length - visible.length)
   return (
-    <Link
-      href={`/voice/${room.id}`}
-      className="flex items-center gap-3 px-4 py-3 rounded-2xl active:scale-[0.99] transition-all"
+    <div
+      onClick={onClick}
+      className="flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.99] transition-all cursor-pointer"
       style={{
-        background: 'rgba(255,255,255,0.05)',
-        border: '1px solid rgba(255,255,255,0.10)',
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(157,92,255,0.18)',
       }}
     >
-      <div
-        className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 relative"
+      {/* アイコンタイル + LIVE 状態ドット */}
+      <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 relative"
         style={{
-          background: 'rgba(39,223,255,0.14)',
-          border: '1px solid rgba(39,223,255,0.35)',
-        }}
-      >
-        <Headphones size={18} style={{ color: '#27DFFF' }} />
-        <span
-          className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full"
+          background: 'linear-gradient(135deg, rgba(157,92,255,0.22), rgba(124,58,237,0.16))',
+          border: '1px solid rgba(157,92,255,0.30)',
+        }}>
+        <Headphones size={18} style={{ color: '#c4b5fd' }} />
+        <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full"
           style={{
-            background: '#39FF88',
-            border: '2px solid #080812',
-            boxShadow: '0 0 6px rgba(57,255,136,0.6)',
-          }}
-        />
+            background: '#9D5CFF',
+            border: '2px solid #0a0a18',
+            boxShadow: '0 0 6px rgba(157,92,255,0.7)',
+          }} />
       </div>
+
+      {/* 名前 + 状態 */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-extrabold truncate" style={{ color: '#F0EEFF' }}>
+        <p className="text-[15px] font-extrabold truncate" style={{ color: SIMPLE_COLORS.textPrimary }}>
           {room.title || 'グループ通話'}
-        </p>
-        <p className="text-[11px] mt-0.5 flex items-center gap-1.5" style={{ color: 'rgba(240,238,255,0.45)' }}>
-          <span className="flex items-center gap-0.5">
-            <Users size={10} />
-            {participants.length}人
+          <span className="ml-1.5 font-bold" style={{ color: SIMPLE_COLORS.textSecondary }}>
+            ({participants.length})
           </span>
+        </p>
+        <p className="text-[11px] mt-0.5 flex items-center gap-1.5" style={{ color: SIMPLE_COLORS.textTertiary }}>
+          <span style={{ color: '#c4b5fd' }}>● 通話中</span>
           {room.profiles?.display_name && (
             <>
-              <span style={{ color: 'rgba(240,238,255,0.25)' }}>・</span>
-              <span className="truncate">{room.profiles.display_name}さんのルーム</span>
+              <span>・</span>
+              <span className="truncate">{room.profiles.display_name}さん</span>
             </>
           )}
         </p>
       </div>
+
+      {/* 参加アバタースタック */}
       {visible.length > 0 && (
         <div className="flex -space-x-1.5 flex-shrink-0">
           {visible.map((p, i) => (
@@ -336,7 +329,7 @@ function RoomCard({ room }: { room: GroupRoom }) {
               className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center text-[10px] font-extrabold text-white"
               style={{
                 background: 'rgba(157,92,255,0.4)',
-                border: '2px solid #080812',
+                border: '2px solid #0a0a18',
               }}
             >
               {p.profiles?.avatar_url ? (
@@ -350,9 +343,9 @@ function RoomCard({ room }: { room: GroupRoom }) {
             <div
               className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-extrabold"
               style={{
-                background: 'rgba(255,255,255,0.08)',
-                border: '2px solid #080812',
-                color: 'rgba(240,238,255,0.6)',
+                background: 'rgba(255,255,255,0.06)',
+                border: '2px solid #0a0a18',
+                color: SIMPLE_COLORS.textSecondary,
               }}
             >
               +{more}
@@ -360,8 +353,9 @@ function RoomCard({ room }: { room: GroupRoom }) {
           )}
         </div>
       )}
-      <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.35)' }} className="flex-shrink-0" />
-    </Link>
+
+      <ChevronRight size={14} style={{ color: SIMPLE_COLORS.textTertiary }} className="flex-shrink-0" />
+    </div>
   )
 }
 
@@ -390,7 +384,7 @@ function CreateSheet({
         className="relative w-full max-w-md mx-auto rounded-t-3xl overflow-hidden"
         style={{
           background: '#0d0b1f',
-          border: '1px solid rgba(255,255,255,0.08)',
+          border: '1px solid rgba(157,92,255,0.20)',
           borderBottom: 'none',
         }}
         onClick={e => e.stopPropagation()}
@@ -406,7 +400,7 @@ function CreateSheet({
           >
             <X size={16} style={{ color: 'rgba(255,255,255,0.6)' }} />
           </button>
-          <p className="text-sm font-extrabold flex-1" style={{ color: '#F0EEFF' }}>
+          <p className="text-sm font-extrabold flex-1" style={{ color: SIMPLE_COLORS.textPrimary }}>
             グループ通話を作る
           </p>
           <button
@@ -414,8 +408,9 @@ function CreateSheet({
             disabled={creating}
             className="px-4 py-1.5 rounded-full text-xs font-extrabold transition-all active:scale-95 disabled:opacity-50"
             style={{
-              background: 'linear-gradient(135deg, #27DFFF, #39FF88)',
-              color: '#0a0a18',
+              background: SIMPLE_COLORS.accent,
+              color: '#ffffff',
+              boxShadow: '0 2px 8px rgba(157,92,255,0.4)',
             }}
           >
             {creating ? '作成中...' : '作成'}
@@ -425,7 +420,7 @@ function CreateSheet({
         <div className="px-5 pt-2 pb-6 space-y-4">
           <div>
             <label className="text-[10px] font-extrabold uppercase tracking-widest block mb-1.5"
-              style={{ color: 'rgba(240,238,255,0.4)' }}>
+              style={{ color: SIMPLE_COLORS.textTertiary }}>
               ルーム名
             </label>
             <input
@@ -437,18 +432,18 @@ function CreateSheet({
               className="w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none"
               style={{
                 background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                color: '#F0EEFF',
+                border: '1px solid rgba(157,92,255,0.18)',
+                color: SIMPLE_COLORS.textPrimary,
               }}
             />
-            <p className="text-[10px] mt-1" style={{ color: 'rgba(240,238,255,0.3)' }}>
+            <p className="text-[10px] mt-1" style={{ color: SIMPLE_COLORS.textTertiary }}>
               空欄なら「{defaultTitle}」になります
             </p>
           </div>
 
           <div>
             <label className="text-[10px] font-extrabold uppercase tracking-widest block mb-1.5"
-              style={{ color: 'rgba(240,238,255,0.4)' }}>
+              style={{ color: SIMPLE_COLORS.textTertiary }}>
               話したいこと (任意)
             </label>
             <textarea
@@ -460,8 +455,8 @@ function CreateSheet({
               className="w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none resize-none"
               style={{
                 background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                color: '#F0EEFF',
+                border: '1px solid rgba(157,92,255,0.18)',
+                color: SIMPLE_COLORS.textPrimary,
               }}
             />
           </div>
@@ -479,7 +474,7 @@ function CreateSheet({
             </div>
           )}
 
-          <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(240,238,255,0.35)' }}>
+          <p className="text-[10px] leading-relaxed" style={{ color: SIMPLE_COLORS.textTertiary }}>
             ⚠️ 出会い系ではなくゲーム仲間と話すための通話です。録音・録画は禁止です。
           </p>
         </div>

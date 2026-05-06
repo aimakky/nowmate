@@ -14,7 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 // 右端の「もっと見る」から到達できる。
 const NAV_ITEMS = [
   { href: '/timeline',      label: 'TL',       icon: Layers,        live: false, activeColor: '#39FF88' },
-  { href: '/group',         label: 'グループ', icon: Users2,        live: false, activeColor: '#27DFFF' },
+  { href: '/group',         label: 'グループ', icon: Users2,        live: false, activeColor: '#9D5CFF' },
   { href: '/guild',         label: 'ゲーム村', icon: Gamepad2,      live: true,  activeColor: '#8B5CF6' },
   { href: '/chat',          label: 'チャット', icon: MessageSquare, live: false, activeColor: '#FF4FD8' },
   { href: '/notifications', label: '通知',     icon: Bell,          live: false, activeColor: '#FFC928' },
