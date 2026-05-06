@@ -14,7 +14,9 @@ import { getTierById } from '@/lib/trust'
 import { getUserDisplayName } from '@/lib/user-display'
 
 // ── 型定義 ──────────────────────────────────────────────────────
-type Tab = 'myvillage' | 'all' | 'following'
+// 旧: 'myvillage' (ギルド) / 'all' (みんな) / 'following' (フォロー) の 3 タブ
+// 整理後: ギルド機能はゲーム村ページに集約したため TL からは削除
+type Tab = 'all' | 'following'
 
 interface TPost {
   id: string
@@ -82,7 +84,6 @@ const CAT_COLOR: Record<string, string> = {
 }
 
 const TAB_CONFIG: { key: Tab; label: string; icon: React.ElementType }[] = [
-  { key: 'myvillage', label: 'ギルド',   icon: Home  },
   { key: 'all',       label: 'みんな',   icon: Globe },
   { key: 'following', label: 'フォロー', icon: Users },
 ]
@@ -975,9 +976,6 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
     else setLoadingMore(true)
 
     try {
-      if (tab === 'myvillage' && myVillageIds.length === 0) {
-        setPosts([]); setLoading(false); setHasMore(false); return
-      }
       if (tab === 'following' && followingIds.length === 0) {
         setPosts([]); setLoading(false); setHasMore(false); return
       }
@@ -1005,8 +1003,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         .order('created_at', { ascending: false })
         .range(from, from + PAGE_SIZE - 1)
 
-      if (tab === 'myvillage') q = q.in('village_id', myVillageIds)
-      else if (tab === 'following') q = q.in('user_id', followingIds)
+      if (tab === 'following') q = q.in('user_id', followingIds)
 
       const { data, error: qErr } = await q
       if (qErr) {
@@ -1282,7 +1279,6 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
     if (userId) {
       fetchPosts(true)
       fetchVoiceRooms()
-      if (tab === 'myvillage') fetchQA(userId, myVillageIds)
       // 'all' は全 tweets、'following' は自分のフォロー中ユーザーで絞り込んだ
       // tweets を取得。tweets 主体のユーザー (= village_posts に投稿しないが
       // つぶやきは投稿する人) もフォロー中タブで表示できるようになる。
@@ -1378,13 +1374,6 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
                 style={{ color: tab === key ? '#F0EEFF' : 'rgba(240,238,255,0.3)' }}>
                 {label}
               </span>
-              {/* マイ村タブにQ&Aバッジ */}
-              {key === 'myvillage' && qaBottles.length > 0 && (
-                <span className="absolute top-1.5 right-2 min-w-[14px] h-[14px] rounded-full flex items-center justify-center px-0.5"
-                  style={{ background: 'linear-gradient(135deg,#39FF88,#059669)' }}>
-                  <span className="text-[8px] font-black text-white">{qaBottles.length}</span>
-                </span>
-              )}
               {tab === key && (
                 <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
                   style={{ background: 'linear-gradient(90deg,#39FF88,#059669)' }} />
@@ -1397,31 +1386,9 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       {/* コンテンツ */}
       <div className="px-4 pt-4 pb-28 space-y-3">
 
-        {/* 回答待ちバナー（マイ村タブ・Q&Aあり） */}
-        {tab === 'myvillage' && qaBottles.length > 0 && !loading && (
-          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl"
-            style={{ background: 'rgba(57,255,136,0.08)', border: '1px solid rgba(57,255,136,0.25)' }}>
-            <HelpCircle size={14} style={{ color: '#39FF88' }} className="flex-shrink-0" />
-            <p className="text-xs font-bold" style={{ color: 'rgba(57,255,136,0.9)' }}>
-              あなたの村に{qaBottles.length}件の質問が届いています
-            </p>
-          </div>
-        )}
-
-        {/* 村に参加していない */}
-        {tab === 'myvillage' && myVillageIds.length === 0 && !loading && (
-          <div className="rounded-2xl p-6 text-center"
-            style={{ background: 'rgba(57,255,136,0.06)', border: '1px solid rgba(57,255,136,0.2)' }}>
-            <p className="text-3xl mb-3">🛡️</p>
-            <p className="text-sm font-extrabold mb-1" style={{ color: '#F0EEFF' }}>まだギルドに参加していません</p>
-            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(240,238,255,0.35)' }}>ギルドに参加すると、仲間の投稿がここに流れます。</p>
-            <button onClick={() => router.push('/guilds')}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold active:scale-95 transition-all"
-              style={{ background: 'linear-gradient(135deg,#39FF88 0%,#059669 100%)', boxShadow: '0 4px 20px rgba(57,255,136,0.4)', color: '#051a0e' }}>
-              ギルドを探す →
-            </button>
-          </div>
-        )}
+        {/* ギルドタブ削除に伴い、Q&A バナーと「ギルド未参加」空状態 UI を撤去。
+            qaBottles state 自体は残しているので、将来別画面 (例: 通知や Q&A 専用
+            ページ) で再利用可能。 */}
 
         {/* フォロー0人 */}
         {tab === 'following' && followingIds.length === 0 && !loading && (
@@ -1478,7 +1445,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
               userId={userId}
               likedIds={likedIds}
               onToggleLike={toggleLike}
-              showVillage={tab !== 'myvillage'}
+              showVillage={true}
             />
           )
         )}
@@ -1486,7 +1453,6 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         {/* 空状態 */}
         {!loading && feed.length === 0 && (
           (tab === 'all') ||
-          (tab === 'myvillage' && myVillageIds.length > 0) ||
           (tab === 'following' && followingIds.length > 0)
         ) && (
           <div className="text-center py-12">
@@ -1548,7 +1514,6 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
               setPosts(prev => [optimistic, ...prev])
             }
             fetchPosts(true)
-            if (tab === 'myvillage') fetchQA(userId, myVillageIds)
           }}
         />
       )}

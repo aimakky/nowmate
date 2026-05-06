@@ -162,8 +162,8 @@ export default function GroupPage() {
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center"
             style={{
-              background: 'rgba(157,92,255,0.18)',
-              border: '1px solid rgba(157,92,255,0.35)',
+              background: 'rgba(59,130,246,0.18)',
+              border: '1px solid rgba(59,130,246,0.35)',
             }}
           >
             <Users size={16} style={{ color: '#c4b5fd' }} />
@@ -185,12 +185,12 @@ export default function GroupPage() {
               <div key={i} className="rounded-2xl px-4 py-3.5 animate-pulse flex items-center gap-3"
                 style={{
                   background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(157,92,255,0.12)',
+                  border: '1px solid rgba(59,130,246,0.12)',
                 }}>
                 <div className="w-12 h-12 rounded-2xl flex-shrink-0"
-                  style={{ background: 'rgba(157,92,255,0.12)' }} />
-                <div className="flex-1 h-4 rounded" style={{ background: 'rgba(157,92,255,0.10)' }} />
-                <div className="w-14 h-7 rounded-full" style={{ background: 'rgba(157,92,255,0.12)' }} />
+                  style={{ background: 'rgba(59,130,246,0.12)' }} />
+                <div className="flex-1 h-4 rounded" style={{ background: 'rgba(59,130,246,0.10)' }} />
+                <div className="w-14 h-7 rounded-full" style={{ background: 'rgba(59,130,246,0.12)' }} />
               </div>
             ))}
           </div>
@@ -212,7 +212,7 @@ export default function GroupPage() {
         style={{
           bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
           background: SIMPLE_COLORS.accent,
-          boxShadow: '0 8px 24px rgba(157,92,255,0.5), 0 0 20px rgba(157,92,255,0.3)',
+          boxShadow: '0 8px 24px rgba(59,130,246,0.5), 0 0 20px rgba(59,130,246,0.3)',
         }}
         aria-label="グループ通話を作る"
       >
@@ -244,10 +244,10 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
     <div className="flex flex-col items-center text-center px-6 py-14 rounded-3xl"
       style={{
         background: 'rgba(255,255,255,0.04)',
-        border: '1px dashed rgba(157,92,255,0.30)',
+        border: '1px dashed rgba(59,130,246,0.30)',
       }}>
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
-        style={{ background: 'rgba(157,92,255,0.16)', border: '1px solid rgba(157,92,255,0.35)' }}>
+        style={{ background: 'rgba(59,130,246,0.16)', border: '1px solid rgba(59,130,246,0.35)' }}>
         <Headphones size={22} style={{ color: '#c4b5fd' }} />
       </div>
       <p className="font-extrabold text-sm mb-1.5" style={{ color: SIMPLE_COLORS.textPrimary }}>
@@ -262,7 +262,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
         style={{
           background: SIMPLE_COLORS.accent,
           color: '#ffffff',
-          boxShadow: '0 4px 14px rgba(157,92,255,0.4)',
+          boxShadow: '0 4px 14px rgba(59,130,246,0.4)',
         }}
       >
         <Mic size={13} />
@@ -283,21 +283,21 @@ function RoomCard({ room, onClick }: { room: GroupRoom; onClick: () => void }) {
       className="flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.99] transition-all cursor-pointer"
       style={{
         background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(157,92,255,0.18)',
+        border: '1px solid rgba(59,130,246,0.18)',
       }}
     >
       {/* アイコンタイル + LIVE 状態ドット */}
       <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 relative"
         style={{
-          background: 'linear-gradient(135deg, rgba(157,92,255,0.22), rgba(124,58,237,0.16))',
-          border: '1px solid rgba(157,92,255,0.30)',
+          background: 'linear-gradient(135deg, rgba(59,130,246,0.22), rgba(29,78,216,0.16))',
+          border: '1px solid rgba(59,130,246,0.30)',
         }}>
         <Headphones size={18} style={{ color: '#c4b5fd' }} />
         <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full"
           style={{
-            background: '#9D5CFF',
+            background: '#3B82F6',
             border: '2px solid #0a0a18',
-            boxShadow: '0 0 6px rgba(157,92,255,0.7)',
+            boxShadow: '0 0 6px rgba(59,130,246,0.7)',
           }} />
       </div>
 
@@ -328,7 +328,7 @@ function RoomCard({ room, onClick }: { room: GroupRoom; onClick: () => void }) {
               key={`${p.user_id}-${i}`}
               className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center text-[10px] font-extrabold text-white"
               style={{
-                background: 'rgba(157,92,255,0.4)',
+                background: 'rgba(59,130,246,0.4)',
                 border: '2px solid #0a0a18',
               }}
             >
@@ -384,7 +384,7 @@ function CreateSheet({
         className="relative w-full max-w-md mx-auto rounded-t-3xl overflow-hidden"
         style={{
           background: '#0d0b1f',
-          border: '1px solid rgba(157,92,255,0.20)',
+          border: '1px solid rgba(59,130,246,0.20)',
           borderBottom: 'none',
         }}
         onClick={e => e.stopPropagation()}
@@ -410,7 +410,7 @@ function CreateSheet({
             style={{
               background: SIMPLE_COLORS.accent,
               color: '#ffffff',
-              boxShadow: '0 2px 8px rgba(157,92,255,0.4)',
+              boxShadow: '0 2px 8px rgba(59,130,246,0.4)',
             }}
           >
             {creating ? '作成中...' : '作成'}
@@ -432,7 +432,7 @@ function CreateSheet({
               className="w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none"
               style={{
                 background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(157,92,255,0.18)',
+                border: '1px solid rgba(59,130,246,0.18)',
                 color: SIMPLE_COLORS.textPrimary,
               }}
             />
@@ -455,7 +455,7 @@ function CreateSheet({
               className="w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none resize-none"
               style={{
                 background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(157,92,255,0.18)',
+                border: '1px solid rgba(59,130,246,0.18)',
                 color: SIMPLE_COLORS.textPrimary,
               }}
             />

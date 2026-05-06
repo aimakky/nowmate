@@ -12,12 +12,19 @@ import { createClient } from '@/lib/supabase/client'
 // 仕様変更: フレンド一覧は AppLayout 上部の FriendAvatarRail に移動したため、
 // ナビ枠を「グループ」(/group) に転用。/users は互換維持で残し、FriendRail
 // 右端の「もっと見る」から到達できる。
+// カラー方針:
+//   TL = 緑 (#39FF88)
+//   グループ = 青 (#3B82F6)  ← 旧: 紫 #9D5CFF。視認性とアプリ全体の役割分け
+//                           (TL=情報共有 / グループ=通話/会話) を明確化
+//   ゲーム村 = 紫 (#8B5CF6)
+//   通知 = 黄 (#FFC928)      ← 配置は 4 番目に移動 (旧 5 番目)
+//   チャット = ピンク (#FF4FD8) ← 配置は 5 番目に移動 (旧 4 番目)
 const NAV_ITEMS = [
   { href: '/timeline',      label: 'TL',       icon: Layers,        live: false, activeColor: '#39FF88' },
-  { href: '/group',         label: 'グループ', icon: Users2,        live: false, activeColor: '#9D5CFF' },
+  { href: '/group',         label: 'グループ', icon: Users2,        live: false, activeColor: '#3B82F6' },
   { href: '/guild',         label: 'ゲーム村', icon: Gamepad2,      live: true,  activeColor: '#8B5CF6' },
-  { href: '/chat',          label: 'チャット', icon: MessageSquare, live: false, activeColor: '#FF4FD8' },
   { href: '/notifications', label: '通知',     icon: Bell,          live: false, activeColor: '#FFC928' },
+  { href: '/chat',          label: 'チャット', icon: MessageSquare, live: false, activeColor: '#FF4FD8' },
 ]
 
 export default function BottomNav() {
