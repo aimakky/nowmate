@@ -74,6 +74,16 @@ export default function UserProfilePage() {
     })
   }, [])
 
+  // 自分自身のユーザー ID で /profile/[userId] にアクセスした場合は
+  // 黒背景マイページに自動リダイレクト。
+  // 「自分用は黒背景マイページに統一、白背景プロフィールは他人用のみ」
+  // という方針 (CLAUDE 指示) に従う。
+  useEffect(() => {
+    if (myId && userId && myId === userId) {
+      router.replace('/mypage')
+    }
+  }, [myId, userId, router])
+
   useEffect(() => {
     if (!userId) return
     async function load() {

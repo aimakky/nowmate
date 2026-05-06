@@ -378,6 +378,10 @@ function PostCard({
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
 
+  // 投稿者プロフィール遷移先: 自分なら黒背景マイページ、他人なら他ユーザー
+  // プロフィール (白背景) に分岐。自分用に白背景プロフィールへ飛ばないよう。
+  const profileHref = userId === post.user_id ? '/mypage' : `/profile/${post.user_id}`
+
   return (
     <div
       className="rounded-2xl overflow-hidden"
@@ -391,7 +395,7 @@ function PostCard({
         {/* ヘッダー */}
         <div className="flex items-start justify-between gap-2">
           <Link
-            href={`/profile/${post.user_id}`}
+            href={profileHref}
             className="flex items-center gap-2.5 min-w-0 flex-1 active:opacity-70 transition-opacity"
           >
             {/* アバター */}

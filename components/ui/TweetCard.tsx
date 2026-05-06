@@ -78,6 +78,9 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
   const [blocking,    setBlocking]    = useState(false)
 
   const isOwn = myId === tweet.user_id
+  // 投稿者プロフィール遷移先: 自分なら黒背景マイページ、他人なら他ユーザー
+  // プロフィール。自分用に白背景プロフィールへ飛ばないよう分岐する。
+  const profileHref = isOwn ? '/mypage' : `/profile/${tweet.user_id}`
   const MAX = 280
 
   // ── reactions ────────────────────────────────────────────────
@@ -177,7 +180,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
 
         <div className="flex items-start gap-3">
           {/* Avatar */}
-          <button onClick={() => router.push(`/profile/${tweet.user_id}`)} className="flex-shrink-0 mt-0.5">
+          <button onClick={() => router.push(profileHref)} className="flex-shrink-0 mt-0.5">
             <Avatar src={tweet.profiles?.avatar_url} name={tweet.profiles?.display_name} size="sm" />
           </button>
 
@@ -185,7 +188,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
             {/* Name + time + menu */}
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <button onClick={() => router.push(`/profile/${tweet.user_id}`)}
+                <button onClick={() => router.push(profileHref)}
                   className="font-extrabold text-sm leading-tight"
                   style={{ color: '#F0EEFF' }}>
                   {tweet.profiles?.display_name}
