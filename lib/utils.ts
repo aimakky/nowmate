@@ -25,6 +25,34 @@ export function timeAgo(dateStr: string): string {
   return `${days}d ago`
 }
 
+// フレンドの最終ログイン表示用 (日本語、長期スパン対応)。
+// timeAgo() は英語かつ最大「日」までだが、こちらは「ゲーム仲間がいま
+// いるか」を判断するための表示なので、月・年単位までカバーする。
+// 秒単位は個人情報感が強いので意図的に丸める ('たった今' に集約)。
+//
+// last: ISO 文字列または null/undefined。null なら null を返し、呼び元で
+// 「最終ログイン不明」or 非表示を選べるようにする。
+export function lastSeenLabelJP(last: string | null | undefined): string | null {
+  if (!last) return null
+  const t = new Date(last).getTime()
+  if (Number.isNaN(t)) return null
+  const diff = Date.now() - t
+  if (diff < 0) return 'たった今'
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1)  return 'たった今'
+  if (mins < 60) return `${mins}分前`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24)  return `${hrs}時間前`
+  const days = Math.floor(hrs / 24)
+  if (days < 7)  return `${days}日前`
+  const weeks = Math.floor(days / 7)
+  if (weeks < 5) return `${weeks}週間前`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months}ヶ月前`
+  const years = Math.floor(days / 365)
+  return `${years}年前`
+}
+
 // Haversine distance in km between two lat/lng points
 export function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371

@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ChevronRight, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { lastSeenLabelJP } from '@/lib/utils'
 
 type Friend = {
   id: string
@@ -191,6 +192,17 @@ export default function FriendAvatarRail() {
               }}
             >
               {f.display_name ?? '名無し'}
+            </span>
+            {/* オンライン中 / 最終ログイン時間。長くなりやすいので 1 行で truncate。
+                last_seen_at が null の場合は表示しない (画面が崩れない)。 */}
+            <span
+              className="text-[9px] leading-tight truncate w-full text-center"
+              style={{
+                color: online ? '#39FF88' : 'rgba(240,238,255,0.32)',
+                maxWidth: 56,
+              }}
+            >
+              {online ? 'オンライン中' : (lastSeenLabelJP(f.last_seen_at) ?? '')}
             </span>
           </Link>
         )

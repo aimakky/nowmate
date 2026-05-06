@@ -11,10 +11,29 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Search, Users, Check, UserPlus, Mail, X } from 'lucide-react'
+import { ArrowLeft, Search, Users, Check, UserPlus, Mail, X, Headphones } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { startDM } from '@/lib/dm'
 import VerifiedBadge from '@/components/ui/VerifiedBadge'
+import { lastSeenLabelJP } from '@/lib/utils'
+
+// フレンド一覧用 (FriendRail の「もっと見る」遷移先)。/users は元々ユーザー
+// 検索画面なので、検索結果の上に「あなたのフレンド」セクションを追加して
+// 全フレンド一覧を兼ねる。フレンド = 自分が follow しているユーザー。
+type FriendRow = {
+  id: string
+  display_name: string | null
+  avatar_url: string | null
+  VILLIA_id: string | null
+  age_verified: boolean | null
+  last_seen_at: string | null
+}
+
+const ONLINE_WINDOW_MS = 5 * 60 * 1000
+function isOnline(last: string | null): boolean {
+  if (!last) return false
+  return Date.now() - new Date(last).getTime() < ONLINE_WINDOW_MS
+}
 
 interface UserResult {
   id:           string
@@ -36,6 +55,7 @@ export default function UsersPage() {
   const [loading,   setLoading]   = useState(true)
   const [busyMap,   setBusyMap]   = useState<Record<string, boolean>>({})
   const [errorMap,  setErrorMap]  = useState<Record<string, string>>({})
+  const [friends,   setFriends]   = useState<FriendRow[] | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 認証チェック
@@ -154,6 +174,62 @@ export default function UsersPage() {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [me, keyword, fetchResults])
+
+  // フレンド一覧 (= 自分が follow しているユーザー) の取得。
+  // FriendAvatarRail と同じ user_follows → profiles の 2 段 fetch + 部分欠落
+  // 時のプレースホルダー保証パターン。オンライン上→オフラインは last_seen
+  // 降順で並べる。
+  useEffect(() => {
+    if (!me) return
+    let cancelled = false
+    async function loadFriends() {
+      const supabase = createClient()
+      const { data: rows, error: fErr } = await supabase
+        .from('user_follows')
+        .select('following_id')
+        .eq('follower_id', me)
+      if (fErr) {
+        console.error('[users] friends fetch error:', fErr)
+        if (!cancelled) setFriends([])
+        return
+      }
+      const ids = (rows ?? [])
+        .map((r: any) => r.following_id)
+        .filter((id: any): id is string => typeof id === 'string' && id.length > 0)
+      if (ids.length === 0) {
+        if (!cancelled) setFriends([])
+        return
+      }
+      const { data: profs, error: pErr } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url, VILLIA_id, age_verified, last_seen_at')
+        .in('id', ids)
+      if (pErr) console.error('[users] friend profiles fetch error:', pErr, { ids })
+      const profMap = new Map<string, FriendRow>(
+        (profs ?? []).map((p: any) => [p.id as string, p as FriendRow])
+      )
+      const list: FriendRow[] = ids.map(id => profMap.get(id) ?? {
+        id,
+        display_name: '名無し',
+        avatar_url: null,
+        VILLIA_id: null,
+        age_verified: null,
+        last_seen_at: null,
+      })
+      // オンライン上、その内で last_seen 新しい順
+      list.sort((a, b) => {
+        const oa = isOnline(a.last_seen_at) ? 0 : 1
+        const ob = isOnline(b.last_seen_at) ? 0 : 1
+        if (oa !== ob) return oa - ob
+        const ta = a.last_seen_at ? new Date(a.last_seen_at).getTime() : 0
+        const tb = b.last_seen_at ? new Date(b.last_seen_at).getTime() : 0
+        return tb - ta
+      })
+      if (!cancelled) setFriends(list)
+    }
+    loadFriends()
+    return () => { cancelled = true }
+  }, [me])
 
   async function toggleFollow(otherId: string) {
     if (!me || busyMap[otherId]) return
@@ -281,7 +357,125 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* ── 結果リスト ── */}
+      {/* ── あなたのフレンド (FriendRail の「もっと見る」遷移先) ── */}
+      {!keyword.trim() && friends && friends.length > 0 && (
+        <div className="px-4 pt-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest mb-2"
+            style={{ color: 'rgba(57,255,136,0.7)' }}>
+            あなたのフレンド ({friends.length})
+          </p>
+          <div className="space-y-2 mb-4">
+            {friends.map(f => {
+              const online = isOnline(f.last_seen_at)
+              const lastLabel = lastSeenLabelJP(f.last_seen_at)
+              return (
+                <div key={f.id}
+                  className="rounded-2xl overflow-hidden"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: online
+                      ? '1px solid rgba(57,255,136,0.35)'
+                      : '1px solid rgba(255,255,255,0.08)',
+                  }}>
+                  <Link
+                    href={`/profile/${f.id}`}
+                    className="block px-3 py-3 active:opacity-70 transition-opacity"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-shrink-0">
+                        {/* オンライン時のグロー (FriendRail と同じ色味) */}
+                        {online && (
+                          <span aria-hidden
+                            className="absolute inset-0 rounded-full"
+                            style={{ boxShadow: '0 0 0 2px #39FF88, 0 0 12px rgba(57,255,136,0.4)' }}
+                          />
+                        )}
+                        <div
+                          className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold text-white relative"
+                          style={{
+                            background: online
+                              ? 'linear-gradient(135deg, #39FF88, #27DFFF)'
+                              : 'linear-gradient(135deg,#FF4D90,#9D5CFF)',
+                            border: online ? '2px solid #080812' : 'none',
+                            opacity: online ? 1 : 0.85,
+                          }}
+                        >
+                          {f.avatar_url
+                            ? <img src={f.avatar_url} alt="" className="w-full h-full object-cover" />
+                            : <span>{(f.display_name ?? '?').charAt(0).toUpperCase()}</span>}
+                        </div>
+                        <span
+                          className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full"
+                          style={{
+                            background: online ? '#39FF88' : '#475569',
+                            border: '2px solid #080812',
+                            boxShadow: online ? '0 0 4px rgba(57,255,136,0.7)' : 'none',
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>
+                            {f.display_name ?? '名無し'}
+                          </p>
+                          <VerifiedBadge verified={f.age_verified} size="sm" />
+                        </div>
+                        <p className="text-[11px] mt-0.5"
+                          style={{ color: online ? '#39FF88' : 'rgba(240,238,255,0.45)' }}>
+                          {online
+                            ? '🟢 オンライン中'
+                            : (lastLabel ? `最終ログイン ${lastLabel}` : '最終ログイン不明')}
+                        </p>
+                      </div>
+                      {/* 通話招待 (グループ通話画面へ) と DM (既存 startDM) を 2 ボタン並列 */}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <Link
+                          href="/group"
+                          onClick={e => e.stopPropagation()}
+                          className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all"
+                          style={{
+                            background: 'rgba(39,223,255,0.15)',
+                            border: '1px solid rgba(39,223,255,0.35)',
+                          }}
+                          aria-label="グループ通話に誘う"
+                          title="グループ通話に誘う"
+                        >
+                          <Headphones size={13} style={{ color: '#27DFFF' }} />
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            if (!me) return
+                            const result = await startDM(me, f.id)
+                            if (result.status === 'ok' || result.status === 'exists') {
+                              router.push(`/chat/${result.matchId}`)
+                            } else if (result.status === 'request' && 'matchId' in result) {
+                              router.push(`/chat/${result.matchId}`)
+                            }
+                          }}
+                          className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all"
+                          style={{
+                            background: 'rgba(255,77,144,0.15)',
+                            border: '1px solid rgba(255,77,144,0.35)',
+                          }}
+                          aria-label="DMを送る"
+                          title="DMを送る"
+                        >
+                          <Mail size={12} style={{ color: '#FF4D90' }} />
+                        </button>
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── 結果リスト (検索) ── */}
       <div className="px-4 pt-3">
         <p className="text-[10px] font-bold uppercase tracking-widest mb-2"
           style={{ color: 'rgba(240,238,255,0.3)' }}>
