@@ -1113,16 +1113,40 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
     setVoiceRooms(result)
   }, [])
 
-  // ── ツイートフェッチ（みんなタブ用・全ユーザー） ────────────────
-  const fetchTweets = useCallback(async () => {
+  // ── ツイートフェッチ ──────────────────────────────────────
+  // 過去の不具合:
+  //   1. `.is('reply_to_id', null)` で reply tweets を弾いていたため、
+  //      連投スレッドや返信形式の tweet がプロフィールでは見えるのに
+  //      TL では消えていた (例: ミヤの「稼働中なう」連投が profile では
+  //      見えるが TL では bivi二条なう だけになる症状)。
+  //      → プロフィール側の取得条件 (filter なし) と揃えるため除去。
+  //
+  //   2. 「フォロー中」タブで fetchTweets が呼ばれず、tweets 主体の
+  //      フォロー対象 (例: ミヤ) の投稿が一切表示されなかった。
+  //      → userIds 引数を受け取り、in() で絞り込めるように拡張。
+  //
+  // userIds:
+  //   - undefined: 全ユーザー (= 「みんな」タブ用)
+  //   - string[] (空でも可): フォロー中ユーザーで絞り込み (= 「フォロー中」)
+  //     空配列なら早期に空にしてセット (フォローしている人がいない)
+  const fetchTweets = useCallback(async (userIds?: string[]) => {
     setTweetLoading(true)
+    if (userIds !== undefined && userIds.length === 0) {
+      // フォロー中タブで誰もフォローしていない場合は空に
+      setTweetFeed([])
+      setTweetLoading(false)
+      return
+    }
     const supabase = createClient()
-    const { data, error } = await supabase
+    let q = supabase
       .from('tweets')
       .select('*, profiles!tweets_user_id_fkey(display_name, nationality, avatar_url, age_verified, age_verification_status), tweet_reactions!tweet_reactions_tweet_id_fkey(user_id, reaction), tweet_replies!tweet_replies_tweet_id_fkey(id)')
-      .is('reply_to_id', null)
       .order('created_at', { ascending: false })
       .limit(40)
+    if (userIds !== undefined) {
+      q = q.in('user_id', userIds)
+    }
+    const { data, error } = await q
     if (error) console.error('fetchTweets error:', error)
 
     // Trust Tier を別クエリで取得して各 tweet にマージ（PostgREST embed の
@@ -1152,9 +1176,13 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       fetchPosts(true)
       fetchVoiceRooms()
       if (tab === 'myvillage') fetchQA(userId, myVillageIds)
+      // 'all' は全 tweets、'following' は自分のフォロー中ユーザーで絞り込んだ
+      // tweets を取得。tweets 主体のユーザー (= village_posts に投稿しないが
+      // つぶやきは投稿する人) もフォロー中タブで表示できるようになる。
       if (tab === 'all') fetchTweets()
+      else if (tab === 'following') fetchTweets(followingIds)
     }
-  }, [userId, tab, fetchPosts, fetchQA, fetchTweets, fetchVoiceRooms, myVillageIds])
+  }, [userId, tab, fetchPosts, fetchQA, fetchTweets, fetchVoiceRooms, myVillageIds, followingIds])
 
   // ── いいね ──────────────────────────────────────────────────
   function toggleLike(postId: string) {
@@ -1177,8 +1205,11 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
   }
 
   // フィード合成（通話ルームは全タブで混在）
+  // 'all' / 'following' は tweets テーブルからも取得して posts と merge する。
+  // 旧仕様は 'all' のみ tweets を merge していたため、tweets だけ投稿する
+  // ユーザー (例: つぶやき主体のミヤ) がフォロー中タブで一切表示されなかった。
   const feed: FeedItem[] = (() => {
-    if (tab === 'all' && tweetFeed.length > 0) {
+    if ((tab === 'all' || tab === 'following') && tweetFeed.length > 0) {
       const combined: FeedItem[] = [
         ...posts.map(p => ({ type: 'post' as const, data: p })),
         ...tweetFeed.map(t => ({ type: 'tweet' as const, data: t })),
@@ -1220,7 +1251,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
             </h1>
             <p className="text-xs mt-0.5" style={{ color: 'rgba(240,238,255,0.3)' }}>みんなの声が流れる場所</p>
           </div>
-          <button onClick={() => { fetchPosts(true); fetchVoiceRooms(); if (userId) fetchQA(userId, myVillageIds); if (tab === 'all') fetchTweets() }}
+          <button onClick={() => { fetchPosts(true); fetchVoiceRooms(); if (userId) fetchQA(userId, myVillageIds); if (tab === 'all') fetchTweets(); else if (tab === 'following') fetchTweets(followingIds) }}
             className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
             style={{ background: 'rgba(57,255,136,0.1)', border: '1px solid rgba(57,255,136,0.25)' }}>
             <RefreshCw size={15} style={{ color: 'rgba(57,255,136,0.7)' }} />
