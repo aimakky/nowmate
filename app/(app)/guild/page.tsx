@@ -50,6 +50,14 @@ const SUB_FILTERS = [
   { id: 'member',  label: '参加中',   emoji: '🛡️' },
 ]
 
+// ジャンルタブ: すべて + INDUSTRIES の 10 ジャンル (FPS・TPS / RPG / アクション
+// / スポーツ / スマホゲーム / シミュレーション / パズル・カジュアル /
+// インディー / レトロゲーム / 雑談・その他)
+const GENRE_TABS = [
+  { id: 'all', emoji: '🎮', label: 'すべて' },
+  ...INDUSTRIES.map(i => ({ id: i.id, emoji: i.emoji, label: i.id })),
+]
+
 // ── シンプル一覧カード (アイコン + 名前(N) + 参加状態) ──
 function SimpleVillageCard({
   village, isMember, onJoin, onClick,
@@ -110,6 +118,7 @@ export default function GuildPage() {
 
   const [villages,  setVillages]  = useState<Village[]>([])
   const [loading,   setLoading]   = useState(true)
+  const [genre,     setGenre]     = useState('all')
   const [subFilter, setSubFilter] = useState<string | null>(null)
   const [search,    setSearch]    = useState('')
   const [userId,    setUserId]    = useState<string | null>(null)
@@ -190,10 +199,12 @@ export default function GuildPage() {
   const fetchVillages = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
-    let q = supabase
-      .from('villages').select('*')
-      .eq('is_public', true)
-      .in('category', GAME_CATEGORIES)
+    let q = supabase.from('villages').select('*').eq('is_public', true)
+
+    // ジャンル絞り込み: 'all' なら全ゲームジャンル、特定ジャンル選択時は
+    // category 完全一致 (例: 'FPS・TPS')
+    if (genre !== 'all') q = q.eq('category', genre)
+    else                 q = q.in('category', GAME_CATEGORIES)
 
     if (subFilter === 'popular') q = q.order('post_count_7d', { ascending: false })
     else if (subFilter === 'new') q = q.order('created_at',   { ascending: false })
@@ -202,7 +213,7 @@ export default function GuildPage() {
     const { data } = await q.limit(40)
     setVillages((data || []) as Village[])
     setLoading(false)
-  }, [subFilter])
+  }, [genre, subFilter])
 
   const fetchMemberships = useCallback(async () => {
     if (!userId) return
@@ -320,6 +331,34 @@ export default function GuildPage() {
                   e.currentTarget.style.boxShadow = 'none'
                 }}
               />
+            </div>
+
+            {/* ジャンルタブ (横スクロール) — 検索欄直下、サブフィルターの上 */}
+            <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 px-4 mb-2.5">
+              {GENRE_TABS.map(g => {
+                const active = genre === g.id
+                return (
+                  <button key={g.id}
+                    onClick={() => { setGenre(g.id); setSearch(''); setSubFilter(null) }}
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95"
+                    style={active
+                      ? {
+                          background: SIMPLE_COLORS.accentBg,
+                          color: SIMPLE_COLORS.accentDeep,
+                          border: `1px solid ${SIMPLE_COLORS.accentBorder}`,
+                        }
+                      : {
+                          background: 'rgba(255,255,255,0.04)',
+                          color: SIMPLE_COLORS.textSecondary,
+                          border: '1px solid rgba(157,92,255,0.12)',
+                        }
+                    }
+                  >
+                    <span>{g.emoji}</span>
+                    <span className="whitespace-nowrap">{g.label}</span>
+                  </button>
+                )
+              })}
             </div>
 
             <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 px-4">
