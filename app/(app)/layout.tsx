@@ -5,10 +5,23 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { User } from 'lucide-react'
 import BottomNav from '@/components/layout/BottomNav'
+import FriendAvatarRail from '@/components/layout/FriendAvatarRail'
 import FeedbackModal from '@/components/features/FeedbackModal'
 import OnboardingRulesModal from '@/components/rules/OnboardingRulesModal'
 import { createClient } from '@/lib/supabase/client'
 import { getAgreementStatus } from '@/lib/rules'
+
+// FriendAvatarRail を表示する主要ページの whitelist。/chat/[matchId] や
+// /voice/[roomId] などの詳細画面・通話中画面では邪魔になるので非表示。
+// startsWith ではなく完全一致で判定する。
+const FRIEND_RAIL_PATHS = new Set([
+  '/timeline',
+  '/group',
+  '/guild',
+  '/chat',
+  '/notifications',
+  '/mypage',
+])
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [showFeedback, setShowFeedback] = useState(false)
@@ -22,6 +35,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // ページ自体にヘッダーがある場合は重複を避けるため非表示にするパス
   const hideAvatar = isOnboarding || pathname.startsWith('/villages/') || pathname.startsWith('/chat/') || pathname === '/mypage'
+
+  // フレンド横スクロール表示判定 (主要ページの完全一致のみ)
+  const showFriendRail = !isOnboarding && FRIEND_RAIL_PATHS.has(pathname)
 
   useEffect(() => {
     async function init() {
@@ -82,6 +98,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         key={pathname}
         style={{ paddingBottom: isOnboarding ? '0' : 'max(calc(4rem + env(safe-area-inset-bottom, 8px)), 5.5rem)' }}
       >
+        {showFriendRail && <FriendAvatarRail />}
         {children}
       </div>
       {!isOnboarding && <BottomNav />}
