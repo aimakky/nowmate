@@ -303,6 +303,13 @@ export default function MyPage() {
   // user_follows の relation: follower_id がフォローする側、following_id がされる側。
   //   フォロー中 = 自分が follower_id になっているレコードの相手 (following_id) を集める
   //   フォロワー = 自分が following_id になっているレコードの相手 (follower_id) を集める
+  //
+  // 過去の不具合: 統計カードに「フォロー中 1」と表示されているのに一覧では
+  // 「まだフォロー中のユーザーはいません」となるケースがあった。原因は
+  // user_follows から ids は取れているが、profiles.in() の結果が空 (RLS や
+  // データ不整合) でも無条件に空状態にしていたため。今は ids が 1 件以上
+  // あれば、profile 取得に失敗してもプレースホルダーで必ず表示するので、
+  // 「数値 = 一覧」が崩れない。
   async function loadFollowList(uid: string, kind: 'following' | 'followers') {
     setFollowListLoading(true)
     const supabase = createClient()
@@ -311,14 +318,17 @@ export default function MyPage() {
       : await supabase.from('user_follows').select('follower_id').eq('following_id', uid)
 
     if (error) {
-      console.error('[mypage] loadFollowList error:', error)
+      console.error('[mypage] loadFollowList user_follows error:', error)
       if (kind === 'following') setFollowingList([])
       else setFollowersList([])
       setFollowListLoading(false)
       return
     }
 
-    const ids = (rows ?? []).map((r: any) => kind === 'following' ? r.following_id : r.follower_id).filter(Boolean)
+    const ids = (rows ?? [])
+      .map((r: any) => kind === 'following' ? r.following_id : r.follower_id)
+      .filter((id: any): id is string => typeof id === 'string' && id.length > 0)
+
     if (ids.length === 0) {
       if (kind === 'following') setFollowingList([])
       else setFollowersList([])
@@ -330,8 +340,21 @@ export default function MyPage() {
       .from('profiles')
       .select('id, display_name, avatar_url, VILLIA_id')
       .in('id', ids)
-    if (pErr) console.error('[mypage] follow profiles fetch error:', pErr)
-    const list = (profs ?? []) as FollowUser[]
+    if (pErr) console.error('[mypage] follow profiles fetch error:', pErr, { ids })
+
+    // profiles が部分的にしか取れなくても、ids ベースで必ず一覧化する。
+    // 取れなかった分はプレースホルダー (display_name: '名無し') で表示し、
+    // 件数表示と一覧の整合を保つ。
+    const profMap = new Map<string, FollowUser>(
+      (profs ?? []).map((p: any) => [p.id as string, p as FollowUser])
+    )
+    const list: FollowUser[] = ids.map(id => profMap.get(id) ?? {
+      id,
+      display_name: '名無し',
+      avatar_url: null,
+      VILLIA_id: null,
+    })
+
     if (kind === 'following') setFollowingList(list)
     else setFollowersList(list)
     setFollowListLoading(false)

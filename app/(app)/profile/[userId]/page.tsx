@@ -15,15 +15,25 @@ import ReportModal from '@/components/features/ReportModal'
 import { getGenreTitles, getIndustry } from '@/lib/guild'
 import { startDM } from '@/lib/dm'
 
-interface VillagePost {
-  id: string
-  content: string
-  category: string
-  created_at: string
-  village_id: string
-  reaction_count: number
-  villages: { id: string; name: string; icon: string } | null
-}
+// 統合投稿アイテム。village_posts (村への投稿) と tweets (つぶやき) を
+// 同じカードで表示するための共通形。kind で由来を区別する。
+type UnifiedPost =
+  | {
+      kind: 'village'
+      id: string
+      content: string
+      created_at: string
+      village_id: string | null
+      reaction_count: number
+      village: { id: string; name: string; icon: string } | null
+    }
+  | {
+      kind: 'tweet'
+      id: string
+      content: string
+      created_at: string
+      reaction_count: number
+    }
 
 interface QAAnswerWithQ {
   id: string
@@ -36,7 +46,7 @@ export default function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>()
   const router = useRouter()
   const [profile, setProfile] = useState<any>(null)
-  const [recentPosts, setRecentPosts] = useState<VillagePost[]>([])
+  const [recentPosts, setRecentPosts] = useState<UnifiedPost[]>([])
   const [postCount, setPostCount] = useState(0)
   const [myId, setMyId] = useState<string | null>(null)
   const [isFollowing, setIsFollowing] = useState(false)
@@ -68,14 +78,42 @@ export default function UserProfilePage() {
     if (!userId) return
     async function load() {
       const supabase = createClient()
-      const [{ data: p }, { data: posts }, { count: totalPosts }, { count: followers }, { count: following }, { data: trust }, { data: premSub }, { data: answersData }, { data: titlesData }] = await Promise.all([
+      // 過去の不具合: village_posts の select で `villages(id, name, icon)` の
+      // embed が ambiguity error で失敗し、count は取れるが一覧が空配列で
+      // 返るケースがあった (画面に「6件中5件を表示」と出るのに投稿カードが
+      // 0 件)。今は embed を使わず、村情報は village_id を集めて別 query で
+      // 取得して merge する。これにより relation のあいまいさが原因の取得
+      // 失敗が起きない。
+      // また、マイページの「投稿」タブが tweets ベースなのに対し、他人
+      // プロフィールでは village_posts のみだったため、つぶやき主体の人だと
+      // 投稿数が一致しない / 一覧が出ない問題があった。tweets も併せて
+      // 取得して統合表示する。
+      const [
+        { data: p },
+        villagePostsRes,
+        { count: villagePostsCount },
+        tweetsRes,
+        { count: tweetsCount },
+        { count: followers },
+        { count: following },
+        { data: trust },
+        { data: premSub },
+        { data: answersData },
+        { data: titlesData },
+      ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
         supabase.from('village_posts')
-          .select('id, content, category, created_at, village_id, reaction_count, villages(id, name, icon)')
+          .select('id, content, category, created_at, village_id, reaction_count')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
           .limit(5),
         supabase.from('village_posts').select('*', { count: 'exact', head: true }).eq('user_id', userId),
+        supabase.from('tweets')
+          .select('id, content, created_at')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(5),
+        supabase.from('tweets').select('*', { count: 'exact', head: true }).eq('user_id', userId),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', userId),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId),
         supabase.from('user_trust').select('tier').eq('user_id', userId).maybeSingle(),
@@ -88,18 +126,62 @@ export default function UserProfilePage() {
           .limit(20),
         supabase.from('qa_titles').select('*').eq('user_id', userId).order('awarded_at', { ascending: false }),
       ])
+
+      if ((villagePostsRes as any)?.error) {
+        console.error('[profile/userId] village_posts fetch error:', (villagePostsRes as any).error)
+      }
+      if ((tweetsRes as any)?.error) {
+        console.error('[profile/userId] tweets fetch error:', (tweetsRes as any).error)
+      }
+
+      // 村情報は別 query でまとめて取得して merge
+      const villagePostsRaw = ((villagePostsRes as any)?.data ?? []) as any[]
+      const villageIds = Array.from(new Set(
+        villagePostsRaw.map(p => p.village_id).filter((v: any): v is string => typeof v === 'string' && v.length > 0)
+      ))
+      let villageMap = new Map<string, { id: string; name: string; icon: string }>()
+      if (villageIds.length > 0) {
+        const { data: villageRows, error: vErr } = await supabase
+          .from('villages')
+          .select('id, name, icon')
+          .in('id', villageIds)
+        if (vErr) console.error('[profile/userId] villages fetch error:', vErr, { villageIds })
+        for (const v of (villageRows ?? []) as any[]) {
+          villageMap.set(v.id, v)
+        }
+      }
+
+      const villageUnified: UnifiedPost[] = villagePostsRaw.map((p: any) => ({
+        kind: 'village' as const,
+        id: p.id,
+        content: p.content,
+        created_at: p.created_at,
+        village_id: p.village_id ?? null,
+        reaction_count: p.reaction_count ?? 0,
+        village: p.village_id ? villageMap.get(p.village_id) ?? null : null,
+      }))
+      const tweetUnified: UnifiedPost[] = ((tweetsRes as any)?.data ?? []).map((t: any) => ({
+        kind: 'tweet' as const,
+        id: t.id,
+        content: t.content,
+        created_at: t.created_at,
+        reaction_count: 0,
+      }))
+
+      // 時系列降順でマージし、上位 5 件のみ表示
+      const merged = [...villageUnified, ...tweetUnified]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 5)
+
       setProfile(p)
       setShowAnswersTab(p?.show_answers !== false)
       setQaTitles(titlesData ?? [])
       // ジャンルマスター称号
       const gt = await getGenreTitles(userId as string)
       setGenreTitles(gt)
-      const normalized = (posts || []).map((post: any) => ({
-        ...post,
-        villages: Array.isArray(post.villages) ? post.villages[0] ?? null : post.villages,
-      })) as VillagePost[]
-      setRecentPosts(normalized)
-      setPostCount(totalPosts ?? 0)
+      setRecentPosts(merged)
+      // 投稿数 = 村投稿 + つぶやき の合計（マイページの「投稿」表示と整合）
+      setPostCount((villagePostsCount ?? 0) + (tweetsCount ?? 0))
       setFollowerCount(followers ?? 0)
       setFollowingCount(following ?? 0)
       if (trust?.tier) setTrustTier(trust.tier)
@@ -341,20 +423,22 @@ if (loading) return (
               </div>
             ) : (
               recentPosts.map(post => (
-                <div key={post.id} className="bg-white border border-stone-100 rounded-2xl shadow-sm overflow-hidden">
+                <div key={`${post.kind}-${post.id}`} className="bg-white border border-stone-100 rounded-2xl shadow-sm overflow-hidden">
                   <div className="px-4 pt-3.5 pb-2.5">
-                    <p className="text-sm text-stone-800 leading-relaxed">{post.content}</p>
+                    <p className="text-sm text-stone-800 leading-relaxed whitespace-pre-wrap">{post.content}</p>
                   </div>
                   <div className="flex items-center justify-between px-4 py-2.5 border-t border-stone-50">
-                    {post.villages ? (
+                    {post.kind === 'village' && post.village ? (
                       <Link href={`/villages/${post.village_id}`}
                         className="flex items-center gap-1.5 active:opacity-70 transition-opacity">
-                        <span className="text-sm">{post.villages.icon}</span>
+                        <span className="text-sm">{post.village.icon}</span>
                         <span className="text-[11px] font-bold text-stone-500 truncate max-w-[160px]">
-                          {post.villages.name}
+                          {post.village.name}
                         </span>
                         <ChevronRight size={11} className="text-stone-300 flex-shrink-0" />
                       </Link>
+                    ) : post.kind === 'tweet' ? (
+                      <span className="text-[10px] font-bold text-stone-400">つぶやき</span>
                     ) : <span />}
                     <div className="flex items-center gap-3">
                       <span className="text-[10px] text-stone-400">{timeAgo(post.created_at)}</span>
