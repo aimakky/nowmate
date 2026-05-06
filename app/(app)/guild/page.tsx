@@ -9,6 +9,7 @@ import VillageCard, { type Village, VILLAGE_TYPE_STYLES, getFireStatus } from '@
 import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
 import GuildShieldIcon from '@/components/ui/icons/GuildShieldIcon'
 import GuildsContent from '@/components/features/GuildsContent'
+import { SIMPLE_COLORS } from '@/components/ui/SimpleCard'
 
 // 上部タブの高さ（いますぐ村 / ギルド の切替バー）
 const TOP_TAB_HEIGHT = 44
@@ -52,7 +53,7 @@ const GAME_CATEGORIES = INDUSTRIES.map(i => i.id)
 // GENRE_TABS alias（コンポーネント内で使用）
 const GENRES = GENRE_TABS
 
-// ── スモールカード ──────────────────────────────────────────────
+// ── スモールカード (light theme) ──────────────────────────────
 function GuildSmallCard({ village, isMember, onJoin }: {
   village: Village; isMember: boolean; onJoin: () => void
 }) {
@@ -61,31 +62,36 @@ function GuildSmallCard({ village, isMember, onJoin }: {
   const fire    = getFireStatus(village.last_post_at ?? null)
   return (
     <div
-      className="flex-shrink-0 w-44 rounded-2xl overflow-hidden cursor-pointer active:scale-[0.97] transition-all"
-      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(139,92,246,0.2)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}
+      className="flex-shrink-0 w-44 rounded-3xl overflow-hidden cursor-pointer active:scale-[0.99] transition-all"
+      style={{
+        background: SIMPLE_COLORS.cardBg,
+        border: `1px solid ${SIMPLE_COLORS.cardBorder}`,
+        boxShadow: SIMPLE_COLORS.cardShadow,
+      }}
       onClick={() => router.push(`/villages/${village.id}`)}
     >
-      {genre && <div className="h-[3px]" style={{ background: genre.gradient }} />}
+      {genre && <div className="h-[3px]" style={{ background: genre.gradient, opacity: 0.5 }} />}
       <div className="h-16 flex items-center justify-center relative"
-        style={{ background: genre ? `${genre.color}18` : 'rgba(139,92,246,0.08)' }}>
-        <span className="text-3xl" style={{ filter: 'drop-shadow(0 2px 8px rgba(139,92,246,0.4))' }}>
-          {village.icon}
-        </span>
+        style={{ background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)' }}>
+        <span className="text-3xl">{village.icon}</span>
         <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5"
-          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+          style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)' }}>
           <span className={`text-[10px] ${fire.animate ? 'animate-pulse' : ''}`}>{fire.emoji}</span>
-          <span className="text-[8px] font-bold text-white">{fire.label}</span>
+          <span className="text-[8px] font-bold" style={{ color: SIMPLE_COLORS.textSecondary }}>{fire.label}</span>
         </div>
       </div>
-      <div className="p-2.5">
-        <p className="font-bold text-xs truncate leading-snug mb-0.5" style={{ color: '#F0EEFF' }}>{village.name}</p>
-        <p className="text-[10px] line-clamp-2 leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>{village.description}</p>
+      <div className="p-3">
+        <p className="font-bold text-xs truncate leading-snug mb-0.5" style={{ color: SIMPLE_COLORS.textPrimary }}>{village.name}</p>
+        <p className="text-[10px] line-clamp-2 leading-relaxed" style={{ color: SIMPLE_COLORS.textSecondary }}>{village.description}</p>
         <div className="flex items-center justify-between mt-2">
-          <span className="text-[9px]" style={{ color: 'rgba(240,238,255,0.35)' }}>👥 {village.member_count}</span>
+          <span className="text-[9px] font-bold" style={{ color: SIMPLE_COLORS.textTertiary }}>👥 {village.member_count}</span>
           <button
             onClick={e => { e.stopPropagation(); onJoin() }}
-            className="text-[9px] font-bold px-2 py-0.5 rounded-full text-white active:scale-90 transition-all"
-            style={{ background: isMember ? 'rgba(139,92,246,0.3)' : (genre?.color ?? '#8B5CF6') }}
+            className="text-[9px] font-extrabold px-2.5 py-0.5 rounded-full active:scale-90 transition-all"
+            style={isMember
+              ? { background: '#f1f5f9', border: '1px solid rgba(15,23,42,0.08)', color: SIMPLE_COLORS.textSecondary }
+              : { background: SIMPLE_COLORS.accent, color: '#ffffff', boxShadow: '0 2px 6px rgba(157,92,255,0.28)' }
+            }
           >{isMember ? '参加中' : '参加'}</button>
         </div>
       </div>
@@ -263,45 +269,41 @@ export default function GuildPage() {
   const activeGenre = GENRES.find(g => g.id === genre)
 
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: SIMPLE_COLORS.pageBg }}>
 
-      {/* ── 上部タブ：いますぐ村 / ギルド ──
-          仕様: 文字中心のシンプル 2 分割タブ。アイコン (Gamepad / Shield) は
-          画面上部のごちゃつきを避けるため削除し、文字 + 下線のみで状態を伝える。
-          GuildHeroGamepad / GuildShieldIcon のコンポーネント自体はページ内の
-          他箇所 (ヒーローセクション・空状態) で引き続き使用する。 */}
+      {/* ── 上部タブ：いますぐ村 / ギルド ── (light theme)
+          仕様: 文字中心のシンプル 2 分割タブ。両タブとも紫アクセントで統一
+          (旧: cyan + 紫の二色使い → 新: 紫一色。ブランドの紫だけを残す)。 */}
       <div
         className="sticky top-0 z-30 flex"
         style={{
           height: TOP_TAB_HEIGHT,
-          background: 'rgba(8,8,18,0.95)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          background: '#ffffff',
+          borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}`,
         }}
       >
         <button
           onClick={() => setTopTab('instant')}
           className="flex-1 flex items-center justify-center text-xs font-extrabold transition-all relative"
-          style={{ color: topTab === 'instant' ? '#c4b5fd' : 'rgba(240,238,255,0.45)' }}
+          style={{ color: topTab === 'instant' ? SIMPLE_COLORS.accentDeep : SIMPLE_COLORS.textSecondary }}
           aria-pressed={topTab === 'instant'}
         >
           いますぐ村
           {topTab === 'instant' && (
             <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
-              style={{ background: '#8B5CF6', boxShadow: '0 0 8px rgba(139,92,246,0.7)' }} />
+              style={{ background: SIMPLE_COLORS.accent }} />
           )}
         </button>
         <button
           onClick={() => setTopTab('guild')}
           className="flex-1 flex items-center justify-center text-xs font-extrabold transition-all relative"
-          style={{ color: topTab === 'guild' ? '#27DFFF' : 'rgba(240,238,255,0.45)' }}
+          style={{ color: topTab === 'guild' ? SIMPLE_COLORS.accentDeep : SIMPLE_COLORS.textSecondary }}
           aria-pressed={topTab === 'guild'}
         >
           ギルド
           {topTab === 'guild' && (
             <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
-              style={{ background: '#27DFFF', boxShadow: '0 0 8px rgba(39,223,255,0.7)' }} />
+              style={{ background: SIMPLE_COLORS.accent }} />
           )}
         </button>
       </div>
@@ -314,82 +316,108 @@ export default function GuildPage() {
       {/* ── いますぐ村タブ（既存コンテンツ）以下、topTab === 'instant' のときのみ表示 ── */}
       {topTab === 'instant' && (
       <>
-      {/* ── ヘッダー ── */}
-      <div className="sticky z-10 px-4 pt-12 pb-0"
-        style={{ top: TOP_TAB_HEIGHT, background: 'linear-gradient(160deg, #0f0f1a 0%, #1a1035 60%, #1a1035 100%)' }}>
+      {/* ── ヘッダー (light) ── */}
+      <div className="sticky z-10 px-4 pt-6 pb-3"
+        style={{ top: TOP_TAB_HEIGHT, background: '#ffffff', borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}` }}>
 
-        {/* 星背景 */}
-        <div className="absolute inset-0 opacity-40 pointer-events-none"
-          style={{ backgroundImage: `radial-gradient(1px 1px at 10% 20%, #a78bfa, transparent), radial-gradient(1.5px 1.5px at 70% 15%, #818cf8, transparent), radial-gradient(1px 1px at 85% 60%, #c4b5fd, transparent), radial-gradient(1px 1px at 35% 75%, #a78bfa, transparent), radial-gradient(1.5px 1.5px at 50% 40%, white, transparent), radial-gradient(1px 1px at 92% 35%, white, transparent)` }} />
-
-        <div className="relative">
-          <div className="flex items-start justify-between gap-3 mb-1">
-            <div>
-              <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5 text-purple-400/60">GAME ROOM</p>
-              <h1 className="font-extrabold text-white text-2xl leading-tight flex items-center gap-2">
-                <GuildHeroGamepad size={28} />
-                今すぐ一緒に遊ぶ人を探そう
-              </h1>
-              <p className="text-white/45 text-xs mt-1 leading-relaxed">
-                通話ルームを開いて仲間を募集する場所
-              </p>
-            </div>
-            {/* 旧 "+ 作る" 右上ボタンは右下 FAB と重複していたため削除し、作成導線を 1 つに統一した */}
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <p className="text-[10px] font-extrabold tracking-widest uppercase mb-0.5"
+              style={{ color: SIMPLE_COLORS.accent }}>
+              GAME ROOM
+            </p>
+            <h1 className="font-extrabold text-xl leading-tight flex items-center gap-2"
+              style={{ color: SIMPLE_COLORS.textPrimary }}>
+              <GuildHeroGamepad size={22} />
+              今すぐ一緒に遊ぶ人を探そう
+            </h1>
+            <p className="text-xs mt-1 leading-relaxed" style={{ color: SIMPLE_COLORS.textSecondary }}>
+              通話ルームを開いて仲間を募集する場所
+            </p>
           </div>
+        </div>
 
-          {/* 検索 */}
-          <div className="relative mb-3">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="ゲーム村を検索..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-sm focus:outline-none text-white placeholder-white/25"
-              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
-            />
-          </div>
+        {/* 検索 */}
+        <div className="relative mb-3">
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2"
+            style={{ color: SIMPLE_COLORS.textTertiary }} />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="ゲーム村を検索..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-sm focus:outline-none transition-all"
+            style={{
+              background: '#f5f5f7',
+              border: '1px solid rgba(15,23,42,0.08)',
+              color: SIMPLE_COLORS.textPrimary,
+            }}
+            onFocus={e => {
+              e.currentTarget.style.borderColor = SIMPLE_COLORS.accentBorder
+              e.currentTarget.style.background = '#ffffff'
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(157,92,255,0.10)'
+            }}
+            onBlur={e => {
+              e.currentTarget.style.borderColor = 'rgba(15,23,42,0.08)'
+              e.currentTarget.style.background = '#f5f5f7'
+              e.currentTarget.style.boxShadow = 'none'
+            }}
+          />
+        </div>
 
-          {/* ジャンルタブ */}
-          <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 px-4 pb-3">
-            {GENRE_TABS.map(g => {
-              const active  = genre === g.id
-              const gInfo   = INDUSTRIES.find(i => i.id === g.id)
-              return (
-                <button key={g.id}
-                  onClick={() => { setGenre(g.id); setSearch(''); setSubFilter(null) }}
-                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95"
-                  style={active
-                    ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 0 12px rgba(139,92,246,0.5)' }
-                    : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.10)' }
-                  }
-                >
-                  {g.emoji && <span>{g.emoji}</span>}
-                  <span className="whitespace-nowrap">{g.label}</span>
-                </button>
-              )
-            })}
-          </div>
+        {/* ジャンルタブ */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 px-4">
+          {GENRE_TABS.map(g => {
+            const active  = genre === g.id
+            return (
+              <button key={g.id}
+                onClick={() => { setGenre(g.id); setSearch(''); setSubFilter(null) }}
+                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95"
+                style={active
+                  ? {
+                      background: SIMPLE_COLORS.accentBg,
+                      color: SIMPLE_COLORS.accentDeep,
+                      border: `1px solid ${SIMPLE_COLORS.accentBorder}`,
+                    }
+                  : {
+                      background: '#f5f5f7',
+                      color: SIMPLE_COLORS.textSecondary,
+                      border: '1px solid rgba(15,23,42,0.06)',
+                    }
+                }
+              >
+                {g.emoji && <span>{g.emoji}</span>}
+                <span className="whitespace-nowrap">{g.label}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* ── サブフィルター ── */}
-      <div className="px-4 py-2 flex gap-2 overflow-x-auto scrollbar-none" style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(139,92,246,0.1)' }}>
-        {SUB_FILTERS.map(sf => {
-          const ACTIVE_STYLES: Record<string, React.CSSProperties> = {
-            popular: { background: 'rgba(251,146,60,0.2)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.4)' },
-            new:     { background: 'rgba(255,182,217,0.22)', color: '#ffb6d9', border: '1px solid rgba(255,182,217,0.45)' },
-            member:  { background: 'rgba(73,225,255,0.15)', color: '#49E1FF', border: '1px solid rgba(73,225,255,0.35)' },
-          }
-          const INACTIVE: React.CSSProperties = { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }
-          return (
-            <button key={sf.id}
-              onClick={() => setSubFilter(prev => prev === sf.id ? null : sf.id)}
-              className="flex-shrink-0 flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold transition-all"
-              style={subFilter === sf.id ? ACTIVE_STYLES[sf.id] : INACTIVE}>
-              <span>{sf.emoji}</span><span>{sf.label}</span>
-            </button>
-          )
-        })}
+      {/* ── サブフィルター (light、すべて紫アクセントで統一) ── */}
+      <div
+        className="px-4 py-2.5 flex gap-2 overflow-x-auto scrollbar-none"
+        style={{ background: '#ffffff', borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}` }}
+      >
+        {SUB_FILTERS.map(sf => (
+          <button key={sf.id}
+            onClick={() => setSubFilter(prev => prev === sf.id ? null : sf.id)}
+            className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all"
+            style={subFilter === sf.id
+              ? {
+                  background: SIMPLE_COLORS.accentBg,
+                  color: SIMPLE_COLORS.accentDeep,
+                  borderColor: SIMPLE_COLORS.accentBorder,
+                }
+              : {
+                  background: '#f5f5f7',
+                  color: SIMPLE_COLORS.textSecondary,
+                  borderColor: 'rgba(15,23,42,0.06)',
+                }
+            }
+          >
+            <span>{sf.emoji}</span><span>{sf.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* ── コンテンツ ── */}
@@ -575,12 +603,12 @@ export default function GuildPage() {
                   <div className="px-4 flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-1.5">
                       <span className="text-base">{lane.emoji}</span>
-                      <p className="text-xs font-extrabold" style={{ color: '#F0EEFF' }}>{lane.label}</p>
+                      <p className="text-xs font-extrabold" style={{ color: SIMPLE_COLORS.textPrimary }}>{lane.label}</p>
                     </div>
                     <button
                       onClick={() => setSubFilter(lane.id === 'hot' ? 'popular' : 'new')}
                       className="flex items-center gap-0.5 text-[10px] font-medium"
-                      style={{ color: 'rgba(240,238,255,0.4)' }}
+                      style={{ color: SIMPLE_COLORS.textTertiary }}
                     >
                       すべて <ChevronRight size={11} />
                     </button>
@@ -597,9 +625,9 @@ export default function GuildPage() {
             })}
 
             <div className="px-4 flex items-center gap-2 pt-1">
-              <div className="flex-1 h-px" style={{ background: 'rgba(139,92,246,0.2)' }} />
-              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(240,238,255,0.4)' }}>すべてのゲーム村</span>
-              <div className="flex-1 h-px" style={{ background: 'rgba(139,92,246,0.2)' }} />
+              <div className="flex-1 h-px" style={{ background: SIMPLE_COLORS.cardBorder }} />
+              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: SIMPLE_COLORS.textTertiary }}>すべてのゲーム村</span>
+              <div className="flex-1 h-px" style={{ background: SIMPLE_COLORS.cardBorder }} />
             </div>
           </div>
         )}
@@ -609,39 +637,46 @@ export default function GuildPage() {
           {loading ? (
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="rounded-3xl overflow-hidden animate-pulse" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(139,92,246,0.1)' }}>
-                  <div className={`${i === 0 ? 'h-[120px]' : 'h-24'}`} style={{ background: 'rgba(139,92,246,0.1)' }} />
+                <div key={i} className="rounded-3xl overflow-hidden animate-pulse"
+                  style={{ background: SIMPLE_COLORS.cardBg, border: `1px solid ${SIMPLE_COLORS.cardBorder}` }}>
+                  <div className={`${i === 0 ? 'h-[120px]' : 'h-24'}`} style={{ background: '#f1f5f9' }} />
                   <div className="p-4 space-y-2">
-                    <div className="h-4 rounded-full w-2/3" style={{ background: 'rgba(139,92,246,0.1)' }} />
-                    <div className="h-3 rounded-full w-full" style={{ background: 'rgba(139,92,246,0.1)' }} />
+                    <div className="h-4 rounded-full w-2/3" style={{ background: '#e2e8f0' }} />
+                    <div className="h-3 rounded-full w-full" style={{ background: '#f1f5f9' }} />
                   </div>
                 </div>
               ))}
             </div>
           ) : displayed.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="relative w-44 mx-auto mb-6">
-                <div className="absolute inset-0 rounded-full" style={{ background: 'radial-gradient(ellipse, rgba(139,92,246,0.45) 0%, transparent 70%)', filter: 'blur(28px)' }} />
-                <div className="relative flex items-center justify-center">
-                  <GuildHeroGamepad size={150} />
+            <div className="text-center py-16">
+              <div className="relative w-32 h-32 mx-auto mb-5">
+                <div className="absolute inset-0 rounded-full" style={{
+                  background: 'radial-gradient(circle, rgba(157,92,255,0.14) 0%, transparent 70%)',
+                  filter: 'blur(8px)',
+                }} />
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <GuildHeroGamepad size={88} />
                 </div>
               </div>
-              <p className="font-extrabold text-base mb-1.5" style={{ color: '#F0EEFF' }}>
+              <p className="font-extrabold text-base mb-1.5" style={{ color: SIMPLE_COLORS.textPrimary }}>
                 {subFilter === 'member' ? 'まだゲーム村に参加していません' : 'このジャンルのゲーム村はまだありません'}
               </p>
-              <p className="text-sm mb-6" style={{ color: 'rgba(240,238,255,0.4)' }}>
+              <p className="text-sm mb-7 leading-relaxed px-6" style={{ color: SIMPLE_COLORS.textSecondary }}>
                 {subFilter === 'member' ? '気に入ったゲーム村に参加しよう' : '最初のゲーム村を立ててみましょう'}
               </p>
               {subFilter !== 'member' && (
                 <button
                   onClick={() => router.push('/guild/create')}
-                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition-all"
+                  className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl text-sm font-extrabold active:scale-95 transition-all"
                   style={{
-                    background: 'linear-gradient(135deg,#8B5CF6 0%,#7C3AED 100%)',
-                    boxShadow: '0 8px 24px rgba(139,92,246,0.4)',
-                    border: '1px solid rgba(139,92,246,0.3)',
+                    background: SIMPLE_COLORS.accent,
+                    color: '#ffffff',
+                    boxShadow: '0 4px 14px rgba(157,92,255,0.32)',
                   }}
-                >ゲーム村を立てる</button>
+                >
+                  <Plus size={16} />
+                  ゲーム村を立てる
+                </button>
               )}
             </div>
           ) : (
@@ -649,8 +684,10 @@ export default function GuildPage() {
               {featured && !search && (
                 <div className="mb-4">
                   <div className="flex items-center gap-2 mb-2.5">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: 'rgba(240,238,255,0.4)' }}>おすすめ · Featured</span>
-                    <div className="flex-1 h-px" style={{ background: 'rgba(139,92,246,0.2)' }} />
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: SIMPLE_COLORS.textTertiary }}>
+                      おすすめ · Featured
+                    </span>
+                    <div className="flex-1 h-px" style={{ background: SIMPLE_COLORS.cardBorder }} />
                   </div>
                   <VillageCard
                     village={featured}
@@ -665,14 +702,14 @@ export default function GuildPage() {
                 <>
                   {!search && (
                     <div className="flex items-center gap-2 mb-2.5">
-                      <span className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: SIMPLE_COLORS.textTertiary }}>
                         {subFilter === 'popular' ? '今週活発'  :
                          subFilter === 'new'     ? '新着'       :
                          subFilter === 'member'  ? '参加中'     :
                          genre !== 'all'         ? `${activeGenre?.label}のゲーム村` :
                          'その他のゲーム村'}
                       </span>
-                      <div className="flex-1 h-px" style={{ background: 'rgba(139,92,246,0.2)' }} />
+                      <div className="flex-1 h-px" style={{ background: SIMPLE_COLORS.cardBorder }} />
                     </div>
                   )}
                   <div className="space-y-3">
@@ -691,14 +728,14 @@ export default function GuildPage() {
         </div>
       </div>
 
-      {/* ── FAB（いますぐ村作成） ── */}
+      {/* ── FAB（いますぐ村作成、紫アクセント維持） ── */}
       <button
         onClick={() => router.push('/guild/create')}
-        className="fixed right-5 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
+        className="fixed right-5 w-14 h-14 rounded-2xl flex items-center justify-center active:scale-90 transition-all z-30"
         style={{
           bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
-          background: 'linear-gradient(135deg,#8b5cf6 0%,#6d28d9 100%)',
-          boxShadow: '0 8px 24px rgba(139,92,246,0.5)',
+          background: SIMPLE_COLORS.accent,
+          boxShadow: '0 8px 24px rgba(157,92,255,0.4), 0 2px 6px rgba(157,92,255,0.2)',
         }}
         aria-label="ゲーム村を作る"
       >
