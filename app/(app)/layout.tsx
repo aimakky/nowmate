@@ -1,6 +1,6 @@
 'use client'
 // v3
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { User } from 'lucide-react'
@@ -29,6 +29,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [userId, setUserId]             = useState<string | null>(null)
   const [needsRulesAgreement, setNeedsRulesAgreement] = useState(false)
   const pathname = usePathname()
+  // 直前に update_last_seen を呼んだ時刻 (ミリ秒)。60 秒スロットリング用。
+  // タブを高頻度で切り替えても DB に書きすぎないための防御。
+  const lastSeenSentAtRef = useRef<number>(0)
 
   // オンボーディング中は下部ナビ・アバター・フィードバックボタンを全て隠す（CTAボタンと干渉するため）
   const isOnboarding = pathname === '/onboarding' || pathname.startsWith('/onboarding/')
@@ -63,6 +66,47 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
     init()
   }, [])
+
+  // ── プレゼンス精度向上: visibilitychange で update_last_seen を呼ぶ ──
+  // 旧仕様: マイページを開いた時のみ update_last_seen が呼ばれていた
+  // (mypage/page.tsx)。他画面メインで使うユーザーは last_seen_at が
+  // 何時間〜何日も古いままで「最終ログイン 5 時間前」表示が実際の
+  // 利用と乖離していた。
+  //
+  // 新仕様: AppLayout が認証ユーザー向けに常駐するため、ここで:
+  //   - userId 確定時に 1 回 (アプリ起動 / ページ初回ロード)
+  //   - document が visible に戻った時 (タブ復帰 / アプリ再前面化)
+  // の 2 タイミングで update_last_seen RPC を呼ぶ。60 秒スロットリングで
+  // 連続書き込みを防ぐ (タブを高速切替しても 1 分に 1 回に集約)。
+  // ハートビート (定期 setInterval) は採用しない。電池消費・DB 書込量
+  // に対してプレゼンス精度の改善が薄いため。
+  useEffect(() => {
+    if (!userId) return
+
+    async function ping() {
+      const now = Date.now()
+      if (now - lastSeenSentAtRef.current < 60_000) return
+      lastSeenSentAtRef.current = now
+      try {
+        const supabase = createClient()
+        await supabase.rpc('update_last_seen', { p_user_id: userId })
+      } catch (e) {
+        // last_seen 更新は UX を止めない (fire-and-forget)。失敗は黙認。
+      }
+    }
+
+    // 初回打刻
+    ping()
+
+    // タブ可視化時の打刻
+    function onVisibility() {
+      if (document.visibilityState === 'visible') ping()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [userId])
 
   return (
     <div className="min-h-screen" style={{ background: '#080812' }}>
