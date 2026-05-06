@@ -1129,6 +1129,15 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
   //   - undefined: 全ユーザー (= 「みんな」タブ用)
   //   - string[] (空でも可): フォロー中ユーザーで絞り込み (= 「フォロー中」)
   //     空配列なら早期に空にしてセット (フォローしている人がいない)
+  // tweets を取得して TL に流す。
+  // 過去の不具合 (例: ミヤさんの「稼働中なう」連投が TL に出ない) は、
+  // 旧 select に含まれていた `profiles!tweets_user_id_fkey(...)` /
+  // `tweet_reactions!...` / `tweet_replies!...` の 3 つの embed FK ヒント
+  // のうちどれかが PostgREST で解決失敗すると、query 全体がエラーを返し
+  // tweetFeed が空になる構造的脆弱性が原因。
+  // → embed を全部外し、profiles / reactions / replies / user_trust を
+  //   それぞれ別 query で取得して in-memory Map で merge。1 つでも失敗
+  //   しても TL 本体の表示は止まらない (fail-open)。
   const fetchTweets = useCallback(async (userIds?: string[]) => {
     setTweetLoading(true)
     if (userIds !== undefined && userIds.length === 0) {
@@ -1140,33 +1149,79 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
     const supabase = createClient()
     let q = supabase
       .from('tweets')
-      .select('*, profiles!tweets_user_id_fkey(display_name, nationality, avatar_url, age_verified, age_verification_status), tweet_reactions!tweet_reactions_tweet_id_fkey(user_id, reaction), tweet_replies!tweet_replies_tweet_id_fkey(id)')
+      .select('*')
       .order('created_at', { ascending: false })
       .limit(40)
     if (userIds !== undefined) {
       q = q.in('user_id', userIds)
     }
     const { data, error } = await q
-    if (error) console.error('fetchTweets error:', error)
+    if (error) console.error('[timeline] fetchTweets query error:', error)
 
-    // Trust Tier を別クエリで取得して各 tweet にマージ（PostgREST embed の
-    // FK ヒントが tweets テーブルでは確実に通る保証がないため、separate fetch
-    // のほうが安全。失敗しても tweets の表示はそのまま継続される）
     const rows = (data ?? []) as any[]
-    if (rows.length > 0) {
-      const userIds = Array.from(new Set(rows.map(t => t.user_id)))
-      const { data: trustData } = await supabase
-        .from('user_trust')
-        .select('user_id, tier')
-        .in('user_id', userIds)
-      const trustMap = new Map(
-        (trustData ?? []).map((t: any) => [t.user_id, t.tier as string])
-      )
-      for (const r of rows) {
-        const tier = trustMap.get(r.user_id)
-        r.user_trust = tier ? { tier } : null
-      }
+    if (rows.length === 0) {
+      setTweetFeed([])
+      setTweetLoading(false)
+      return
     }
+
+    // 関連データを並列で別 query 取得 (どれも失敗しても tweets は表示する)
+    const tweetIds = Array.from(new Set(rows.map(t => t.id))).filter(Boolean)
+    const authorIds = Array.from(new Set(rows.map(t => t.user_id))).filter(Boolean)
+
+    const [profilesRes, reactionsRes, repliesRes, trustRes] = await Promise.all([
+      authorIds.length > 0
+        ? supabase
+            .from('profiles')
+            .select('id, display_name, nationality, avatar_url, age_verified, age_verification_status')
+            .in('id', authorIds)
+        : Promise.resolve({ data: [], error: null } as any),
+      tweetIds.length > 0
+        ? supabase
+            .from('tweet_reactions')
+            .select('tweet_id, user_id, reaction')
+            .in('tweet_id', tweetIds)
+        : Promise.resolve({ data: [], error: null } as any),
+      tweetIds.length > 0
+        ? supabase
+            .from('tweet_replies')
+            .select('id, tweet_id')
+            .in('tweet_id', tweetIds)
+        : Promise.resolve({ data: [], error: null } as any),
+      authorIds.length > 0
+        ? supabase
+            .from('user_trust')
+            .select('user_id, tier')
+            .in('user_id', authorIds)
+        : Promise.resolve({ data: [], error: null } as any),
+    ])
+    if ((profilesRes as any).error) console.error('[timeline] tweet profiles fetch error:', (profilesRes as any).error)
+
+    const profileMap = new Map<string, any>(
+      ((profilesRes as any).data ?? []).map((p: any) => [p.id, p])
+    )
+    const reactionsByTweet = new Map<string, any[]>()
+    for (const r of ((reactionsRes as any).data ?? [])) {
+      if (!reactionsByTweet.has(r.tweet_id)) reactionsByTweet.set(r.tweet_id, [])
+      reactionsByTweet.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
+    }
+    const repliesByTweet = new Map<string, any[]>()
+    for (const r of ((repliesRes as any).data ?? [])) {
+      if (!repliesByTweet.has(r.tweet_id)) repliesByTweet.set(r.tweet_id, [])
+      repliesByTweet.get(r.tweet_id)!.push({ id: r.id })
+    }
+    const trustMap = new Map<string, string>(
+      ((trustRes as any).data ?? []).map((t: any) => [t.user_id, t.tier])
+    )
+
+    for (const r of rows) {
+      r.profiles = profileMap.get(r.user_id) ?? null
+      r.tweet_reactions = reactionsByTweet.get(r.id) ?? []
+      r.tweet_replies = repliesByTweet.get(r.id) ?? []
+      const tier = trustMap.get(r.user_id)
+      r.user_trust = tier ? { tier } : null
+    }
+
     setTweetFeed(rows as TweetData[])
     setTweetLoading(false)
   }, [])

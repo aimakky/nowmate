@@ -271,8 +271,13 @@ if (loading) return (
         ... メニューはプロフィールカードのアバター行右端に再配置。
       */}
 
-      {/* Profile card */}
-      <div className="bg-white px-5 pt-5 pb-4 border-b border-stone-100">
+      {/*
+        Profile card.
+        AppLayout のマイページ固定アバター (left-4, top:12, 40x40) が画面
+        左上に重なるため、本文 (アバター + 名前) を 60px ほど下げる。
+        旧: pt-5 (20px) → 新: pt-16 (64px) でマイページボタンとの被りを解消。
+      */}
+      <div className="bg-white px-5 pt-16 pb-4 border-b border-stone-100">
         <div className="flex items-start gap-4 mb-4">
           <Avatar src={profile.avatar_url} name={profile.display_name} size="lg" tier={trustTier} />
           <div className="flex-1">
