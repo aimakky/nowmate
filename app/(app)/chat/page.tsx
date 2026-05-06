@@ -366,34 +366,12 @@ export default function ChatListPage() {
                 ギルドやゲーム村で知り合った仲間とDMできます
               </p>
 
-              {/* CTA — ギルド優先（継続的な仲間作り）。ゲーム村はサブで提示 */}
-              <div className="flex flex-col gap-2.5 w-full max-w-xs">
-                <button
-                  onClick={() => router.push('/guilds')}
-                  className="relative w-full py-3.5 rounded-2xl font-bold text-sm active:scale-[0.98] transition-all"
-                  style={{
-                    background: 'rgba(255,79,216,0.14)',
-                    border: '1px solid rgba(255,79,216,0.55)',
-                    color: '#F0EEFF',
-                    boxShadow: '0 0 18px rgba(255,79,216,0.18), inset 0 0 16px rgba(255,79,216,0.05)',
-                  }}
-                >
-                  🛡️ ギルドを探す
-                </button>
-                <button
-                  onClick={() => router.push('/guild')}
-                  className="w-full py-3 rounded-2xl text-sm font-bold active:scale-[0.98] transition-all"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(240,238,255,0.12)',
-                    color: 'rgba(240,238,255,0.7)',
-                  }}
-                >
-                  🎮 ゲーム村を見る
-                </button>
+              {/* マッキーさん指示で「ギルドを探す」「ゲーム村を見る」の 2
+                  ボタンを削除。ユーザー検索の控えめなテキストリンクだけ残す。 */}
+              <div className="flex flex-col items-center w-full max-w-xs">
                 <button
                   onClick={() => router.push('/users')}
-                  className="w-full py-2 text-xs font-bold active:opacity-60 transition-opacity"
+                  className="py-2 text-xs font-bold active:opacity-60 transition-opacity"
                   style={{ color: 'rgba(255,79,216,0.7)' }}
                 >
                   ユーザーを名前・IDで探す →
