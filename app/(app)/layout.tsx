@@ -67,6 +67,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     init()
   }, [])
 
+  // ── iOS Safari bfcache (back-forward cache) 対策 ──
+  // iOS Safari は Cache-Control: no-store を無視して、戻る/進む/タブ復帰時に
+  // ページのスナップショットを再表示することがある (= UI 変更が反映されない
+  // 真因のひとつ)。
+  // pageshow イベントの event.persisted === true で bfcache 復帰を検知し、
+  // 強制リロードして最新 HTML を再取得させる。
+  useEffect(() => {
+    function onPageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        // bfcache から復帰した = 古いスナップショット。強制再取得。
+        window.location.reload()
+      }
+    }
+    window.addEventListener('pageshow', onPageShow)
+    return () => window.removeEventListener('pageshow', onPageShow)
+  }, [])
+
   // ── プレゼンス精度向上: visibilitychange で update_last_seen を呼ぶ ──
   // 旧仕様: マイページを開いた時のみ update_last_seen が呼ばれていた
   // (mypage/page.tsx)。他画面メインで使うユーザーは last_seen_at が
