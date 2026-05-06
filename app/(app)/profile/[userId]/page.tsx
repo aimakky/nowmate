@@ -35,12 +35,8 @@ type UnifiedPost =
       reaction_count: number
     }
 
-interface QAAnswerWithQ {
-  id: string
-  content: string
-  created_at: string
-  qa_questions: { id: string; title: string; category: string } | null
-}
+// QAAnswerWithQ 型は回答タブ削除に伴い未使用。qa_answers の DB データ
+// 自体は残置 (将来の復活余地)。UI から外すだけ。
 
 export default function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>()
@@ -60,9 +56,13 @@ export default function UserProfilePage() {
   const [blockDone,  setBlockDone]  = useState(false)
   const [trustTier, setTrustTier] = useState<string | null>(null)
   const [isPremium, setIsPremium] = useState(false)
-  const [activeTab, setActiveTab] = useState<'posts' | 'answers'>('posts')
-  const [answers, setAnswers] = useState<QAAnswerWithQ[]>([])
-  const [showAnswersTab, setShowAnswersTab] = useState(true)
+  // 旧: 'posts' | 'answers' の 2 タブ。回答タブは優先度が低いためユーザー
+  // 可視タブから外し、代わりに 'videos' (動画投稿) と 'images' (画像投稿) を
+  // 追加。回答データそのものは未削除 (DB に残置) で、将来の復活余地あり。
+  const [activeTab, setActiveTab] = useState<'posts' | 'videos' | 'images'>('posts')
+  // 画像投稿: guild_posts.image_url IS NOT NULL のレコード。マイページの
+  // imageRes と同じデータ源 (guild_posts は画像付き投稿の DB 保管庫)。
+  const [imagePosts, setImagePosts] = useState<Array<{ id: string; image_url: string; content: string | null; created_at: string }>>([])
   const [qaTitles, setQaTitles] = useState<any[]>([])
   const [genreTitles, setGenreTitles] = useState<{ genre: string; awarded_at: string }[]>([])
   const [dmLoading, setDmLoading] = useState(false)
@@ -88,42 +88,45 @@ export default function UserProfilePage() {
       // プロフィールでは village_posts のみだったため、つぶやき主体の人だと
       // 投稿数が一致しない / 一覧が出ない問題があった。tweets も併せて
       // 取得して統合表示する。
+      // 旧: 投稿一覧を limit(5) で取得 → slice(0, 5) で merge 後 5 件に制限。
+      // ユーザー指示で「全件表示」に変更したため両 query から limit を撤廃。
+      // 投稿数が多くなったら別途 paging を検討するが、まずは全件出すこと
+      // 優先 (件数とカード表示の整合性が最重要)。
+      // 回答 (qa_answers) は UI から外したため fetch も削除。
       const [
         { data: p },
         villagePostsRes,
         { count: villagePostsCount },
         tweetsRes,
         { count: tweetsCount },
+        imagePostsRes,
         { count: followers },
         { count: following },
         { data: trust },
         { data: premSub },
-        { data: answersData },
         { data: titlesData },
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
         supabase.from('village_posts')
           .select('id, content, category, created_at, village_id, reaction_count')
           .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(5),
+          .order('created_at', { ascending: false }),
         supabase.from('village_posts').select('*', { count: 'exact', head: true }).eq('user_id', userId),
         supabase.from('tweets')
           .select('id, content, created_at')
           .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(5),
+          .order('created_at', { ascending: false }),
         supabase.from('tweets').select('*', { count: 'exact', head: true }).eq('user_id', userId),
+        // 画像投稿: guild_posts に image_url が NULL でないレコード
+        supabase.from('guild_posts')
+          .select('id, image_url, content, created_at')
+          .eq('user_id', userId)
+          .not('image_url', 'is', null)
+          .order('created_at', { ascending: false }),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', userId),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId),
         supabase.from('user_trust').select('tier').eq('user_id', userId).maybeSingle(),
         supabase.from('premium_subscriptions').select('id').eq('user_id', userId).eq('status', 'active').gt('expires_at', new Date().toISOString()).maybeSingle(),
-        supabase.from('qa_answers')
-          .select('id, content, created_at, qa_questions(id, title, category)')
-          .eq('user_id', userId)
-          .eq('is_anonymous', false)
-          .order('created_at', { ascending: false })
-          .limit(20),
         supabase.from('qa_titles').select('*').eq('user_id', userId).order('awarded_at', { ascending: false }),
       ])
 
@@ -168,29 +171,27 @@ export default function UserProfilePage() {
         reaction_count: 0,
       }))
 
-      // 時系列降順でマージし、上位 5 件のみ表示
+      // 時系列降順でマージし、全件表示 (旧: slice(0, 5) → 全件)
       const merged = [...villageUnified, ...tweetUnified]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 5)
+
+      if ((imagePostsRes as any)?.error) {
+        console.error('[profile/userId] image_posts fetch error:', (imagePostsRes as any).error)
+      }
 
       setProfile(p)
-      setShowAnswersTab(p?.show_answers !== false)
       setQaTitles(titlesData ?? [])
       // ジャンルマスター称号
       const gt = await getGenreTitles(userId as string)
       setGenreTitles(gt)
       setRecentPosts(merged)
+      setImagePosts(((imagePostsRes as any)?.data ?? []) as any[])
       // 投稿数 = 村投稿 + つぶやき の合計（マイページの「投稿」表示と整合）
       setPostCount((villagePostsCount ?? 0) + (tweetsCount ?? 0))
       setFollowerCount(followers ?? 0)
       setFollowingCount(following ?? 0)
       if (trust?.tier) setTrustTier(trust.tier)
       setIsPremium(!!premSub)
-      const normalizedAnswers = (answersData || []).map((a: any) => ({
-        ...a,
-        qa_questions: Array.isArray(a.qa_questions) ? a.qa_questions[0] ?? null : a.qa_questions,
-      })) as QAAnswerWithQ[]
-      setAnswers(normalizedAnswers)
       setLoading(false)
     }
     load()
@@ -383,47 +384,35 @@ if (loading) return (
         )}
       </div>
 
-      {/* ── タブ ── */}
+      {/* ── タブ (投稿 / 動画 / 画像) ──
+          回答タブは UI から削除 (DB 上の qa_answers は未削除で残置)。
+          動画タブは現状 DB に video_url 等が無いため空状態のみ表示。 */}
       <div className="flex border-b border-stone-100 bg-white sticky top-[57px] z-10">
-        <button
-          onClick={() => setActiveTab('posts')}
-          className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-bold relative transition-colors"
-          style={{ color: activeTab === 'posts' ? '#1c1917' : '#a8a29e' }}
-        >
-          ✍️ 投稿
-          {activeTab === 'posts' && (
-            <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-stone-900" />
-          )}
-        </button>
-        {showAnswersTab && (
+        {([
+          { id: 'posts',  label: '✍️ 投稿' },
+          { id: 'videos', label: '🎬 動画' },
+          { id: 'images', label: '🖼️ 画像' },
+        ] as const).map(t => (
           <button
-            onClick={() => setActiveTab('answers')}
-            className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-bold relative transition-colors"
-            style={{ color: activeTab === 'answers' ? '#1c1917' : '#a8a29e' }}
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            className="flex-1 flex items-center justify-center gap-1 py-3 text-xs font-bold relative transition-colors"
+            style={{ color: activeTab === t.id ? '#1c1917' : '#a8a29e' }}
           >
-            💬 回答
-            {answers.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold"
-                style={{ background: activeTab === 'answers' ? '#1c1917' : '#f5f5f4', color: activeTab === 'answers' ? '#fff' : '#a8a29e' }}>
-                {answers.length}
-              </span>
-            )}
-            {activeTab === 'answers' && (
+            {t.label}
+            {activeTab === t.id && (
               <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-stone-900" />
             )}
           </button>
-        )}
+        ))}
       </div>
 
       {/* ── コンテンツ ── */}
       <div className="px-4 pt-4 pb-28 space-y-3">
 
-        {/* 投稿タブ */}
+        {/* 投稿タブ (全件表示、limit/slice 撤廃) */}
         {activeTab === 'posts' && (
           <>
-            {postCount > 5 && (
-              <p className="text-[10px] text-stone-400 text-right">{postCount}件中5件を表示</p>
-            )}
             {recentPosts.length === 0 ? (
               <div className="bg-white border border-stone-100 rounded-2xl p-8 text-center">
                 <p className="text-3xl mb-2">✍️</p>
@@ -464,47 +453,38 @@ if (loading) return (
           </>
         )}
 
-        {/* 回答タブ */}
-        {activeTab === 'answers' && showAnswersTab && (
+        {/* 動画タブ (現状 DB に video_url 等が無いため空状態のみ。UI 先行で
+            将来 video カラム追加時に実装拡張する) */}
+        {activeTab === 'videos' && (
+          <div className="bg-white border border-stone-100 rounded-2xl p-8 text-center">
+            <p className="text-3xl mb-2">🎬</p>
+            <p className="text-sm font-bold text-stone-500">まだ動画投稿がありません</p>
+            <p className="text-xs text-stone-400 mt-1">動画を投稿するとここに表示されます</p>
+          </div>
+        )}
+
+        {/* 画像タブ (guild_posts.image_url IS NOT NULL のレコードを表示) */}
+        {activeTab === 'images' && (
           <>
-            {answers.length === 0 ? (
+            {imagePosts.length === 0 ? (
               <div className="bg-white border border-stone-100 rounded-2xl p-8 text-center">
-                <p className="text-3xl mb-2">💬</p>
-                <p className="text-sm font-bold text-stone-500">まだ実名の回答がありません</p>
-                <p className="text-xs text-stone-400 mt-1">実名で回答すると、ここに蓄積されます</p>
+                <p className="text-3xl mb-2">🖼️</p>
+                <p className="text-sm font-bold text-stone-500">まだ画像投稿がありません</p>
+                <p className="text-xs text-stone-400 mt-1">画像を投稿するとここに表示されます</p>
               </div>
             ) : (
-              answers.map(a => {
-                const q = a.qa_questions
-                const cs = q ? getCategoryStyle(q.category) : getCategoryStyle('なんでも相談')
-                return (
-                  <div key={a.id} className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm">
-                    {/* 質問への参照 */}
-                    {q && (
-                      <Link href={`/qa/${q.id}`}
-                        className="flex items-center gap-2.5 px-4 py-2.5 border-b border-stone-50 active:bg-stone-50 transition-colors"
-                        style={{ background: cs.bg }}>
-                        <span
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                          style={{ background: cs.border, color: cs.color }}>
-                          {cs.emoji} {q.category}
-                        </span>
-                        <p className="text-xs font-bold text-stone-700 truncate flex-1">{q.title}</p>
-                        <ChevronRight size={11} className="text-stone-300 flex-shrink-0" />
-                      </Link>
-                    )}
-                    {/* 回答本文 */}
-                    <div className="px-4 py-3">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <MessageSquare size={11} className="text-stone-300" />
-                        <span className="text-[10px] font-bold text-stone-400">この人の回答</span>
-                        <span className="text-[10px] text-stone-300 ml-auto">{timeAgo(a.created_at)}</span>
-                      </div>
-                      <p className="text-sm text-stone-800 leading-relaxed">{a.content}</p>
-                    </div>
+              <div className="grid grid-cols-3 gap-2">
+                {imagePosts.map(ip => (
+                  <div key={ip.id} className="aspect-square overflow-hidden rounded-xl border border-stone-100 bg-stone-50">
+                    <img
+                      src={ip.image_url}
+                      alt={ip.content ?? ''}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
                   </div>
-                )
-              })
+                ))}
+              </div>
             )}
           </>
         )}
