@@ -264,8 +264,11 @@ export default function UserProfilePage() {
   }
 
 if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-birch">
-      <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#080812' }}>
+      <span
+        className="w-6 h-6 border-2 rounded-full animate-spin"
+        style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }}
+      />
     </div>
   )
   if (!profile) return null
@@ -273,8 +276,12 @@ if (loading) return (
   const flag = getNationalityFlag(profile.nationality || '')
   const isMe = myId === userId
 
+  // 他ユーザープロフィールも YVOICE 全体のダークテーマに統一する。
+  // 旧版は bg-birch (cream/off-white) + bg-white カードで他画面と分離していたが、
+  // 「上部だけ白く浮く」「下部 nav とつながらない」等の世界観破綻を起こしていた。
+  // 採用色: pageBg #080812、card bg rgba(255,255,255,0.04)、accent #9D5CFF。
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-birch">
+    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
       {/*
         旧: 上部 sticky ヘッダー (戻る矢印 + 表示名 + ... メニュー)。
         AppLayout のマイページ固定アバターと位置が被って視覚的にごちゃつく
@@ -288,18 +295,25 @@ if (loading) return (
         左上に重なるため、本文 (アバター + 名前) を 60px ほど下げる。
         旧: pt-5 (20px) → 新: pt-16 (64px) でマイページボタンとの被りを解消。
       */}
-      <div className="bg-white px-5 pt-16 pb-4 border-b border-stone-100">
+      <div
+        className="px-5 pt-16 pb-4"
+        style={{
+          background: 'linear-gradient(180deg, #0B0B14 0%, #080812 100%)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
         <div className="flex items-start gap-4 mb-4">
           <Avatar src={profile.avatar_url} name={profile.display_name} size="lg" tier={trustTier} />
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-              <p className="font-extrabold text-stone-900 text-lg leading-tight">{profile.display_name}</p>
+              <p className="font-extrabold text-lg leading-tight" style={{ color: '#F0EEFF' }}>{profile.display_name}</p>
               <span className="text-xl">{flag}</span>
               {isVerifiedByExistingSchema(profile) && <VerifiedBadge verified size="md" />}
               {!isMe && myId && (
                 <button
                   onClick={() => setShowMenu(true)}
-                  className="ml-auto p-1.5 rounded-full text-stone-400 hover:bg-stone-100 active:bg-stone-200 transition-colors"
+                  className="ml-auto p-1.5 rounded-full transition-colors active:opacity-60"
+                  style={{ color: 'rgba(240,238,255,0.45)' }}
                   aria-label="メニュー"
                 >
                   <MoreHorizontal size={20} />
@@ -311,23 +325,25 @@ if (loading) return (
                 <TrustBadge tierId={trustTier} size="md" isPremium={isPremium} />
               </div>
             )}
-            {profile.bio && <p className="text-sm text-stone-600 leading-relaxed mt-1">{profile.bio}</p>}
+            {profile.bio && (
+              <p className="text-sm leading-relaxed mt-1" style={{ color: 'rgba(240,238,255,0.7)' }}>{profile.bio}</p>
+            )}
           </div>
         </div>
 
         {/* Stats */}
         <div className="flex gap-6 mb-4">
           <div className="text-center">
-            <p className="font-extrabold text-stone-900 text-lg">{postCount}</p>
-            <p className="text-xs text-stone-400">投稿</p>
+            <p className="font-extrabold text-lg" style={{ color: '#F0EEFF' }}>{postCount}</p>
+            <p className="text-xs" style={{ color: 'rgba(240,238,255,0.45)' }}>投稿</p>
           </div>
           <div className="text-center">
-            <p className="font-extrabold text-stone-900 text-lg">{followerCount}</p>
-            <p className="text-xs text-stone-400">フォロワー</p>
+            <p className="font-extrabold text-lg" style={{ color: '#F0EEFF' }}>{followerCount}</p>
+            <p className="text-xs" style={{ color: 'rgba(240,238,255,0.45)' }}>フォロワー</p>
           </div>
           <div className="text-center">
-            <p className="font-extrabold text-stone-900 text-lg">{followingCount}</p>
-            <p className="text-xs text-stone-400">フォロー中</p>
+            <p className="font-extrabold text-lg" style={{ color: '#F0EEFF' }}>{followingCount}</p>
+            <p className="text-xs" style={{ color: 'rgba(240,238,255,0.45)' }}>フォロー中</p>
           </div>
         </div>
 
@@ -366,29 +382,53 @@ if (loading) return (
 
         {!isMe && (
           <div className="flex gap-2.5">
-            <button onClick={toggleFollow} disabled={toggling}
-              className={`flex-1 py-2.5 rounded-2xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50 ${
+            <button
+              onClick={toggleFollow}
+              disabled={toggling}
+              className="flex-1 py-2.5 rounded-2xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50"
+              style={
                 isFollowing
-                  ? 'bg-stone-100 text-stone-700 border border-stone-200'
-                  : 'bg-brand-500 text-white shadow-md shadow-brand-200'
-              }`}>
+                  ? {
+                      background: 'rgba(157,92,255,0.12)',
+                      border: '1px solid rgba(168,85,247,0.35)',
+                      color: '#EDE9FE',
+                    }
+                  : {
+                      background: 'linear-gradient(135deg, #9D5CFF, #7B3FE4)',
+                      color: '#FFFFFF',
+                      boxShadow: '0 4px 16px rgba(157,92,255,0.4)',
+                    }
+              }
+            >
               {toggling ? '...' : isFollowing ? '✓ フォロー中' : 'フォローする'}
             </button>
             <button
               onClick={handleDM}
               disabled={dmLoading}
-              className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl font-bold text-sm bg-stone-100 text-stone-700 border border-stone-200 active:scale-[0.98] transition-all disabled:opacity-50"
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl font-bold text-sm active:scale-[0.98] transition-all disabled:opacity-50"
+              style={{
+                background: 'rgba(157,92,255,0.12)',
+                border: '1px solid rgba(168,85,247,0.35)',
+                color: '#EDE9FE',
+              }}
             >
               {dmLoading
-                ? <span className="w-4 h-4 border-2 border-stone-400 border-t-transparent rounded-full animate-spin" />
+                ? <span className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(237,233,254,0.7)', borderTopColor: 'transparent' }} />
                 : <><MessageSquare size={14} /> DM</>
               }
             </button>
           </div>
         )}
         {isMe && (
-          <button onClick={() => router.push('/mypage')}
-            className="w-full py-2.5 rounded-2xl font-bold text-sm bg-stone-100 text-stone-700 border border-stone-200">
+          <button
+            onClick={() => router.push('/mypage')}
+            className="w-full py-2.5 rounded-2xl font-bold text-sm active:opacity-80 transition-all"
+            style={{
+              background: 'rgba(157,92,255,0.12)',
+              border: '1px solid rgba(168,85,247,0.35)',
+              color: '#EDE9FE',
+            }}
+          >
             Edit profile →
           </button>
         )}
@@ -397,7 +437,13 @@ if (loading) return (
       {/* ── タブ (投稿 / 動画 / 画像) ──
           回答タブは UI から削除 (DB 上の qa_answers は未削除で残置)。
           動画タブは現状 DB に video_url 等が無いため空状態のみ表示。 */}
-      <div className="flex border-b border-stone-100 bg-white sticky top-[57px] z-10">
+      <div
+        className="flex sticky top-[57px] z-10"
+        style={{
+          background: '#080812',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
         {([
           { id: 'posts',  label: '✍️ 投稿' },
           { id: 'videos', label: '🎬 動画' },
@@ -407,11 +453,17 @@ if (loading) return (
             key={t.id}
             onClick={() => setActiveTab(t.id)}
             className="flex-1 flex items-center justify-center gap-1 py-3 text-xs font-bold relative transition-colors"
-            style={{ color: activeTab === t.id ? '#1c1917' : '#a8a29e' }}
+            style={{ color: activeTab === t.id ? '#F0EEFF' : 'rgba(240,238,255,0.4)' }}
           >
             {t.label}
             {activeTab === t.id && (
-              <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-stone-900" />
+              <span
+                className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full"
+                style={{
+                  background: 'linear-gradient(90deg, #9D5CFF, #7B3FE4)',
+                  boxShadow: '0 0 8px rgba(157,92,255,0.5)',
+                }}
+              />
             )}
           </button>
         ))}
@@ -424,34 +476,61 @@ if (loading) return (
         {activeTab === 'posts' && (
           <>
             {recentPosts.length === 0 ? (
-              <div className="bg-white border border-stone-100 rounded-2xl p-8 text-center">
+              <div
+                className="rounded-2xl p-8 text-center"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(157,92,255,0.18)',
+                }}
+              >
                 <p className="text-3xl mb-2">✍️</p>
-                <p className="text-sm font-bold text-stone-500">まだ投稿がありません</p>
+                <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ投稿がありません</p>
               </div>
             ) : (
               recentPosts.map(post => (
-                <div key={`${post.kind}-${post.id}`} className="bg-white border border-stone-100 rounded-2xl shadow-sm overflow-hidden">
+                <div
+                  key={`${post.kind}-${post.id}`}
+                  className="rounded-2xl overflow-hidden"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(157,92,255,0.18)',
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+                  }}
+                >
                   <div className="px-4 pt-3.5 pb-2.5">
-                    <p className="text-sm text-stone-800 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                    <p
+                      className="text-sm leading-relaxed whitespace-pre-wrap"
+                      style={{ color: 'rgba(240,238,255,0.85)' }}
+                    >
+                      {post.content}
+                    </p>
                   </div>
-                  <div className="flex items-center justify-between px-4 py-2.5 border-t border-stone-50">
+                  <div
+                    className="flex items-center justify-between px-4 py-2.5"
+                    style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}
+                  >
                     {post.kind === 'village' && post.village ? (
-                      <Link href={`/villages/${post.village_id}`}
-                        className="flex items-center gap-1.5 active:opacity-70 transition-opacity">
+                      <Link
+                        href={`/villages/${post.village_id}`}
+                        className="flex items-center gap-1.5 active:opacity-70 transition-opacity"
+                      >
                         <span className="text-sm">{post.village.icon}</span>
-                        <span className="text-[11px] font-bold text-stone-500 truncate max-w-[160px]">
+                        <span
+                          className="text-[11px] font-bold truncate max-w-[160px]"
+                          style={{ color: 'rgba(240,238,255,0.55)' }}
+                        >
                           {post.village.name}
                         </span>
-                        <ChevronRight size={11} className="text-stone-300 flex-shrink-0" />
+                        <ChevronRight size={11} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
                       </Link>
                     ) : post.kind === 'tweet' ? (
-                      <span className="text-[10px] font-bold text-stone-400">つぶやき</span>
+                      <span className="text-[10px] font-bold" style={{ color: 'rgba(240,238,255,0.4)' }}>つぶやき</span>
                     ) : <span />}
                     <div className="flex items-center gap-3">
-                      <span className="text-[10px] text-stone-400">{timeAgo(post.created_at)}</span>
+                      <span className="text-[10px]" style={{ color: 'rgba(240,238,255,0.4)' }}>{timeAgo(post.created_at)}</span>
                       {post.reaction_count > 0 && (
-                        <div className="flex items-center gap-1 text-rose-400">
-                          <Heart size={12} fill="#f43f5e" strokeWidth={0} />
+                        <div className="flex items-center gap-1" style={{ color: '#FB7185' }}>
+                          <Heart size={12} fill="#FB7185" strokeWidth={0} />
                           <span className="text-[11px] font-bold">{post.reaction_count}</span>
                         </div>
                       )}
@@ -466,10 +545,16 @@ if (loading) return (
         {/* 動画タブ (現状 DB に video_url 等が無いため空状態のみ。UI 先行で
             将来 video カラム追加時に実装拡張する) */}
         {activeTab === 'videos' && (
-          <div className="bg-white border border-stone-100 rounded-2xl p-8 text-center">
+          <div
+            className="rounded-2xl p-8 text-center"
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(157,92,255,0.18)',
+            }}
+          >
             <p className="text-3xl mb-2">🎬</p>
-            <p className="text-sm font-bold text-stone-500">まだ動画投稿がありません</p>
-            <p className="text-xs text-stone-400 mt-1">動画を投稿するとここに表示されます</p>
+            <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ動画投稿がありません</p>
+            <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>動画を投稿するとここに表示されます</p>
           </div>
         )}
 
@@ -477,15 +562,28 @@ if (loading) return (
         {activeTab === 'images' && (
           <>
             {imagePosts.length === 0 ? (
-              <div className="bg-white border border-stone-100 rounded-2xl p-8 text-center">
+              <div
+                className="rounded-2xl p-8 text-center"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(157,92,255,0.18)',
+                }}
+              >
                 <p className="text-3xl mb-2">🖼️</p>
-                <p className="text-sm font-bold text-stone-500">まだ画像投稿がありません</p>
-                <p className="text-xs text-stone-400 mt-1">画像を投稿するとここに表示されます</p>
+                <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ画像投稿がありません</p>
+                <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>画像を投稿するとここに表示されます</p>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-2">
                 {imagePosts.map(ip => (
-                  <div key={ip.id} className="aspect-square overflow-hidden rounded-xl border border-stone-100 bg-stone-50">
+                  <div
+                    key={ip.id}
+                    className="aspect-square overflow-hidden rounded-xl"
+                    style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(157,92,255,0.18)',
+                    }}
+                  >
                     <img
                       src={ip.image_url}
                       alt={ip.content ?? ''}
@@ -503,26 +601,41 @@ if (loading) return (
       {/* ── アクションシート（通報・ブロック）── */}
       {showMenu && (
         <div className="fixed inset-0 z-[70] flex flex-col justify-end">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowMenu(false)} />
-          <div className="relative bg-white rounded-t-3xl w-full max-w-md mx-auto overflow-hidden pb-safe">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowMenu(false)} />
+          <div
+            className="relative rounded-t-3xl w-full max-w-md mx-auto overflow-hidden pb-safe"
+            style={{
+              background: '#0F0820',
+              border: '1px solid rgba(157,92,255,0.2)',
+              borderBottom: 'none',
+            }}
+          >
             <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 rounded-full bg-stone-200" />
+              <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(157,92,255,0.3)' }} />
             </div>
             <div className="px-4 pb-6">
-              <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3 px-1">
+              <p
+                className="text-xs font-bold uppercase tracking-wider mb-3 px-1"
+                style={{ color: 'rgba(240,238,255,0.4)' }}
+              >
                 {profile.display_name} さんへの操作
               </p>
 
               {/* 通報 */}
               <button
                 onClick={() => { setShowMenu(false); setShowReport(true) }}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl hover:bg-orange-50 active:bg-orange-100 transition-colors text-left">
-                <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0">
-                  <Flag size={16} className="text-orange-500" />
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:opacity-70 transition-opacity text-left"
+                style={{ background: 'rgba(251,146,60,0.06)' }}
+              >
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(251,146,60,0.12)' }}
+                >
+                  <Flag size={16} style={{ color: '#fb923c' }} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-orange-600">通報する</p>
-                  <p className="text-xs text-orange-400">不適切なユーザーを報告する</p>
+                  <p className="text-sm font-bold" style={{ color: '#fb923c' }}>通報する</p>
+                  <p className="text-xs" style={{ color: 'rgba(251,146,60,0.6)' }}>不適切なユーザーを報告する</p>
                 </div>
               </button>
 
@@ -530,15 +643,22 @@ if (loading) return (
               <button
                 onClick={handleBlock}
                 disabled={blocking || blockDone}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl hover:bg-red-50 active:bg-red-100 transition-colors text-left mt-1 disabled:opacity-60">
-                <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
-                  {blockDone ? <span className="text-base">✅</span> : <Ban size={16} className="text-red-500" />}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:opacity-70 transition-opacity text-left mt-1 disabled:opacity-60"
+                style={{ background: 'rgba(255,77,144,0.06)' }}
+              >
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(255,77,144,0.12)' }}
+                >
+                  {blockDone
+                    ? <span className="text-base">✅</span>
+                    : <Ban size={16} style={{ color: '#FF4D90' }} />}
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-red-600">
+                  <p className="text-sm font-bold" style={{ color: '#FF4D90' }}>
                     {blockDone ? 'ブロックしました' : 'ブロックする'}
                   </p>
-                  <p className="text-xs text-red-400">
+                  <p className="text-xs" style={{ color: 'rgba(255,77,144,0.6)' }}>
                     {blockDone ? 'このユーザーは非表示になります' : 'このユーザーを非表示にする'}
                   </p>
                 </div>
@@ -546,7 +666,9 @@ if (loading) return (
 
               <button
                 onClick={() => setShowMenu(false)}
-                className="w-full mt-3 py-3.5 rounded-2xl bg-stone-100 text-sm font-bold text-stone-600 active:bg-stone-200 transition-colors">
+                className="w-full mt-3 py-3.5 rounded-2xl text-sm font-bold active:opacity-70 transition-opacity"
+                style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(240,238,255,0.6)' }}
+              >
                 キャンセル
               </button>
             </div>
