@@ -108,9 +108,10 @@ export default function FriendAvatarRail() {
           WebkitBackdropFilter: 'blur(12px)',
           borderBottom: '1px solid rgba(255,255,255,0.06)',
           paddingTop: 'max(8px, env(safe-area-inset-top, 8px))',
-          // 左 padding 60px はマイページ固定アイコン (left-4 + w-9 = 52px) のクリアランス。
-          // /mypage のように非表示ページでは多少空くが、各ページで一貫した見た目を優先。
-          paddingLeft: 60,
+          // 左 padding 80px = マイページ固定アイコン (left-4 + w-10 = 56px) +
+          // 視覚分離用の余白 24px。マイページとフレンド列が「別機能だと一目で
+          // 分かる」よう、近すぎる印象を解消する。
+          paddingLeft: 80,
           paddingRight: 12,
         }}
       >
@@ -135,10 +136,10 @@ export default function FriendAvatarRail() {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         paddingTop: 'max(8px, env(safe-area-inset-top, 8px))',
         paddingBottom: '8px',
-        // 左 padding 60px はマイページ固定アイコン (left-4 + w-9 = 52px) との
-        // クリアランス。これより狭いと左端のフレンドアイコンがマイページ
-        // ボタンの下に潜って押せなくなる。
-        paddingLeft: 60,
+        // 左 padding 80px = マイページ固定アイコン (left-4 + w-10 = 56px) +
+        // 視覚分離用の余白 24px。マイページとフレンド列を「別機能」として
+        // 明確に分離するため、60px → 80px に拡張した。
+        paddingLeft: 80,
         paddingRight: 12,
       }}
     >
