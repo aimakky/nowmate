@@ -779,9 +779,9 @@ export default function MyPage() {
         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)', boxShadow: '0 0 16px rgba(157,92,255,0.08)' }}>
         <div className="flex">
           {([
-            { id: 'tweets', label: '✍️ 投稿' },
-            { id: 'videos', label: '🎬 動画' },
-            { id: 'images', label: '🖼️ 画像' },
+            { id: 'tweets', label: '投稿' },
+            { id: 'images', label: '写真' },
+            { id: 'videos', label: '動画' },
           ] as { id: ProfileTab; label: string }[]).map(tab => (
             <button
               key={tab.id}
@@ -895,7 +895,7 @@ export default function MyPage() {
               }}
             >
               <p className="text-3xl mb-2">🎬</p>
-              <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ動画投稿がありません</p>
+              <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ動画の投稿がありません</p>
               <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>動画を投稿するとここに表示されます</p>
             </div>
           </div>
@@ -914,8 +914,8 @@ export default function MyPage() {
                 }}
               >
                 <p className="text-3xl mb-2">🖼️</p>
-                <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ画像投稿がありません</p>
-                <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>画像を投稿するとここに表示されます</p>
+                <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ写真の投稿がありません</p>
+                <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>写真を投稿するとここに表示されます</p>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-2">
