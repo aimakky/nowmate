@@ -10,16 +10,23 @@ const nextConfig = {
     ],
   },
 
-  // ── キャッシュ無効化（スマホPWA対策）────────────────────────────
+  // ── キャッシュ無効化（スマホPWA + Vercel Edge 両対応）──────────
+  // 旧版は Cache-Control: no-cache のみだったため、Vercel Edge が
+  // X-Vercel-Cache: HIT で 27 分以上古い HTML を配信し続けるバグが発生。
+  // CDN-Cache-Control / Vercel-CDN-Cache-Control を明示的に no-store に
+  // 指定して Vercel Edge レイヤを強制バスト。
+  // 参考: https://vercel.com/docs/edge-network/caching#cdn-cache-control
   async headers() {
     return [
       {
-        // HTMLページはキャッシュしない
+        // HTMLページはブラウザもエッジも一切キャッシュしない
         source: '/(.*)',
         headers: [
-          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
-          { key: 'Pragma',        value: 'no-cache' },
-          { key: 'Expires',       value: '0' },
+          { key: 'Cache-Control',            value: 'private, no-cache, no-store, must-revalidate, max-age=0' },
+          { key: 'CDN-Cache-Control',        value: 'no-store' },
+          { key: 'Vercel-CDN-Cache-Control', value: 'no-store' },
+          { key: 'Pragma',                   value: 'no-cache' },
+          { key: 'Expires',                  value: '0' },
         ],
       },
       {
