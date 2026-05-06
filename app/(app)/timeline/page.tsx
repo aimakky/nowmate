@@ -387,7 +387,7 @@ function PostCard({
       className="rounded-2xl overflow-hidden"
       style={{
         background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(57,255,136,0.15)',
+        border: '1px solid rgba(157,92,255,0.18)',
         boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
       }}
     >
@@ -1461,7 +1461,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
             />
           ) : item.type === 'tweet' ? (
             <div key={`tweet-${item.data.id}`} className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(57,255,136,0.2)', boxShadow: '0 4px 24px rgba(0,0,0,0.35)' }}>
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)', boxShadow: '0 4px 24px rgba(0,0,0,0.35)' }}>
               <TweetCard
                 tweet={item.data}
                 myId={userId}

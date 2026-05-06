@@ -8,23 +8,26 @@ import { TrustCard } from '@/components/ui/TrustBadge'
 import TrustBadge from '@/components/ui/TrustBadge'
 // PhoneVerifyModal は TrustVerificationCard 内部で管理される
 import { getUserTrust, fetchTierProgress, type TierProgress } from '@/lib/trust'
-import { Settings, LogOut, ChevronRight, Crown, Users, Copy, Check, Pencil, X, Eye, EyeOff, User, Heart } from 'lucide-react'
+import { Settings, LogOut, ChevronRight, Users, Copy, Check, Pencil, X, Eye, EyeOff, User, Heart } from 'lucide-react'
 import { timeAgo } from '@/lib/utils'
-import { VILLAGE_TYPE_STYLES } from '@/components/ui/VillageCard'
+// VILLAGE_TYPE_STYLES は旧 参加中タブで使用していたが、タブ削除に伴い未使用化
 import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import DMPrivacySettings from '@/components/features/DMPrivacySettings'
-import GuideTab from '@/components/rules/GuideTab'
-import FeaturesTab from '@/components/features-guide/FeaturesTab'
+// GuideTab / FeaturesTab はマイページのタブから移動した。
+// 現在は app/(app)/safety と app/(app)/guide のスタンドアロンページに配置し、
+// 設定画面 (/settings) からリンクで到達する。
 import TrustVerificationCard from '@/components/features/TrustVerificationCard'
 
-// 旧: tweets / images / joined_villages / hosted_villages / features / guide の 6 タブ。
-// 整理後: 投稿 / 参加中 / プロフィール / 安心 の 4 タブ。
-//  - images は 投稿 に統合（タブとしては削除、画像投稿データは残置）
-//  - hosted_villages（自分が作ったギルド・村）は 参加中 タブ内に「オーナー」subsection として表示
-//  - following / followers は統計カードクリックで切り替わる「擬似タブ」として追加。
-//    上部のタブバー (4 タブ) には出さず、統計カード自体を active 表示の起点にする。
-type ProfileTab = 'tweets' | 'joined_villages' | 'features' | 'guide' | 'following' | 'followers'
+// 旧: tweets / joined_villages / features / guide の 4 タブ + following / followers 擬似。
+// 整理後: profile/[userId] と同じ 投稿 / 動画 / 画像 の 3 タブ。
+//  - 参加中 (joined_villages): タブから削除。data fetch は維持 (将来別経路で再利用)
+//  - 使い方 (features): 設定画面 (/guide) に移動
+//  - 安心 (guide): 設定画面 (/safety) に移動
+//  - 動画 (videos): UI 先行で空状態のみ
+//  - 画像 (images): guild_posts.image_url IS NOT NULL のレコードを表示
+//  - following / followers は統計カードクリックで切り替わる「擬似タブ」として維持
+type ProfileTab = 'tweets' | 'videos' | 'images' | 'following' | 'followers'
 
 // マイページ「投稿」タブ用: 村投稿 (village_posts) を統合表示するための型。
 // tweets は TweetCard でリッチに表示し、村投稿は dark theme の simple card で
@@ -771,27 +774,26 @@ export default function MyPage() {
         </div>
       )}
 
-      {/* ── タブ ── */}
+      {/* ── タブ (投稿 / 動画 / 画像) — profile/[userId] と統一 ── */}
       <div className="relative z-10 mx-4 mb-1 rounded-2xl overflow-hidden sticky top-2"
-        style={{ background: 'rgba(234,242,255,0.04)', border: '1px solid rgba(184,199,217,0.14)', boxShadow: '0 0 16px rgba(234,242,255,0.05)' }}>
+        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)', boxShadow: '0 0 16px rgba(157,92,255,0.08)' }}>
         <div className="flex">
           {([
-            { id: 'tweets',          label: '投稿' },
-            { id: 'joined_villages', label: '参加中' },
-            { id: 'features',        label: '使い方' },
-            { id: 'guide',           label: '安心' },
+            { id: 'tweets', label: '✍️ 投稿' },
+            { id: 'videos', label: '🎬 動画' },
+            { id: 'images', label: '🖼️ 画像' },
           ] as { id: ProfileTab; label: string }[]).map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className="flex-1 py-3.5 text-xs font-bold transition-colors relative"
-              style={{ color: activeTab === tab.id ? '#EAF2FF' : 'rgba(184,199,217,0.4)' }}
+              style={{ color: activeTab === tab.id ? '#F0EEFF' : 'rgba(240,238,255,0.4)' }}
             >
               {tab.label}
               {activeTab === tab.id && (
                 <span
                   className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full"
-                  style={{ background: 'linear-gradient(90deg, #EAF2FF, #B8C7D9)', boxShadow: '0 0 8px rgba(234,242,255,0.5)' }}
+                  style={{ background: 'linear-gradient(90deg, #9D5CFF, #7B3FE4)', boxShadow: '0 0 8px rgba(157,92,255,0.5)' }}
                 />
               )}
             </button>
@@ -881,147 +883,63 @@ export default function MyPage() {
           </div>
         )}
 
-        {/* 画像タブは 投稿 に統合したため削除済み。imagePosts データは将来 投稿 タブで利用予定 */}
-
-        {/* 参加中タブ — 参加中のギルド・村に加え、自分が作った（ホスト）ものも 1 画面に集約 */}
-        {activeTab === 'joined_villages' && (() => {
-          const gameCats = new Set(INDUSTRIES.map(i => i.id))
-          const myVillages = joinedVillages.filter((v: any) => !gameCats.has(v.category))
-          const myGuilds   = joinedVillages.filter((v: any) =>  gameCats.has(v.category))
-          const ownedAll   = hostedVillages
-          const hasAnything = joinedVillages.length > 0 || ownedAll.length > 0
-          return (
-            <div>
-              {!hasAnything ? (
-                <div className="flex flex-col items-center py-16 text-center">
-                  <span className="text-4xl mb-3">🏘️</span>
-                  <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだギルド・ゲーム村に参加していません</p>
-                  <div className="flex gap-2 mt-4">
-                    <button onClick={() => router.push('/guilds')}
-                      className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
-                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(234,242,255,0.12)' }}
-                    >🛡️ ギルドを探す</button>
-                    <button onClick={() => router.push('/guild')}
-                      className="px-4 py-2.5 text-white text-xs font-bold rounded-2xl active:scale-95 transition-all"
-                      style={{ background: 'linear-gradient(135deg, #EAF2FF 0%, #B8C7D9 100%)', boxShadow: '0 4px 16px rgba(234,242,255,0.24)' }}
-                    >🎮 ゲーム村へ</button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  {/* 👑 オーナー subsection（旧「ホスト」タブをここに統合） */}
-                  {ownedAll.length > 0 && (
-                    <>
-                      <div className="px-4 py-2 flex items-center gap-2"
-                        style={{ background: 'rgba(255,201,40,0.06)' }}>
-                        <Crown size={11} style={{ color: '#FFC928' }} />
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#FFC928' }}>
-                          オーナー（自分が作った場所）
-                        </p>
-                      </div>
-                      {ownedAll.map((v: any) => {
-                        const genreInfo = INDUSTRIES.find(i => i.id === v.category)
-                        return (
-                          <Link key={`owned-${v.id}`} href={`/villages/${v.id}`}
-                            className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
-                            style={{ borderBottom: '1px solid rgba(234,242,255,0.05)' }}>
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
-                              style={{
-                                background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg,#FFC928,#FF9500)',
-                                boxShadow: '0 0 12px rgba(255,201,40,0.25)',
-                              }}>{v.icon}</div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
-                                <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                                  style={{ background: 'rgba(255,201,40,0.15)', color: '#FFC928', border: '1px solid rgba(255,201,40,0.3)' }}>
-                                  <Crown size={8} /> 団長
-                                </span>
-                              </div>
-                              <p className="text-[11px]" style={{ color: '#B8C7D9' }}>
-                                <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
-                              </p>
-                            </div>
-                            <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
-                          </Link>
-                        )
-                      })}
-                    </>
-                  )}
-                  {/* 🏕️ 村セクション */}
-                  {myVillages.length > 0 && (
-                    <>
-                      <div className="px-4 py-2" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: 'rgba(240,238,255,0.3)' }}>🏕️ 村</p>
-                      </div>
-                      {myVillages.map((v: any) => {
-                        const vs = VILLAGE_TYPE_STYLES[v.type] ?? VILLAGE_TYPE_STYLES['雑談']
-                        return (
-                          <Link key={v.id} href={`/villages/${v.id}`}
-                            className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
-                            style={{ borderBottom: '1px solid rgba(234,242,255,0.05)' }}>
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
-                              style={{ background: vs.gradient, boxShadow: '0 0 12px rgba(234,242,255,0.18)' }}>{v.icon}</div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
-                              <p className="text-[11px]" style={{ color: '#B8C7D9' }}>
-                                <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
-                              </p>
-                            </div>
-                            <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
-                          </Link>
-                        )
-                      })}
-                    </>
-                  )}
-                  {/* 🎮 ギルドセクション */}
-                  {myGuilds.length > 0 && (
-                    <>
-                      <div className="px-4 py-2" style={{ background: 'rgba(234,242,255,0.04)' }}>
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#EAF2FF' }}>🎮 ギルド</p>
-                      </div>
-                      {myGuilds.map((v: any) => {
-                        const genreInfo = INDUSTRIES.find(i => i.id === v.category)
-                        return (
-                          <Link key={v.id} href={`/villages/${v.id}`}
-                            className="flex items-center gap-3 px-4 py-3.5 active:opacity-80 transition-colors"
-                            style={{ borderBottom: '1px solid rgba(234,242,255,0.05)' }}>
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
-                              style={{ background: genreInfo ? genreInfo.gradient : 'linear-gradient(135deg, #EAF2FF, #B8C7D9)', boxShadow: '0 0 12px rgba(234,242,255,0.18)' }}>{v.icon}</div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>{v.name}</p>
-                                {genreInfo && (
-                                  <span
-                                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                                    style={{ background: `${genreInfo.color}20`, color: genreInfo.color, border: `1px solid ${genreInfo.color}40` }}
-                                  >
-                                    {genreInfo.emoji}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[11px]" style={{ color: '#B8C7D9' }}>
-                                <Users size={9} className="inline mr-0.5" />{v.member_count}人 · 今週{v.post_count_7d}件
-                              </p>
-                            </div>
-                            <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
-                          </Link>
-                        )
-                      })}
-                    </>
-                  )}
-                </div>
-              )}
+        {/* 動画タブ (現状 DB に video_url 等が無いため空状態のみ。
+            UI 先行で profile/[userId] と同等。将来 video カラム追加時に拡張) */}
+        {activeTab === 'videos' && (
+          <div className="px-4">
+            <div
+              className="rounded-2xl p-8 text-center"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(157,92,255,0.18)',
+              }}
+            >
+              <p className="text-3xl mb-2">🎬</p>
+              <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ動画投稿がありません</p>
+              <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>動画を投稿するとここに表示されます</p>
             </div>
-          )
-        })()}
+          </div>
+        )}
 
-
-        {/* できること（機能ガイド）タブ */}
-        {activeTab === 'features' && <FeaturesTab />}
-
-        {/* 安心ガイドタブ */}
-        {activeTab === 'guide' && <GuideTab />}
+        {/* 画像タブ (guild_posts.image_url IS NOT NULL のレコードを 3 列グリッドで表示)。
+            profile/[userId] と同等のレイアウト。imagePosts は初期 load で取得済。 */}
+        {activeTab === 'images' && (
+          <div className="px-4">
+            {imagePosts.length === 0 ? (
+              <div
+                className="rounded-2xl p-8 text-center"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(157,92,255,0.18)',
+                }}
+              >
+                <p className="text-3xl mb-2">🖼️</p>
+                <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ画像投稿がありません</p>
+                <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>画像を投稿するとここに表示されます</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {imagePosts.map((ip: any) => (
+                  <div
+                    key={ip.id}
+                    className="aspect-square overflow-hidden rounded-xl"
+                    style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(157,92,255,0.18)',
+                    }}
+                  >
+                    <img
+                      src={ip.image_url}
+                      alt={ip.content ?? ''}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* フォロー中 / フォロワー擬似タブ（統計カードクリックで開く） */}
         {(activeTab === 'following' || activeTab === 'followers') && (() => {

@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Camera, Check, Trash2, Eye, EyeOff, ShieldCheck, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, Camera, Check, Trash2, Eye, EyeOff, ShieldCheck, ShieldAlert, BookOpen, Shield, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 import { INDUSTRIES } from '@/lib/guild'
 
 export default function SettingsPage() {
@@ -298,6 +299,42 @@ export default function SettingsPage() {
               }
             </div>
           </div>
+        </div>
+
+        {/* ── ヘルプ・ガイド ──
+            旧: マイページの 使い方 / 安心 タブに同梱していた FeaturesTab と
+            GuideTab を /guide / /safety スタンドアロンページに分離し、
+            設定画面からのアクセスに集約。 */}
+        <div className="border-t border-stone-100 pt-4 space-y-2">
+          <p className="text-xs font-bold text-stone-400 uppercase tracking-wider px-1 mb-2">
+            ヘルプ・ガイド
+          </p>
+          <Link
+            href="/guide"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-white border border-stone-100 active:bg-stone-50 transition-colors"
+          >
+            <div className="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0">
+              <BookOpen size={16} className="text-indigo-500" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-bold text-stone-900">使い方ガイド</p>
+              <p className="text-xs text-stone-400">YVOICE の機能を順を追って確認</p>
+            </div>
+            <ChevronRight size={16} className="text-stone-300 flex-shrink-0" />
+          </Link>
+          <Link
+            href="/safety"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-white border border-stone-100 active:bg-stone-50 transition-colors"
+          >
+            <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+              <Shield size={16} className="text-emerald-500" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-bold text-stone-900">安心・安全ガイド</p>
+              <p className="text-xs text-stone-400">本人確認・通報・ブロック・コミュニティルール</p>
+            </div>
+            <ChevronRight size={16} className="text-stone-300 flex-shrink-0" />
+          </Link>
         </div>
 
         {/* ── アカウント削除 ── */}
