@@ -237,9 +237,12 @@ export default function MyPage() {
           .not('image_url', 'is', null)
           .order('created_at', { ascending: false })
           .limit(30),
+        // PostgREST embed (profiles!fkey, tweet_reactions!fkey, tweet_replies!fkey)
+        // を撤廃。embed 解決失敗で親 row が消える脆弱性回避。
+        // 関連データは Promise.all 後に別 query 並列取得 + Map merge。
         supabase
           .from('tweets')
-          .select('*, profiles!tweets_user_id_fkey(display_name, nationality, avatar_url, age_verified, age_verification_status), tweet_reactions!tweet_reactions_tweet_id_fkey(user_id, reaction), tweet_replies!tweet_replies_tweet_id_fkey(id)')
+          .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(30),
@@ -264,7 +267,41 @@ export default function MyPage() {
       setImagePosts((imageRes as any)?.data ?? [])
       const tr = tweetRes as any
       if (tr?.error) console.error('tweets fetch error:', tr.error)
-      setTweets((tr?.data ?? []) as TweetData[])
+
+      // tweets を embed 撤廃版で取得した後の enrichment。
+      // profiles / tweet_reactions / tweet_replies / user_trust を別 query で
+      // 並列取得し in-memory Map で merge する。fetchTweets と同パターン。
+      const rawMyTweets = (tr?.data ?? []) as any[]
+      if (rawMyTweets.length > 0) {
+        const tIds = rawMyTweets.map((t: any) => t.id)
+        const [profEnrich, reactEnrich, replyEnrich, trustEnrich] = await Promise.all([
+          supabase.from('profiles')
+            .select('id, display_name, nationality, avatar_url, age_verified, age_verification_status')
+            .eq('id', user.id).maybeSingle(),
+          supabase.from('tweet_reactions').select('tweet_id, user_id, reaction').in('tweet_id', tIds),
+          supabase.from('tweet_replies').select('id, tweet_id').in('tweet_id', tIds),
+          supabase.from('user_trust').select('tier').eq('user_id', user.id).maybeSingle(),
+        ])
+        const myProf = (profEnrich as any).data ?? null
+        const reactByT = new Map<string, any[]>()
+        for (const r of ((reactEnrich as any).data ?? [])) {
+          if (!reactByT.has(r.tweet_id)) reactByT.set(r.tweet_id, [])
+          reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
+        }
+        const replyByT = new Map<string, any[]>()
+        for (const r of ((replyEnrich as any).data ?? [])) {
+          if (!replyByT.has(r.tweet_id)) replyByT.set(r.tweet_id, [])
+          replyByT.get(r.tweet_id)!.push({ id: r.id })
+        }
+        const tier = (trustEnrich as any).data?.tier as string | undefined
+        for (const t of rawMyTweets) {
+          t.profiles = myProf
+          t.tweet_reactions = reactByT.get(t.id) ?? []
+          t.tweet_replies = replyByT.get(t.id) ?? []
+          t.user_trust = tier ? { tier } : null
+        }
+      }
+      setTweets(rawMyTweets as TweetData[])
 
       setLoading(false)
     }
@@ -274,24 +311,43 @@ export default function MyPage() {
   async function loadTweets(uid: string, supabaseClient?: any) {
     const client = supabaseClient ?? createClient()
     setTweetLoading(true)
+    // PostgREST embed を撤廃 (embed 解決失敗で親 row が消える脆弱性回避)。
+    // profiles / tweet_reactions / tweet_replies / user_trust は別 query 並列取得。
     const { data, error } = await client
       .from('tweets')
-      .select('*, profiles!tweets_user_id_fkey(display_name, nationality, avatar_url), tweet_reactions!tweet_reactions_tweet_id_fkey(user_id, reaction), tweet_replies!tweet_replies_tweet_id_fkey(id)')
+      .select('*')
       .eq('user_id', uid)
       .order('created_at', { ascending: false })
       .limit(30)
     if (error) console.error('loadTweets error:', error)
 
-    // 投稿者本人 1 名分の Trust Tier をマージ（TweetCard のバッジ表示用）
     const rows = (data ?? []) as any[]
     if (rows.length > 0) {
-      const { data: trustRow } = await client
-        .from('user_trust')
-        .select('tier')
-        .eq('user_id', uid)
-        .maybeSingle()
-      const tier = (trustRow as any)?.tier as string | undefined
+      const tIds = rows.map((t: any) => t.id)
+      const [profRes, reactRes, replyRes, trustRes] = await Promise.all([
+        client.from('profiles')
+          .select('id, display_name, nationality, avatar_url')
+          .eq('id', uid).maybeSingle(),
+        client.from('tweet_reactions').select('tweet_id, user_id, reaction').in('tweet_id', tIds),
+        client.from('tweet_replies').select('id, tweet_id').in('tweet_id', tIds),
+        client.from('user_trust').select('tier').eq('user_id', uid).maybeSingle(),
+      ])
+      const myProf = (profRes as any).data ?? null
+      const reactByT = new Map<string, any[]>()
+      for (const r of ((reactRes as any).data ?? [])) {
+        if (!reactByT.has(r.tweet_id)) reactByT.set(r.tweet_id, [])
+        reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
+      }
+      const replyByT = new Map<string, any[]>()
+      for (const r of ((replyRes as any).data ?? [])) {
+        if (!replyByT.has(r.tweet_id)) replyByT.set(r.tweet_id, [])
+        replyByT.get(r.tweet_id)!.push({ id: r.id })
+      }
+      const tier = (trustRes as any).data?.tier as string | undefined
       for (const r of rows) {
+        r.profiles = myProf
+        r.tweet_reactions = reactByT.get(r.id) ?? []
+        r.tweet_replies = replyByT.get(r.id) ?? []
         r.user_trust = tier ? { tier } : null
       }
     }

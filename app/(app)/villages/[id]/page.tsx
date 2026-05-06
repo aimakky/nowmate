@@ -985,22 +985,65 @@ export default function VillageDetailPage() {
   }, [id, userId])
 
   const fetchPosts = useCallback(async () => {
-    let q = createClient()
+    // PostgREST embed (profiles / user_trust!fkey) を撤廃。
+    // embed 解決失敗で親 row が消える構造的脆弱性を排除し、
+    // profiles / user_trust を別 query 並列取得 + Map merge する。
+    // is_shadow_banned による弾きは village 単位のモデレーションとして維持。
+    const supabase = createClient()
+    let q = supabase
       .from('village_posts')
-      .select('*, profiles(display_name, avatar_url, occupation), user_trust!village_posts_user_id_fkey(tier, is_shadow_banned)')
+      .select('*')
       .eq('village_id', id).order('created_at', { ascending: false }).limit(50)
     if (postCat !== '全部') q = q.eq('category', postCat)
     const { data } = await q
-    setPosts((data || []).filter((p: any) => !p.user_trust?.is_shadow_banned))
+    const rawPosts = (data ?? []) as any[]
+    if (rawPosts.length === 0) {
+      setPosts([])
+      return
+    }
+    const userIds = Array.from(new Set(rawPosts.map((p: any) => p.user_id))).filter(
+      (uid: any): uid is string => typeof uid === 'string' && uid.length > 0
+    )
+    const [profRes, trustRes] = await Promise.all([
+      userIds.length > 0
+        ? supabase.from('profiles').select('id, display_name, avatar_url, occupation').in('id', userIds)
+        : Promise.resolve({ data: [], error: null } as any),
+      userIds.length > 0
+        ? supabase.from('user_trust').select('user_id, tier, is_shadow_banned').in('user_id', userIds)
+        : Promise.resolve({ data: [], error: null } as any),
+    ])
+    const profMap = new Map<string, any>(
+      ((profRes as any).data ?? []).map((p: any) => [p.id, p])
+    )
+    const trustMap = new Map<string, any>(
+      ((trustRes as any).data ?? []).map((t: any) => [t.user_id, t])
+    )
+    const enriched = rawPosts.map((p: any) => ({
+      ...p,
+      profiles: profMap.get(p.user_id) ?? null,
+      user_trust: trustMap.get(p.user_id) ?? null,
+    }))
+    setPosts(enriched.filter((p: any) => !p.user_trust?.is_shadow_banned))
   }, [id, postCat])
 
   const fetchPinnedPost = useCallback(async () => {
     if (!village?.pinned_post_id) { setPinnedPost(null); return }
-    const { data } = await createClient()
+    // embed 撤廃 (RLS で参照先が隠れた時に pinned post が消えないよう別 query 化)
+    const supabase = createClient()
+    const { data: post } = await supabase
       .from('village_posts')
-      .select('*, profiles(display_name), user_trust!village_posts_user_id_fkey(tier)')
-      .eq('id', village.pinned_post_id).single()
-    setPinnedPost(data ?? null)
+      .select('*')
+      .eq('id', village.pinned_post_id).maybeSingle()
+    if (!post) { setPinnedPost(null); return }
+    const [profRes, trustRes] = await Promise.all([
+      supabase.from('profiles').select('id, display_name').eq('id', (post as any).user_id).maybeSingle(),
+      supabase.from('user_trust').select('tier').eq('user_id', (post as any).user_id).maybeSingle(),
+    ])
+    setPinnedPost({
+      ...(post as any),
+      profiles: (profRes as any).data ?? null,
+      user_trust: (trustRes as any).data ?? null,
+    })
   }, [village?.pinned_post_id])
 
   const fetchTodayStats = useCallback(async () => {
