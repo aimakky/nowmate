@@ -1,5 +1,12 @@
 ﻿'use client'
 
+// Vercel Edge が古い HTML を X-Vercel-Cache: HIT で配信していたため、
+// このページは Edge / Browser キャッシュを完全に無効化する。
+// 「タブ変更 (投稿/写真/動画) が iPhone Safari に反映されない」問題対策。
+// fetchCache: 'force-no-store' は client component でも有効なルート設定。
+export const fetchCache = 'force-no-store'
+export const revalidate = 0
+
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
