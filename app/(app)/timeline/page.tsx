@@ -62,7 +62,10 @@ type FeedItem =
   | { type: 'tweet'; data: TweetData }
   | { type: 'voice'; data: VoiceRoom }
 
-const PAGE_SIZE = 20
+// TL は全投稿反映を方針とする (限定 20 件 → 1000 件)。
+// Supabase 既定上限は 1000 件。コミュニティ規模がそれを超えたタイミングで
+// pagination または cursor 方式へ切り替える。
+const PAGE_SIZE = 1000
 
 
 const CAT_COLOR: Record<string, string> = {
@@ -1155,19 +1158,14 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       return
     }
     const supabase = createClient()
-    // limit 100 → 500 に拡張。
-    // ミヤさんが TL「みんな」に 1 件しか出ない問題の根本原因はこの limit。
-    // tweets テーブルは created_at DESC で 100 件取っており、
-    // 直近 100 件以外に押し出された tweet は表示されない。
-    // プロフィールは eq('user_id', miya) で絞り + limit なしなので 7 件全件出るが、
-    // TL は全ユーザーの tweet を時系列で取るため、コミュニティが活発だと
-    // ミヤさんの古めの 6 件が limit 100 から押し出されるケースが発生していた。
-    // Supabase 既定上限 (1000) 内で十分な件数 (500) に拡張する。
+    // 全投稿反映方針 (limit 500 → 1000)。
+    // Supabase 既定上限の 1000 件まで取得し、TL に「すべての投稿」を反映する。
+    // それを超えたコミュニティ規模になったら cursor pagination 方式へ移行する。
     let q = supabase
       .from('tweets')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(500)
+      .limit(1000)
     if (userIds !== undefined) {
       q = q.in('user_id', userIds)
     }
