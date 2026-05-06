@@ -971,9 +971,15 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         setPosts([]); setLoading(false); setHasMore(false); return
       }
 
+      // user_trust は village_posts と直接 FK で繋がっていないため、PostgREST
+      // の embed (user_trust!village_posts_user_id_fkey(...)) が解決失敗して
+      // クエリ全体がエラーを返し、TL に投稿が一切出ないケースがあった。
+      // (例: 投稿者が user_trust 行を持たないユーザーの場合)
+      // → embed を外し、user_id 集合に対する別 query で trust を取って
+      //   client-side で shadow_banned を弾く方式に変更。
       let q = supabase
         .from('village_posts')
-        .select('id, content, category, created_at, village_id, user_id, reaction_count, profiles(display_name, avatar_url), villages(id, name, icon), user_trust!village_posts_user_id_fkey(tier, is_shadow_banned)')
+        .select('id, content, category, created_at, village_id, user_id, reaction_count, profiles(display_name, avatar_url), villages(id, name, icon)')
         .order('created_at', { ascending: false })
         .range(from, from + PAGE_SIZE - 1)
 
@@ -981,20 +987,44 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       else if (tab === 'following') q = q.in('user_id', followingIds)
 
       const { data, error: qErr } = await q
-      if (qErr) console.error('[timeline] fetchPosts query error:', qErr)
-      const filtered = (data || [])
-        .filter((p: any) => {
-          const trust = Array.isArray(p.user_trust) ? p.user_trust[0] : p.user_trust
-          return trust?.is_shadow_banned !== true
-        })
-        .map((p: any) => ({
-          ...p,
-          profiles:   Array.isArray(p.profiles)   ? p.profiles[0]   ?? null : p.profiles,
-          villages:   Array.isArray(p.villages)   ? p.villages[0]   ?? null : p.villages,
-          user_trust: Array.isArray(p.user_trust) ? p.user_trust[0] ?? null : p.user_trust,
-        })) as TPost[]
+      if (qErr) {
+        console.error('[timeline] fetchPosts query error:', qErr)
+      }
+      const rawPosts = (data ?? []) as any[]
 
-      console.log('[timeline] fetched', filtered.length, 'posts (tab:', tab, ')')
+      // 取得した投稿の user_id 集合に対し user_trust を別 query で取得。
+      // 失敗 / 行欠落しても TL の表示はそのまま継続される (fail-open)。
+      const userIds = Array.from(new Set(rawPosts.map(p => p.user_id))).filter(
+        (id: any): id is string => typeof id === 'string' && id.length > 0
+      )
+      const trustMap = new Map<string, { tier: string | null; is_shadow_banned: boolean | null }>()
+      if (userIds.length > 0) {
+        const { data: trusts, error: tErr } = await supabase
+          .from('user_trust')
+          .select('user_id, tier, is_shadow_banned')
+          .in('user_id', userIds)
+        if (tErr) console.error('[timeline] user_trust fetch error:', tErr)
+        for (const t of (trusts ?? []) as any[]) {
+          trustMap.set(t.user_id, { tier: t.tier ?? null, is_shadow_banned: t.is_shadow_banned ?? null })
+        }
+      }
+
+      const filtered = rawPosts
+        .filter((p: any) => {
+          const t = trustMap.get(p.user_id)
+          // user_trust 行が無い場合は OK 扱い (fail-open)。
+          // ある場合のみ is_shadow_banned === true で弾く。
+          return t?.is_shadow_banned !== true
+        })
+        .map((p: any) => {
+          const t = trustMap.get(p.user_id) ?? null
+          return {
+            ...p,
+            profiles:   Array.isArray(p.profiles) ? p.profiles[0] ?? null : p.profiles,
+            villages:   Array.isArray(p.villages) ? p.villages[0] ?? null : p.villages,
+            user_trust: t ? { tier: t.tier ?? '', is_shadow_banned: t.is_shadow_banned ?? false } : null,
+          }
+        }) as TPost[]
 
       if (reset) {
         // 既存の optimistic 投稿（temp- プレフィックス）を残し、DB から取得した
