@@ -998,20 +998,24 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       }
       const rawPosts = (data ?? []) as any[]
 
-      // 取得した投稿の user_id 集合に対し user_trust を別 query で取得。
+      // 取得した投稿の user_id 集合に対し user_trust を別 query で取得 (tier 表示用)。
       // 失敗 / 行欠落しても TL の表示はそのまま継続される (fail-open)。
+      // 過去にここで is_shadow_banned = true を弾いていたが、これが「ミヤさんの
+      // 村投稿が TL に出ない / プロフィールでは出る」差分の原因だったため撤廃。
+      // 「全投稿を反映」が現在の方針。シャドウバン処理が必要になったら、
+      // RLS 側で完結させるか、明示的なモデレーション UI で対処する。
       const userIds = Array.from(new Set(rawPosts.map(p => p.user_id))).filter(
         (id: any): id is string => typeof id === 'string' && id.length > 0
       )
-      const trustMap = new Map<string, { tier: string | null; is_shadow_banned: boolean | null }>()
+      const trustMap = new Map<string, { tier: string | null }>()
       if (userIds.length > 0) {
         const { data: trusts, error: tErr } = await supabase
           .from('user_trust')
-          .select('user_id, tier, is_shadow_banned')
+          .select('user_id, tier')
           .in('user_id', userIds)
         if (tErr) console.error('[timeline] user_trust fetch error:', tErr)
         for (const t of (trusts ?? []) as any[]) {
-          trustMap.set(t.user_id, { tier: t.tier ?? null, is_shadow_banned: t.is_shadow_banned ?? null })
+          trustMap.set(t.user_id, { tier: t.tier ?? null })
         }
       }
 
@@ -1024,19 +1028,13 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       })
 
       const filtered = dedupedRawPosts
-        .filter((p: any) => {
-          const t = trustMap.get(p.user_id)
-          // user_trust 行が無い場合は OK 扱い (fail-open)。
-          // ある場合のみ is_shadow_banned === true で弾く。
-          return t?.is_shadow_banned !== true
-        })
         .map((p: any) => {
           const t = trustMap.get(p.user_id) ?? null
           return {
             ...p,
             profiles:   Array.isArray(p.profiles) ? p.profiles[0] ?? null : p.profiles,
             villages:   Array.isArray(p.villages) ? p.villages[0] ?? null : p.villages,
-            user_trust: t ? { tier: t.tier ?? '', is_shadow_banned: t.is_shadow_banned ?? false } : null,
+            user_trust: t ? { tier: t.tier ?? '', is_shadow_banned: false } : null,
           }
         }) as TPost[]
 
