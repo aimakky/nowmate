@@ -1,31 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 380" width="800" height="950">
   <defs>
-    <linearGradient id="p" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#c4b5fd"/>
-      <stop offset="0.55" stop-color="#9D5CFF"/>
-      <stop offset="1" stop-color="#7c3aed"/>
+    <linearGradient id="p" x1="0" y1="0" x2="0.7" y2="1">
+      <stop offset="0" stop-color="#d8b4fe"/>
+      <stop offset="0.5" stop-color="#a855f7"/>
+      <stop offset="1" stop-color="#6d28d9"/>
+    </linearGradient>
+    <linearGradient id="hi" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
   </defs>
-  <!-- 透過背景。OG カードや LP の任意箇所に重ねやすいように背景なし -->
-  <!-- Y マーク (中央配置、64x64 の YVoiceIcon を 5 倍にスケール) -->
+  <!-- 透過背景 (OG カードや LP の任意箇所に重ねやすい) -->
+  <!-- Y マーク v2 (中央配置、64x64 を 5 倍にスケール、グリル削除版) -->
   <g transform="translate(0 20) scale(5)">
-    <rect x="29.5" y="32" width="5" height="22" rx="1.2" fill="url(#p)"/>
+    <rect x="29.75" y="32" width="4.5" height="22" rx="1.5" fill="url(#p)"/>
     <g transform="translate(32 32) rotate(-25)">
-      <rect x="-2.5" y="-8" width="5" height="14" rx="1.2" fill="url(#p)"/>
-      <rect x="-8" y="-22" width="16" height="16" rx="8" fill="url(#p)"/>
-      <rect x="-4.5" y="-19" width="9" height="1.1" rx="0.55" fill="#0a0a18" opacity="0.55"/>
-      <rect x="-4.5" y="-16.5" width="9" height="1.1" rx="0.55" fill="#0a0a18" opacity="0.55"/>
-      <rect x="-4.5" y="-14" width="9" height="1.1" rx="0.55" fill="#0a0a18" opacity="0.55"/>
+      <rect x="-2.25" y="-8" width="4.5" height="14" rx="1.5" fill="url(#p)"/>
+      <rect x="-7" y="-22" width="14" height="16" rx="7" fill="url(#p)"/>
+      <rect x="-6.5" y="-21" width="1.5" height="13" rx="0.75" fill="url(#hi)"/>
     </g>
     <g transform="translate(32 32) rotate(25)">
-      <rect x="-2.5" y="-8" width="5" height="14" rx="1.2" fill="url(#p)"/>
-      <rect x="-8" y="-22" width="16" height="16" rx="8" fill="url(#p)"/>
-      <rect x="-4.5" y="-19" width="9" height="1.1" rx="0.55" fill="#0a0a18" opacity="0.55"/>
-      <rect x="-4.5" y="-16.5" width="9" height="1.1" rx="0.55" fill="#0a0a18" opacity="0.55"/>
-      <rect x="-4.5" y="-14" width="9" height="1.1" rx="0.55" fill="#0a0a18" opacity="0.55"/>
+      <rect x="-2.25" y="-8" width="4.5" height="14" rx="1.5" fill="url(#p)"/>
+      <rect x="-7" y="-22" width="14" height="16" rx="7" fill="url(#p)"/>
+      <rect x="-6.5" y="-21" width="1.5" height="13" rx="0.75" fill="url(#hi)"/>
     </g>
   </g>
-  <!-- YVOICE 文字 (Y は紫 #9D5CFF、VOICE は白 #F0EEFF) -->
+  <!-- YVOICE 文字 (Y は紫 #9D5CFF、VOICE は白 #F0EEFF) — 確定版を完全維持 -->
   <text x="160" y="355" text-anchor="middle"
         font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
         font-weight="900" font-size="56" letter-spacing="3"
