@@ -50,7 +50,7 @@ type FollowUser = {
   id: string
   display_name: string | null
   avatar_url: string | null
-  VILLIA_id: string | null
+  nowjp_id: string | null
 }
 
 // ── ツイートコンポーズシート ────────────────────────────────────
@@ -523,7 +523,7 @@ export default function MyPage() {
 
     const { data: profs, error: pErr } = await supabase
       .from('profiles')
-      .select('id, display_name, avatar_url, VILLIA_id')
+      .select('id, display_name, avatar_url, nowjp_id')
       .in('id', ids)
     if (pErr) console.error('[mypage] follow profiles fetch error:', pErr, { ids })
 
@@ -537,7 +537,7 @@ export default function MyPage() {
       id,
       display_name: '名無し',
       avatar_url: null,
-      VILLIA_id: null,
+      nowjp_id: null,
     })
 
     if (kind === 'following') setFollowingList(list)
@@ -651,16 +651,16 @@ export default function MyPage() {
           <h2 className="font-extrabold text-2xl leading-tight truncate" style={{ color: '#F0EEFF' }}>
             {profile.display_name}
           </h2>
-          {profile.VILLIA_id && (
+          {profile.nowjp_id && (
             <button
               onClick={() => {
-                navigator.clipboard.writeText(profile.VILLIA_id!)
+                navigator.clipboard.writeText(profile.nowjp_id!)
                 setIdCopied(true)
                 setTimeout(() => setIdCopied(false), 2000)
               }}
               className="flex items-center gap-1 mt-0.5 active:opacity-60 transition-opacity"
             >
-              <span className="text-xs font-mono" style={{ color: 'rgba(240,238,255,0.3)' }}>#{profile.VILLIA_id}</span>
+              <span className="text-xs font-mono" style={{ color: 'rgba(240,238,255,0.3)' }}>#{profile.nowjp_id}</span>
               {idCopied
                 ? <Check size={11} style={{ color: '#7CFF82' }} />
                 : <Copy size={11} style={{ color: 'rgba(240,238,255,0.3)' }} />
@@ -1039,9 +1039,9 @@ export default function MyPage() {
                     <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>
                       {u.display_name || '名無し'}
                     </p>
-                    {u.VILLIA_id && (
+                    {u.nowjp_id && (
                       <p className="text-[11px] font-mono truncate" style={{ color: 'rgba(240,238,255,0.3)' }}>
-                        #{u.VILLIA_id}
+                        #{u.nowjp_id}
                       </p>
                     )}
                   </div>

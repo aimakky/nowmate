@@ -2,7 +2,7 @@
 
 // /users — ユーザー検索ページ（Phase 1）
 // 既存テーブルだけで動く：
-//  - profiles (display_name / bio / VILLIA_id を ilike 検索)
+//  - profiles (display_name / bio / nowjp_id を ilike 検索)
 //  - user_follows (フォロー状態の取得・トグル)
 //  - matches    (フレンド申請＝is_request,request_status の既存仕様に合わせる)
 // startDM() を再利用してフレンド申請（=DM 開始）を作成。dm_privacy に応じて
@@ -24,7 +24,7 @@ type FriendRow = {
   id: string
   display_name: string | null
   avatar_url: string | null
-  VILLIA_id: string | null
+  nowjp_id: string | null
   age_verified: boolean | null
   last_seen_at: string | null
 }
@@ -40,7 +40,7 @@ interface UserResult {
   display_name: string | null
   avatar_url:   string | null
   bio:          string | null
-  VILLIA_id:    string | null
+  nowjp_id:    string | null
   age_verified?: boolean | null
   followState:  'none' | 'following'
   friendState:  'none' | 'sent' | 'received' | 'friends'
@@ -76,14 +76,14 @@ export default function UsersPage() {
 
     let q = supabase
       .from('profiles')
-      .select('id, display_name, avatar_url, bio, VILLIA_id, age_verified')
+      .select('id, display_name, avatar_url, bio, nowjp_id, age_verified')
       .eq('is_active', true)
       .order('updated_at', { ascending: false })
       .limit(40)
 
     if (sanitized) {
       q = q.or(
-        `display_name.ilike.%${sanitized}%,bio.ilike.%${sanitized}%,VILLIA_id.ilike.%${sanitized}%`
+        `display_name.ilike.%${sanitized}%,bio.ilike.%${sanitized}%,nowjp_id.ilike.%${sanitized}%`
       )
     }
 
@@ -153,7 +153,7 @@ export default function UsersPage() {
         display_name: p.display_name,
         avatar_url:   p.avatar_url,
         bio:          p.bio,
-        VILLIA_id:    p.VILLIA_id,
+        nowjp_id:    p.nowjp_id,
         age_verified: (p as { age_verified?: boolean | null }).age_verified ?? null,
         followState:  followingSet.has(p.id) ? 'following' : 'none',
         friendState,
@@ -202,7 +202,7 @@ export default function UsersPage() {
       }
       const { data: profs, error: pErr } = await supabase
         .from('profiles')
-        .select('id, display_name, avatar_url, VILLIA_id, age_verified, last_seen_at')
+        .select('id, display_name, avatar_url, nowjp_id, age_verified, last_seen_at')
         .in('id', ids)
       if (pErr) console.error('[users] friend profiles fetch error:', pErr, { ids })
       const profMap = new Map<string, FriendRow>(
@@ -212,7 +212,7 @@ export default function UsersPage() {
         id,
         display_name: '名無し',
         avatar_url: null,
-        VILLIA_id: null,
+        nowjp_id: null,
         age_verified: null,
         last_seen_at: null,
       })
@@ -561,10 +561,10 @@ export default function UsersPage() {
                           </span>
                         )}
                       </div>
-                      {u.VILLIA_id && (
+                      {u.nowjp_id && (
                         <p className="text-[10px] font-mono mt-0.5"
                           style={{ color: 'rgba(240,238,255,0.3)' }}>
-                          #{u.VILLIA_id}
+                          #{u.nowjp_id}
                         </p>
                       )}
                       {u.bio && (

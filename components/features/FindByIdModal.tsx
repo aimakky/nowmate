@@ -28,7 +28,7 @@ export default function FindByIdModal({ currentUserId, onClose }: Props) {
     const { data } = await supabase
       .from('profiles')
       .select('*')
-      .eq('VILLIA_id', id)
+      .eq('nowjp_id', id)
       .eq('is_active', true)
       .single()
     setResult(data ?? 'not_found')
@@ -91,7 +91,7 @@ export default function FindByIdModal({ currentUserId, onClose }: Props) {
                   {result.display_name} {getNationalityFlag(result.nationality)}
                 </div>
                 <div className="text-xs text-gray-500">{result.area} · {result.age}歳</div>
-                <div className="text-xs text-gray-400 font-mono mt-0.5">#{result.VILLIA_id}</div>
+                <div className="text-xs text-gray-400 font-mono mt-0.5">#{result.nowjp_id}</div>
               </div>
             </div>
             {result.id === currentUserId ? (

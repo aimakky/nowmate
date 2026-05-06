@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   const { data: inviter } = await supabase
     .from('profiles')
     .select('id, premium_until')
-    .eq('VILLIA_id', inviter自由村Id)
+    .eq('nowjp_id', inviter自由村Id)
     .single()
 
   if (!inviter) return NextResponse.json({ error: 'Inviter not found' }, { status: 404 })

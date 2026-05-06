@@ -14,8 +14,8 @@ export default function InvitePage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data } = await supabase.from('profiles').select('VILLIA_id').eq('id', user.id).single()
-      if (data?.VILLIA_id) set自由村Id(data.VILLIA_id)
+      const { data } = await supabase.from('profiles').select('nowjp_id').eq('id', user.id).single()
+      if (data?.nowjp_id) set自由村Id(data.nowjp_id)
     }
     load()
   }, [])
