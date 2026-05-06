@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import YVoiceIcon from '@/components/ui/icons/YVoiceIcon'
+import YVoiceLogo from '@/components/ui/icons/YVoiceLogo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -75,15 +76,15 @@ export default function LoginPage() {
 
       <div className="relative z-10 flex-1 flex flex-col justify-center px-6 max-w-sm mx-auto w-full">
         <div className="mb-8 text-center">
-          {/* Logo */}
+          {/* Logo (stacked: Y マーク + YVOICE 文字) */}
           <div
-            className="w-16 h-16 mx-auto mb-4 flex items-center justify-center"
+            className="mx-auto mb-4 flex items-center justify-center"
             style={{ filter: 'drop-shadow(0 0 30px rgba(157,92,255,0.55)) drop-shadow(0 0 60px rgba(157,92,255,0.18))' }}
           >
-            <YVoiceIcon size={64} rounded={18} />
+            <YVoiceLogo variant="stacked" markSize={72} />
           </div>
           <h1 className="text-2xl font-extrabold mb-1" style={{ color: '#F0EEFF' }}>おかえりなさい</h1>
-          <p className="text-sm" style={{ color: 'rgba(240,238,255,0.45)' }}>YVOICE — Your Voice Online にログイン</p>
+          <p className="text-sm" style={{ color: 'rgba(240,238,255,0.45)' }}>Your Voice Online にログイン</p>
         </div>
 
         {/* Google */}

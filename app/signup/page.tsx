@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import YVoiceIcon from '@/components/ui/icons/YVoiceIcon'
+import YVoiceLogo from '@/components/ui/icons/YVoiceLogo'
 
 function SignupForm() {
   const router       = useRouter()
@@ -66,12 +66,11 @@ function SignupForm() {
       <div className="flex-1 flex flex-col justify-center px-6 max-w-sm mx-auto w-full">
         <div className="mb-8 text-center">
           <div
-            className="w-16 h-16 mx-auto mb-4 flex items-center justify-center"
+            className="mx-auto mb-4 flex items-center justify-center"
             style={{ filter: 'drop-shadow(0 0 28px rgba(157,92,255,0.45))' }}
           >
-            <YVoiceIcon size={64} rounded={18} />
+            <YVoiceLogo variant="stacked" markSize={72} />
           </div>
-          <h1 className="text-2xl font-extrabold text-stone-900">YVOICE に参加する</h1>
           <p className="text-stone-500 text-xs mt-1 tracking-wider font-bold">YOUR VOICE ONLINE</p>
           <p className="text-stone-400 text-sm mt-1">20歳以上の方のみご利用いただけます</p>
         </div>
