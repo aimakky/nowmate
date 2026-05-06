@@ -691,7 +691,13 @@ export default function MyPage() {
           {([
             { tab: 'following', count: followingCount, label: 'フォロー中' },
             { tab: 'followers', count: followersCount, label: 'フォロワー' },
-            { tab: 'tweets',    count: tweets.length,  label: '投稿' },
+            // 投稿数は postCount (DB count: village_posts + tweets の合計) を使用。
+            // 旧版は tweets.length を直接見ていたため、村投稿が含まれず「投稿 1」
+            // のような過小カウントになっていた (= ユーザー報告のバグ)。
+            // tweets は .limit(30) で制限がかかるため list length では正確な
+            // 件数を出せない。DB の count(*) を用いることで投稿一覧 (両テーブル
+            // 合算) の総件数と整合する。
+            { tab: 'tweets',    count: postCount,      label: '投稿' },
           ] as { tab: ProfileTab; count: number; label: string }[]).map((stat, i) => {
             const on = activeTab === stat.tab
             return (
