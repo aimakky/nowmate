@@ -1,20 +1,33 @@
 'use client'
-// v2
+// v3: ダーク紫基調 + シンプル一覧 (アイコン + 名前 + 人数 + 参加状態) に強制 restructure。
+//
+// 削除:
+//  - GAME ROOM ヒーロー、「今すぐ一緒に遊ぶ人を探そう」「通話ルームを開いて仲間を募集する場所」
+//  - GENRE_TABS の大量カテゴリチップ
+//  - 今週にぎわってる / 新しいゲーム村 の横スクロールレーン
+//  - おすすめ・Featured 二重表示
+//  - GuildSmallCard / VillageCard (このページからの利用は廃止)
+//  - 強いグロー・装飾
+//
+// 維持:
+//  - 上部タブ (いますぐ村 / ギルド)
+//  - 「今夜あそぶ人を探す」紫カード (機能維持、視覚的にコンパクト化)
+//  - サブフィルター (にぎやか / 新着 / 参加中) は最小限に維持
+//  - 検索 (シンプルに)
+//  - 右下 FAB
+//  - DB / fetch ロジック / handleJoin / handleTonightRegister / handleTonightCancel すべて維持
+
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, ChevronRight, Moon, Mic, MicOff, X, Check } from 'lucide-react'
+import { Plus, Search, Moon, Mic, MicOff, Check, ChevronRight } from 'lucide-react'
 import { INDUSTRIES } from '@/lib/guild'
-import VillageCard, { type Village, VILLAGE_TYPE_STYLES, getFireStatus } from '@/components/ui/VillageCard'
-import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
-import GuildShieldIcon from '@/components/ui/icons/GuildShieldIcon'
+import { type Village } from '@/components/ui/VillageCard'
 import GuildsContent from '@/components/features/GuildsContent'
 import { SIMPLE_COLORS } from '@/components/ui/SimpleCard'
 
-// 上部タブの高さ（いますぐ村 / ギルド の切替バー）
 const TOP_TAB_HEIGHT = 44
 
-// ── 型定義 ──────────────────────────────────────────────────────
 type TonightSlot = {
   id: string
   user_id: string
@@ -29,109 +42,89 @@ type TonightSlot = {
 
 const TIME_SLOTS = ['19-21時', '20-22時', '21-23時', '22-24時', '23時〜']
 const SKILL_LEVELS = ['問わない', 'ビギナー', '中級', '上級']
-
-// ── ゲームジャンルカテゴリ ──────────────────────────────────────
-const GENRE_TABS = [
-  { id: 'all', emoji: '', label: 'すべて' },
-  ...INDUSTRIES.map(i => ({ id: i.id, emoji: i.emoji, label: i.id, color: i.color })),
-]
+const GAME_CATEGORIES = INDUSTRIES.map(i => i.id)
 
 const SUB_FILTERS = [
   { id: 'popular', label: 'にぎやか', emoji: '🔥' },
   { id: 'new',     label: '新着',     emoji: '✨' },
-  { id: 'member',  label: '参加中',   emoji: '🏠' },
+  { id: 'member',  label: '参加中',   emoji: '🛡️' },
 ]
 
-const LANES = [
-  { id: 'hot',  emoji: '🔥', label: '今週にぎわってるゲーム村',  orderBy: 'post_count_7d' as const, ascending: false },
-  { id: 'new',  emoji: '✨', label: '新しいゲーム村',      orderBy: 'created_at'    as const, ascending: false },
-]
-
-// ゲーム関連カテゴリ（villagesテーブルで使用）
-const GAME_CATEGORIES = INDUSTRIES.map(i => i.id)
-
-// GENRE_TABS alias（コンポーネント内で使用）
-const GENRES = GENRE_TABS
-
-// ── スモールカード (light theme) ──────────────────────────────
-function GuildSmallCard({ village, isMember, onJoin }: {
-  village: Village; isMember: boolean; onJoin: () => void
+// ── シンプル一覧カード (アイコン + 名前(N) + 参加状態) ──
+function SimpleVillageCard({
+  village, isMember, onJoin, onClick,
+}: {
+  village: Village; isMember: boolean; onJoin: () => void; onClick: () => void
 }) {
-  const router  = useRouter()
-  const genre   = INDUSTRIES.find(i => i.id === village.category) ?? null
-  const fire    = getFireStatus(village.last_post_at ?? null)
   return (
     <div
-      className="flex-shrink-0 w-44 rounded-3xl overflow-hidden cursor-pointer active:scale-[0.99] transition-all"
+      onClick={onClick}
+      className="rounded-2xl overflow-hidden active:scale-[0.99] transition-all cursor-pointer flex items-center gap-3 px-4 py-3.5"
       style={{
-        background: SIMPLE_COLORS.cardBg,
-        border: `1px solid ${SIMPLE_COLORS.cardBorder}`,
-        boxShadow: SIMPLE_COLORS.cardShadow,
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(157,92,255,0.18)',
       }}
-      onClick={() => router.push(`/villages/${village.id}`)}
     >
-      {genre && <div className="h-[3px]" style={{ background: genre.gradient, opacity: 0.5 }} />}
-      <div className="h-16 flex items-center justify-center relative"
-        style={{ background: 'linear-gradient(135deg, rgba(157,92,255,0.22), rgba(124,58,237,0.16))' }}>
-        <span className="text-3xl">{village.icon}</span>
-        <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5"
-          style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)' }}>
-          <span className={`text-[10px] ${fire.animate ? 'animate-pulse' : ''}`}>{fire.emoji}</span>
-          <span className="text-[8px] font-bold" style={{ color: SIMPLE_COLORS.textSecondary }}>{fire.label}</span>
-        </div>
+      <div
+        className="flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
+        style={{
+          background: 'linear-gradient(135deg, rgba(157,92,255,0.22), rgba(124,58,237,0.16))',
+          border: '1px solid rgba(157,92,255,0.25)',
+        }}
+      >
+        {village.icon}
       </div>
-      <div className="p-3">
-        <p className="font-bold text-xs truncate leading-snug mb-0.5" style={{ color: SIMPLE_COLORS.textPrimary }}>{village.name}</p>
-        <p className="text-[10px] line-clamp-2 leading-relaxed" style={{ color: SIMPLE_COLORS.textSecondary }}>{village.description}</p>
-        <div className="flex items-center justify-between mt-2">
-          <span className="text-[9px] font-bold" style={{ color: SIMPLE_COLORS.textTertiary }}>👥 {village.member_count}</span>
-          <button
-            onClick={e => { e.stopPropagation(); onJoin() }}
-            className="text-[9px] font-extrabold px-2.5 py-0.5 rounded-full active:scale-90 transition-all"
-            style={isMember
-              ? { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.25)', color: SIMPLE_COLORS.textSecondary }
-              : { background: SIMPLE_COLORS.accent, color: '#ffffff', boxShadow: '0 2px 6px rgba(157,92,255,0.4)' }
-            }
-          >{isMember ? '参加中' : '参加'}</button>
-        </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[15px] font-extrabold truncate" style={{ color: SIMPLE_COLORS.textPrimary }}>
+          {village.name}
+          <span className="ml-1.5 font-bold" style={{ color: SIMPLE_COLORS.textSecondary }}>
+            ({village.member_count})
+          </span>
+        </p>
       </div>
+      <button
+        onClick={e => { e.stopPropagation(); onJoin() }}
+        className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-extrabold active:scale-90 transition-all"
+        style={isMember
+          ? { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.25)', color: SIMPLE_COLORS.textSecondary }
+          : { background: SIMPLE_COLORS.accent, color: '#ffffff', boxShadow: '0 2px 6px rgba(157,92,255,0.4)' }
+        }
+      >
+        {isMember ? '参加中' : '参加'}
+      </button>
     </div>
   )
 }
 
-// ── メインページ ────────────────────────────────────────────────
+// ── メインページ ────────────────────────────────────────────
 export default function GuildPage() {
   const router = useRouter()
-  // 上部タブ: いますぐ村 / ギルド を 1 ページ内で切り替える
   const [topTab, setTopTab] = useState<'instant' | 'guild'>('instant')
 
-  // URL ?tab=guild が来た場合（旧 /guilds 互換 or 内部リンク）はギルド側を初期表示。
-  // SSR 時に useSearchParams() を使うと Suspense 境界が必要になり build エラーに
-  // なるため、mount 後に window.location から拾うシンプルな方式に切替えた。
+  // URL ?tab=guild 互換 (旧 /guilds 互換 or 内部リンク)
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     if (params.get('tab') === 'guild') setTopTab('guild')
   }, [])
-  const [villages,      setVillages]      = useState<Village[]>([])
-  const [laneData,      setLaneData]      = useState<Record<string, Village[]>>({})
-  const [loading,       setLoading]       = useState(true)
-  const [genre,         setGenre]         = useState('all')
-  const [subFilter,     setSubFilter]     = useState<string | null>(null)
-  const [search,        setSearch]        = useState('')
-  const [userId,        setUserId]        = useState<string | null>(null)
-  const [memberIds,     setMemberIds]     = useState<Set<string>>(new Set())
+
+  const [villages,  setVillages]  = useState<Village[]>([])
+  const [loading,   setLoading]   = useState(true)
+  const [subFilter, setSubFilter] = useState<string | null>(null)
+  const [search,    setSearch]    = useState('')
+  const [userId,    setUserId]    = useState<string | null>(null)
+  const [memberIds, setMemberIds] = useState<Set<string>>(new Set())
 
   // 今夜マッチング state
-  const [tonightSlots,  setTonightSlots]  = useState<TonightSlot[]>([])
-  const [mySlot,        setMySlot]        = useState<TonightSlot | null>(null)
-  const [showForm,      setShowForm]      = useState(false)
-  const [tGame,         setTGame]         = useState('')
-  const [tTimeSlot,     setTTimeSlot]     = useState('21-23時')
-  const [tSkill,        setTSkill]        = useState('問わない')
-  const [tVoice,        setTVoice]        = useState(true)
-  const [tNote,         setTNote]         = useState('')
-  const [tSaving,       setTSaving]       = useState(false)
+  const [tonightSlots, setTonightSlots] = useState<TonightSlot[]>([])
+  const [mySlot,       setMySlot]       = useState<TonightSlot | null>(null)
+  const [showForm,     setShowForm]     = useState(false)
+  const [tGame,        setTGame]        = useState('')
+  const [tTimeSlot,    setTTimeSlot]    = useState('21-23時')
+  const [tSkill,       setTSkill]       = useState('問わない')
+  const [tVoice,       setTVoice]       = useState(true)
+  const [tNote,        setTNote]        = useState('')
+  const [tSaving,      setTSaving]      = useState(false)
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -151,7 +144,6 @@ export default function GuildPage() {
     setTonightSlots((data ?? []) as TonightSlot[])
   }, [])
 
-  // 自分のスロット取得
   const fetchMySlot = useCallback(async () => {
     if (!userId) return
     const supabase = createClient()
@@ -167,12 +159,10 @@ export default function GuildPage() {
   useEffect(() => { fetchTonightSlots() }, [fetchTonightSlots])
   useEffect(() => { fetchMySlot() }, [fetchMySlot])
 
-  // 今夜登録
   async function handleTonightRegister() {
     if (!userId || !tGame.trim() || tSaving) return
     setTSaving(true)
     const supabase = createClient()
-    // upsert（1ユーザー1スロット）
     await supabase.from('tonight_slots').upsert({
       user_id:     userId,
       game:        tGame.trim(),
@@ -189,7 +179,6 @@ export default function GuildPage() {
     setTSaving(false)
   }
 
-  // 今夜登録解除
   async function handleTonightCancel() {
     if (!userId) return
     const supabase = createClient()
@@ -198,26 +187,13 @@ export default function GuildPage() {
     setTonightSlots(prev => prev.filter(s => s.user_id !== userId))
   }
 
-  const fetchLanes = useCallback(async () => {
-    const supabase = createClient()
-    const results: Record<string, Village[]> = {}
-    await Promise.all(LANES.map(async lane => {
-      const { data } = await supabase
-        .from('villages').select('*').eq('is_public', true)
-        .in('category', GAME_CATEGORIES)
-        .order(lane.orderBy, { ascending: lane.ascending }).limit(8)
-      results[lane.id] = (data ?? []) as Village[]
-    }))
-    setLaneData(results)
-  }, [])
-
   const fetchVillages = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
-    let q = supabase.from('villages').select('*').eq('is_public', true)
-
-    if (genre !== 'all') q = q.eq('category', genre)
-    else q = q.in('category', GAME_CATEGORIES)
+    let q = supabase
+      .from('villages').select('*')
+      .eq('is_public', true)
+      .in('category', GAME_CATEGORIES)
 
     if (subFilter === 'popular') q = q.order('post_count_7d', { ascending: false })
     else if (subFilter === 'new') q = q.order('created_at',   { ascending: false })
@@ -226,7 +202,7 @@ export default function GuildPage() {
     const { data } = await q.limit(40)
     setVillages((data || []) as Village[])
     setLoading(false)
-  }, [genre, subFilter])
+  }, [subFilter])
 
   const fetchMemberships = useCallback(async () => {
     if (!userId) return
@@ -238,9 +214,6 @@ export default function GuildPage() {
 
   useEffect(() => { fetchVillages() },    [fetchVillages])
   useEffect(() => { fetchMemberships() }, [fetchMemberships])
-  useEffect(() => {
-    if (genre === 'all' && !subFilter) fetchLanes()
-  }, [fetchLanes, genre, subFilter])
 
   async function handleJoin(villageId: string) {
     if (!userId) { router.push('/login'); return }
@@ -263,22 +236,17 @@ export default function GuildPage() {
     return true
   })
 
-  const featured  = displayed[0]
-  const rest      = displayed.slice(1)
-  const showLanes = genre === 'all' && !subFilter && !search
-  const activeGenre = GENRES.find(g => g.id === genre)
-
   return (
     <div className="max-w-md mx-auto min-h-screen" style={{ background: SIMPLE_COLORS.pageBg }}>
 
-      {/* ── 上部タブ：いますぐ村 / ギルド ── (light theme)
-          仕様: 文字中心のシンプル 2 分割タブ。両タブとも紫アクセントで統一
-          (旧: cyan + 紫の二色使い → 新: 紫一色。ブランドの紫だけを残す)。 */}
+      {/* ── 上部タブ：いますぐ村 / ギルド ── */}
       <div
         className="sticky top-0 z-30 flex"
         style={{
           height: TOP_TAB_HEIGHT,
-          background: 'rgba(10,10,24,0.95)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+          background: 'rgba(10,10,24,0.95)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}`,
         }}
       >
@@ -308,207 +276,151 @@ export default function GuildPage() {
         </button>
       </div>
 
-      {/* ── ギルドタブ（旧 /guilds の中身） ── */}
+      {/* ── ギルドタブ ── */}
       {topTab === 'guild' && (
         <GuildsContent embedded headerTopOffset={TOP_TAB_HEIGHT} />
       )}
 
-      {/* ── いますぐ村タブ（既存コンテンツ）以下、topTab === 'instant' のときのみ表示 ── */}
+      {/* ── いますぐ村タブ ── */}
       {topTab === 'instant' && (
-      <>
-      {/* ── ヘッダー (light) ── */}
-      <div className="sticky z-10 px-4 pt-6 pb-3"
-        style={{ top: TOP_TAB_HEIGHT, background: 'rgba(10,10,24,0.95)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}` }}>
-
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div>
-            <p className="text-[10px] font-extrabold tracking-widest uppercase mb-0.5"
-              style={{ color: SIMPLE_COLORS.accent }}>
-              GAME ROOM
-            </p>
-            <h1 className="font-extrabold text-xl leading-tight flex items-center gap-2"
-              style={{ color: SIMPLE_COLORS.textPrimary }}>
-              <GuildHeroGamepad size={22} />
-              今すぐ一緒に遊ぶ人を探そう
-            </h1>
-            <p className="text-xs mt-1 leading-relaxed" style={{ color: SIMPLE_COLORS.textSecondary }}>
-              通話ルームを開いて仲間を募集する場所
-            </p>
-          </div>
-        </div>
-
-        {/* 検索 */}
-        <div className="relative mb-3">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2"
-            style={{ color: SIMPLE_COLORS.textTertiary }} />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="ゲーム村を検索..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-sm focus:outline-none transition-all"
+        <>
+          {/* ── コンパクトヘッダー (検索 + サブフィルター) ──
+              旧 GAME ROOM 巨大ヒーロー / 「今すぐ一緒に遊ぶ人を探そう」
+              / 「通話ルームを開いて仲間を募集する場所」/ 多数のジャンル
+              チップは全削除。タブ直下にスッキリ検索 + 3 chip フィルタ
+              のみ。 */}
+          <div className="sticky z-10 px-4 pt-3 pb-2.5"
             style={{
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(15,23,42,0.08)',
-              color: SIMPLE_COLORS.textPrimary,
-            }}
-            onFocus={e => {
-              e.currentTarget.style.borderColor = SIMPLE_COLORS.accentBorder
-              e.currentTarget.style.background = 'rgba(255,255,255,0.10)'
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(157,92,255,0.10)'
-            }}
-            onBlur={e => {
-              e.currentTarget.style.borderColor = 'rgba(15,23,42,0.08)'
-              e.currentTarget.style.background = '#f5f5f7'
-              e.currentTarget.style.boxShadow = 'none'
-            }}
-          />
-        </div>
+              top: TOP_TAB_HEIGHT,
+              background: 'rgba(10,10,24,0.95)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}`,
+            }}>
 
-        {/* ジャンルタブ */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 px-4">
-          {GENRE_TABS.map(g => {
-            const active  = genre === g.id
-            return (
-              <button key={g.id}
-                onClick={() => { setGenre(g.id); setSearch(''); setSubFilter(null) }}
-                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95"
-                style={active
-                  ? {
-                      background: SIMPLE_COLORS.accentBg,
-                      color: SIMPLE_COLORS.accentDeep,
-                      border: `1px solid ${SIMPLE_COLORS.accentBorder}`,
-                    }
-                  : {
-                      background: 'rgba(255,255,255,0.06)',
-                      color: SIMPLE_COLORS.textSecondary,
-                      border: '1px solid rgba(15,23,42,0.06)',
-                    }
-                }
-              >
-                {g.emoji && <span>{g.emoji}</span>}
-                <span className="whitespace-nowrap">{g.label}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* ── サブフィルター (light、すべて紫アクセントで統一) ── */}
-      <div
-        className="px-4 py-2.5 flex gap-2 overflow-x-auto scrollbar-none"
-        style={{ background: 'rgba(10,10,24,0.95)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}` }}
-      >
-        {SUB_FILTERS.map(sf => (
-          <button key={sf.id}
-            onClick={() => setSubFilter(prev => prev === sf.id ? null : sf.id)}
-            className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all"
-            style={subFilter === sf.id
-              ? {
-                  background: SIMPLE_COLORS.accentBg,
-                  color: SIMPLE_COLORS.accentDeep,
-                  borderColor: SIMPLE_COLORS.accentBorder,
-                }
-              : {
+            <div className="relative mb-2.5">
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2"
+                style={{ color: SIMPLE_COLORS.textTertiary }} />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="ゲーム村を検索..."
+                className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-sm focus:outline-none transition-all"
+                style={{
                   background: 'rgba(255,255,255,0.06)',
-                  color: SIMPLE_COLORS.textSecondary,
-                  borderColor: 'rgba(15,23,42,0.06)',
-                }
-            }
-          >
-            <span>{sf.emoji}</span><span>{sf.label}</span>
-          </button>
-        ))}
-      </div>
+                  border: '1px solid rgba(157,92,255,0.18)',
+                  color: SIMPLE_COLORS.textPrimary,
+                }}
+                onFocus={e => {
+                  e.currentTarget.style.borderColor = SIMPLE_COLORS.accentBorder
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(157,92,255,0.12)'
+                }}
+                onBlur={e => {
+                  e.currentTarget.style.borderColor = 'rgba(157,92,255,0.18)'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
+              />
+            </div>
 
-      {/* ── コンテンツ ── */}
-      <div className="pb-32">
+            <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 px-4">
+              {SUB_FILTERS.map(sf => (
+                <button key={sf.id}
+                  onClick={() => setSubFilter(prev => prev === sf.id ? null : sf.id)}
+                  className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all active:scale-95"
+                  style={subFilter === sf.id
+                    ? { background: SIMPLE_COLORS.accentBg, color: SIMPLE_COLORS.accentDeep, borderColor: SIMPLE_COLORS.accentBorder }
+                    : { background: 'rgba(255,255,255,0.04)', color: SIMPLE_COLORS.textSecondary, borderColor: 'rgba(157,92,255,0.12)' }
+                  }
+                >
+                  <span>{sf.emoji}</span><span>{sf.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-        {/* ══ 今夜マッチング ══ */}
-        {showLanes && (
-          <div className="px-4 pt-4 pb-2">
+          {/* ── 今夜あそぶ人を探す (紫カード、機能維持) ── */}
+          <div className="px-4 pt-3">
             <div className="rounded-2xl overflow-hidden"
-              style={{ background: 'linear-gradient(135deg,rgba(26,16,53,0.95),rgba(26,16,53,0.95))', border: '1px solid rgba(139,92,246,0.25)', boxShadow: '0 4px 24px rgba(139,92,246,0.1)' }}>
-
-              {/* ヘッダー */}
-              <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
+              style={{
+                background: 'linear-gradient(135deg, rgba(157,92,255,0.10), rgba(124,58,237,0.05))',
+                border: '1px solid rgba(157,92,255,0.25)',
+              }}>
+              <div className="flex items-center justify-between px-4 pt-3 pb-2">
                 <div className="flex items-center gap-2">
-                  <Moon size={15} style={{ color: '#a78bfa' }} />
-                  <span className="text-sm font-extrabold text-white">今夜あそぶ人を探す</span>
+                  <Moon size={14} style={{ color: '#c4b5fd' }} />
+                  <span className="text-sm font-extrabold" style={{ color: SIMPLE_COLORS.textPrimary }}>
+                    今夜あそぶ人を探す
+                  </span>
                   {tonightSlots.length > 0 && (
                     <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.25)' }}>
+                      style={{ background: 'rgba(157,92,255,0.18)', color: '#c4b5fd', border: '1px solid rgba(157,92,255,0.3)' }}>
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      {tonightSlots.length}人待機中
+                      {tonightSlots.length}人
                     </span>
                   )}
                 </div>
                 {mySlot ? (
                   <button onClick={handleTonightCancel}
-                    className="text-[10px] font-bold px-2.5 py-1 rounded-xl transition-all active:scale-95"
-                    style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
-                    登録解除
+                    className="text-[10px] font-bold px-2.5 py-1 rounded-full transition-all active:scale-95"
+                    style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}>
+                    解除
                   </button>
                 ) : (
                   <button onClick={() => setShowForm(v => !v)}
-                    className="text-[10px] font-bold px-2.5 py-1 rounded-xl transition-all active:scale-95"
+                    className="text-[10px] font-bold px-2.5 py-1 rounded-full transition-all active:scale-95"
                     style={showForm
-                      ? { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)' }
-                      : { background: 'rgba(139,92,246,0.25)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.4)' }
+                      ? { background: 'rgba(255,255,255,0.06)', color: SIMPLE_COLORS.textSecondary, border: '1px solid rgba(157,92,255,0.18)' }
+                      : { background: 'rgba(157,92,255,0.25)', color: '#c4b5fd', border: '1px solid rgba(157,92,255,0.4)' }
                     }>
-                    {showForm ? 'とじる' : '+ 今夜参加を登録'}
+                    {showForm ? 'とじる' : '+ 登録'}
                   </button>
                 )}
               </div>
 
-              {/* 自分の登録済み表示 */}
               {mySlot && !showForm && (
-                <div className="mx-3 mb-3 px-3 py-2.5 rounded-xl flex items-center gap-2"
-                  style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)' }}>
-                  <Check size={12} style={{ color: '#a78bfa', flexShrink: 0 }} />
-                  <span className="text-xs font-bold text-white truncate">{mySlot.game}</span>
-                  <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>{mySlot.time_slot}</span>
+                <div className="mx-3 mb-3 px-3 py-2 rounded-xl flex items-center gap-2"
+                  style={{ background: 'rgba(157,92,255,0.12)', border: '1px solid rgba(157,92,255,0.3)' }}>
+                  <Check size={11} style={{ color: '#c4b5fd', flexShrink: 0 }} />
+                  <span className="text-xs font-bold truncate" style={{ color: SIMPLE_COLORS.textPrimary }}>{mySlot.game}</span>
+                  <span className="text-[10px]" style={{ color: SIMPLE_COLORS.textSecondary }}>{mySlot.time_slot}</span>
                   {mySlot.has_voice
-                    ? <Mic size={11} style={{ color: '#a78bfa', flexShrink: 0 }} />
-                    : <MicOff size={11} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+                    ? <Mic size={10} style={{ color: '#c4b5fd', flexShrink: 0 }} />
+                    : <MicOff size={10} style={{ color: SIMPLE_COLORS.textTertiary, flexShrink: 0 }} />
                   }
                 </div>
               )}
 
-              {/* 登録フォーム */}
               {showForm && (
-                <div className="mx-3 mb-3 p-3 rounded-2xl space-y-2.5"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  {/* ゲーム名 */}
+                <div className="mx-3 mb-3 p-3 rounded-2xl space-y-2"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
                   <input
                     value={tGame}
                     onChange={e => setTGame(e.target.value)}
                     placeholder="ゲーム名（例: Apex、ヴァロ、原神…）"
                     maxLength={40}
                     className="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
-                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', caretColor: '#8b5cf6' }}
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.18)', color: SIMPLE_COLORS.textPrimary }}
                   />
-                  {/* 時間帯 + スキル */}
                   <div className="grid grid-cols-2 gap-2">
                     <select value={tTimeSlot} onChange={e => setTTimeSlot(e.target.value)}
                       className="px-3 py-2 rounded-xl text-xs font-bold focus:outline-none"
-                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}>
-                      {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.18)', color: SIMPLE_COLORS.textPrimary }}>
+                      {TIME_SLOTS.map(t => <option key={t} value={t} style={{ background: '#0a0a18' }}>{t}</option>)}
                     </select>
                     <select value={tSkill} onChange={e => setTSkill(e.target.value)}
                       className="px-3 py-2 rounded-xl text-xs font-bold focus:outline-none"
-                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}>
-                      {SKILL_LEVELS.map(s => <option key={s} value={s}>{s}</option>)}
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.18)', color: SIMPLE_COLORS.textPrimary }}>
+                      {SKILL_LEVELS.map(s => <option key={s} value={s} style={{ background: '#0a0a18' }}>{s}</option>)}
                     </select>
                   </div>
-                  {/* ボイチャ + ひとこと */}
                   <div className="flex items-center gap-2">
                     <button onClick={() => setTVoice(v => !v)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold flex-shrink-0 transition-all active:scale-95"
                       style={tVoice
-                        ? { background: 'rgba(139,92,246,0.2)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.3)' }
-                        : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)' }
+                        ? { background: 'rgba(157,92,255,0.20)', color: '#c4b5fd', border: '1px solid rgba(157,92,255,0.35)' }
+                        : { background: 'rgba(255,255,255,0.04)', color: SIMPLE_COLORS.textSecondary, border: '1px solid rgba(157,92,255,0.12)' }
                       }>
-                      {tVoice ? <Mic size={11} /> : <MicOff size={11} />}
+                      {tVoice ? <Mic size={10} /> : <MicOff size={10} />}
                       ボイチャ{tVoice ? 'あり' : 'なし'}
                     </button>
                     <input
@@ -517,233 +429,143 @@ export default function GuildPage() {
                       placeholder="ひとこと（任意）"
                       maxLength={30}
                       className="flex-1 px-3 py-1.5 rounded-xl text-xs focus:outline-none"
-                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', caretColor: '#8b5cf6' }}
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.18)', color: SIMPLE_COLORS.textPrimary }}
                     />
                   </div>
-                  {/* 登録ボタン */}
                   <button onClick={handleTonightRegister}
                     disabled={!tGame.trim() || tSaving}
                     className="w-full py-2.5 rounded-xl text-sm font-extrabold text-white transition-all active:scale-[0.98] disabled:opacity-40"
-                    style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', boxShadow: '0 4px 14px rgba(139,92,246,0.4)', color: 'white' }}>
+                    style={{ background: SIMPLE_COLORS.accent, boxShadow: '0 4px 14px rgba(157,92,255,0.4)' }}>
                     {tSaving ? '登録中…' : '今夜の参加を登録する'}
                   </button>
                 </div>
               )}
 
-              {/* 待機中の人リスト */}
-              {tonightSlots.length > 0 ? (
-                <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+              {tonightSlots.length === 0 && !showForm && !mySlot && (
+                <div className="px-4 pb-3 text-center">
+                  <p className="text-xs" style={{ color: SIMPLE_COLORS.textTertiary }}>
+                    今夜の参加者がまだいません
+                  </p>
+                </div>
+              )}
+
+              {tonightSlots.length > 0 && (
+                <div className="divide-y" style={{ borderColor: 'rgba(157,92,255,0.10)' }}>
                   {tonightSlots.map(slot => {
                     const isMe = slot.user_id === userId
                     const prof = slot.profiles as any
                     return (
-                      <div key={slot.id} className="flex items-center gap-3 px-4 py-3">
-                        {/* アバター */}
+                      <div key={slot.id} className="flex items-center gap-3 px-4 py-2.5">
                         <div className="relative flex-shrink-0">
                           <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-extrabold overflow-hidden"
-                            style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', color: 'white' }}>
+                            style={{ background: SIMPLE_COLORS.accent, color: 'white' }}>
                             {prof?.avatar_url
                               ? <img src={prof.avatar_url} alt="" className="w-full h-full object-cover" />
                               : (prof?.display_name?.[0] ?? '?')}
                           </div>
                           <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400"
-                            style={{ border: '2px solid #0f0f1a' }} />
+                            style={{ border: '2px solid #0a0a18' }} />
                         </div>
-                        {/* 情報 */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                            <span className="text-xs font-extrabold text-white truncate">
+                            <span className="text-xs font-extrabold truncate" style={{ color: SIMPLE_COLORS.textPrimary }}>
                               {prof?.display_name ?? '名無し'}
                             </span>
                             {isMe && (
                               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                                style={{ color: '#818cf8', background: 'rgba(129,140,248,0.15)', border: '1px solid rgba(129,140,248,0.25)' }}>
+                                style={{ color: '#c4b5fd', background: 'rgba(157,92,255,0.18)', border: '1px solid rgba(157,92,255,0.3)' }}>
                                 あなた
                               </span>
                             )}
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-bold" style={{ color: '#c4b5fd' }}>{slot.game}</span>
-                            <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{slot.time_slot}</span>
-                            <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{slot.skill_level}</span>
+                            <span className="text-[10px]" style={{ color: SIMPLE_COLORS.textTertiary }}>{slot.time_slot}</span>
+                            <span className="text-[10px]" style={{ color: SIMPLE_COLORS.textTertiary }}>{slot.skill_level}</span>
                             {slot.has_voice
-                              ? <Mic size={10} style={{ color: '#a78bfa' }} />
-                              : <MicOff size={10} style={{ color: 'rgba(255,255,255,0.25)' }} />
+                              ? <Mic size={10} style={{ color: '#c4b5fd' }} />
+                              : <MicOff size={10} style={{ color: SIMPLE_COLORS.textTertiary }} />
                             }
                           </div>
-                          {slot.note && (
-                            <p className="text-[10px] mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                              {slot.note}
-                            </p>
-                          )}
                         </div>
                       </div>
                     )
                   })}
                 </div>
-              ) : (
-                <div className="px-4 pb-4 pt-1 text-center">
-                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                    今夜の参加者がまだいません。最初に登録してみよう！
-                  </p>
-                </div>
               )}
             </div>
           </div>
-        )}
 
-        {/* ══ おすすめレーン ══ */}
-        {showLanes && (
-          <div className="pt-4 space-y-5">
-            {LANES.map(lane => {
-              const items = laneData[lane.id] ?? []
-              if (items.length === 0) return null
-              return (
-                <div key={lane.id}>
-                  <div className="px-4 flex items-center justify-between mb-2.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-base">{lane.emoji}</span>
-                      <p className="text-xs font-extrabold" style={{ color: SIMPLE_COLORS.textPrimary }}>{lane.label}</p>
-                    </div>
-                    <button
-                      onClick={() => setSubFilter(lane.id === 'hot' ? 'popular' : 'new')}
-                      className="flex items-center gap-0.5 text-[10px] font-medium"
-                      style={{ color: SIMPLE_COLORS.textTertiary }}
-                    >
-                      すべて <ChevronRight size={11} />
-                    </button>
+          {/* ── ゲーム村一覧 (シンプル縦並び) ── */}
+          <div className="px-4 pt-4 pb-32">
+            {loading ? (
+              <div className="space-y-2.5">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="rounded-2xl px-4 py-3.5 animate-pulse flex items-center gap-3"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.12)' }}>
+                    <div className="w-12 h-12 rounded-2xl flex-shrink-0" style={{ background: 'rgba(157,92,255,0.12)' }} />
+                    <div className="flex-1 h-4 rounded" style={{ background: 'rgba(157,92,255,0.10)' }} />
+                    <div className="w-14 h-7 rounded-full" style={{ background: 'rgba(157,92,255,0.12)' }} />
                   </div>
-                  <div className="pl-4 flex gap-3 overflow-x-auto scrollbar-none pr-4">
-                    {items.map(v => (
-                      <GuildSmallCard key={v.id} village={v}
-                        isMember={memberIds.has(v.id)}
-                        onJoin={() => handleJoin(v.id)} />
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-
-            <div className="px-4 flex items-center gap-2 pt-1">
-              <div className="flex-1 h-px" style={{ background: SIMPLE_COLORS.cardBorder }} />
-              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: SIMPLE_COLORS.textTertiary }}>すべてのゲーム村</span>
-              <div className="flex-1 h-px" style={{ background: SIMPLE_COLORS.cardBorder }} />
-            </div>
-          </div>
-        )}
-
-        {/* ══ メインリスト ══ */}
-        <div className="px-4 pt-4">
-          {loading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="rounded-3xl overflow-hidden animate-pulse"
-                  style={{ background: SIMPLE_COLORS.cardBg, border: `1px solid ${SIMPLE_COLORS.cardBorder}` }}>
-                  <div className={`${i === 0 ? 'h-[120px]' : 'h-24'}`} style={{ background: 'rgba(255,255,255,0.06)' }} />
-                  <div className="p-4 space-y-2">
-                    <div className="h-4 rounded-full w-2/3" style={{ background: 'rgba(255,255,255,0.10)' }} />
-                    <div className="h-3 rounded-full w-full" style={{ background: 'rgba(255,255,255,0.06)' }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : displayed.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="relative w-32 h-32 mx-auto mb-5">
-                <div className="absolute inset-0 rounded-full" style={{
-                  background: 'radial-gradient(circle, rgba(157,92,255,0.14) 0%, transparent 70%)',
-                  filter: 'blur(8px)',
-                }} />
-                <div className="relative w-full h-full flex items-center justify-center">
-                  <GuildHeroGamepad size={88} />
-                </div>
+                ))}
               </div>
-              <p className="font-extrabold text-base mb-1.5" style={{ color: SIMPLE_COLORS.textPrimary }}>
-                {subFilter === 'member' ? 'まだゲーム村に参加していません' : 'このジャンルのゲーム村はまだありません'}
-              </p>
-              <p className="text-sm mb-7 leading-relaxed px-6" style={{ color: SIMPLE_COLORS.textSecondary }}>
-                {subFilter === 'member' ? '気に入ったゲーム村に参加しよう' : '最初のゲーム村を立ててみましょう'}
-              </p>
-              {subFilter !== 'member' && (
-                <button
-                  onClick={() => router.push('/guild/create')}
-                  className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl text-sm font-extrabold active:scale-95 transition-all"
-                  style={{
-                    background: SIMPLE_COLORS.accent,
-                    color: '#ffffff',
-                    boxShadow: '0 4px 14px rgba(157,92,255,0.32)',
-                  }}
-                >
-                  <Plus size={16} />
-                  ゲーム村を立てる
-                </button>
-              )}
-            </div>
-          ) : (
-            <>
-              {featured && !search && (
-                <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: SIMPLE_COLORS.textTertiary }}>
-                      おすすめ · Featured
-                    </span>
-                    <div className="flex-1 h-px" style={{ background: SIMPLE_COLORS.cardBorder }} />
-                  </div>
-                  <VillageCard
-                    village={featured}
-                    isMember={memberIds.has(featured.id)}
-                    onJoin={() => handleJoin(featured.id)}
-                    featured={true}
-                  />
+            ) : displayed.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center text-3xl"
+                  style={{ background: 'rgba(157,92,255,0.10)', border: '1px solid rgba(157,92,255,0.22)' }}>
+                  🎮
                 </div>
-              )}
+                <p className="font-extrabold text-base mb-1.5" style={{ color: SIMPLE_COLORS.textPrimary }}>
+                  {subFilter === 'member' ? 'まだ参加していません' : 'ゲーム村が見つかりません'}
+                </p>
+                <p className="text-sm mb-6 leading-relaxed px-6" style={{ color: SIMPLE_COLORS.textSecondary }}>
+                  {subFilter === 'member' ? '気になるゲーム村に参加しよう' : '最初のゲーム村を立ててみましょう'}
+                </p>
+                {subFilter !== 'member' && (
+                  <button
+                    onClick={() => router.push('/guild/create')}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-extrabold active:scale-95 transition-all"
+                    style={{
+                      background: SIMPLE_COLORS.accent,
+                      color: '#ffffff',
+                      boxShadow: '0 4px 14px rgba(157,92,255,0.4)',
+                    }}
+                  >
+                    <Plus size={15} />
+                    ゲーム村を立てる
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {displayed.map(v => (
+                  <SimpleVillageCard
+                    key={v.id}
+                    village={v}
+                    isMember={memberIds.has(v.id)}
+                    onJoin={() => handleJoin(v.id)}
+                    onClick={() => router.push(`/villages/${v.id}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
 
-              {(search ? displayed : rest).length > 0 && (
-                <>
-                  {!search && (
-                    <div className="flex items-center gap-2 mb-2.5">
-                      <span className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: SIMPLE_COLORS.textTertiary }}>
-                        {subFilter === 'popular' ? '今週活発'  :
-                         subFilter === 'new'     ? '新着'       :
-                         subFilter === 'member'  ? '参加中'     :
-                         genre !== 'all'         ? `${activeGenre?.label}のゲーム村` :
-                         'その他のゲーム村'}
-                      </span>
-                      <div className="flex-1 h-px" style={{ background: SIMPLE_COLORS.cardBorder }} />
-                    </div>
-                  )}
-                  <div className="space-y-3">
-                    {(search ? displayed : rest).map(v => (
-                      <VillageCard key={v.id}
-                        village={v}
-                        isMember={memberIds.has(v.id)}
-                        onJoin={() => handleJoin(v.id)}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* ── FAB（いますぐ村作成、紫アクセント維持） ── */}
-      <button
-        onClick={() => router.push('/guild/create')}
-        className="fixed right-5 w-14 h-14 rounded-2xl flex items-center justify-center active:scale-90 transition-all z-30"
-        style={{
-          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
-          background: SIMPLE_COLORS.accent,
-          boxShadow: '0 8px 24px rgba(157,92,255,0.4), 0 2px 6px rgba(157,92,255,0.2)',
-        }}
-        aria-label="ゲーム村を作る"
-      >
-        <Plus size={22} className="text-white" />
-      </button>
-      </>
+          {/* ── FAB (紫アクセント) ── */}
+          <button
+            onClick={() => router.push('/guild/create')}
+            className="fixed right-5 w-14 h-14 rounded-2xl flex items-center justify-center active:scale-90 transition-all z-30"
+            style={{
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+              background: SIMPLE_COLORS.accent,
+              boxShadow: '0 8px 24px rgba(157,92,255,0.5), 0 0 20px rgba(157,92,255,0.3)',
+            }}
+            aria-label="ゲーム村を作る"
+          >
+            <Plus size={22} className="text-white" />
+          </button>
+        </>
       )}
     </div>
   )
 }
-
