@@ -232,7 +232,12 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
                   }
               }
             >
-              <span>{sf.emoji}</span><span>{sf.label}</span>
+              <span className="flex items-center">
+                {sf.id === 'member'
+                  ? <GuildShieldIcon size={12} active={subFilter === sf.id} />
+                  : sf.emoji}
+              </span>
+              <span>{sf.label}</span>
             </button>
           ))}
         </div>

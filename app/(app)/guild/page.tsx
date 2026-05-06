@@ -25,6 +25,7 @@ import { Plus, Search, Moon, Mic, MicOff, Check, ChevronRight } from 'lucide-rea
 import { INDUSTRIES } from '@/lib/guild'
 import { type Village } from '@/components/ui/VillageCard'
 import GuildsContent from '@/components/features/GuildsContent'
+import GuildShieldIcon from '@/components/ui/icons/GuildShieldIcon'
 import { SIMPLE_COLORS } from '@/components/ui/SimpleCard'
 
 const TOP_TAB_HEIGHT = 44
@@ -372,7 +373,12 @@ export default function GuildPage() {
                     : { background: 'rgba(255,255,255,0.04)', color: SIMPLE_COLORS.textSecondary, borderColor: 'rgba(157,92,255,0.12)' }
                   }
                 >
-                  <span>{sf.emoji}</span><span>{sf.label}</span>
+                  <span className="flex items-center">
+                    {sf.id === 'member'
+                      ? <GuildShieldIcon size={12} active={subFilter === sf.id} />
+                      : sf.emoji}
+                  </span>
+                  <span>{sf.label}</span>
                 </button>
               ))}
             </div>
