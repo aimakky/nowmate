@@ -977,15 +977,26 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         setPosts([]); setLoading(false); setHasMore(false); return
       }
 
-      // user_trust は village_posts と直接 FK で繋がっていないため、PostgREST
-      // の embed (user_trust!village_posts_user_id_fkey(...)) が解決失敗して
-      // クエリ全体がエラーを返し、TL に投稿が一切出ないケースがあった。
-      // (例: 投稿者が user_trust 行を持たないユーザーの場合)
-      // → embed を外し、user_id 集合に対する別 query で trust を取って
-      //   client-side で shadow_banned を弾く方式に変更。
+      // ── PostgREST embed 撤廃 ──────────────────────────────────
+      // 過去に user_trust の embed を撤廃したが、profiles(...) と villages(...)
+      // の embed が残っており、これが「プロフィールでは見える村投稿が TL では
+      // 0 件」の真因だった (= ミヤさんの村投稿 6 件が TL に出ない原因)。
+      //
+      // PostgREST の embed は LEFT JOIN 相当だが、参照先 (profiles / villages)
+      // の行が RLS で見えない場合、行解決失敗で親 (village_posts) の row 自体が
+      // 消える挙動が観察された。具体的には:
+      //   - profiles RLS で隠されている author → 親村投稿も消える
+      //   - villages RLS で隠されている村 (非公開・限定公開) → 親村投稿も消える
+      //
+      // profile 側は embed を一切使わず eq('user_id', miya) で純粋取得して
+      // いるため、村投稿 6 件全件が取れる。差分の正体はここ。
+      //
+      // 修正: fetchTweets と同じパターンで、profiles と villages を別 query
+      // で in-memory Map に取得し client-side で merge する。
+      // fail-open: profile / village 取得失敗しても村投稿の表示は止めない。
       let q = supabase
         .from('village_posts')
-        .select('id, content, category, created_at, village_id, user_id, reaction_count, profiles(display_name, avatar_url), villages(id, name, icon)')
+        .select('id, content, category, created_at, village_id, user_id, reaction_count')
         .order('created_at', { ascending: false })
         .range(from, from + PAGE_SIZE - 1)
 
@@ -998,25 +1009,39 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       }
       const rawPosts = (data ?? []) as any[]
 
-      // 取得した投稿の user_id 集合に対し user_trust を別 query で取得 (tier 表示用)。
-      // 失敗 / 行欠落しても TL の表示はそのまま継続される (fail-open)。
-      // 過去にここで is_shadow_banned = true を弾いていたが、これが「ミヤさんの
-      // 村投稿が TL に出ない / プロフィールでは出る」差分の原因だったため撤廃。
-      // 「全投稿を反映」が現在の方針。シャドウバン処理が必要になったら、
-      // RLS 側で完結させるか、明示的なモデレーション UI で対処する。
+      // user_id / village_id 集合をベースに profiles / villages / user_trust を
+      // 別 query で取得 (どれが失敗しても村投稿は表示する fail-open 設計)
       const userIds = Array.from(new Set(rawPosts.map(p => p.user_id))).filter(
         (id: any): id is string => typeof id === 'string' && id.length > 0
       )
+      const villageIdSet = Array.from(new Set(rawPosts.map(p => p.village_id))).filter(
+        (id: any): id is string => typeof id === 'string' && id.length > 0
+      )
+
+      const [profilesRes, villagesRes, trustsRes] = await Promise.all([
+        userIds.length > 0
+          ? supabase.from('profiles').select('id, display_name, avatar_url').in('id', userIds)
+          : Promise.resolve({ data: [], error: null } as any),
+        villageIdSet.length > 0
+          ? supabase.from('villages').select('id, name, icon').in('id', villageIdSet)
+          : Promise.resolve({ data: [], error: null } as any),
+        userIds.length > 0
+          ? supabase.from('user_trust').select('user_id, tier').in('user_id', userIds)
+          : Promise.resolve({ data: [], error: null } as any),
+      ])
+      if ((profilesRes as any).error) console.error('[timeline] fetchPosts profiles error:', (profilesRes as any).error)
+      if ((villagesRes as any).error) console.error('[timeline] fetchPosts villages error:', (villagesRes as any).error)
+      if ((trustsRes as any).error) console.error('[timeline] fetchPosts user_trust error:', (trustsRes as any).error)
+
+      const profileMap = new Map<string, any>(
+        ((profilesRes as any).data ?? []).map((p: any) => [p.id, p])
+      )
+      const villageMap = new Map<string, any>(
+        ((villagesRes as any).data ?? []).map((v: any) => [v.id, v])
+      )
       const trustMap = new Map<string, { tier: string | null }>()
-      if (userIds.length > 0) {
-        const { data: trusts, error: tErr } = await supabase
-          .from('user_trust')
-          .select('user_id, tier')
-          .in('user_id', userIds)
-        if (tErr) console.error('[timeline] user_trust fetch error:', tErr)
-        for (const t of (trusts ?? []) as any[]) {
-          trustMap.set(t.user_id, { tier: t.tier ?? null })
-        }
+      for (const t of ((trustsRes as any).data ?? [])) {
+        trustMap.set(t.user_id, { tier: t.tier ?? null })
       }
 
       // 防御策: 同一 id の重複除去 (key 衝突で消える事故を防ぐ)
@@ -1032,8 +1057,8 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
           const t = trustMap.get(p.user_id) ?? null
           return {
             ...p,
-            profiles:   Array.isArray(p.profiles) ? p.profiles[0] ?? null : p.profiles,
-            villages:   Array.isArray(p.villages) ? p.villages[0] ?? null : p.villages,
+            profiles:   profileMap.get(p.user_id) ?? null,
+            villages:   p.village_id ? (villageMap.get(p.village_id) ?? null) : null,
             user_trust: t ? { tier: t.tier ?? '', is_shadow_banned: false } : null,
           }
         }) as TPost[]
