@@ -774,7 +774,7 @@ export default function MyPage() {
         </div>
       )}
 
-      {/* ── タブ (投稿 / 動画 / 画像) — profile/[userId] と統一 ── */}
+      {/* ── タブ (投稿 / 写真 / 動画) — profile/[userId] と統一 ── */}
       <div className="relative z-10 mx-4 mb-1 rounded-2xl overflow-hidden sticky top-2"
         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)', boxShadow: '0 0 16px rgba(157,92,255,0.08)' }}>
         <div className="flex">
