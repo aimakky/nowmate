@@ -1,12 +1,13 @@
 'use client'
 
-// 旧 /guilds ページ本体を抜き出した再利用可能コンポーネント。
-// 用途:
-//   1. /guilds/page.tsx — そのまま薄いラッパで使う（既存ルートの互換維持）
-//   2. /guild/page.tsx — 上部タブ「いますぐ村 / ギルド」の「ギルド」タブから利用
+// /guilds と /guild ?tab=guild の両方で使う、ギルド一覧の共通コンテンツ。
+// 旧: ダーク背景 + cyan ネオン基調
+// 新: 白カードUI + light gray ページ背景 + 紫アクセントのみ (YVOICE らしさは
+//     ロゴ・主ボタンのみで残す)
 //
-// 元コードの挙動・データ取得・UI・FAB・空状態をそのまま保持している。
-// 新規データフロー追加なし。
+// 注意: 関数 / state / data fetch / RLS / DB 呼び出しは一切変更せず、
+// 表示だけライト化。既存の handleJoin / fetchVillages / fetchLanes /
+// memberIds 等のロジックは元のまま。
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -15,6 +16,7 @@ import { Plus, Search, ChevronRight } from 'lucide-react'
 import { INDUSTRIES } from '@/lib/guild'
 import { type Village, getFireStatus } from '@/components/ui/VillageCard'
 import GuildShieldIcon from '@/components/ui/icons/GuildShieldIcon'
+import { SIMPLE_COLORS } from '@/components/ui/SimpleCard'
 
 const GENRE_TABS = [
   { id: 'all', emoji: '🎮', label: 'すべて' },
@@ -32,7 +34,7 @@ const LANES = [
   { id: 'new', emoji: '✨', label: '新しいギルド',          orderBy: 'created_at'    as const, ascending: false },
 ]
 
-// ── 縦長リストカード ──────────────────────────────────────────
+// ── 縦長リストカード (light) ──────────────────────────────
 function GuildListCard({ village, isMember, onJoin }: {
   village: Village; isMember: boolean; onJoin: () => void
 }) {
@@ -40,47 +42,64 @@ function GuildListCard({ village, isMember, onJoin }: {
   const fire   = getFireStatus(village.last_post_at ?? null)
   return (
     <div
-      className="rounded-2xl overflow-hidden active:scale-[0.98] transition-all cursor-pointer"
+      className="rounded-3xl overflow-hidden active:scale-[0.99] transition-all cursor-pointer"
       style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(39,223,255,0.2)',
+        background: SIMPLE_COLORS.cardBg,
+        border: `1px solid ${SIMPLE_COLORS.cardBorder}`,
+        boxShadow: SIMPLE_COLORS.cardShadow,
       }}
       onClick={() => router.push(`/guilds/${village.id}`)}
     >
-      <div className="flex items-center gap-3 p-3.5">
+      <div className="flex items-center gap-3 p-4">
         <div
           className="w-14 h-14 flex-shrink-0 rounded-2xl flex items-center justify-center"
           style={{
-            background: 'linear-gradient(135deg, #27DFFF 0%, #0891B2 100%)',
-            boxShadow: '0 0 16px rgba(39,223,255,0.4)',
+            background: 'linear-gradient(135deg, #f1f5f9, #e2e8f0)',
+            border: '1px solid rgba(15,23,42,0.06)',
           }}
         >
           <span className="text-2xl">{village.icon}</span>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
-            <p className="font-extrabold text-sm truncate" style={{ color: '#F0EEFF' }}>{village.name}</p>
-            <span className={`text-[10px] flex-shrink-0 ${fire.animate ? 'animate-pulse' : ''}`}>{fire.emoji}</span>
+            <p className="font-extrabold text-[15px] truncate" style={{ color: SIMPLE_COLORS.textPrimary }}>
+              {village.name}
+            </p>
+            <span className={`text-xs flex-shrink-0 ${fire.animate ? 'animate-pulse' : ''}`}>{fire.emoji}</span>
           </div>
-          <p className="text-[11px] line-clamp-1 leading-relaxed" style={{ color: 'rgba(240,238,255,0.55)' }}>{village.description}</p>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-[10px] font-bold" style={{ color: '#27DFFF' }}>👥 {village.member_count}</span>
+          <p className="text-xs line-clamp-1 leading-relaxed" style={{ color: SIMPLE_COLORS.textSecondary }}>
+            {village.description}
+          </p>
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className="text-[11px] font-bold" style={{ color: SIMPLE_COLORS.textTertiary }}>
+              👥 {village.member_count}
+            </span>
           </div>
         </div>
         <button
           onClick={e => { e.stopPropagation(); onJoin() }}
-          className="flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold active:scale-90 transition-all text-white"
+          className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-extrabold active:scale-90 transition-all"
           style={isMember
-            ? { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(39,223,255,0.3)', color: 'rgba(240,238,255,0.55)' }
-            : { background: 'linear-gradient(135deg, #27DFFF 0%, #0891B2 100%)', boxShadow: '0 4px 20px rgba(39,223,255,0.4)', color: '#051020' }
+            ? {
+                background: '#f1f5f9',
+                border: '1px solid rgba(15,23,42,0.08)',
+                color: SIMPLE_COLORS.textSecondary,
+              }
+            : {
+                background: SIMPLE_COLORS.accent,
+                color: '#ffffff',
+                boxShadow: '0 2px 8px rgba(157,92,255,0.32)',
+              }
           }
-        >{isMember ? '参加中' : '参加'}</button>
+        >
+          {isMember ? '参加中' : '参加'}
+        </button>
       </div>
     </div>
   )
 }
 
-// ── 横スクロール小カード ──────────────────────────────────────
+// ── 横スクロール小カード (light) ──────────────────────────────
 function GuildSmallCard({ village, isMember, onJoin }: {
   village: Village; isMember: boolean; onJoin: () => void
 }) {
@@ -88,39 +107,46 @@ function GuildSmallCard({ village, isMember, onJoin }: {
   const fire   = getFireStatus(village.last_post_at ?? null)
   return (
     <div
-      className="flex-shrink-0 w-44 rounded-2xl overflow-hidden cursor-pointer active:scale-[0.97] transition-all"
+      className="flex-shrink-0 w-44 rounded-3xl overflow-hidden cursor-pointer active:scale-[0.99] transition-all"
       style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(39,223,255,0.2)',
+        background: SIMPLE_COLORS.cardBg,
+        border: `1px solid ${SIMPLE_COLORS.cardBorder}`,
+        boxShadow: SIMPLE_COLORS.cardShadow,
       }}
       onClick={() => router.push(`/guilds/${village.id}`)}
     >
       <div
         className="h-16 flex items-center justify-center relative"
-        style={{ background: 'linear-gradient(135deg, #27DFFF 0%, #0891B2 60%, #22d3ee 100%)' }}
+        style={{ background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)' }}
       >
-        <span className="text-3xl" style={{ filter: 'drop-shadow(0 1px 8px rgba(39,223,255,0.6))' }}>
-          {village.icon}
-        </span>
+        <span className="text-3xl">{village.icon}</span>
         <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5"
-          style={{ background: 'rgba(8,8,18,0.6)', backdropFilter: 'blur(4px)' }}>
+          style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)' }}>
           <span className={`text-[10px] ${fire.animate ? 'animate-pulse' : ''}`}>{fire.emoji}</span>
-          <span className="text-[8px] font-bold" style={{ color: 'rgba(240,238,255,0.8)' }}>{fire.label}</span>
+          <span className="text-[8px] font-bold" style={{ color: SIMPLE_COLORS.textSecondary }}>{fire.label}</span>
         </div>
       </div>
-      <div className="p-2.5">
-        <p className="font-bold text-xs truncate leading-snug mb-0.5" style={{ color: '#F0EEFF' }}>{village.name}</p>
-        <p className="text-[10px] line-clamp-2 leading-relaxed" style={{ color: 'rgba(240,238,255,0.55)' }}>{village.description}</p>
+      <div className="p-3">
+        <p className="font-bold text-xs truncate leading-snug mb-0.5" style={{ color: SIMPLE_COLORS.textPrimary }}>
+          {village.name}
+        </p>
+        <p className="text-[10px] line-clamp-2 leading-relaxed" style={{ color: SIMPLE_COLORS.textSecondary }}>
+          {village.description}
+        </p>
         <div className="flex items-center justify-between mt-2">
-          <span className="text-[9px] font-bold" style={{ color: '#27DFFF' }}>👥 {village.member_count}</span>
+          <span className="text-[9px] font-bold" style={{ color: SIMPLE_COLORS.textTertiary }}>
+            👥 {village.member_count}
+          </span>
           <button
             onClick={e => { e.stopPropagation(); onJoin() }}
-            className="text-[9px] font-bold px-2 py-0.5 rounded-full text-white active:scale-90 transition-all"
+            className="text-[9px] font-extrabold px-2.5 py-0.5 rounded-full active:scale-90 transition-all"
             style={isMember
-              ? { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(39,223,255,0.3)', color: 'rgba(240,238,255,0.55)' }
-              : { background: 'linear-gradient(135deg, #27DFFF 0%, #0891B2 100%)', boxShadow: '0 2px 10px rgba(39,223,255,0.4)', color: '#051020' }
+              ? { background: '#f1f5f9', border: '1px solid rgba(15,23,42,0.08)', color: SIMPLE_COLORS.textSecondary }
+              : { background: SIMPLE_COLORS.accent, color: '#ffffff', boxShadow: '0 2px 6px rgba(157,92,255,0.28)' }
             }
-          >{isMember ? '参加中' : '参加'}</button>
+          >
+            {isMember ? '参加中' : '参加'}
+          </button>
         </div>
       </div>
     </div>
@@ -234,84 +260,113 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
   const showLanes = genre === 'all' && !subFilter && !search
 
   return (
-    <>
-      {/* ── ヘッダー ── */}
+    // ライト化: 自分のセクション全体を light gray ページに乗せる。
+    // /guild の親ページがダークでも、ここだけ light で「ギルド」タブ世界観を
+    // 確立する。/guilds 単体ルートでもそのまま意図通り。
+    <div style={{ background: SIMPLE_COLORS.pageBg, minHeight: embedded ? 'auto' : '100vh' }}>
+
+      {/* ── ヘッダー (light) ── */}
       <div
-        className="sticky z-10 px-4 pt-12 pb-0"
+        className="sticky z-10 px-4 pt-6 pb-3"
         style={{
-          // /guild に埋め込まれた時は、上部タブ分だけ sticky 開始位置を下げる
           top: headerTopOffset,
-          background: 'linear-gradient(160deg, #081a26 0%, #0a1824 60%, #0a1824 100%)',
-          borderBottom: '1px solid rgba(39,223,255,0.1)',
+          background: '#ffffff',
+          borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}`,
         }}
       >
-        {/* 背景グロー */}
-        <div className="absolute inset-0 opacity-30 pointer-events-none"
-          style={{ backgroundImage: `radial-gradient(1px 1px at 15% 25%, #27DFFF, transparent), radial-gradient(1.5px 1.5px at 75% 20%, #0891B2, transparent), radial-gradient(1px 1px at 88% 65%, #49E1FF, transparent), radial-gradient(1px 1px at 40% 80%, #27DFFF, transparent), radial-gradient(1.5px 1.5px at 55% 45%, rgba(240,238,255,0.8), transparent)` }} />
-
-        <div className="relative">
-          <div className="flex items-start justify-between gap-3 mb-1">
-            <div>
-              <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: '#27DFFF' }}>GUILD</p>
-              <h1 className="font-extrabold text-2xl leading-tight flex items-center gap-2" style={{ color: '#F0EEFF' }}>
-                <GuildShieldIcon size={28} active={true} />
-                同じゲームが好きな仲間とつながろう
-              </h1>
-              <p className="text-xs mt-1 leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>
-                継続的に集まれるコミュニティを見つける場所
-              </p>
-            </div>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <p className="text-[10px] font-extrabold tracking-widest uppercase mb-0.5"
+              style={{ color: SIMPLE_COLORS.accent }}>
+              GUILD
+            </p>
+            <h1 className="font-extrabold text-xl leading-tight flex items-center gap-2"
+              style={{ color: SIMPLE_COLORS.textPrimary }}>
+              <GuildShieldIcon size={22} active={true} />
+              ゲーム仲間とつながろう
+            </h1>
+            <p className="text-xs mt-1 leading-relaxed" style={{ color: SIMPLE_COLORS.textSecondary }}>
+              継続的に集まれるコミュニティを見つける場所
+            </p>
           </div>
+        </div>
 
-          {/* 検索 */}
-          <div className="relative mb-3">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'rgba(240,238,255,0.3)' }} />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="ギルドを検索..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-sm focus:outline-none transition-all"
-              style={{
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(39,223,255,0.2)',
-                color: '#F0EEFF',
-              }}
-              onFocus={e => { e.currentTarget.style.border = '1px solid rgba(39,223,255,0.5)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(39,223,255,0.15)' }}
-              onBlur={e => { e.currentTarget.style.border = '1px solid rgba(39,223,255,0.2)'; e.currentTarget.style.boxShadow = 'none' }}
-            />
-          </div>
+        {/* 検索 */}
+        <div className="relative mb-3">
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2"
+            style={{ color: SIMPLE_COLORS.textTertiary }} />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="ギルドを検索..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-sm focus:outline-none transition-all"
+            style={{
+              background: '#f5f5f7',
+              border: '1px solid rgba(15,23,42,0.08)',
+              color: SIMPLE_COLORS.textPrimary,
+            }}
+            onFocus={e => {
+              e.currentTarget.style.borderColor = SIMPLE_COLORS.accentBorder
+              e.currentTarget.style.background = '#ffffff'
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(157,92,255,0.10)'
+            }}
+            onBlur={e => {
+              e.currentTarget.style.borderColor = 'rgba(15,23,42,0.08)'
+              e.currentTarget.style.background = '#f5f5f7'
+              e.currentTarget.style.boxShadow = 'none'
+            }}
+          />
+        </div>
 
-          {/* ジャンルタブ */}
-          <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 pl-4 pr-6 pb-3">
-            {GENRE_TABS.map(g => {
-              const active = genre === g.id
-              return (
-                <button key={g.id}
-                  onClick={() => { setGenre(g.id); setSearch(''); setSubFilter(null) }}
-                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95"
-                  style={active
-                    ? { background: 'rgba(39,223,255,0.2)', color: '#27DFFF', border: '1px solid rgba(39,223,255,0.4)', boxShadow: '0 0 12px rgba(39,223,255,0.2)' }
-                    : { background: 'rgba(255,255,255,0.04)', color: 'rgba(240,238,255,0.5)', border: '1px solid rgba(39,223,255,0.1)' }
-                  }
-                >
-                  <span>{g.emoji}</span>
-                  <span className="whitespace-nowrap">{g.label}</span>
-                </button>
-              )
-            })}
-          </div>
+        {/* ジャンルタブ */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 pl-4 pr-6">
+          {GENRE_TABS.map(g => {
+            const active = genre === g.id
+            return (
+              <button key={g.id}
+                onClick={() => { setGenre(g.id); setSearch(''); setSubFilter(null) }}
+                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95"
+                style={active
+                  ? {
+                      background: SIMPLE_COLORS.accentBg,
+                      color: SIMPLE_COLORS.accentDeep,
+                      border: `1px solid ${SIMPLE_COLORS.accentBorder}`,
+                    }
+                  : {
+                      background: '#f5f5f7',
+                      color: SIMPLE_COLORS.textSecondary,
+                      border: '1px solid rgba(15,23,42,0.06)',
+                    }
+                }
+              >
+                <span>{g.emoji}</span>
+                <span className="whitespace-nowrap">{g.label}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* ── サブフィルター ── */}
-      <div className="px-4 py-2 flex gap-2 overflow-x-auto scrollbar-none" style={{ background: 'rgba(39,223,255,0.03)', borderBottom: '1px solid rgba(39,223,255,0.08)' }}>
+      {/* ── サブフィルター (light) ── */}
+      <div
+        className="px-4 py-2.5 flex gap-2 overflow-x-auto scrollbar-none"
+        style={{ background: '#ffffff', borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}` }}
+      >
         {SUB_FILTERS.map(sf => (
           <button key={sf.id}
             onClick={() => setSubFilter(prev => prev === sf.id ? null : sf.id)}
-            className="flex-shrink-0 flex items-center gap-1 px-3 py-1 rounded-xl text-[11px] font-bold border transition-all"
+            className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all"
             style={subFilter === sf.id
-              ? { background: 'rgba(39,223,255,0.2)', color: '#27DFFF', borderColor: 'rgba(39,223,255,0.4)', boxShadow: '0 0 10px rgba(39,223,255,0.2)' }
-              : { background: 'rgba(255,255,255,0.03)', color: 'rgba(240,238,255,0.45)', borderColor: 'rgba(39,223,255,0.1)' }
+              ? {
+                  background: SIMPLE_COLORS.accentBg,
+                  color: SIMPLE_COLORS.accentDeep,
+                  borderColor: SIMPLE_COLORS.accentBorder,
+                }
+              : {
+                  background: '#f5f5f7',
+                  color: SIMPLE_COLORS.textSecondary,
+                  borderColor: 'rgba(15,23,42,0.06)',
+                }
             }
           >
             <span>{sf.emoji}</span><span>{sf.label}</span>
@@ -332,12 +387,14 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
                   <div className="px-4 flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-1.5">
                       <span className="text-base">{lane.emoji}</span>
-                      <p className="text-xs font-extrabold" style={{ color: '#F0EEFF' }}>{lane.label}</p>
+                      <p className="text-xs font-extrabold" style={{ color: SIMPLE_COLORS.textPrimary }}>
+                        {lane.label}
+                      </p>
                     </div>
                     <button
                       onClick={() => setSubFilter(lane.id === 'hot' ? 'popular' : 'new')}
                       className="flex items-center gap-0.5 text-[10px] font-medium"
-                      style={{ color: 'rgba(240,238,255,0.3)' }}
+                      style={{ color: SIMPLE_COLORS.textTertiary }}
                     >
                       すべて <ChevronRight size={11} />
                     </button>
@@ -353,18 +410,22 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
               )
             })}
             <div className="px-4 flex items-center gap-2 pt-1">
-              <div className="flex-1 h-px" style={{ background: 'rgba(39,223,255,0.2)' }} />
-              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(240,238,255,0.3)' }}>すべてのギルド</span>
-              <div className="flex-1 h-px" style={{ background: 'rgba(39,223,255,0.2)' }} />
+              <div className="flex-1 h-px" style={{ background: SIMPLE_COLORS.cardBorder }} />
+              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: SIMPLE_COLORS.textTertiary }}>
+                すべてのギルド
+              </span>
+              <div className="flex-1 h-px" style={{ background: SIMPLE_COLORS.cardBorder }} />
             </div>
           </div>
         )}
 
         {!showLanes && (
           <div className="px-4 flex items-center gap-3 pt-4 pb-2">
-            <div className="flex-1 h-px" style={{ background: 'rgba(39,223,255,0.2)' }} />
-            <span className="text-[11px] font-bold" style={{ color: 'rgba(240,238,255,0.4)' }}>すべてのギルド</span>
-            <div className="flex-1 h-px" style={{ background: 'rgba(39,223,255,0.2)' }} />
+            <div className="flex-1 h-px" style={{ background: SIMPLE_COLORS.cardBorder }} />
+            <span className="text-[11px] font-bold" style={{ color: SIMPLE_COLORS.textTertiary }}>
+              すべてのギルド
+            </span>
+            <div className="flex-1 h-px" style={{ background: SIMPLE_COLORS.cardBorder }} />
           </div>
         )}
 
@@ -372,41 +433,36 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
           {loading ? (
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="rounded-2xl overflow-hidden animate-pulse"
-                  style={{ background: 'rgba(39,223,255,0.05)', border: '1px solid rgba(39,223,255,0.1)' }}>
-                  <div className={`${i === 0 ? 'h-[80px]' : 'h-16'}`} style={{ background: 'rgba(39,223,255,0.08)' }} />
-                  <div className="p-4 space-y-2">
-                    <div className="h-4 rounded-full w-2/3" style={{ background: 'rgba(39,223,255,0.15)' }} />
-                    <div className="h-3 rounded-full w-full" style={{ background: 'rgba(39,223,255,0.08)' }} />
+                <div key={i} className="rounded-3xl overflow-hidden animate-pulse"
+                  style={{
+                    background: SIMPLE_COLORS.cardBg,
+                    border: `1px solid ${SIMPLE_COLORS.cardBorder}`,
+                  }}>
+                  <div className="p-4 flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-2xl" style={{ background: '#f1f5f9' }} />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 rounded-full w-2/3" style={{ background: '#e2e8f0' }} />
+                      <div className="h-2.5 rounded-full w-full" style={{ background: '#f1f5f9' }} />
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : displayed.length === 0 ? (
             <div className="text-center py-16">
-              <div className="relative w-44 h-44 mx-auto mb-6">
+              <div className="relative w-32 h-32 mx-auto mb-5">
                 <div className="absolute inset-0 rounded-full" style={{
-                  background: 'radial-gradient(circle, rgba(39,223,255,0.2) 0%, rgba(39,223,255,0.1) 50%, transparent 70%)',
-                  filter: 'blur(16px)',
+                  background: 'radial-gradient(circle, rgba(157,92,255,0.14) 0%, transparent 70%)',
+                  filter: 'blur(8px)',
                 }} />
-                <span className="absolute top-4 right-8 text-xs font-bold" style={{ color: 'rgba(39,223,255,0.7)' }}>•</span>
-                <span className="absolute top-8 right-4 text-[8px] font-bold" style={{ color: 'rgba(39,223,255,0.5)' }}>•</span>
-                <span className="absolute bottom-6 left-6 text-xs font-bold" style={{ color: 'rgba(39,223,255,0.5)' }}>•</span>
-                <span className="absolute top-6 left-8 text-[8px] font-bold" style={{ color: 'rgba(255,255,255,0.3)' }}>•</span>
                 <div className="relative w-full h-full flex items-center justify-center">
-                  <div
-                    className="w-28 h-28 flex items-center justify-center"
-                    style={{ filter: 'drop-shadow(0 0 24px rgba(39,223,255,0.5)) drop-shadow(0 0 48px rgba(39,223,255,0.3))' }}
-                  >
-                    <GuildShieldIcon size={112} active={true} />
-                  </div>
+                  <GuildShieldIcon size={88} active={true} />
                 </div>
               </div>
-
-              <p className="font-extrabold text-lg mb-2" style={{ color: '#F0EEFF' }}>
+              <p className="font-extrabold text-base mb-2" style={{ color: SIMPLE_COLORS.textPrimary }}>
                 {subFilter === 'member' ? 'まだギルドに参加していません' : 'このジャンルのギルドはまだありません'}
               </p>
-              <p className="text-sm mb-8 leading-relaxed px-6" style={{ color: 'rgba(240,238,255,0.45)' }}>
+              <p className="text-sm mb-7 leading-relaxed px-6" style={{ color: SIMPLE_COLORS.textSecondary }}>
                 {subFilter === 'member'
                   ? '同じゲームが好きな仲間とつながるギルドに参加しましょう'
                   : '最初のギルドを作って、同じゲームが好きな仲間を集めましょう'}
@@ -414,13 +470,14 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
               {subFilter !== 'member' && (
                 <button
                   onClick={() => router.push('/guilds/create')}
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-base font-bold text-white active:scale-95 transition-all"
+                  className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl text-sm font-extrabold active:scale-95 transition-all"
                   style={{
-                    background: 'linear-gradient(135deg,#27DFFF 0%,#0891B2 100%)',
-                    color: '#051020',
-                    boxShadow: '0 8px 28px rgba(39,223,255,0.4)',
+                    background: SIMPLE_COLORS.accent,
+                    color: '#ffffff',
+                    boxShadow: '0 4px 14px rgba(157,92,255,0.32)',
                   }}
                 >
+                  <Plus size={16} />
                   ギルドを作る
                 </button>
               )}
@@ -430,8 +487,11 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
               {featured && !search && (
                 <div className="mb-4">
                   <div className="flex items-center gap-2 mb-2.5">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: 'rgba(240,238,255,0.3)' }}>おすすめ · Featured</span>
-                    <div className="flex-1 h-px" style={{ background: 'rgba(39,223,255,0.2)' }} />
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest"
+                      style={{ color: SIMPLE_COLORS.textTertiary }}>
+                      おすすめ · Featured
+                    </span>
+                    <div className="flex-1 h-px" style={{ background: SIMPLE_COLORS.cardBorder }} />
                   </div>
                   <GuildListCard village={featured} isMember={memberIds.has(featured.id)} onJoin={() => handleJoin(featured.id)} />
                 </div>
@@ -448,19 +508,19 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
         </div>
       </div>
 
-      {/* ── FAB ── */}
+      {/* ── FAB (紫アクセント維持) ── */}
       <button
         onClick={() => router.push('/guilds/create')}
-        className="fixed right-5 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
+        className="fixed right-5 w-14 h-14 rounded-2xl flex items-center justify-center active:scale-90 transition-all z-30"
         style={{
           bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
-          background: 'linear-gradient(135deg, #27DFFF 0%, #0891B2 100%)',
-          boxShadow: '0 8px 24px rgba(39,223,255,0.5), 0 0 20px rgba(39,223,255,0.3)',
+          background: SIMPLE_COLORS.accent,
+          boxShadow: '0 8px 24px rgba(157,92,255,0.4), 0 2px 6px rgba(157,92,255,0.2)',
         }}
         aria-label="ギルドを作る"
       >
         <Plus size={22} className="text-white" />
       </button>
-    </>
+    </div>
   )
 }
