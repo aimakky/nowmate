@@ -14,6 +14,7 @@ import TrustBadge from '@/components/ui/TrustBadge'
 import { getUserTrust, fetchTierProgress, type TierProgress } from '@/lib/trust'
 import { Settings, LogOut, ChevronRight, Users, Copy, Check, Pencil, X, Eye, EyeOff, User, Heart } from 'lucide-react'
 import { timeAgo } from '@/lib/utils'
+import { getUserDisplayName, getAvatarInitial } from '@/lib/user-display'
 // VILLAGE_TYPE_STYLES は旧 参加中タブで使用していたが、タブ削除に伴い未使用化
 import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
@@ -1037,7 +1038,7 @@ export default function MyPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>
-                      {u.display_name || '名無し'}
+                      {getUserDisplayName(u)}
                     </p>
                     {u.nowjp_id && (
                       <p className="text-[11px] font-mono truncate" style={{ color: 'rgba(240,238,255,0.3)' }}>

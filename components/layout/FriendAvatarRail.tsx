@@ -17,6 +17,7 @@ import Link from 'next/link'
 import { ChevronRight, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { lastSeenLabelJP } from '@/lib/utils'
+import { getUserDisplayName, getAvatarInitial } from '@/lib/user-display'
 
 type Friend = {
   id: string
@@ -179,7 +180,7 @@ export default function FriendAvatarRail() {
                 {f.avatar_url ? (
                   <img src={f.avatar_url} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <span>{(f.display_name ?? '?').charAt(0).toUpperCase()}</span>
+                  <span>{getAvatarInitial(f)}</span>
                 )}
               </div>
               {/* オンライン状態ドット */}
@@ -199,7 +200,7 @@ export default function FriendAvatarRail() {
                 maxWidth: 56,
               }}
             >
-              {f.display_name ?? '名無し'}
+              {getUserDisplayName(f)}
             </span>
             {/* オンライン中 / 最終ログイン時間。1 行 truncate でセル幅 56px に
                 収める。last_seen_at が null の場合は「不明」と短く表示し、

@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/client'
 import { startDM } from '@/lib/dm'
 import VerifiedBadge from '@/components/ui/VerifiedBadge'
 import { lastSeenLabelJP } from '@/lib/utils'
+import { getUserDisplayName } from '@/lib/user-display'
 
 // フレンド一覧用 (FriendRail の「もっと見る」遷移先)。/users は元々ユーザー
 // 検索画面なので、検索結果の上に「あなたのフレンド」セクションを追加して
@@ -416,7 +417,7 @@ export default function UsersPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="text-sm font-bold truncate" style={{ color: '#F0EEFF' }}>
-                            {f.display_name ?? '名無し'}
+                            {getUserDisplayName(f)}
                           </p>
                           <VerifiedBadge verified={f.age_verified} size="sm" />
                         </div>
@@ -546,7 +547,7 @@ export default function UsersPage() {
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-sm font-bold truncate"
                           style={{ color: '#F0EEFF' }}>
-                          {u.display_name ?? '名無し'}
+                          {getUserDisplayName(u)}
                         </p>
                         <VerifiedBadge verified={u.age_verified} size="sm" />
                         {isMe && (
