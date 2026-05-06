@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import YVoiceIcon from '@/components/ui/icons/YVoiceIcon'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -44,13 +45,10 @@ export default function LoginPage() {
           style={{ background: 'rgba(8,8,18,0.92)', backdropFilter: 'blur(8px)' }}>
           <div className="flex flex-col items-center gap-3">
             <div
-              className="w-14 h-14 rounded-3xl flex items-center justify-center"
-              style={{
-                background: 'linear-gradient(135deg, #9D5CFF 0%, #FF4D90 100%)',
-                boxShadow: '0 0 30px rgba(157,92,255,0.5)',
-              }}
+              className="w-14 h-14 flex items-center justify-center"
+              style={{ filter: 'drop-shadow(0 0 24px rgba(157,92,255,0.55))' }}
             >
-              <span className="text-2xl">✦</span>
+              <YVoiceIcon size={56} rounded={16} />
             </div>
             <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(240,238,255,0.6)' }}>
               YVOICE
@@ -79,13 +77,10 @@ export default function LoginPage() {
         <div className="mb-8 text-center">
           {/* Logo */}
           <div
-            className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4"
-            style={{
-              background: 'linear-gradient(135deg, #9D5CFF 0%, #FF4D90 100%)',
-              boxShadow: '0 0 30px rgba(157,92,255,0.5), 0 0 60px rgba(157,92,255,0.2)',
-            }}
+            className="w-16 h-16 mx-auto mb-4 flex items-center justify-center"
+            style={{ filter: 'drop-shadow(0 0 30px rgba(157,92,255,0.55)) drop-shadow(0 0 60px rgba(157,92,255,0.18))' }}
           >
-            <span className="text-2xl">✦</span>
+            <YVoiceIcon size={64} rounded={18} />
           </div>
           <h1 className="text-2xl font-extrabold mb-1" style={{ color: '#F0EEFF' }}>おかえりなさい</h1>
           <p className="text-sm" style={{ color: 'rgba(240,238,255,0.45)' }}>YVOICE — Your Voice Online にログイン</p>

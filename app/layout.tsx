@@ -59,7 +59,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ja" className="h-full">
       <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        {/* favicon と apple-touch-icon は app/icon.tsx と app/apple-icon.tsx が
+            Next.js の規約で自動配信するため、明示的な link 指定は不要。
+            旧 /icon-192.png は public に存在せず 404 を返していたため削除。 */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>

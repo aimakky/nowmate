@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import YVoiceIcon from '@/components/ui/icons/YVoiceIcon'
 
 export const metadata: Metadata = {
   title: 'YVOICE — 20歳以上限定の大人ゲーム通話コミュニティ',
@@ -74,12 +75,7 @@ export default async function TopPage() {
         }}
       >
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', boxShadow: '0 0 16px rgba(139,92,246,0.5)' }}
-          >
-            <span className="text-white font-black text-sm">s</span>
-          </div>
+          <YVoiceIcon size={32} rounded={10} />
           <span className="font-extrabold text-white text-lg tracking-tight">YVOICE</span>
           <span
             className="text-[9px] font-extrabold px-2 py-0.5 rounded-full"
@@ -205,10 +201,7 @@ export default async function TopPage() {
             className="flex items-center gap-2 px-4 py-2.5"
             style={{ background: 'rgba(15,15,26,0.95)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}
           >
-            <div className="w-6 h-6 rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
-              <span className="text-white font-black text-[10px]">s</span>
-            </div>
+            <YVoiceIcon size={24} rounded={8} />
             <span className="text-xs font-bold text-white">YVOICE</span>
             <div className="ml-auto flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -638,10 +631,7 @@ export default async function TopPage() {
         style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#080810' }}
       >
         <div className="flex items-center justify-center gap-2 mb-3">
-          <div className="w-6 h-6 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
-            <span className="text-white font-black text-xs">s</span>
-          </div>
+          <YVoiceIcon size={24} rounded={8} />
           <span className="font-bold" style={{ color: '#cbd5e1' }}>YVOICE</span>
         </div>
         <p className="text-[10px] mb-1 tracking-widest uppercase font-bold" style={{ color: 'rgba(167,139,250,0.7)' }}>
