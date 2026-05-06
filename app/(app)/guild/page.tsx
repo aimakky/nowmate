@@ -72,7 +72,7 @@ function GuildSmallCard({ village, isMember, onJoin }: {
     >
       {genre && <div className="h-[3px]" style={{ background: genre.gradient, opacity: 0.5 }} />}
       <div className="h-16 flex items-center justify-center relative"
-        style={{ background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)' }}>
+        style={{ background: 'linear-gradient(135deg, rgba(157,92,255,0.22), rgba(124,58,237,0.16))' }}>
         <span className="text-3xl">{village.icon}</span>
         <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5"
           style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)' }}>
@@ -89,8 +89,8 @@ function GuildSmallCard({ village, isMember, onJoin }: {
             onClick={e => { e.stopPropagation(); onJoin() }}
             className="text-[9px] font-extrabold px-2.5 py-0.5 rounded-full active:scale-90 transition-all"
             style={isMember
-              ? { background: '#f1f5f9', border: '1px solid rgba(15,23,42,0.08)', color: SIMPLE_COLORS.textSecondary }
-              : { background: SIMPLE_COLORS.accent, color: '#ffffff', boxShadow: '0 2px 6px rgba(157,92,255,0.28)' }
+              ? { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.25)', color: SIMPLE_COLORS.textSecondary }
+              : { background: SIMPLE_COLORS.accent, color: '#ffffff', boxShadow: '0 2px 6px rgba(157,92,255,0.4)' }
             }
           >{isMember ? '参加中' : '参加'}</button>
         </div>
@@ -278,7 +278,7 @@ export default function GuildPage() {
         className="sticky top-0 z-30 flex"
         style={{
           height: TOP_TAB_HEIGHT,
-          background: '#ffffff',
+          background: 'rgba(10,10,24,0.95)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
           borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}`,
         }}
       >
@@ -318,7 +318,7 @@ export default function GuildPage() {
       <>
       {/* ── ヘッダー (light) ── */}
       <div className="sticky z-10 px-4 pt-6 pb-3"
-        style={{ top: TOP_TAB_HEIGHT, background: '#ffffff', borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}` }}>
+        style={{ top: TOP_TAB_HEIGHT, background: 'rgba(10,10,24,0.95)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}` }}>
 
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
@@ -347,13 +347,13 @@ export default function GuildPage() {
             placeholder="ゲーム村を検索..."
             className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-sm focus:outline-none transition-all"
             style={{
-              background: '#f5f5f7',
+              background: 'rgba(255,255,255,0.06)',
               border: '1px solid rgba(15,23,42,0.08)',
               color: SIMPLE_COLORS.textPrimary,
             }}
             onFocus={e => {
               e.currentTarget.style.borderColor = SIMPLE_COLORS.accentBorder
-              e.currentTarget.style.background = '#ffffff'
+              e.currentTarget.style.background = 'rgba(255,255,255,0.10)'
               e.currentTarget.style.boxShadow = '0 0 0 3px rgba(157,92,255,0.10)'
             }}
             onBlur={e => {
@@ -379,7 +379,7 @@ export default function GuildPage() {
                       border: `1px solid ${SIMPLE_COLORS.accentBorder}`,
                     }
                   : {
-                      background: '#f5f5f7',
+                      background: 'rgba(255,255,255,0.06)',
                       color: SIMPLE_COLORS.textSecondary,
                       border: '1px solid rgba(15,23,42,0.06)',
                     }
@@ -396,7 +396,7 @@ export default function GuildPage() {
       {/* ── サブフィルター (light、すべて紫アクセントで統一) ── */}
       <div
         className="px-4 py-2.5 flex gap-2 overflow-x-auto scrollbar-none"
-        style={{ background: '#ffffff', borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}` }}
+        style={{ background: 'rgba(10,10,24,0.95)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}` }}
       >
         {SUB_FILTERS.map(sf => (
           <button key={sf.id}
@@ -409,7 +409,7 @@ export default function GuildPage() {
                   borderColor: SIMPLE_COLORS.accentBorder,
                 }
               : {
-                  background: '#f5f5f7',
+                  background: 'rgba(255,255,255,0.06)',
                   color: SIMPLE_COLORS.textSecondary,
                   borderColor: 'rgba(15,23,42,0.06)',
                 }
@@ -639,10 +639,10 @@ export default function GuildPage() {
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="rounded-3xl overflow-hidden animate-pulse"
                   style={{ background: SIMPLE_COLORS.cardBg, border: `1px solid ${SIMPLE_COLORS.cardBorder}` }}>
-                  <div className={`${i === 0 ? 'h-[120px]' : 'h-24'}`} style={{ background: '#f1f5f9' }} />
+                  <div className={`${i === 0 ? 'h-[120px]' : 'h-24'}`} style={{ background: 'rgba(255,255,255,0.06)' }} />
                   <div className="p-4 space-y-2">
-                    <div className="h-4 rounded-full w-2/3" style={{ background: '#e2e8f0' }} />
-                    <div className="h-3 rounded-full w-full" style={{ background: '#f1f5f9' }} />
+                    <div className="h-4 rounded-full w-2/3" style={{ background: 'rgba(255,255,255,0.10)' }} />
+                    <div className="h-3 rounded-full w-full" style={{ background: 'rgba(255,255,255,0.06)' }} />
                   </div>
                 </div>
               ))}
