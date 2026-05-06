@@ -110,23 +110,35 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen" style={{ background: '#080812' }}>
-      {/* マイページ — 左上固定アバター */}
+      {/* マイページ — 左上固定アバター。
+          視認性改善 (commit 修正版):
+          - 旧: border 0.4 opacity の薄い銀 + pale silver グロー → 黒背景で
+            埋もれていた
+          - 新: 紫ベースのリング (#9D5CFF 0.7 opacity) + ネオン感のある
+            ダブル glow + アバター無し時は紫の塗りで「押せるボタン」感を
+            明確に。コントラストを強化しつつ YVOICE 紫の世界観を維持。 */}
       {!hideAvatar && (
         <Link
           href="/mypage"
-          className="fixed top-3 left-4 z-50 w-9 h-9 rounded-full overflow-hidden active:scale-90 transition-all"
+          className="fixed top-3 left-4 z-50 w-10 h-10 rounded-full overflow-hidden active:scale-90 transition-all"
           style={{
             top: 'max(12px, env(safe-area-inset-top, 12px))',
-            border: '2px solid rgba(234,242,255,0.4)',
-            boxShadow: '0 0 12px rgba(234,242,255,0.2), 0 0 24px rgba(184,199,217,0.1)',
+            border: '2px solid rgba(196,181,253,0.85)',
+            boxShadow: '0 0 14px rgba(157,92,255,0.6), 0 0 28px rgba(157,92,255,0.22), 0 2px 6px rgba(0,0,0,0.5)',
           }}
+          aria-label="マイページ"
+          title="マイページ"
         >
           {avatarUrl ? (
             <img src={avatarUrl} alt="マイページ" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center"
-              style={{ background: 'rgba(234,242,255,0.07)' }}>
-              <User size={18} style={{ color: '#EAF2FF' }} />
+            <div
+              className="w-full h-full flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(157,92,255,0.45), rgba(124,58,237,0.55))',
+              }}
+            >
+              <User size={20} style={{ color: '#F0EEFF' }} strokeWidth={2.4} />
             </div>
           )}
         </Link>

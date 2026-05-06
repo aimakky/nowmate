@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag, timeAgo } from '@/lib/utils'
-import { ArrowLeft, Heart, ChevronRight, MessageSquare, MoreHorizontal, Flag, Ban } from 'lucide-react'
+import { Heart, ChevronRight, MessageSquare, MoreHorizontal, Flag, Ban } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
 import VerifiedBadge from '@/components/ui/VerifiedBadge'
@@ -264,18 +264,12 @@ if (loading) return (
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-birch">
-      {/* Header */}
-      <div className="bg-white border-b border-stone-100 px-4 pt-4 pb-3 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.back()} className="p-1 -ml-1 text-stone-500">
-          <ArrowLeft size={20} />
-        </button>
-        <p className="font-extrabold text-stone-900 flex-1 truncate">{profile.display_name}</p>
-        {!isMe && myId && (
-          <button onClick={() => setShowMenu(true)} className="p-1.5 rounded-full text-stone-400 hover:bg-stone-100 active:bg-stone-200 transition-colors">
-            <MoreHorizontal size={20} />
-          </button>
-        )}
-      </div>
+      {/*
+        旧: 上部 sticky ヘッダー (戻る矢印 + 表示名 + ... メニュー)。
+        AppLayout のマイページ固定アバターと位置が被って視覚的にごちゃつく
+        ため、ヘッダー全体を削除した。戻り動線は iOS の左端スワイプで代替。
+        ... メニューはプロフィールカードのアバター行右端に再配置。
+      */}
 
       {/* Profile card */}
       <div className="bg-white px-5 pt-5 pb-4 border-b border-stone-100">
@@ -286,6 +280,15 @@ if (loading) return (
               <p className="font-extrabold text-stone-900 text-lg leading-tight">{profile.display_name}</p>
               <span className="text-xl">{flag}</span>
               {isVerifiedByExistingSchema(profile) && <VerifiedBadge verified size="md" />}
+              {!isMe && myId && (
+                <button
+                  onClick={() => setShowMenu(true)}
+                  className="ml-auto p-1.5 rounded-full text-stone-400 hover:bg-stone-100 active:bg-stone-200 transition-colors"
+                  aria-label="メニュー"
+                >
+                  <MoreHorizontal size={20} />
+                </button>
+              )}
             </div>
             {trustTier && (
               <div className="mb-1">
