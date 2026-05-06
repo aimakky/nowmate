@@ -265,7 +265,11 @@ export default function GuildPage() {
   return (
     <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
 
-      {/* ── 上部タブ：いますぐ村 / ギルド ── */}
+      {/* ── 上部タブ：いますぐ村 / ギルド ──
+          仕様: 文字中心のシンプル 2 分割タブ。アイコン (Gamepad / Shield) は
+          画面上部のごちゃつきを避けるため削除し、文字 + 下線のみで状態を伝える。
+          GuildHeroGamepad / GuildShieldIcon のコンポーネント自体はページ内の
+          他箇所 (ヒーローセクション・空状態) で引き続き使用する。 */}
       <div
         className="sticky top-0 z-30 flex"
         style={{
@@ -278,10 +282,10 @@ export default function GuildPage() {
       >
         <button
           onClick={() => setTopTab('instant')}
-          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-extrabold transition-all relative"
+          className="flex-1 flex items-center justify-center text-xs font-extrabold transition-all relative"
           style={{ color: topTab === 'instant' ? '#c4b5fd' : 'rgba(240,238,255,0.45)' }}
+          aria-pressed={topTab === 'instant'}
         >
-          <GuildHeroGamepad size={14} />
           いますぐ村
           {topTab === 'instant' && (
             <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
@@ -290,10 +294,10 @@ export default function GuildPage() {
         </button>
         <button
           onClick={() => setTopTab('guild')}
-          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-extrabold transition-all relative"
+          className="flex-1 flex items-center justify-center text-xs font-extrabold transition-all relative"
           style={{ color: topTab === 'guild' ? '#27DFFF' : 'rgba(240,238,255,0.45)' }}
+          aria-pressed={topTab === 'guild'}
         >
-          <GuildShieldIcon size={14} active={topTab === 'guild'} />
           ギルド
           {topTab === 'guild' && (
             <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"

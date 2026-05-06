@@ -101,13 +101,17 @@ export default function FriendAvatarRail() {
     // 下のページが飛ばないように)
     return (
       <div
-        className="sticky top-0 z-30 px-3 py-2 flex gap-2.5 overflow-x-hidden"
+        className="sticky top-0 z-30 py-2 flex gap-2.5 overflow-x-hidden"
         style={{
           background: 'rgba(8,8,18,0.92)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
           borderBottom: '1px solid rgba(255,255,255,0.06)',
           paddingTop: 'max(8px, env(safe-area-inset-top, 8px))',
+          // 左 padding 60px はマイページ固定アイコン (left-4 + w-9 = 52px) のクリアランス。
+          // /mypage のように非表示ページでは多少空くが、各ページで一貫した見た目を優先。
+          paddingLeft: 60,
+          paddingRight: 12,
         }}
       >
         {[...Array(6)].map((_, i) => (
@@ -131,8 +135,11 @@ export default function FriendAvatarRail() {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         paddingTop: 'max(8px, env(safe-area-inset-top, 8px))',
         paddingBottom: '8px',
-        paddingLeft: '12px',
-        paddingRight: '12px',
+        // 左 padding 60px はマイページ固定アイコン (left-4 + w-9 = 52px) との
+        // クリアランス。これより狭いと左端のフレンドアイコンがマイページ
+        // ボタンの下に潜って押せなくなる。
+        paddingLeft: 60,
+        paddingRight: 12,
       }}
     >
       {friends.map(f => {
@@ -193,8 +200,9 @@ export default function FriendAvatarRail() {
             >
               {f.display_name ?? '名無し'}
             </span>
-            {/* オンライン中 / 最終ログイン時間。長くなりやすいので 1 行で truncate。
-                last_seen_at が null の場合は表示しない (画面が崩れない)。 */}
+            {/* オンライン中 / 最終ログイン時間。1 行 truncate でセル幅 56px に
+                収める。last_seen_at が null の場合は「不明」と短く表示し、
+                行が空欄になって「何も書いてない」状態を回避する。 */}
             <span
               className="text-[9px] leading-tight truncate w-full text-center"
               style={{
@@ -202,7 +210,7 @@ export default function FriendAvatarRail() {
                 maxWidth: 56,
               }}
             >
-              {online ? 'オンライン中' : (lastSeenLabelJP(f.last_seen_at) ?? '')}
+              {online ? 'オンライン中' : (lastSeenLabelJP(f.last_seen_at) ?? '不明')}
             </span>
           </Link>
         )
