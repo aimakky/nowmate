@@ -77,7 +77,9 @@ export default async function TopPage() {
       >
         <div className="flex items-center gap-2.5">
           <YVoiceIcon size={32} rounded={10} />
-          <span className="font-extrabold text-white text-lg tracking-tight">YVOICE</span>
+          <span className="font-extrabold text-lg tracking-tight" style={{ color: '#F0EEFF' }}>
+            <span style={{ color: '#9D5CFF' }}>Y</span>VOICE
+          </span>
           <span
             className="text-[9px] font-extrabold px-2 py-0.5 rounded-full"
             style={{ background: 'rgba(139,92,246,0.18)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.35)' }}
@@ -203,7 +205,9 @@ export default async function TopPage() {
             style={{ background: 'rgba(15,15,26,0.95)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}
           >
             <YVoiceIcon size={24} rounded={8} />
-            <span className="text-xs font-bold text-white">YVOICE</span>
+            <span className="text-xs font-bold" style={{ color: '#F0EEFF' }}>
+              <span style={{ color: '#9D5CFF' }}>Y</span>VOICE
+            </span>
             <div className="ml-auto flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-[10px] text-emerald-400 font-bold">42人オンライン</span>
@@ -633,7 +637,9 @@ export default async function TopPage() {
       >
         <div className="flex items-center justify-center gap-2 mb-3">
           <YVoiceIcon size={24} rounded={8} />
-          <span className="font-bold" style={{ color: '#cbd5e1' }}>YVOICE</span>
+          <span className="font-bold" style={{ color: '#cbd5e1' }}>
+            <span style={{ color: '#9D5CFF' }}>Y</span>VOICE
+          </span>
         </div>
         <p className="text-[10px] mb-1 tracking-widest uppercase font-bold" style={{ color: 'rgba(167,139,250,0.7)' }}>
           Your Voice Online

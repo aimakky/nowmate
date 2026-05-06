@@ -49,21 +49,18 @@ export default function OGImage() {
           YOUR VOICE ONLINE
         </div>
 
-        {/* YVOICE ロゴ */}
+        {/* YVOICE ロゴ (Y のみ紫 #9D5CFF、VOICE 白の 2 色構成) */}
         <div style={{
-          color: 'white',
+          display: 'flex',
           fontWeight: 900,
           fontSize: 168,
           letterSpacing: -6,
           lineHeight: 1,
           marginBottom: 36,
           textShadow: '0 4px 40px rgba(157,92,255,0.4)',
-          background: 'linear-gradient(135deg, #ffffff 0%, #e0d4ff 100%)',
-          backgroundClip: 'text',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
         }}>
-          YVOICE
+          <span style={{ color: '#9D5CFF' }}>Y</span>
+          <span style={{ color: '#F0EEFF' }}>VOICE</span>
         </div>
 
         {/* タグライン */}
