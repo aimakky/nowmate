@@ -1037,19 +1037,6 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
           }
         }) as TPost[]
 
-      if (typeof window !== 'undefined') {
-        const droppedByDedupe = rawPosts.length - dedupedRawPosts.length
-        const droppedByShadowBan = dedupedRawPosts.length - filtered.length
-        console.log('[timeline] fetchPosts ok:', {
-          rawCount: rawPosts.length,
-          afterDedupe: dedupedRawPosts.length,
-          afterShadowBan: filtered.length,
-          droppedByDedupe,
-          droppedByShadowBan,
-          tab,
-        })
-      }
-
       if (reset) {
         // 既存の optimistic 投稿（temp- プレフィックス）を残し、DB から取得した
         // 本物のレコードと重複しないようマージする。RLS の SELECT が null-village
@@ -1168,13 +1155,19 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       return
     }
     const supabase = createClient()
-    // limit 40 → 100 に拡張。アクティブユーザー多数時に古めの投稿が見切れる
-    // 可能性を減らす。
+    // limit 100 → 500 に拡張。
+    // ミヤさんが TL「みんな」に 1 件しか出ない問題の根本原因はこの limit。
+    // tweets テーブルは created_at DESC で 100 件取っており、
+    // 直近 100 件以外に押し出された tweet は表示されない。
+    // プロフィールは eq('user_id', miya) で絞り + limit なしなので 7 件全件出るが、
+    // TL は全ユーザーの tweet を時系列で取るため、コミュニティが活発だと
+    // ミヤさんの古めの 6 件が limit 100 から押し出されるケースが発生していた。
+    // Supabase 既定上限 (1000) 内で十分な件数 (500) に拡張する。
     let q = supabase
       .from('tweets')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(100)
+      .limit(500)
     if (userIds !== undefined) {
       q = q.in('user_id', userIds)
     }
@@ -1191,36 +1184,6 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
       seen.add(r.id)
       return true
     })
-
-    // 投稿数の内訳を console に出力 (本番デバッグ用、永続)。
-    // 「{ユーザー}の投稿が TL に N 件しか出ない」問題の調査で、profile 取得
-    // 件数と TL 取得件数を比較するため。
-    if (typeof window !== 'undefined') {
-      const byUser = new Map<string, { count: number; sampleId: string; sampleContent: string }>()
-      for (const r of rows) {
-        const cur = byUser.get(r.user_id)
-        if (cur) cur.count++
-        else byUser.set(r.user_id, { count: 1, sampleId: r.id, sampleContent: (r.content ?? '').slice(0, 16) })
-      }
-      // 件数降順で全件出力 (上位 5 制限を撤廃。1 ユーザー 1 件しか出ない問題の
-      // 切り分け時に、誰が何件かを完全に見える化したい)
-      const perUserSorted = Array.from(byUser.entries())
-        .sort((a, b) => b[1].count - a[1].count)
-        .map(([uid, v]) => ({ user_id: uid.slice(0, 8) + '..', count: v.count, sample: v.sampleContent }))
-      // 重複検出: rawRows と uniq rows の id 差分
-      const rawIdCounts = new Map<string, number>()
-      for (const r of rawRows) rawIdCounts.set(r?.id, (rawIdCounts.get(r?.id) ?? 0) + 1)
-      const dupIds = Array.from(rawIdCounts.entries()).filter(([, c]) => c > 1).slice(0, 5)
-      console.log('[timeline] fetchTweets ok:', {
-        rawCount: rawRows.length,
-        uniqueCount: rows.length,
-        droppedByDedupe: rawRows.length - rows.length,
-        userCount: byUser.size,
-        perUser: perUserSorted,
-        dupIdsTop5: dupIds,
-        scope: userIds === undefined ? 'all' : `following:${userIds.length}`,
-      })
-    }
 
     if (rows.length === 0) {
       setTweetFeed([])
@@ -1345,34 +1308,6 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         }
       })
       while (vi < voiceRooms.length) withVoice.push({ type: 'voice', data: voiceRooms[vi++] })
-
-      // 診断ログ: feed 合成後に「最終的に何件、type 別に何件、tweet 部分の
-      // user_id 内訳は何件か」を出力。
-      // 「fetchTweets で N 件取れたが feed では 1 件しか rendering されない」
-      // 場合、ここで diff が取れる。
-      if (typeof window !== 'undefined') {
-        const byType = { post: 0, tweet: 0, qa: 0, voice: 0 } as Record<string, number>
-        const tweetByUser = new Map<string, number>()
-        for (const it of withVoice) {
-          byType[it.type] = (byType[it.type] ?? 0) + 1
-          if (it.type === 'tweet') {
-            const uid = (it.data as any).user_id ?? 'unknown'
-            tweetByUser.set(uid, (tweetByUser.get(uid) ?? 0) + 1)
-          }
-        }
-        const tweetByUserSorted = Array.from(tweetByUser.entries())
-          .sort((a, b) => b[1] - a[1])
-          .map(([uid, c]) => ({ user_id: uid.slice(0, 8) + '..', count: c }))
-        console.log('[timeline] feed composed:', {
-          tab,
-          totalItems: withVoice.length,
-          byType,
-          tweetSourceCount: tweetFeed.length,
-          tweetInFeed: byType.tweet,
-          droppedTweetsBetweenFetchAndFeed: tweetFeed.length - byType.tweet,
-          tweetByUserInFeed: tweetByUserSorted,
-        })
-      }
 
       return withVoice
     }
