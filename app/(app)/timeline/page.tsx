@@ -1196,13 +1196,28 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
     // 「{ユーザー}の投稿が TL に N 件しか出ない」問題の調査で、profile 取得
     // 件数と TL 取得件数を比較するため。
     if (typeof window !== 'undefined') {
-      const byUser = new Map<string, number>()
-      for (const r of rows) byUser.set(r.user_id, (byUser.get(r.user_id) ?? 0) + 1)
+      const byUser = new Map<string, { count: number; sampleId: string; sampleContent: string }>()
+      for (const r of rows) {
+        const cur = byUser.get(r.user_id)
+        if (cur) cur.count++
+        else byUser.set(r.user_id, { count: 1, sampleId: r.id, sampleContent: (r.content ?? '').slice(0, 16) })
+      }
+      // 件数降順で全件出力 (上位 5 制限を撤廃。1 ユーザー 1 件しか出ない問題の
+      // 切り分け時に、誰が何件かを完全に見える化したい)
+      const perUserSorted = Array.from(byUser.entries())
+        .sort((a, b) => b[1].count - a[1].count)
+        .map(([uid, v]) => ({ user_id: uid.slice(0, 8) + '..', count: v.count, sample: v.sampleContent }))
+      // 重複検出: rawRows と uniq rows の id 差分
+      const rawIdCounts = new Map<string, number>()
+      for (const r of rawRows) rawIdCounts.set(r?.id, (rawIdCounts.get(r?.id) ?? 0) + 1)
+      const dupIds = Array.from(rawIdCounts.entries()).filter(([, c]) => c > 1).slice(0, 5)
       console.log('[timeline] fetchTweets ok:', {
         rawCount: rawRows.length,
         uniqueCount: rows.length,
+        droppedByDedupe: rawRows.length - rows.length,
         userCount: byUser.size,
-        perUser: Array.from(byUser.entries()).slice(0, 5),
+        perUser: perUserSorted,
+        dupIdsTop5: dupIds,
         scope: userIds === undefined ? 'all' : `following:${userIds.length}`,
       })
     }
@@ -1330,6 +1345,35 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         }
       })
       while (vi < voiceRooms.length) withVoice.push({ type: 'voice', data: voiceRooms[vi++] })
+
+      // 診断ログ: feed 合成後に「最終的に何件、type 別に何件、tweet 部分の
+      // user_id 内訳は何件か」を出力。
+      // 「fetchTweets で N 件取れたが feed では 1 件しか rendering されない」
+      // 場合、ここで diff が取れる。
+      if (typeof window !== 'undefined') {
+        const byType = { post: 0, tweet: 0, qa: 0, voice: 0 } as Record<string, number>
+        const tweetByUser = new Map<string, number>()
+        for (const it of withVoice) {
+          byType[it.type] = (byType[it.type] ?? 0) + 1
+          if (it.type === 'tweet') {
+            const uid = (it.data as any).user_id ?? 'unknown'
+            tweetByUser.set(uid, (tweetByUser.get(uid) ?? 0) + 1)
+          }
+        }
+        const tweetByUserSorted = Array.from(tweetByUser.entries())
+          .sort((a, b) => b[1] - a[1])
+          .map(([uid, c]) => ({ user_id: uid.slice(0, 8) + '..', count: c }))
+        console.log('[timeline] feed composed:', {
+          tab,
+          totalItems: withVoice.length,
+          byType,
+          tweetSourceCount: tweetFeed.length,
+          tweetInFeed: byType.tweet,
+          droppedTweetsBetweenFetchAndFeed: tweetFeed.length - byType.tweet,
+          tweetByUserInFeed: tweetByUserSorted,
+        })
+      }
+
       return withVoice
     }
     return buildFeed(posts, qaBottles, voiceRooms)
