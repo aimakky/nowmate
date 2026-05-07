@@ -96,26 +96,25 @@ export default function FriendAvatarRail() {
     return () => { cancelled = true }
   }, [])
 
+  // ── 表示ルール ──────────────────────────────────────────────────
+  // 本 component は AppLayout の「2 段目」として呼ばれる前提に変更。
+  // sticky / 背景 / safe-area-top は親 (AppLayout sticky wrapper) が制御
+  // するため、ここではロジック (data fetch + 横スクロール表示) だけに専念。
+  // 旧版は自身も sticky + paddingLeft 80 (= 1 段目アイコンを横に避ける)
+  // を持っており、結果的に 1 段目と 2 段目が同じ行に重なって見える原因
+  // だった。親の sticky wrapper 内で「縦に並ぶ別の行」として描画される
+  // ことで参考画像のような明確な 2 段構成を実現する。
+
   // フォロー 0 件は丸ごと非表示 (画面のスペース節約)
   if (friends === null) {
     // 読み込み中はスケルトン (高さは確保して、後から friend rail が出てきたときに
     // 下のページが飛ばないように)
     return (
       <div
-        className="sticky top-0 z-30 py-2 flex gap-2.5 overflow-x-hidden"
+        className="py-2 flex gap-2.5 overflow-x-hidden"
         style={{
-          background: 'rgba(8,8,18,0.92)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          paddingTop: 'max(8px, env(safe-area-inset-top, 8px))',
-          // 左 padding 80px = マイページ固定アイコン (left-4 + w-10 = 56px) +
-          // 視覚分離用の余白 24px。マイページとフレンド列が「別機能だと一目で
-          // 分かる」よう、近すぎる印象を解消する。
-          paddingLeft: 80,
-          // 右 padding 80px = フレンド追加固定アイコン (right-4 + w-10 = 56px)
-          // + 視覚分離用の余白 24px。左の paddingLeft と完全対称。
-          paddingRight: 80,
+          paddingLeft: 12,
+          paddingRight: 12,
         }}
       >
         {[...Array(6)].map((_, i) => (
@@ -131,18 +130,11 @@ export default function FriendAvatarRail() {
 
   return (
     <div
-      className="sticky top-0 z-30 flex gap-2.5 overflow-x-auto scrollbar-none"
+      className="flex gap-2.5 overflow-x-auto scrollbar-none"
       style={{
-        background: 'rgba(8,8,18,0.92)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        paddingTop: 'max(8px, env(safe-area-inset-top, 8px))',
+        paddingTop: '8px',
         paddingBottom: '8px',
-        // 左 padding 80px = マイページ固定アイコン (left-4 + w-10 = 56px) +
-        // 視覚分離用の余白 24px。マイページとフレンド列を「別機能」として
-        // 明確に分離するため、60px → 80px に拡張した。
-        paddingLeft: 80,
+        paddingLeft: 12,
         paddingRight: 12,
       }}
     >

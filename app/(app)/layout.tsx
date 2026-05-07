@@ -127,72 +127,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen" style={{ background: '#080812' }}>
-      {/* マイページ — 左上固定アバター。
-          視認性改善 (commit 修正版):
-          - 旧: border 0.4 opacity の薄い銀 + pale silver グロー → 黒背景で
-            埋もれていた
-          - 新: 紫ベースのリング (#9D5CFF 0.7 opacity) + ネオン感のある
-            ダブル glow + アバター無し時は紫の塗りで「押せるボタン」感を
-            明確に。コントラストを強化しつつ YVOICE 紫の世界観を維持。 */}
-      {/* 共通ヘッダー: 左=マイページアバター / 右=友達追加。
-          段差レイアウト (asymmetric vertical offset):
-            - 左マイページ: 安全領域 + 8px 下げて配置 (やや下寄せ)
-            - 右友達追加: 安全領域基準で配置 (やや上寄せ)
-            - 段差量 = 8px (subtle、押しやすさ・タップ領域は維持)
-          → 一直線に見えず、参考画像のような自然な高低差を表現
-          → 段差ルールは AppLayout 共通コンポーネントで管理し、ページごとの
-            個別ズレを防止 (全ページで 8px 差固定)
-          mypage / villages/ / chat/ 詳細では各ページが独自ヘッダーを
-          持つため hideAvatar=true で両方非表示にする (衝突回避)。 */}
-      {!hideAvatar && (
-        <>
-          <Link
-            href="/mypage"
-            className="fixed left-4 z-50 w-10 h-10 rounded-full overflow-hidden active:scale-90 transition-all"
-            style={{
-              // 左: 段差で「やや下寄せ」。右より +8px 下。
-              top: 'calc(max(12px, env(safe-area-inset-top, 12px)) + 8px)',
-              border: '2px solid rgba(196,181,253,0.85)',
-              boxShadow: '0 0 14px rgba(157,92,255,0.6), 0 0 28px rgba(157,92,255,0.22), 0 2px 6px rgba(0,0,0,0.5)',
-            }}
-            aria-label="マイページ"
-            title="マイページ"
-          >
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="マイページ" className="w-full h-full object-cover" />
-            ) : (
-              <div
-                className="w-full h-full flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(157,92,255,0.45), rgba(124,58,237,0.55))',
-                }}
-              >
-                <User size={20} style={{ color: '#F0EEFF' }} strokeWidth={2.4} />
-              </div>
-            )}
-          </Link>
-
-          {/* 友達追加ボタン (右上)。サイズ・border・shadow は左と統一、
-              top 位置のみ 8px 上寄せして段差感を作る。
-              遷移先: /users (既存のユーザー検索 / フレンド申請ページ) */}
-          <Link
-            href="/users"
-            className="fixed right-4 z-50 w-10 h-10 rounded-full overflow-hidden flex items-center justify-center active:scale-90 transition-all"
-            style={{
-              // 右: 段差で「やや上寄せ」。左より -8px 上 (= 安全領域基準)。
-              top: 'max(12px, env(safe-area-inset-top, 12px))',
-              border: '2px solid rgba(196,181,253,0.85)',
-              boxShadow: '0 0 14px rgba(157,92,255,0.6), 0 0 28px rgba(157,92,255,0.22), 0 2px 6px rgba(0,0,0,0.5)',
-              background: 'linear-gradient(135deg, rgba(157,92,255,0.45), rgba(124,58,237,0.55))',
-            }}
-            aria-label="フレンドを追加"
-            title="フレンドを追加"
-          >
-            <UserPlus size={20} style={{ color: '#F0EEFF' }} strokeWidth={2.4} />
-          </Link>
-        </>
-      )}
-
       {/*
         画面切り替え時に前ページの DOM・useState・skeleton が一瞬残る残像問題への対策。
         pathname を key にして child wrapper を route ごとに mount/unmount し、
@@ -203,7 +137,92 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         key={pathname}
         style={{ paddingBottom: isOnboarding ? '0' : 'max(calc(4rem + env(safe-area-inset-bottom, 8px)), 5.5rem)' }}
       >
-        {showFriendRail && <FriendAvatarRail />}
+        {/* ── 共通上部エリア (sticky 1 wrapper、2 段構成) ──────────────
+            1 段目: 操作ヘッダー (左=マイページアバター / 右=友達追加)
+            2 段目: 友達アイコン列 (FriendAvatarRail)
+            両段を 1 つの sticky 親に入れることで、スクロール時も両方が
+            画面上部に追従する。z-index / position の二重競合を排除し、
+            旧 fixed 配置 + rail 内 sticky の重なり問題を解消。
+            参考画像のように行が明確に分離される。
+
+            適用範囲:
+              hideAvatar=false → 1 段目を表示 (TL / 通知 / 設定 等)
+              hideAvatar=true  → 1 段目を非表示 (mypage / 村詳細 / DM 詳細)
+              showFriendRail=true → 2 段目を表示 (TL / グループ / ゲーム村 /
+                チャット一覧 / 通知 / マイページ)
+              showFriendRail=false → 2 段目を非表示 (設定 / 使い方 / 安心 等) */}
+        {(!hideAvatar || showFriendRail) && (
+          <div
+            className="sticky top-0 z-40"
+            style={{
+              background: 'rgba(8,8,18,0.92)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+            }}
+          >
+            {/* 1 段目: 操作ヘッダー (高さ固定で全ページ統一) */}
+            {!hideAvatar && (
+              <div
+                className="flex items-center justify-between px-4"
+                style={{
+                  paddingTop: 'max(12px, env(safe-area-inset-top, 12px))',
+                  paddingBottom: '12px',
+                  borderBottom: showFriendRail
+                    ? '1px solid rgba(255,255,255,0.04)'
+                    : '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                {/* 左: マイページアバター */}
+                <Link
+                  href="/mypage"
+                  className="w-10 h-10 rounded-full overflow-hidden active:scale-90 transition-all flex-shrink-0"
+                  style={{
+                    border: '2px solid rgba(196,181,253,0.85)',
+                    boxShadow:
+                      '0 0 14px rgba(157,92,255,0.6), 0 0 28px rgba(157,92,255,0.22), 0 2px 6px rgba(0,0,0,0.5)',
+                  }}
+                  aria-label="マイページ"
+                  title="マイページ"
+                >
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="マイページ" className="w-full h-full object-cover" />
+                  ) : (
+                    <div
+                      className="w-full h-full flex items-center justify-center"
+                      style={{
+                        background:
+                          'linear-gradient(135deg, rgba(157,92,255,0.45), rgba(124,58,237,0.55))',
+                      }}
+                    >
+                      <User size={20} style={{ color: '#F0EEFF' }} strokeWidth={2.4} />
+                    </div>
+                  )}
+                </Link>
+
+                {/* 右: フレンドを追加 (遷移先 /users) */}
+                <Link
+                  href="/users"
+                  className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center active:scale-90 transition-all flex-shrink-0"
+                  style={{
+                    border: '2px solid rgba(196,181,253,0.85)',
+                    boxShadow:
+                      '0 0 14px rgba(157,92,255,0.6), 0 0 28px rgba(157,92,255,0.22), 0 2px 6px rgba(0,0,0,0.5)',
+                    background:
+                      'linear-gradient(135deg, rgba(157,92,255,0.45), rgba(124,58,237,0.55))',
+                  }}
+                  aria-label="フレンドを追加"
+                  title="フレンドを追加"
+                >
+                  <UserPlus size={20} style={{ color: '#F0EEFF' }} strokeWidth={2.4} />
+                </Link>
+              </div>
+            )}
+
+            {/* 2 段目: 友達アイコン列 */}
+            {showFriendRail && <FriendAvatarRail />}
+          </div>
+        )}
+
         {children}
       </div>
       {!isOnboarding && <BottomNav />}
