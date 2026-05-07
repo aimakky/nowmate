@@ -284,16 +284,41 @@ export default function MyPage() {
   const [followersList,  setFollowersList]  = useState<FollowUser[] | null>(null)
   const [followListLoading, setFollowListLoading] = useState(false)
 
-  // X 風の「スクロールで件数表示」: profile/[userId] (動作確認済) と
-  // 完全同一の実装に揃える。window scroll listener は DOM 要素に依存
-  // しないため、loading=true (spinner 表示中) でも attach 成功する。
+  // X 風の「スクロールで件数表示」: 多重防御で iOS Safari で確実に発火させる。
+  // - window scroll listener (標準)
+  // - document scroll listener (iOS で発火する場合あり)
+  // - touchmove listener (iOS のドラッグ中)
+  // - setInterval 100ms ポーリング (最終 fallback、scroll event が発火しない
+  //   ケースでも確実に状態を更新)
+  // - 複数 source から scroll position 取得 (window.scrollY / pageYOffset /
+  //   document.documentElement.scrollTop / document.body.scrollTop)
   useEffect(() => {
-    function onScroll() {
-      setShowStickyCount(window.scrollY > 240)
+    function getScrollY(): number {
+      if (typeof window === 'undefined') return 0
+      return (
+        window.scrollY ||
+        window.pageYOffset ||
+        document.documentElement?.scrollTop ||
+        document.body?.scrollTop ||
+        0
+      )
     }
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    function check() {
+      setShowStickyCount(getScrollY() > 240)
+    }
+    check()
+    window.addEventListener('scroll', check, { passive: true })
+    document.addEventListener('scroll', check, { passive: true })
+    window.addEventListener('touchmove', check, { passive: true })
+    // Fallback polling. event listener が発火しない iOS Safari の特定状況でも
+    // 100ms ごとに scroll position をチェック。負荷は無視できるレベル。
+    const interval = window.setInterval(check, 100)
+    return () => {
+      window.removeEventListener('scroll', check)
+      document.removeEventListener('scroll', check)
+      window.removeEventListener('touchmove', check)
+      window.clearInterval(interval)
+    }
   }, [])
 
   useEffect(() => {
