@@ -664,31 +664,29 @@ export default function MyPage() {
         }}
       >
         <div>MYPAGE</div>
-        <div>v5</div>
+        <div>v6</div>
         <div style={{ marginTop: '4px', fontSize: '9px' }}>y={debugScrollY}</div>
         <div style={{ fontSize: '9px' }}>show={String(showStickyCount)}</div>
         <div style={{ fontSize: '9px' }}>n={postCount}</div>
       </div>
 
-      {/* X 風スクロール時固定バー: 「N 件の投稿」を表示。
-          z-[95] で AppLayout の sticky 友達列 (z-40, backdrop-filter)
-          よりも確実に上に。背景に半透明ではなく明確な紫不透明を使い、
-          iOS Safari の stacking context 重なり問題でも視認できるよう
-          にした。位置は top:0 にして safe-area-inset-top を padding に
-          して notch を回避する標準パターン。 */}
+      {/* X 風スクロール時固定バー (v6 巨大赤テスト版): show=true なのに見えない
+          問題の最終切り分け。RED 背景 + 24px font + 大きな padding で
+          描画されていれば 100% 視認可能。これでも見えない場合は overlay が
+          rendering されていない確定。確認後に通常スタイルに戻す。 */}
       {showStickyCount && (
         <div
           className="fixed top-0 left-0 right-0 z-[95] flex items-center justify-center"
           style={{
-            background: '#1a0d2e',
-            borderBottom: '2px solid rgba(157,92,255,0.5)',
-            paddingTop: 'calc(max(12px, env(safe-area-inset-top, 12px)) + 4px)',
-            paddingBottom: '12px',
+            background: '#FF0033',
+            borderBottom: '4px solid #FFFFFF',
+            paddingTop: 'calc(max(12px, env(safe-area-inset-top, 12px)) + 8px)',
+            paddingBottom: '16px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
           }}
         >
-          <p className="text-base font-extrabold" style={{ color: '#F0EEFF' }}>
-            {postCount}件の投稿
+          <p style={{ color: '#FFFFFF', fontSize: '20px', fontWeight: 900, letterSpacing: '0.05em' }}>
+            v6 ▸ {postCount}件の投稿
           </p>
         </div>
       )}
