@@ -285,15 +285,15 @@ export default function MyPage() {
   const [followListLoading, setFollowListLoading] = useState(false)
 
   // X 風の「スクロールで件数表示」を IntersectionObserver で実装。
-  // 旧版は scroll event + window.scrollY ベースだったが、iOS Safari の
-  // inertia / rubber-band で「一瞬だけ出てすぐ消える」という不安定挙動
-  // が発生した。IntersectionObserver は scroll event 非依存で
-  // 「sentinel 要素が viewport から出たか入ったか」を確実に検出する。
-  //
-  // sentinelRef はプロフィール上部のすぐ上に配置 → スクロールで
-  // viewport を抜けた瞬間に showStickyCount=true、戻ったら false。
+  // 重要: deps を [loading] にする。マイページは初期 loading=true で
+  // spinner だけ返すフローのため、useEffect が [] だと sentinel DOM が
+  // 未レンダリングのタイミングで実行されて observer が attach できず、
+  // 永久に showStickyCount が false のままだった (= ユーザー報告のバグ)。
+  // loading が false に変わったタイミングで再実行することで sentinel が
+  // DOM に存在する状態で observer を attach できる。
   const sentinelRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
+    if (loading) return
     const sentinel = sentinelRef.current
     if (!sentinel) return
     const observer = new IntersectionObserver(
@@ -303,13 +303,11 @@ export default function MyPage() {
         // 見えなくなった = スクロールで上に消えた = overlay 表示
         setShowStickyCount(!entry.isIntersecting)
       },
-      // rootMargin: top: -1px で「画面上端から 1px 分外に出た」時点で
-      // 検知。閾値を細かく揃えるための設定。
       { threshold: 0, rootMargin: '0px 0px 0px 0px' }
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [])
+  }, [loading])
 
   useEffect(() => {
     async function load() {
