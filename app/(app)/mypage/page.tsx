@@ -605,29 +605,7 @@ export default function MyPage() {
     : 'linear-gradient(135deg, #0a0a18 0%, #0d0d1e 50%, #080818 100%)'
 
   return (
-    <div
-      className="max-w-md mx-auto min-h-screen relative overflow-x-hidden"
-      style={{
-        // ─── 反映確認用 (一時): 通常 #0d0b1f → 明らかに違う深紅紫 ───
-        // iPhone Safari の deep cache 問題が解消されたかを背景色で検証。
-        // マッキーさんが開いて「いつもより赤紫っぽい」と感じれば新版到達。
-        // 確認後の commit で元の #0d0b1f に戻す。
-        background: '#2a0a2e',
-      }}
-    >
-
-      {/* 反映確認用 visible marker (一時、目立つバナー) */}
-      <div
-        className="fixed top-0 left-0 right-0 z-[70] text-center font-extrabold text-sm py-2"
-        style={{
-          background: '#FFD60A',
-          color: '#2a0a2e',
-          letterSpacing: '0.05em',
-          paddingTop: 'calc(max(8px, env(safe-area-inset-top, 8px)) + 4px)',
-        }}
-      >
-        ⚠ MYPAGE v4 — 新版到達確認用 ⚠
-      </div>
+    <div className="max-w-md mx-auto min-h-screen relative overflow-x-hidden" style={{ background: '#0d0b1f' }}>
 
       {/* X 風スクロール時固定バー: 「N 件の投稿」を表示 */}
       {showStickyCount && (
