@@ -8,7 +8,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag, timeAgo } from '@/lib/utils'
-import { Heart, ChevronRight, MessageSquare, MoreHorizontal, Flag, Ban } from 'lucide-react'
+import { Heart, ChevronRight, MessageSquare, MessageCircle, Repeat2, MoreHorizontal, Flag, Ban } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
 import VerifiedBadge from '@/components/ui/VerifiedBadge'
@@ -18,17 +18,151 @@ import { getCategoryStyle, getTitleName, TITLE_LEVEL_STYLE } from '@/lib/qa'
 import ReportModal from '@/components/features/ReportModal'
 import { getGenreTitles, getIndustry } from '@/lib/guild'
 import { startDM } from '@/lib/dm'
+import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
+import { getTierById } from '@/lib/trust'
+import { getUserDisplayName } from '@/lib/user-display'
 
-// 投稿一覧アイテム。「投稿」タブには tweets (つぶやき) のみを表示する仕様
-// (2026-05-07 マッキーさん指示)。村投稿 (village_posts) は混在を避けるため
-// 投稿一覧から除外し、villages/[id] 側で見せる形に統一。
-// kind フィールドは将来別種類の投稿を取り込む余地を残すため維持。
-type UnifiedPost = {
-  kind: 'tweet'
+// 村投稿 (village_posts) を投稿タブで TweetCard 同等のリッチ UI で描画する型。
+// 2026-05-07: マッキーさん指示「投稿一覧は全て通常投稿UIで統一」を受け、
+// 旧シンプルカード表示から TweetCard 風表示に刷新したため新設。
+type ProfileVillagePost = {
   id: string
   content: string
   created_at: string
+  village_id: string | null
   reaction_count: number
+  village: { id: string; name: string; icon: string } | null
+}
+
+// プロフィール「投稿」タブで使う村投稿のリッチカード描画 (TweetCard と
+// 視覚的に揃える)。アバター / 投稿者名 / 見習いバッジ / 国旗 / 時刻 /
+// 三点メニュー / +リアクション / コメント / リポスト までの可視要素を
+// tweets 側 (TweetCard) と完全に揃えることで、投稿一覧の UI 混在を解消。
+//
+// アクションボタンは「視覚的統一」目的で、クリック時は villages/[villageId]
+// に遷移して本来のリアクション動線に乗せる。村投稿は schema が tweets と
+// 異なるため tweet_reactions / tweet_replies 等の DB 操作はしない。
+function ProfileVillagePostInline({
+  post, profile, trustTier, profileUserId,
+}: {
+  post: ProfileVillagePost
+  profile: any
+  trustTier: string | null
+  profileUserId: string
+}) {
+  const router = useRouter()
+  const isVerified = isVerifiedByExistingSchema(profile)
+  const flag = getNationalityFlag(profile?.nationality || '')
+  const villageHref = post.village_id ? `/villages/${post.village_id}` : '/timeline'
+  const profileHref = `/profile/${profileUserId}`
+
+  return (
+    <div
+      className="px-4 py-4 border-b"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        borderColor: 'rgba(157,92,255,0.1)',
+      }}
+    >
+      <div className="flex items-start gap-3">
+        <Link href={profileHref} className="flex-shrink-0 mt-0.5">
+          <Avatar src={profile?.avatar_url} name={profile?.display_name} size="sm" />
+        </Link>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Link href={profileHref} className="font-extrabold text-sm leading-tight" style={{ color: '#F0EEFF' }}>
+                {getUserDisplayName(profile)}
+              </Link>
+              {isVerified && <VerifiedBadge verified size="sm" />}
+              {trustTier && (
+                <span
+                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 leading-none"
+                  style={{
+                    background: 'rgba(57,255,136,0.12)',
+                    color: '#39FF88',
+                    border: '1px solid rgba(57,255,136,0.3)',
+                  }}
+                >
+                  {getTierById(trustTier).label}
+                </span>
+              )}
+              <span className="text-base leading-none">{flag}</span>
+              <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                {timeAgo(post.created_at)}
+              </span>
+            </div>
+            <button
+              onClick={() => router.push(villageHref)}
+              className="w-7 h-7 flex items-center justify-center rounded-full transition-colors -mr-1 flex-shrink-0 active:opacity-60"
+              style={{ color: 'rgba(240,238,255,0.35)' }}
+              aria-label="村を開く"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+          </div>
+
+          <p
+            className="text-sm leading-relaxed mb-3 whitespace-pre-wrap"
+            style={{ color: 'rgba(240,238,255,0.85)' }}
+          >
+            {post.content}
+          </p>
+
+          <div className="flex items-center gap-1 relative">
+            <button
+              onClick={() => router.push(villageHref)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
+              style={{ color: '#39FF88', background: 'transparent' }}
+              aria-label="リアクションを見る"
+            >
+              {post.reaction_count > 0 ? (
+                <>
+                  <Heart size={12} fill="#39FF88" strokeWidth={0} />
+                  <span>{post.reaction_count}</span>
+                </>
+              ) : (
+                <span>＋ リアクション</span>
+              )}
+            </button>
+            <button
+              onClick={() => router.push(villageHref)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
+              style={{ color: 'rgba(240,238,255,0.4)' }}
+              aria-label="コメントを見る"
+            >
+              <MessageCircle size={13} />
+            </button>
+            <button
+              onClick={() => router.push(villageHref)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
+              style={{ color: 'rgba(240,238,255,0.4)' }}
+              aria-label="村を開く"
+            >
+              <Repeat2 size={13} />
+            </button>
+          </div>
+
+          {post.village && (
+            <Link
+              href={`/villages/${post.village_id}`}
+              className="inline-flex items-center gap-1.5 mt-2 active:opacity-70 transition-opacity"
+            >
+              <span className="text-sm">{post.village.icon}</span>
+              <span
+                className="text-[11px] font-bold truncate max-w-[160px]"
+                style={{ color: 'rgba(184,199,217,0.7)' }}
+              >
+                {post.village.name}
+              </span>
+              <ChevronRight size={11} style={{ color: 'rgba(184,199,217,0.3)' }} className="flex-shrink-0" />
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // QAAnswerWithQ 型は回答タブ削除に伴い未使用。qa_answers の DB データ
@@ -38,7 +172,11 @@ export default function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>()
   const router = useRouter()
   const [profile, setProfile] = useState<any>(null)
-  const [recentPosts, setRecentPosts] = useState<UnifiedPost[]>([])
+  // 投稿一覧を tweets と village_posts で別 state に保持し、render 時に
+  // 時系列でマージして表示する。マイページと同じ構造に揃え、UI も TweetCard
+  // (tweets) / ProfileVillagePostInline (村投稿) でリッチに統一。
+  const [richTweets, setRichTweets] = useState<TweetData[]>([])
+  const [profileVillagePosts, setProfileVillagePosts] = useState<ProfileVillagePost[]>([])
   const [postCount, setPostCount] = useState(0)
   const [myId, setMyId] = useState<string | null>(null)
   const [isFollowing, setIsFollowing] = useState(false)
@@ -117,11 +255,10 @@ export default function UserProfilePage() {
       // 投稿数が多くなったら別途 paging を検討するが、まずは全件出すこと
       // 優先 (件数とカード表示の整合性が最重要)。
       // 回答 (qa_answers) は UI から外したため fetch も削除。
-      // 村投稿 (village_posts) は投稿一覧に表示しない仕様 (2026-05-07
-      // マッキーさん指示)。マイページと同じく、つぶやき (tweets) のみを
-      // 「投稿」タブに表示する。村投稿は villages/[id] 側で見える。
       const [
         { data: p },
+        villagePostsRes,
+        { count: villagePostsCount },
         tweetsRes,
         { count: tweetsCount },
         imagePostsRes,
@@ -132,6 +269,11 @@ export default function UserProfilePage() {
         { data: titlesData },
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
+        supabase.from('village_posts')
+          .select('id, content, category, created_at, village_id, reaction_count')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false }),
+        supabase.from('village_posts').select('*', { count: 'exact', head: true }).eq('user_id', userId),
         supabase.from('tweets')
           .select('id, content, created_at')
           .eq('user_id', userId)
@@ -150,21 +292,75 @@ export default function UserProfilePage() {
         supabase.from('qa_titles').select('*').eq('user_id', userId).order('awarded_at', { ascending: false }),
       ])
 
+      if ((villagePostsRes as any)?.error) {
+        console.error('[profile/userId] village_posts fetch error:', (villagePostsRes as any).error)
+      }
       if ((tweetsRes as any)?.error) {
         console.error('[profile/userId] tweets fetch error:', (tweetsRes as any).error)
       }
 
-      const tweetUnified: UnifiedPost[] = ((tweetsRes as any)?.data ?? []).map((t: any) => ({
-        kind: 'tweet' as const,
-        id: t.id,
-        content: t.content,
-        created_at: t.created_at,
-        reaction_count: 0,
+      // 村情報は別 query でまとめて取得して merge
+      const villagePostsRaw = ((villagePostsRes as any)?.data ?? []) as any[]
+      const villageIds = Array.from(new Set(
+        villagePostsRaw.map(p => p.village_id).filter((v: any): v is string => typeof v === 'string' && v.length > 0)
+      ))
+      let villageMap = new Map<string, { id: string; name: string; icon: string }>()
+      if (villageIds.length > 0) {
+        const { data: villageRows, error: vErr } = await supabase
+          .from('villages')
+          .select('id, name, icon')
+          .in('id', villageIds)
+        if (vErr) console.error('[profile/userId] villages fetch error:', vErr, { villageIds })
+        for (const v of (villageRows ?? []) as any[]) {
+          villageMap.set(v.id, v)
+        }
+      }
+
+      const profileVillage: ProfileVillagePost[] = villagePostsRaw.map((p: any) => ({
+        id: p.id,
+        content: p.content,
+        created_at: p.created_at,
+        village_id: p.village_id ?? null,
+        reaction_count: p.reaction_count ?? 0,
+        village: p.village_id ? villageMap.get(p.village_id) ?? null : null,
       }))
 
-      // 時系列降順 (tweets のみ表示)
-      const merged = tweetUnified
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      // tweets を TweetCard で表示するため enrichment を取得 (マイページと同パターン)。
+      // 投稿者プロフィール = ページ owner の profile (= 上で取得済み p)
+      // user_trust もページ owner のものを使う (= 上で取得済み trust)
+      // tweet_reactions / tweet_replies は tweet ID で別 query 並列取得し Map merge
+      const rawTweets = ((tweetsRes as any)?.data ?? []) as any[]
+      let enrichedTweets: TweetData[] = []
+      if (rawTweets.length > 0) {
+        const tIds = rawTweets.map((t: any) => t.id)
+        const [reactEnrich, replyEnrich] = await Promise.all([
+          supabase.from('tweet_reactions').select('tweet_id, user_id, reaction').in('tweet_id', tIds),
+          supabase.from('tweet_replies').select('id, tweet_id').in('tweet_id', tIds),
+        ])
+        const reactByT = new Map<string, any[]>()
+        for (const r of ((reactEnrich as any).data ?? [])) {
+          if (!reactByT.has(r.tweet_id)) reactByT.set(r.tweet_id, [])
+          reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
+        }
+        const replyByT = new Map<string, any[]>()
+        for (const r of ((replyEnrich as any).data ?? [])) {
+          if (!replyByT.has(r.tweet_id)) replyByT.set(r.tweet_id, [])
+          replyByT.get(r.tweet_id)!.push({ id: r.id })
+        }
+        enrichedTweets = rawTweets.map((t: any) => ({
+          id: t.id,
+          content: t.content,
+          created_at: t.created_at,
+          user_id: userId as string,
+          reply_count: replyByT.get(t.id)?.length ?? 0,
+          repost_count: 0,
+          repost_of: null,
+          profiles: p,
+          tweet_reactions: reactByT.get(t.id) ?? [],
+          tweet_replies: replyByT.get(t.id) ?? [],
+          user_trust: trust?.tier ? { tier: trust.tier } : null,
+        }))
+      }
 
       if ((imagePostsRes as any)?.error) {
         console.error('[profile/userId] image_posts fetch error:', (imagePostsRes as any).error)
@@ -175,10 +371,11 @@ export default function UserProfilePage() {
       // ジャンルマスター称号
       const gt = await getGenreTitles(userId as string)
       setGenreTitles(gt)
-      setRecentPosts(merged)
+      setRichTweets(enrichedTweets)
+      setProfileVillagePosts(profileVillage)
       setImagePosts(((imagePostsRes as any)?.data ?? []) as any[])
-      // 投稿数 = tweets のみ (マイページと整合)
-      setPostCount(tweetsCount ?? 0)
+      // 投稿数 = 村投稿 + つぶやき の合計（マイページの「投稿」表示と整合）
+      setPostCount((villagePostsCount ?? 0) + (tweetsCount ?? 0))
       setFollowerCount(followers ?? 0)
       setFollowingCount(following ?? 0)
       if (trust?.tier) setTrustTier(trust.tier)
@@ -473,10 +670,13 @@ if (loading) return (
       {/* ── コンテンツ ── */}
       <div className="px-4 pt-4 pb-28 space-y-3">
 
-        {/* 投稿タブ (全件表示、limit/slice 撤廃) */}
+        {/* 投稿タブ (全件表示、limit/slice 撤廃)。
+            tweets と村投稿を時系列降順でマージし、
+            tweet は TweetCard で / 村投稿は ProfileVillagePostInline で
+            視覚的にリッチ統一表示 (マッキーさん指示 2026-05-07)。 */}
         {activeTab === 'posts' && (
           <>
-            {recentPosts.length === 0 ? (
+            {richTweets.length === 0 && profileVillagePosts.length === 0 ? (
               <div
                 className="rounded-2xl p-8 text-center"
                 style={{
@@ -488,41 +688,33 @@ if (loading) return (
                 <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ投稿がありません</p>
               </div>
             ) : (
-              recentPosts.map(post => (
-                <div
-                  key={`${post.kind}-${post.id}`}
-                  className="rounded-2xl overflow-hidden"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(157,92,255,0.18)',
-                    boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
-                  }}
-                >
-                  <div className="px-4 pt-3.5 pb-2.5">
-                    <p
-                      className="text-sm leading-relaxed whitespace-pre-wrap"
-                      style={{ color: 'rgba(240,238,255,0.85)' }}
-                    >
-                      {post.content}
-                    </p>
-                  </div>
-                  <div
-                    className="flex items-center justify-between px-4 py-2.5"
-                    style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}
-                  >
-                    <span className="text-[10px] font-bold" style={{ color: 'rgba(240,238,255,0.4)' }}>つぶやき</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px]" style={{ color: 'rgba(240,238,255,0.4)' }}>{timeAgo(post.created_at)}</span>
-                      {post.reaction_count > 0 && (
-                        <div className="flex items-center gap-1" style={{ color: '#FB7185' }}>
-                          <Heart size={12} fill="#FB7185" strokeWidth={0} />
-                          <span className="text-[11px] font-bold">{post.reaction_count}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))
+              (() => {
+                type Item =
+                  | { kind: 'tweet'; data: TweetData; ts: number }
+                  | { kind: 'village'; data: ProfileVillagePost; ts: number }
+                const items: Item[] = [
+                  ...richTweets.map(t => ({ kind: 'tweet' as const, data: t, ts: new Date(t.created_at).getTime() })),
+                  ...profileVillagePosts.map(v => ({ kind: 'village' as const, data: v, ts: new Date(v.created_at).getTime() })),
+                ].sort((a, b) => b.ts - a.ts)
+                return items.map(item => item.kind === 'tweet' ? (
+                  <TweetCard
+                    key={`tweet-${item.data.id}`}
+                    tweet={item.data}
+                    myId={myId}
+                    onUpdate={() => { /* recentPosts re-fetch なし。reaction 反映は次回ロードで */ }}
+                    showBorder={false}
+                    canInteract={true}
+                  />
+                ) : (
+                  <ProfileVillagePostInline
+                    key={`village-${item.data.id}`}
+                    post={item.data}
+                    profile={profile}
+                    trustTier={trustTier}
+                    profileUserId={userId as string}
+                  />
+                ))
+              })()
             )}
           </>
         )}

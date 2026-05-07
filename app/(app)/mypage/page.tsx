@@ -12,10 +12,13 @@ import { createClient } from '@/lib/supabase/client'
 import { TrustCard } from '@/components/ui/TrustBadge'
 import TrustBadge from '@/components/ui/TrustBadge'
 // PhoneVerifyModal は TrustVerificationCard 内部で管理される
-import { getUserTrust, fetchTierProgress, type TierProgress } from '@/lib/trust'
-import { Settings, LogOut, ChevronRight, Users, Copy, Check, Pencil, X, Eye, EyeOff, User } from 'lucide-react'
-import { timeAgo } from '@/lib/utils'
+import { getUserTrust, fetchTierProgress, getTierById, type TierProgress } from '@/lib/trust'
+import { Settings, LogOut, ChevronRight, Users, Copy, Check, Pencil, X, Eye, EyeOff, User, Heart, MessageCircle, Repeat2, MoreHorizontal } from 'lucide-react'
+import { timeAgo, getNationalityFlag } from '@/lib/utils'
 import { getUserDisplayName, getAvatarInitial } from '@/lib/user-display'
+import Avatar from '@/components/ui/Avatar'
+import VerifiedBadge from '@/components/ui/VerifiedBadge'
+import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 // VILLAGE_TYPE_STYLES は旧 参加中タブで使用していたが、タブ削除に伴い未使用化
 import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
@@ -35,6 +38,18 @@ import TrustVerificationCard from '@/components/features/TrustVerificationCard'
 //  - following / followers は統計カードクリックで切り替わる「擬似タブ」として維持
 type ProfileTab = 'tweets' | 'videos' | 'images' | 'following' | 'followers'
 
+// マイページ「投稿」タブ用: 村投稿 (village_posts) を統合表示するための型。
+// tweets は TweetCard でリッチに表示し、村投稿は dark theme の simple card で
+// 表示する (両者を時系列降順で merge する)。profile/[userId] の UnifiedPost と
+// 同じ思想だが、tweet 側は TweetData そのままを使うため村投稿のみ別型化。
+type MyVillagePost = {
+  id: string
+  content: string
+  created_at: string
+  village_id: string | null
+  reaction_count: number
+  village: { id: string; name: string; icon: string } | null
+}
 
 type FollowUser = {
   id: string
@@ -172,6 +187,145 @@ function TweetComposeSheet({
   )
 }
 
+// マイページ「投稿」タブで使う村投稿の描画。
+// 2026-05-07: マッキーさん指示「投稿一覧の全投稿を通常投稿UIで統一」を受け、
+// 旧シンプル枠線カード版から TweetCard と同等のリッチ UI に刷新。
+// アバター / 投稿者名 / 見習いバッジ / 国旗 / 時刻 / 三点メニュー / +リアクション /
+// コメント / リポスト までの可視要素を tweets 側と完全に揃える。
+//
+// アクションボタンは「視覚的統一」のみ目的で配置。
+//   - 村投稿は schema が tweets と異なるため、tweet_reactions / tweet_replies に
+//     対する DB 操作はしない。クリックすると villages/[villageId] に遷移して
+//     本来のリアクション動線に乗せる (= 機能としても自然)
+//   - 三点メニューも同じく villages 詳細遷移に統一
+function MyVillagePostInline({
+  post, profile, trust,
+}: {
+  post: MyVillagePost
+  profile: any
+  trust: any
+}) {
+  const router = useRouter()
+  const isVerified = isVerifiedByExistingSchema(profile)
+  const flag = getNationalityFlag(profile?.nationality || '')
+  const villageHref = post.village_id ? `/villages/${post.village_id}` : '/timeline'
+
+  return (
+    <div
+      className="px-4 py-4 border-b"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        borderColor: 'rgba(157,92,255,0.1)',
+      }}
+    >
+      <div className="flex items-start gap-3">
+        {/* Avatar */}
+        <Link href="/mypage" className="flex-shrink-0 mt-0.5">
+          <Avatar src={profile?.avatar_url} name={profile?.display_name} size="sm" />
+        </Link>
+
+        <div className="flex-1 min-w-0">
+          {/* Name + badges + time + 三点メニュー */}
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-extrabold text-sm leading-tight" style={{ color: '#F0EEFF' }}>
+                {getUserDisplayName(profile)}
+              </span>
+              {isVerified && <VerifiedBadge verified size="sm" />}
+              {trust?.tier && (
+                <span
+                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 leading-none"
+                  style={{
+                    background: 'rgba(57,255,136,0.12)',
+                    color: '#39FF88',
+                    border: '1px solid rgba(57,255,136,0.3)',
+                  }}
+                >
+                  {getTierById(trust.tier).label}
+                </span>
+              )}
+              <span className="text-base leading-none">{flag}</span>
+              <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                {timeAgo(post.created_at)}
+              </span>
+            </div>
+            <button
+              onClick={() => router.push(villageHref)}
+              className="w-7 h-7 flex items-center justify-center rounded-full transition-colors -mr-1 flex-shrink-0 active:opacity-60"
+              style={{ color: 'rgba(240,238,255,0.35)' }}
+              aria-label="村を開く"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+          </div>
+
+          {/* Content */}
+          <p
+            className="text-sm leading-relaxed mb-3 whitespace-pre-wrap"
+            style={{ color: 'rgba(240,238,255,0.85)' }}
+          >
+            {post.content}
+          </p>
+
+          {/* Action bar (視覚的統一・クリックは村ページへ遷移) */}
+          <div className="flex items-center gap-1 relative">
+            <button
+              onClick={() => router.push(villageHref)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
+              style={{ color: '#39FF88', background: 'transparent' }}
+              aria-label="リアクションを見る"
+            >
+              {post.reaction_count > 0 ? (
+                <>
+                  <Heart size={12} fill="#39FF88" strokeWidth={0} />
+                  <span>{post.reaction_count}</span>
+                </>
+              ) : (
+                <span>＋ リアクション</span>
+              )}
+            </button>
+
+            <button
+              onClick={() => router.push(villageHref)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
+              style={{ color: 'rgba(240,238,255,0.4)' }}
+              aria-label="コメントを見る"
+            >
+              <MessageCircle size={13} />
+            </button>
+
+            <button
+              onClick={() => router.push(villageHref)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
+              style={{ color: 'rgba(240,238,255,0.4)' }}
+              aria-label="村を開く"
+            >
+              <Repeat2 size={13} />
+            </button>
+          </div>
+
+          {/* 村リンク (オプション・どの村への投稿かが分かるように小さく表示) */}
+          {post.village && (
+            <Link
+              href={`/villages/${post.village_id}`}
+              className="inline-flex items-center gap-1.5 mt-2 active:opacity-70 transition-opacity"
+            >
+              <span className="text-sm">{post.village.icon}</span>
+              <span
+                className="text-[11px] font-bold truncate max-w-[160px]"
+                style={{ color: 'rgba(184,199,217,0.7)' }}
+              >
+                {post.village.name}
+              </span>
+              <ChevronRight size={11} style={{ color: 'rgba(184,199,217,0.3)' }} className="flex-shrink-0" />
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── メインページ ────────────────────────────────────────────────
 export default function MyPage() {
   const router = useRouter()
@@ -188,6 +342,10 @@ export default function MyPage() {
   const [joinedVillages, setJoinedVillages] = useState<any[]>([])
   const [imagePosts,     setImagePosts]     = useState<any[]>([])
   const [tweets,         setTweets]         = useState<TweetData[]>([])
+  // 自分の村投稿 (profile/[userId] では villageUnified として表示している分)。
+  // 旧マイページは tweets のみ表示していたため「プロフィールには出るのに
+  // マイページに投稿が出ない」差分の原因となっていた。
+  const [villagePosts,   setVillagePosts]   = useState<MyVillagePost[]>([])
   const [tweetLoading,   setTweetLoading]   = useState(false)
   const [userId,         setUserId]         = useState<string | null>(null)
   const [activeTab,      setActiveTab]      = useState<ProfileTab>('tweets')
@@ -237,6 +395,7 @@ export default function MyPage() {
         trustData,
         tierProgressData,
         { count: vc },
+        { count: pc },
         { count: tc },
         hostedRes,
         joinedRes,
@@ -244,13 +403,14 @@ export default function MyPage() {
         followersRes,
         imageRes,
         tweetRes,
+        villagePostRowsRes,
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         getUserTrust(user.id),
         fetchTierProgress(user.id),
         supabase.from('village_members').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-        // 投稿数 = tweets のみ。村投稿は投稿一覧に出さない仕様 (2026-05-07
-        // マッキーさん指示)。マイページ「投稿」タブはつぶやき (tweets) 単独表示。
+        supabase.from('village_posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        // tweets count (投稿数 = 村投稿 + つぶやき の合計に整合させるため追加)
         supabase.from('tweets').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('village_members')
           .select('villages(id, name, icon, type, member_count, post_count_7d)')
@@ -280,6 +440,14 @@ export default function MyPage() {
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(30),
+        // 村投稿の行データ (profile/[userId] と同じパターンで取得)。
+        // 旧マイページは count しか取らず行データを取らなかったため、
+        // 投稿タブに村投稿が出ていなかった。embed なしで純粋取得。
+        supabase
+          .from('village_posts')
+          .select('id, content, category, created_at, village_id, reaction_count')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
       ])
 
       if (!p) { router.push('/onboarding'); return }
@@ -288,8 +456,8 @@ export default function MyPage() {
       setTrust(trustData)
       setTierProgress(tierProgressData)
       setVillageCount(vc ?? 0)
-      // 投稿数 = tweets のみ (村投稿は投稿一覧に表示しない仕様)
-      setPostCount(tc ?? 0)
+      // 投稿数 = 村投稿 + つぶやきの合計 (profile/[userId] と整合)
+      setPostCount((pc ?? 0) + (tc ?? 0))
       setHostedVillages(((hostedRes as any)?.data ?? []).map((r: any) => r.villages).filter(Boolean))
       setJoinedVillages(((joinedRes as any)?.data ?? []).map((r: any) => r.villages).filter(Boolean))
 
@@ -337,6 +505,34 @@ export default function MyPage() {
         }
       }
       setTweets(rawMyTweets as TweetData[])
+
+      // 村投稿の行データ + 村情報マージ。embed を使わず別 query で取得し、
+      // 村情報も別 query でまとめて取得 (profile/[userId] と同じパターン)。
+      const rawMyVillagePosts = ((villagePostRowsRes as any)?.data ?? []) as any[]
+      const myVillageIdsForPosts = Array.from(new Set(
+        rawMyVillagePosts
+          .map((p: any) => p.village_id)
+          .filter((v: any): v is string => typeof v === 'string' && v.length > 0)
+      ))
+      const myVillagePostMap = new Map<string, { id: string; name: string; icon: string }>()
+      if (myVillageIdsForPosts.length > 0) {
+        const { data: vRows } = await supabase
+          .from('villages')
+          .select('id, name, icon')
+          .in('id', myVillageIdsForPosts)
+        for (const v of (vRows ?? []) as any[]) {
+          myVillagePostMap.set(v.id, v)
+        }
+      }
+      const myUnifiedVillagePosts: MyVillagePost[] = rawMyVillagePosts.map((p: any) => ({
+        id: p.id,
+        content: p.content,
+        created_at: p.created_at,
+        village_id: p.village_id ?? null,
+        reaction_count: p.reaction_count ?? 0,
+        village: p.village_id ? myVillagePostMap.get(p.village_id) ?? null : null,
+      }))
+      setVillagePosts(myUnifiedVillagePosts)
 
       setLoading(false)
     }
@@ -755,7 +951,7 @@ export default function MyPage() {
                   </div>
                 ))}
               </div>
-            ) : tweets.length === 0 ? (
+            ) : tweets.length === 0 && villagePosts.length === 0 ? (
               <div className="flex flex-col items-center py-20 text-center px-6">
                 <div
                   className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
@@ -775,21 +971,46 @@ export default function MyPage() {
               </div>
             ) : (
               <div style={{ background: 'transparent' }}>
-                {/* つぶやき (tweets) のみを TweetCard で時系列降順表示。
-                    村投稿 (village_posts) はマイページの投稿一覧に出さない
-                    仕様 (2026-05-07 マッキーさん指示)。同じ趣旨を別文言で
-                    村にもつぶやきにも書いた場合に「同じ投稿の二重表示」に
-                    見えるバグの恒久対策。村投稿は villages/[id] 側で見える。 */}
-                {tweets.map(t => (
-                  <TweetCard
-                    key={`tweet-${t.id}`}
-                    tweet={t}
-                    myId={userId}
-                    onUpdate={() => userId && loadTweets(userId)}
-                    showBorder={false}
-                    canInteract={true}
-                  />
-                ))}
+                {/* tweets と村投稿を時系列降順でマージ。
+                    tweet は TweetCard でリッチに、村投稿は dark theme の
+                    シンプルカード (MyVillagePostInline) で表示。
+                    旧版は tweets のみ表示で「プロフィールには出るのに
+                    マイページに村投稿が出ない」差分の原因だった。 */}
+                {(() => {
+                  type Item =
+                    | { kind: 'tweet'; data: TweetData; ts: number }
+                    | { kind: 'village'; data: MyVillagePost; ts: number }
+                  const items: Item[] = [
+                    ...tweets.map(t => ({
+                      kind: 'tweet' as const,
+                      data: t,
+                      ts: new Date(t.created_at).getTime(),
+                    })),
+                    ...villagePosts.map(v => ({
+                      kind: 'village' as const,
+                      data: v,
+                      ts: new Date(v.created_at).getTime(),
+                    })),
+                  ].sort((a, b) => b.ts - a.ts)
+
+                  return items.map(item => item.kind === 'tweet' ? (
+                    <TweetCard
+                      key={`tweet-${item.data.id}`}
+                      tweet={item.data}
+                      myId={userId}
+                      onUpdate={() => userId && loadTweets(userId)}
+                      showBorder={false}
+                      canInteract={true}
+                    />
+                  ) : (
+                    <MyVillagePostInline
+                      key={`village-${item.data.id}`}
+                      post={item.data}
+                      profile={profile}
+                      trust={trust}
+                    />
+                  ))
+                })()}
               </div>
             )}
           </div>
