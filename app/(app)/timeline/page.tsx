@@ -4,13 +4,10 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { timeAgo, getNationalityFlag } from '@/lib/utils'
+import { timeAgo } from '@/lib/utils'
 import { detectNgWords } from '@/lib/moderation'
-import { Heart, RefreshCw, Users, Globe, Home, HelpCircle, Send, CheckCircle, X, Plus, Waves, Mic, MessageCircle, Layers, MoreHorizontal, Repeat2 } from 'lucide-react'
+import { Heart, RefreshCw, Users, Globe, Home, Share2, HelpCircle, Send, CheckCircle, X, Plus, Waves, Mic, MessageCircle, Layers } from 'lucide-react'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
-import Avatar from '@/components/ui/Avatar'
-import VerifiedBadge from '@/components/ui/VerifiedBadge'
-import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 import { detectCrisisKeywords } from '@/lib/moderation'
 import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
 import { getTierById } from '@/lib/trust'
@@ -360,28 +357,6 @@ function QACard({
 }
 
 // ── 通常投稿カード ─────────────────────────────────────────────
-// 2026-05-08: マッキーさん指示「タイムラインのアイコン色・投稿表示形式を統一」を受けて
-// 旧緑アイコン + 旧 PostCard レイアウトを完全廃止し、
-// mypage / profile/[userId] で実証済みの MyVillagePostInline 同等のレイアウトに統一。
-//
-// 旧版の問題:
-//   - インライン div で background: linear-gradient(135deg,#059669,#047857) という
-//     緑グラデをハードコード、boxShadow も 0 0 0 2px rgba(57,255,136,0.3) で緑リング
-//   - 共有 Avatar コンポーネント (bg-brand-100 = 紫) を使わず PostCard 独自実装
-//   - tweet 投稿 (TweetCard → 紫アバター) と村投稿 (PostCard → 緑アバター) で
-//     同じタイムライン内に紫 / 緑が混在、UI が割れて見えていた
-//
-// 新版:
-//   - 共有 Avatar コンポーネント (size="sm", 紫) を使用
-//   - 名前 / 見習いバッジ / 国旗（取得不可なら 🌍）/ 時刻 / 三点 / 本文 /
-//     リアクション / コメント / リポスト の可視要素を tweet 側と完全に揃える
-//   - tweet_reactions に直接書き込まない (schema 違いのため)。代わりに
-//     既存の onToggleLike (village_post_reactions 系) をハートに紐づけて
-//     既存リアクション機能を維持する
-//   - shareToX は三点メニューに将来的に統合するが、当面は村ページ遷移に統一
-//
-// この結果、タイムライン内の全投稿が紫アバターで統一される。
-// is_demo / role / npc / bot などの分岐は元から存在せず、純粋な構造的差異だった。
 function PostCard({
   post, userId, likedIds, onToggleLike,
 }: {
@@ -391,33 +366,23 @@ function PostCard({
   onToggleLike: (id: string) => void
   showVillage?: boolean
 }) {
-  const router = useRouter()
   const liked = likedIds.has(post.id)
   // Trust Tier ラベルは lib/trust.ts の TRUST_TIERS を canonical 定義として使用。
   // 全 5 段階（見習い / 村人 / 常連 / 信頼の村人 / 村の柱）が自動反映される。
   const roleLabel = getTierById(post.user_trust?.tier ?? 'visitor').label
-  // profile に nationality / verification 情報が無いケースに備えて空 fallback。
-  // getNationalityFlag('') は default で 🌍 を返すためスクショ通りの見た目になる。
-  const profileAny = post.profiles as any
-  const isVerified = profileAny ? isVerifiedByExistingSchema(profileAny) : false
-  const flag = getNationalityFlag(profileAny?.nationality || '')
+
+  function shareToX() {
+    const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'YVOICE'
+    // SITE_HOST は lib/site.ts の export。NEXT_PUBLIC_SITE_URL の host 部分。
+    // 旧ドメイン → 新ドメイン移行時に追従するためベタ書き禁止。
+    const host = (typeof window !== 'undefined' ? window.location.host : '') || 'nowmatejapan.com'
+    const text = `${post.content}\n\n— ${village}より\n#YVOICE #ゲームコミュニティ\n${host}`
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
+  }
 
   // 投稿者プロフィール遷移先: 自分なら黒背景マイページ、他人なら他ユーザー
   // プロフィール (白背景) に分岐。自分用に白背景プロフィールへ飛ばないよう。
   const profileHref = userId === post.user_id ? '/mypage' : `/profile/${post.user_id}`
-  const villageHref = post.village_id ? `/villages/${post.village_id}` : '/timeline'
-
-  // [DEBUG TEMP 2026-05-08] PostCard が実描画されているか + 投稿データの実値を確認。
-  // 本番反映後、ブラウザコンソールで紫アバター化が成功しているか証明できる。
-  // 次 commit で除去する。
-  if (typeof window !== 'undefined') {
-    console.log('[DEBUG 2026-05-08] ACTUAL Timeline PostCard rendering:', {
-      postId: post.id,
-      author: post.profiles?.display_name,
-      tier: post.user_trust?.tier,
-      avatarComponent: 'shared <Avatar /> (purple bg-brand-100)',
-    })
-  }
 
   return (
     <div
@@ -428,27 +393,32 @@ function PostCard({
         boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
       }}
     >
-      <div className="px-4 py-4">
-        <div className="flex items-start gap-3">
-          {/* Avatar (共有コンポーネント・紫) */}
-          <Link href={profileHref} className="flex-shrink-0 mt-0.5">
-            <Avatar src={post.profiles?.avatar_url} name={post.profiles?.display_name ?? '?'} size="sm" />
-          </Link>
-
-          <div className="flex-1 min-w-0">
-            {/* Name + badges + flag + time + 三点メニュー */}
-            <div className="flex items-center justify-between mb-1">
+      <div className="px-4 pt-3.5 pb-3">
+        {/* ヘッダー */}
+        <div className="flex items-start justify-between gap-2">
+          <Link
+            href={profileHref}
+            className="flex items-center gap-2.5 min-w-0 flex-1 active:opacity-70 transition-opacity"
+          >
+            {/* アバター */}
+            <div
+              className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold text-white"
+              style={{
+                background: 'linear-gradient(135deg,#059669,#047857)',
+                boxShadow: '0 0 0 2px rgba(57,255,136,0.3)',
+              }}
+            >
+              {post.profiles?.avatar_url
+                ? <img src={post.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                : post.profiles?.display_name?.[0] ?? '?'}
+            </div>
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <Link
-                  href={profileHref}
-                  className="font-extrabold text-sm leading-tight active:opacity-70 transition-opacity"
-                  style={{ color: '#F0EEFF' }}
-                >
+                <span className="text-sm font-bold leading-tight" style={{ color: '#F0EEFF' }}>
                   {getUserDisplayName(post.profiles)}
-                </Link>
-                {isVerified && <VerifiedBadge verified size="sm" />}
+                </span>
                 <span
-                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 leading-none"
+                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
                   style={{
                     background: 'rgba(57,255,136,0.12)',
                     color: '#39FF88',
@@ -457,82 +427,52 @@ function PostCard({
                 >
                   {roleLabel}
                 </span>
-                <span className="text-base leading-none">{flag}</span>
-                <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>
-                  {timeAgo(post.created_at)}
-                </span>
               </div>
-              <button
-                onClick={() => router.push(villageHref)}
-                className="w-7 h-7 flex items-center justify-center rounded-full transition-colors -mr-1 flex-shrink-0 active:opacity-60"
-                style={{ color: 'rgba(240,238,255,0.35)' }}
-                aria-label="村を開く"
-              >
-                <MoreHorizontal size={16} />
-              </button>
+              <span className="text-[10px]" style={{ color: 'rgba(240,238,255,0.3)' }}>
+                {timeAgo(post.created_at)}
+              </span>
             </div>
+          </Link>
+          {/* ... ボタン */}
+          <button className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full active:bg-white/5 transition-all"
+            style={{ color: 'rgba(240,238,255,0.25)' }}>
+            <span className="text-xs tracking-widest leading-none">•••</span>
+          </button>
+        </div>
 
-            {/* Content */}
-            <p
-              className="text-sm leading-relaxed mb-3 whitespace-pre-wrap"
-              style={{ color: 'rgba(240,238,255,0.85)' }}
-            >
-              {post.content}
-            </p>
+        {/* 本文 */}
+        <p className="text-sm leading-relaxed mt-3" style={{ color: 'rgba(240,238,255,0.85)' }}>
+          {post.content}
+        </p>
 
-            {/* Action bar (mypage MyVillagePostInline と完全同型) */}
-            <div className="flex items-center gap-1 relative">
-              <button
-                onClick={() => onToggleLike(post.id)}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
-                style={{ color: '#39FF88', background: 'transparent' }}
-                aria-label={liked ? 'リアクション解除' : 'リアクションする'}
-              >
-                {post.reaction_count > 0 ? (
-                  <>
-                    <Heart size={12} fill="#39FF88" strokeWidth={0} />
-                    <span>{post.reaction_count}</span>
-                  </>
-                ) : (
-                  <span>＋ リアクション</span>
-                )}
-              </button>
-
-              <button
-                onClick={() => router.push(villageHref)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
-                style={{ color: 'rgba(240,238,255,0.4)' }}
-                aria-label="コメントを見る"
-              >
-                <MessageCircle size={13} />
-              </button>
-
-              <button
-                onClick={() => router.push(villageHref)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
-                style={{ color: 'rgba(240,238,255,0.4)' }}
-                aria-label="村を開く"
-              >
-                <Repeat2 size={13} />
-              </button>
-            </div>
-
-            {/* 村リンク (どの村への投稿かが分かるように小さく表示) */}
-            {post.villages && (
-              <Link
-                href={`/villages/${post.village_id}`}
-                className="inline-flex items-center gap-1.5 mt-2 active:opacity-70 transition-opacity"
-              >
-                <span className="text-sm">{post.villages.icon}</span>
-                <span
-                  className="text-[11px] font-bold truncate max-w-[160px]"
-                  style={{ color: 'rgba(184,199,217,0.7)' }}
-                >
-                  {post.villages.name}
-                </span>
-              </Link>
+        {/* アクション */}
+        <div
+          className="flex items-center gap-4 mt-3 pt-2.5"
+          style={{ borderTop: '1px solid rgba(57,255,136,0.1)' }}
+        >
+          <button
+            onClick={() => onToggleLike(post.id)}
+            className="flex items-center gap-1.5 active:scale-90 transition-all"
+            style={{ color: liked ? '#FF4D90' : 'rgba(240,238,255,0.35)' }}
+          >
+            <Heart size={15} fill={liked ? '#FF4D90' : 'none'} strokeWidth={liked ? 0 : 1.8} />
+            {post.reaction_count > 0 && (
+              <span className="text-xs font-semibold">{post.reaction_count}</span>
             )}
-          </div>
+          </button>
+          <button
+            className="flex items-center gap-1.5 active:scale-90 transition-all"
+            style={{ color: 'rgba(240,238,255,0.35)' }}
+          >
+            <MessageCircle size={15} strokeWidth={1.8} />
+          </button>
+          <button
+            onClick={shareToX}
+            className="flex items-center gap-1.5 active:scale-90 transition-all ml-auto"
+            style={{ color: 'rgba(240,238,255,0.35)' }}
+          >
+            <Share2 size={14} strokeWidth={1.8} />
+          </button>
         </div>
       </div>
     </div>
@@ -911,13 +851,6 @@ function ComposeModal({
 // ── メインページ ───────────────────────────────────────────────
 export default function TimelinePage() {
   const router = useRouter()
-
-  // [DEBUG TEMP 2026-05-08] Timeline 実描画ファイル証明用ログ。
-  // 本番反映後ブラウザで `[DEBUG 2026-05-08] ACTUAL Timeline rendering: ...`
-  // が出ることを確認 → 次 commit で除去予定。
-  useEffect(() => {
-    console.log('[DEBUG 2026-05-08] ACTUAL Timeline rendering:', 'app/(app)/timeline/page.tsx')
-  }, [])
 
   // 既定タブは 'all'（みんな）。'myvillage' を既定にすると、村未参加ユーザーや
   // village_id=null で保存される通常タイムライン投稿が一切表示されないため。
