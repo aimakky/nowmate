@@ -636,27 +636,38 @@ export default function MyPage() {
     <div className="max-w-md mx-auto min-h-screen relative overflow-x-hidden" style={{ background: '#0d0b1f' }}>
 
       {/* ────────────────────────────────────────────────
-          ★ DEBUG MARKER (確認後に除去予定) ★
-          このファイル app/(app)/mypage/page.tsx が実際に
-          描画されているか、scroll 検出が動いているかを
-          視覚的に検証するための一時バー。
-          - 常時表示 (z-[90]、左右いっぱい、上に貼り付け)
-          - 「scrollY=N show=true/false postCount=N」を表示
-          - これが見えれば mypage は確実に描画されている
+          ★ DEBUG MARKER v2 — 画面中央巨大表示版 ★
+          iPhone のノッチ / ステータスバーで隠れない位置
+          (画面中央右、常時表示) に配置。
+          - 黄色背景 + 黒太字でぜったいに見落とさない
+          - scrollY=N と show=true/false を表示
+          - これが見えれば mypage 新版が iPhone に届いている
           ────────────────────────────────────────────────  */}
       <div
-        className="fixed top-0 left-0 right-0 z-[90] flex items-center justify-center"
+        className="fixed z-[100] flex flex-col items-center justify-center font-extrabold"
         style={{
-          background: showStickyCount ? '#22c55e' : '#dc2626',
-          color: '#ffffff',
-          fontSize: '11px',
+          top: '50%',
+          right: '8px',
+          transform: 'translateY(-50%)',
+          background: showStickyCount ? '#22c55e' : '#FFD60A',
+          color: '#000000',
+          fontSize: '10px',
           fontFamily: 'monospace',
-          padding: '4px 8px',
-          fontWeight: 800,
+          padding: '8px 10px',
+          borderRadius: '8px',
+          border: '2px solid #000',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+          lineHeight: '1.4',
           letterSpacing: '0.05em',
+          minWidth: '110px',
+          textAlign: 'center',
         }}
       >
-        MYPAGE-FILE • scrollY={debugScrollY} • show={String(showStickyCount)} • postCount={postCount}
+        <div>MYPAGE</div>
+        <div>v5</div>
+        <div style={{ marginTop: '4px', fontSize: '9px' }}>y={debugScrollY}</div>
+        <div style={{ fontSize: '9px' }}>show={String(showStickyCount)}</div>
+        <div style={{ fontSize: '9px' }}>n={postCount}</div>
       </div>
 
       {/* X 風スクロール時固定バー: 「N 件の投稿」を表示。
