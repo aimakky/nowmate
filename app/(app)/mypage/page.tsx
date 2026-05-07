@@ -607,6 +607,22 @@ export default function MyPage() {
   return (
     <div className="max-w-md mx-auto min-h-screen relative overflow-x-hidden" style={{ background: '#0d0b1f' }}>
 
+      {/* ─── 反映確認用 visible marker (一時) ───
+          iPhone Safari のキャッシュ問題で「新版が届いているか」の切り分けに
+          使う。マッキーさんがマイページを開いた時に右上にこの紫バッジが
+          見えれば最新版が届いている → タブも消えているはず。
+          見えない場合は端末側キャッシュがまだ古い。確認後に削除予定。 */}
+      <div
+        className="absolute top-2 right-2 z-[70] text-[9px] font-mono px-2 py-0.5 rounded"
+        style={{
+          background: 'rgba(157,92,255,0.28)',
+          color: '#F0EEFF',
+          border: '1px solid rgba(157,92,255,0.65)',
+        }}
+      >
+        MYPAGE v3
+      </div>
+
       {/* X 風スクロール時固定バー: 「N 件の投稿」を表示 */}
       {showStickyCount && (
         <div
