@@ -275,11 +275,26 @@ export default function MyPage() {
   const [idCopied,       setIdCopied]       = useState(false)
   const [showIndustry,   setShowIndustry]   = useState(true)
   const [savingIndustry, setSavingIndustry] = useState(false)
+  // X 風の「スクロールで件数表示」用。プロフィール情報がスクロールで
+  // 上に隠れたタイミングで上部固定バーに「N 件の投稿」を表示する。
+  const [showStickyCount, setShowStickyCount] = useState(false)
 
   // フォロー中 / フォロワー一覧（lazy load）。null = 未取得、[] = 0件、配列 = 取得済
   const [followingList,  setFollowingList]  = useState<FollowUser[] | null>(null)
   const [followersList,  setFollowersList]  = useState<FollowUser[] | null>(null)
   const [followListLoading, setFollowListLoading] = useState(false)
+
+  // X 風の「スクロールで件数表示」: scrollY が閾値を超えたら上部に
+  // 「N 件の投稿」を表示。プロフィール情報がスクロールで隠れた頃合い
+  // (240px 付近) でフェードイン。passive listener で性能影響を最小化。
+  useEffect(() => {
+    function onScroll() {
+      setShowStickyCount(window.scrollY > 240)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     async function load() {
@@ -590,6 +605,25 @@ export default function MyPage() {
   return (
     <div className="max-w-md mx-auto min-h-screen relative overflow-x-hidden" style={{ background: '#0d0b1f' }}>
 
+      {/* X 風スクロール時固定バー: 「N 件の投稿」を表示 */}
+      {showStickyCount && (
+        <div
+          className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center"
+          style={{
+            background: 'rgba(13,11,31,0.92)',
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
+            borderBottom: '1px solid rgba(157,92,255,0.18)',
+            paddingTop: 'max(12px, env(safe-area-inset-top, 12px))',
+            paddingBottom: '12px',
+          }}
+        >
+          <p className="text-sm font-extrabold" style={{ color: '#F0EEFF' }}>
+            {postCount}件の投稿
+          </p>
+        </div>
+      )}
+
       {/* シルバーグロー（右上） */}
       <div className="absolute top-0 right-0 w-80 h-80 pointer-events-none z-0"
         style={{ background: 'radial-gradient(circle at 80% 15%, rgba(234,242,255,0.18) 0%, rgba(184,199,217,0.1) 40%, transparent 70%)' }} />
@@ -779,32 +813,9 @@ export default function MyPage() {
         </div>
       )}
 
-      {/* ── タブ (投稿 / 写真 / 動画) — profile/[userId] と統一 ── */}
-      <div className="relative z-10 mx-4 mb-1 rounded-2xl overflow-hidden sticky top-2"
-        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)', boxShadow: '0 0 16px rgba(157,92,255,0.08)' }}>
-        <div className="flex">
-          {([
-            { id: 'tweets', label: '投稿' },
-            { id: 'images', label: '写真' },
-            { id: 'videos', label: '動画' },
-          ] as { id: ProfileTab; label: string }[]).map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className="flex-1 py-3.5 text-xs font-bold transition-colors relative"
-              style={{ color: activeTab === tab.id ? '#F0EEFF' : 'rgba(240,238,255,0.4)' }}
-            >
-              {tab.label}
-              {activeTab === tab.id && (
-                <span
-                  className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full"
-                  style={{ background: 'linear-gradient(90deg, #9D5CFF, #7B3FE4)', boxShadow: '0 0 8px rgba(157,92,255,0.5)' }}
-                />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* タブ (投稿/写真/動画) は X 風の「スクロールで件数表示」UI へ移行
+          したため削除済。activeTab state は フォロー中 / フォロワー /
+          投稿 の擬似タブ切り替え用に残す (統計カード経由)。 */}
 
       {/* ── タブコンテンツ ── */}
       {/* 末尾の余白：BottomNav (64px) + safe-area + AIガイド/FAB のクリアランス */}
@@ -888,63 +899,8 @@ export default function MyPage() {
           </div>
         )}
 
-        {/* 動画タブ (現状 DB に video_url 等が無いため空状態のみ。
-            UI 先行で profile/[userId] と同等。将来 video カラム追加時に拡張) */}
-        {activeTab === 'videos' && (
-          <div className="px-4">
-            <div
-              className="rounded-2xl p-8 text-center"
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(157,92,255,0.18)',
-              }}
-            >
-              <p className="text-3xl mb-2">🎬</p>
-              <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ動画の投稿がありません</p>
-              <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>動画を投稿するとここに表示されます</p>
-            </div>
-          </div>
-        )}
-
-        {/* 画像タブ (guild_posts.image_url IS NOT NULL のレコードを 3 列グリッドで表示)。
-            profile/[userId] と同等のレイアウト。imagePosts は初期 load で取得済。 */}
-        {activeTab === 'images' && (
-          <div className="px-4">
-            {imagePosts.length === 0 ? (
-              <div
-                className="rounded-2xl p-8 text-center"
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(157,92,255,0.18)',
-                }}
-              >
-                <p className="text-3xl mb-2">🖼️</p>
-                <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ写真の投稿がありません</p>
-                <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>写真を投稿するとここに表示されます</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {imagePosts.map((ip: any) => (
-                  <div
-                    key={ip.id}
-                    className="aspect-square overflow-hidden rounded-xl"
-                    style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(157,92,255,0.18)',
-                    }}
-                  >
-                    <img
-                      src={ip.image_url}
-                      alt={ip.content ?? ''}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {/* 動画 / 写真 タブのコンテンツは削除済 (タブ UI 撤廃に伴い)。
+            imagePosts state は他用途のため保持。 */}
 
         {/* フォロー中 / フォロワー擬似タブ（統計カードクリックで開く） */}
         {(activeTab === 'following' || activeTab === 'followers') && (() => {

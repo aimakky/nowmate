@@ -71,6 +71,21 @@ export default function UserProfilePage() {
   const [genreTitles, setGenreTitles] = useState<{ genre: string; awarded_at: string }[]>([])
   const [dmLoading, setDmLoading] = useState(false)
   const [dmToast, setDmToast] = useState<string | null>(null)
+  // X 風の「スクロールで件数表示」用。プロフィール情報がスクロールで
+  // 上に隠れたタイミングで上部固定バーに「N 件の投稿」を表示する。
+  const [showStickyCount, setShowStickyCount] = useState(false)
+
+  // X 風の「スクロールで件数表示」: scrollY が閾値を超えたら上部に
+  // 「N 件の投稿」を表示。プロフィールカードがスクロールで隠れた頃合
+  // (240px 付近) でフェードイン。passive listener で性能影響を最小化。
+  useEffect(() => {
+    function onScroll() {
+      setShowStickyCount(window.scrollY > 240)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -286,6 +301,25 @@ if (loading) return (
   // 採用色: pageBg #080812、card bg rgba(255,255,255,0.04)、accent #9D5CFF。
   return (
     <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
+
+      {/* X 風スクロール時固定バー: 「N 件の投稿」を表示 */}
+      {showStickyCount && (
+        <div
+          className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center"
+          style={{
+            background: 'rgba(8,8,18,0.92)',
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
+            borderBottom: '1px solid rgba(157,92,255,0.18)',
+            paddingTop: 'max(12px, env(safe-area-inset-top, 12px))',
+            paddingBottom: '12px',
+          }}
+        >
+          <p className="text-sm font-extrabold" style={{ color: '#F0EEFF' }}>
+            {postCount}件の投稿
+          </p>
+        </div>
+      )}
       {/*
         旧: 上部 sticky ヘッダー (戻る矢印 + 表示名 + ... メニュー)。
         AppLayout のマイページ固定アバターと位置が被って視覚的にごちゃつく
@@ -441,43 +475,16 @@ if (loading) return (
       {/* ── タブ (投稿 / 動画 / 画像) ──
           回答タブは UI から削除 (DB 上の qa_answers は未削除で残置)。
           動画タブは現状 DB に video_url 等が無いため空状態のみ表示。 */}
-      <div
-        className="flex sticky top-[57px] z-10"
-        style={{
-          background: '#080812',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
-        {([
-          { id: 'posts',  label: '投稿' },
-          { id: 'images', label: '写真' },
-          { id: 'videos', label: '動画' },
-        ] as const).map(t => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            className="flex-1 flex items-center justify-center gap-1 py-3 text-xs font-bold relative transition-colors"
-            style={{ color: activeTab === t.id ? '#F0EEFF' : 'rgba(240,238,255,0.4)' }}
-          >
-            {t.label}
-            {activeTab === t.id && (
-              <span
-                className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full"
-                style={{
-                  background: 'linear-gradient(90deg, #9D5CFF, #7B3FE4)',
-                  boxShadow: '0 0 8px rgba(157,92,255,0.5)',
-                }}
-              />
-            )}
-          </button>
-        ))}
-      </div>
+      {/* タブ (投稿/写真/動画) は X 風の「スクロールで件数表示」UI へ
+          移行したため削除済。activeTab state は型に残しているが UI から
+          は posts のみが選択された状態に固定される (videos / images の
+          コンテンツも併せて削除)。 */}
 
       {/* ── コンテンツ ── */}
       <div className="px-4 pt-4 pb-28 space-y-3">
 
-        {/* 投稿タブ (全件表示、limit/slice 撤廃) */}
-        {activeTab === 'posts' && (
+        {/* 投稿一覧 (タブ撤廃により常時表示。X 風の上部固定バーで件数表示) */}
+        {(
           <>
             {recentPosts.length === 0 ? (
               <div
@@ -546,60 +553,8 @@ if (loading) return (
           </>
         )}
 
-        {/* 動画タブ (現状 DB に video_url 等が無いため空状態のみ。UI 先行で
-            将来 video カラム追加時に実装拡張する) */}
-        {activeTab === 'videos' && (
-          <div
-            className="rounded-2xl p-8 text-center"
-            style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(157,92,255,0.18)',
-            }}
-          >
-            <p className="text-3xl mb-2">🎬</p>
-            <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ動画の投稿がありません</p>
-            <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>動画を投稿するとここに表示されます</p>
-          </div>
-        )}
-
-        {/* 画像タブ (guild_posts.image_url IS NOT NULL のレコードを表示) */}
-        {activeTab === 'images' && (
-          <>
-            {imagePosts.length === 0 ? (
-              <div
-                className="rounded-2xl p-8 text-center"
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(157,92,255,0.18)',
-                }}
-              >
-                <p className="text-3xl mb-2">🖼️</p>
-                <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ写真の投稿がありません</p>
-                <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>写真を投稿するとここに表示されます</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {imagePosts.map(ip => (
-                  <div
-                    key={ip.id}
-                    className="aspect-square overflow-hidden rounded-xl"
-                    style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(157,92,255,0.18)',
-                    }}
-                  >
-                    <img
-                      src={ip.image_url}
-                      alt={ip.content ?? ''}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+        {/* 動画 / 写真 タブのコンテンツは削除済 (タブ UI 撤廃に伴い)。
+            imagePosts state は他用途のため保持。 */}
       </div>
 
       {/* ── アクションシート（通報・ブロック）── */}
