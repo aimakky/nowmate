@@ -19,25 +19,17 @@ import ReportModal from '@/components/features/ReportModal'
 import { getGenreTitles, getIndustry } from '@/lib/guild'
 import { startDM } from '@/lib/dm'
 
-// 統合投稿アイテム。village_posts (村への投稿) と tweets (つぶやき) を
-// 同じカードで表示するための共通形。kind で由来を区別する。
-type UnifiedPost =
-  | {
-      kind: 'village'
-      id: string
-      content: string
-      created_at: string
-      village_id: string | null
-      reaction_count: number
-      village: { id: string; name: string; icon: string } | null
-    }
-  | {
-      kind: 'tweet'
-      id: string
-      content: string
-      created_at: string
-      reaction_count: number
-    }
+// 投稿一覧アイテム。「投稿」タブには tweets (つぶやき) のみを表示する仕様
+// (2026-05-07 マッキーさん指示)。村投稿 (village_posts) は混在を避けるため
+// 投稿一覧から除外し、villages/[id] 側で見せる形に統一。
+// kind フィールドは将来別種類の投稿を取り込む余地を残すため維持。
+type UnifiedPost = {
+  kind: 'tweet'
+  id: string
+  content: string
+  created_at: string
+  reaction_count: number
+}
 
 // QAAnswerWithQ 型は回答タブ削除に伴い未使用。qa_answers の DB データ
 // 自体は残置 (将来の復活余地)。UI から外すだけ。
@@ -78,9 +70,6 @@ export default function UserProfilePage() {
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    // [DEBUG TEMP 2026-05-07] 実描画ファイル確認用。次回 commit で除去。
-    console.log('[DEBUG] Rendering profile/[userId]:', 'app/(app)/profile/[userId]/page.tsx')
-
     function onScroll() {
       setIsScrolling(true)
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
@@ -128,10 +117,11 @@ export default function UserProfilePage() {
       // 投稿数が多くなったら別途 paging を検討するが、まずは全件出すこと
       // 優先 (件数とカード表示の整合性が最重要)。
       // 回答 (qa_answers) は UI から外したため fetch も削除。
+      // 村投稿 (village_posts) は投稿一覧に表示しない仕様 (2026-05-07
+      // マッキーさん指示)。マイページと同じく、つぶやき (tweets) のみを
+      // 「投稿」タブに表示する。村投稿は villages/[id] 側で見える。
       const [
         { data: p },
-        villagePostsRes,
-        { count: villagePostsCount },
         tweetsRes,
         { count: tweetsCount },
         imagePostsRes,
@@ -142,11 +132,6 @@ export default function UserProfilePage() {
         { data: titlesData },
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
-        supabase.from('village_posts')
-          .select('id, content, category, created_at, village_id, reaction_count')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false }),
-        supabase.from('village_posts').select('*', { count: 'exact', head: true }).eq('user_id', userId),
         supabase.from('tweets')
           .select('id, content, created_at')
           .eq('user_id', userId)
@@ -165,39 +150,10 @@ export default function UserProfilePage() {
         supabase.from('qa_titles').select('*').eq('user_id', userId).order('awarded_at', { ascending: false }),
       ])
 
-      if ((villagePostsRes as any)?.error) {
-        console.error('[profile/userId] village_posts fetch error:', (villagePostsRes as any).error)
-      }
       if ((tweetsRes as any)?.error) {
         console.error('[profile/userId] tweets fetch error:', (tweetsRes as any).error)
       }
 
-      // 村情報は別 query でまとめて取得して merge
-      const villagePostsRaw = ((villagePostsRes as any)?.data ?? []) as any[]
-      const villageIds = Array.from(new Set(
-        villagePostsRaw.map(p => p.village_id).filter((v: any): v is string => typeof v === 'string' && v.length > 0)
-      ))
-      let villageMap = new Map<string, { id: string; name: string; icon: string }>()
-      if (villageIds.length > 0) {
-        const { data: villageRows, error: vErr } = await supabase
-          .from('villages')
-          .select('id, name, icon')
-          .in('id', villageIds)
-        if (vErr) console.error('[profile/userId] villages fetch error:', vErr, { villageIds })
-        for (const v of (villageRows ?? []) as any[]) {
-          villageMap.set(v.id, v)
-        }
-      }
-
-      const villageUnified: UnifiedPost[] = villagePostsRaw.map((p: any) => ({
-        kind: 'village' as const,
-        id: p.id,
-        content: p.content,
-        created_at: p.created_at,
-        village_id: p.village_id ?? null,
-        reaction_count: p.reaction_count ?? 0,
-        village: p.village_id ? villageMap.get(p.village_id) ?? null : null,
-      }))
       const tweetUnified: UnifiedPost[] = ((tweetsRes as any)?.data ?? []).map((t: any) => ({
         kind: 'tweet' as const,
         id: t.id,
@@ -206,8 +162,8 @@ export default function UserProfilePage() {
         reaction_count: 0,
       }))
 
-      // 時系列降順でマージし、全件表示 (旧: slice(0, 5) → 全件)
-      const merged = [...villageUnified, ...tweetUnified]
+      // 時系列降順 (tweets のみ表示)
+      const merged = tweetUnified
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
       if ((imagePostsRes as any)?.error) {
@@ -221,8 +177,8 @@ export default function UserProfilePage() {
       setGenreTitles(gt)
       setRecentPosts(merged)
       setImagePosts(((imagePostsRes as any)?.data ?? []) as any[])
-      // 投稿数 = 村投稿 + つぶやき の合計（マイページの「投稿」表示と整合）
-      setPostCount((villagePostsCount ?? 0) + (tweetsCount ?? 0))
+      // 投稿数 = tweets のみ (マイページと整合)
+      setPostCount(tweetsCount ?? 0)
       setFollowerCount(followers ?? 0)
       setFollowingCount(following ?? 0)
       if (trust?.tier) setTrustTier(trust.tier)
@@ -554,23 +510,7 @@ if (loading) return (
                     className="flex items-center justify-between px-4 py-2.5"
                     style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}
                   >
-                    {post.kind === 'village' && post.village ? (
-                      <Link
-                        href={`/villages/${post.village_id}`}
-                        className="flex items-center gap-1.5 active:opacity-70 transition-opacity"
-                      >
-                        <span className="text-sm">{post.village.icon}</span>
-                        <span
-                          className="text-[11px] font-bold truncate max-w-[160px]"
-                          style={{ color: 'rgba(240,238,255,0.55)' }}
-                        >
-                          {post.village.name}
-                        </span>
-                        <ChevronRight size={11} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
-                      </Link>
-                    ) : post.kind === 'tweet' ? (
-                      <span className="text-[10px] font-bold" style={{ color: 'rgba(240,238,255,0.4)' }}>つぶやき</span>
-                    ) : <span />}
+                    <span className="text-[10px] font-bold" style={{ color: 'rgba(240,238,255,0.4)' }}>つぶやき</span>
                     <div className="flex items-center gap-3">
                       <span className="text-[10px]" style={{ color: 'rgba(240,238,255,0.4)' }}>{timeAgo(post.created_at)}</span>
                       {post.reaction_count > 0 && (
