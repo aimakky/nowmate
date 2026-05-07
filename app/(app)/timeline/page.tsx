@@ -1436,6 +1436,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
                 onUpdate={fetchTweets}
                 showBorder={false}
                 canInteract={true}
+                avatarVariant="green"
               />
             </div>
           ) : (

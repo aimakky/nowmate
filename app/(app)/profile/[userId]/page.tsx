@@ -201,17 +201,46 @@ export default function UserProfilePage() {
   const [genreTitles, setGenreTitles] = useState<{ genre: string; awarded_at: string }[]>([])
   const [dmLoading, setDmLoading] = useState(false)
   const [dmToast, setDmToast] = useState<string | null>(null)
-  // 「スクロール中だけ N 件の投稿を表示」: スクロールが発生した瞬間 true、
-  // 600ms 何も発生しなければ false に戻す debounce 方式。スクロール停止後
-  // にバーが残らない仕様。閾値 (scrollY > 240) 判定は廃止 (停止判定が本旨)。
-  const [isScrolling, setIsScrolling] = useState(false)
+  // 「下方向にスクロール中だけ N 件の投稿バーを表示」(2026-05-07 仕様変更):
+  //   - 下スクロール → showPostCount = true
+  //   - 上スクロール → 即 false
+  //   - 停止後 500ms → false
+  //   - 初期表示 → false
+  // ±2px の閾値で iOS Safari のバウンド / 微動を無視する。
+  const [showPostCount, setShowPostCount] = useState(false)
+  const lastScrollYRef = useRef(0)
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    // [DEBUG TEMP 2026-05-07] 実描画ファイル特定用ログ。次 commit で除去予定。
+    console.log('[DEBUG 2026-05-07] ACTUAL OtherProfile rendering:', 'app/(app)/profile/[userId]/page.tsx')
+    let lastDirection: 'down' | 'up' | null = null
     function onScroll() {
-      setIsScrolling(true)
+      const currentY = window.scrollY
+      const delta = currentY - lastScrollYRef.current
+      let direction: 'down' | 'up' | null = null
+      if (delta > 2) {
+        setShowPostCount(true)
+        direction = 'down'
+      } else if (delta < -2) {
+        setShowPostCount(false)
+        direction = 'up'
+      }
+      lastScrollYRef.current = currentY
+      if (direction !== null && direction !== lastDirection) {
+        // [DEBUG TEMP 2026-05-07] 方向遷移時のみログ。次 commit で除去予定。
+        console.log('[DEBUG 2026-05-07] ACTUAL OtherProfile scroll direction:', direction)
+        lastDirection = direction
+      }
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
-      scrollTimeoutRef.current = setTimeout(() => setIsScrolling(false), 600)
+      scrollTimeoutRef.current = setTimeout(() => {
+        setShowPostCount(false)
+        if (lastDirection !== null) {
+          // [DEBUG TEMP 2026-05-07] 停止検知ログ。次 commit で除去予定。
+          console.log('[DEBUG 2026-05-07] ACTUAL OtherProfile scroll stopped → hide')
+          lastDirection = null
+        }
+      }, 500)
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => {
@@ -219,6 +248,11 @@ export default function UserProfilePage() {
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
     }
   }, [])
+
+  // [DEBUG TEMP 2026-05-07] postCount 変化ログ。次 commit で除去予定。
+  useEffect(() => {
+    console.log('[DEBUG 2026-05-07] ACTUAL OtherProfile post count rendering:', postCount)
+  }, [postCount])
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -461,8 +495,8 @@ if (loading) return (
   return (
     <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
 
-      {/* 「スクロール中だけ N 件の投稿」表示。停止後 600ms で自動消滅 */}
-      {isScrolling && postCount > 0 && (
+      {/* 「下方向スクロール中だけ N 件の投稿」表示。停止 500ms / 上スクロールで非表示 */}
+      {showPostCount && postCount > 0 && (
         <div
           className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center"
           style={{
