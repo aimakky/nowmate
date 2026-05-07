@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { User } from 'lucide-react'
+import { User, UserPlus } from 'lucide-react'
 import BottomNav from '@/components/layout/BottomNav'
 import FriendAvatarRail from '@/components/layout/FriendAvatarRail'
 import FeedbackModal from '@/components/features/FeedbackModal'
@@ -134,31 +134,57 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           - 新: 紫ベースのリング (#9D5CFF 0.7 opacity) + ネオン感のある
             ダブル glow + アバター無し時は紫の塗りで「押せるボタン」感を
             明確に。コントラストを強化しつつ YVOICE 紫の世界観を維持。 */}
+      {/* 共通ヘッダー: 左=マイページアバター / 右=友達追加。
+          全ページで同じ高さ・同じ縦位置に揃え、ヘッダー高のばらつきや
+          余計な広告枠 / 余白を排除する。
+          mypage / villages/ / chat/ 詳細では各ページが独自ヘッダーを
+          持つため hideAvatar=true で両方非表示にする (衝突回避)。 */}
       {!hideAvatar && (
-        <Link
-          href="/mypage"
-          className="fixed top-3 left-4 z-50 w-10 h-10 rounded-full overflow-hidden active:scale-90 transition-all"
-          style={{
-            top: 'max(12px, env(safe-area-inset-top, 12px))',
-            border: '2px solid rgba(196,181,253,0.85)',
-            boxShadow: '0 0 14px rgba(157,92,255,0.6), 0 0 28px rgba(157,92,255,0.22), 0 2px 6px rgba(0,0,0,0.5)',
-          }}
-          aria-label="マイページ"
-          title="マイページ"
-        >
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="マイページ" className="w-full h-full object-cover" />
-          ) : (
-            <div
-              className="w-full h-full flex items-center justify-center"
-              style={{
-                background: 'linear-gradient(135deg, rgba(157,92,255,0.45), rgba(124,58,237,0.55))',
-              }}
-            >
-              <User size={20} style={{ color: '#F0EEFF' }} strokeWidth={2.4} />
-            </div>
-          )}
-        </Link>
+        <>
+          <Link
+            href="/mypage"
+            className="fixed top-3 left-4 z-50 w-10 h-10 rounded-full overflow-hidden active:scale-90 transition-all"
+            style={{
+              top: 'max(12px, env(safe-area-inset-top, 12px))',
+              border: '2px solid rgba(196,181,253,0.85)',
+              boxShadow: '0 0 14px rgba(157,92,255,0.6), 0 0 28px rgba(157,92,255,0.22), 0 2px 6px rgba(0,0,0,0.5)',
+            }}
+            aria-label="マイページ"
+            title="マイページ"
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="マイページ" className="w-full h-full object-cover" />
+            ) : (
+              <div
+                className="w-full h-full flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(157,92,255,0.45), rgba(124,58,237,0.55))',
+                }}
+              >
+                <User size={20} style={{ color: '#F0EEFF' }} strokeWidth={2.4} />
+              </div>
+            )}
+          </Link>
+
+          {/* 友達追加ボタン (右上)。左のマイページアバターと完全対称配置。
+              サイズ・border・shadow・top 位置を揃えて、全ページで
+              ヘッダー高さ・アイコン縦位置がブレないようにする。
+              遷移先: /users (既存のユーザー検索 / フレンド申請ページ) */}
+          <Link
+            href="/users"
+            className="fixed top-3 right-4 z-50 w-10 h-10 rounded-full overflow-hidden flex items-center justify-center active:scale-90 transition-all"
+            style={{
+              top: 'max(12px, env(safe-area-inset-top, 12px))',
+              border: '2px solid rgba(196,181,253,0.85)',
+              boxShadow: '0 0 14px rgba(157,92,255,0.6), 0 0 28px rgba(157,92,255,0.22), 0 2px 6px rgba(0,0,0,0.5)',
+              background: 'linear-gradient(135deg, rgba(157,92,255,0.45), rgba(124,58,237,0.55))',
+            }}
+            aria-label="フレンドを追加"
+            title="フレンドを追加"
+          >
+            <UserPlus size={20} style={{ color: '#F0EEFF' }} strokeWidth={2.4} />
+          </Link>
+        </>
       )}
 
       {/*

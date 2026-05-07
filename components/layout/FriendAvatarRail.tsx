@@ -113,7 +113,9 @@ export default function FriendAvatarRail() {
           // 視覚分離用の余白 24px。マイページとフレンド列が「別機能だと一目で
           // 分かる」よう、近すぎる印象を解消する。
           paddingLeft: 80,
-          paddingRight: 12,
+          // 右 padding 80px = フレンド追加固定アイコン (right-4 + w-10 = 56px)
+          // + 視覚分離用の余白 24px。左の paddingLeft と完全対称。
+          paddingRight: 80,
         }}
       >
         {[...Array(6)].map((_, i) => (
