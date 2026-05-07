@@ -285,46 +285,18 @@ export default function MyPage() {
   const [followersList,  setFollowersList]  = useState<FollowUser[] | null>(null)
   const [followListLoading, setFollowListLoading] = useState(false)
 
-  // DEBUG 用 scrollY 表示 state (確認後の commit で除去)
-  const [debugScrollY, setDebugScrollY] = useState(0)
-
-  // X 風の「スクロールで件数表示」: 多重防御で iOS Safari で確実に発火させる。
-  // - window scroll listener (標準)
-  // - document scroll listener (iOS で発火する場合あり)
-  // - touchmove listener (iOS のドラッグ中)
-  // - setInterval 100ms ポーリング (最終 fallback、scroll event が発火しない
-  //   ケースでも確実に状態を更新)
-  // - 複数 source から scroll position 取得 (window.scrollY / pageYOffset /
-  //   document.documentElement.scrollTop / document.body.scrollTop)
+  // X 風の「スクロールで件数表示」: scrollY が閾値を超えたら上部に
+  // 「N 件の投稿」を表示。/profile/[userId] と同じシンプル実装。
+  // 上部固定バーは createPortal で document.body 直下に描画する
+  // (mypage wrapper の overflow-x-hidden / AppLayout sticky の
+  // backdrop-filter による iOS Safari の containing block バグ回避)。
   useEffect(() => {
-    function getScrollY(): number {
-      if (typeof window === 'undefined') return 0
-      return (
-        window.scrollY ||
-        window.pageYOffset ||
-        document.documentElement?.scrollTop ||
-        document.body?.scrollTop ||
-        0
-      )
+    function onScroll() {
+      setShowStickyCount(window.scrollY > 240)
     }
-    function check() {
-      const y = getScrollY()
-      setDebugScrollY(y)
-      setShowStickyCount(y > 240)
-    }
-    check()
-    window.addEventListener('scroll', check, { passive: true })
-    document.addEventListener('scroll', check, { passive: true })
-    window.addEventListener('touchmove', check, { passive: true })
-    // Fallback polling. event listener が発火しない iOS Safari の特定状況でも
-    // 100ms ごとに scroll position をチェック。負荷は無視できるレベル。
-    const interval = window.setInterval(check, 100)
-    return () => {
-      window.removeEventListener('scroll', check)
-      document.removeEventListener('scroll', check)
-      window.removeEventListener('touchmove', check)
-      window.clearInterval(interval)
-    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   useEffect(() => {
@@ -636,65 +608,30 @@ export default function MyPage() {
   return (
     <div className="max-w-md mx-auto min-h-screen relative overflow-x-hidden" style={{ background: '#0d0b1f' }}>
 
-      {/* ────────────────────────────────────────────────
-          ★ DEBUG MARKER v2 — 画面中央巨大表示版 ★
-          iPhone のノッチ / ステータスバーで隠れない位置
-          (画面中央右、常時表示) に配置。
-          - 黄色背景 + 黒太字でぜったいに見落とさない
-          - scrollY=N と show=true/false を表示
-          - これが見えれば mypage 新版が iPhone に届いている
-          ────────────────────────────────────────────────  */}
-      <div
-        className="fixed z-[100] flex flex-col items-center justify-center font-extrabold"
-        style={{
-          top: '50%',
-          right: '8px',
-          transform: 'translateY(-50%)',
-          background: showStickyCount ? '#22c55e' : '#FFD60A',
-          color: '#000000',
-          fontSize: '10px',
-          fontFamily: 'monospace',
-          padding: '8px 10px',
-          borderRadius: '8px',
-          border: '2px solid #000',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
-          lineHeight: '1.4',
-          letterSpacing: '0.05em',
-          minWidth: '110px',
-          textAlign: 'center',
-        }}
-      >
-        <div>MYPAGE</div>
-        <div>v7</div>
-        <div style={{ marginTop: '4px', fontSize: '9px' }}>y={debugScrollY}</div>
-        <div style={{ fontSize: '9px' }}>show={String(showStickyCount)}</div>
-        <div style={{ fontSize: '9px' }}>n={postCount}</div>
-      </div>
-
-      {/* X 風スクロール時固定バー (v7 Portal版):
-          v6 までで判明したこと:
-            - debug box (v6) は表示される = 新版到達
-            - state は正常 (show=true / y=2332 / n=5)
-            - しかし fixed top-0 の overlay が iPhone Safari 上で不可視
-          原因仮説: AppLayout の sticky wrapper にある backdrop-filter:blur(12px)
-          が iOS Safari で fixed 子孫の containing block を viewport から
-          祖先要素に変えてしまう既知バグ (Safari 16+)。
-          解決策: createPortal で document.body 直下に描画 → 祖先連鎖を完全に
-          バイパス。これで描画されないなら別の根本原因 (描画パイプライン or
-          paint 抑制) が確定する。 */}
+      {/* X 風スクロール時固定バー: 「N 件の投稿」を表示。
+          /profile/[userId] と同じ表示にする。
+          createPortal で document.body 直下に描画する理由:
+            - mypage wrapper の overflow-x-hidden が iOS Safari で fixed 子孫を
+              壊すバグの回避
+            - AppLayout sticky wrapper の backdrop-filter:blur が祖先連鎖に
+              存在することで起きる containing block 破壊の回避
+          /profile/[userId] は wrapper に overflow-x-hidden が無いため Portal
+          なしで動作するが、mypage は他の都合で overflow 制御が必要なため
+          Portal で確実に viewport 基準に固定する。 */}
       {showStickyCount && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed top-0 left-0 right-0 z-[2147483600] flex items-center justify-center"
+          className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center"
           style={{
-            background: '#FF0033',
-            borderBottom: '4px solid #FFFFFF',
-            paddingTop: 'calc(max(12px, env(safe-area-inset-top, 12px)) + 8px)',
-            paddingBottom: '16px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+            background: 'rgba(8,8,18,0.92)',
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
+            borderBottom: '1px solid rgba(157,92,255,0.18)',
+            paddingTop: 'max(12px, env(safe-area-inset-top, 12px))',
+            paddingBottom: '12px',
           }}
         >
-          <p style={{ color: '#FFFFFF', fontSize: '20px', fontWeight: 900, letterSpacing: '0.05em' }}>
-            v7 ▸ {postCount}件の投稿
+          <p className="text-sm font-extrabold" style={{ color: '#F0EEFF' }}>
+            {postCount}件の投稿
           </p>
         </div>,
         document.body
