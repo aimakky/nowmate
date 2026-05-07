@@ -375,9 +375,6 @@ export default function MyPage() {
   // (mypage wrapper の overflow-x-hidden / AppLayout sticky の
   // backdrop-filter による iOS Safari の containing block バグ回避)。
   useEffect(() => {
-    // [DEBUG TEMP 2026-05-08] mypage 上部紫ボタン反映確認用。次 commit で除去予定。
-    // CLAUDE.md「UI 修正の鉄則」に従い、実描画ファイルを実機ログで証明する。
-    console.log('[DEBUG 2026-05-08] ACTUAL MyPage HEADER rendering:', 'app/(app)/mypage/page.tsx', 'PurpleIconButton applied = TRUE')
     function onScroll() {
       const currentY = window.scrollY
       const delta = currentY - lastScrollYRef.current
