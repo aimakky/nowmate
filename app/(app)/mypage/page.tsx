@@ -355,10 +355,14 @@ export default function MyPage() {
   const [idCopied,       setIdCopied]       = useState(false)
   const [showIndustry,   setShowIndustry]   = useState(true)
   const [savingIndustry, setSavingIndustry] = useState(false)
-  // 「スクロール中だけ N 件の投稿を表示」: スクロールが発生した瞬間 true、
-  // 600ms 何も発生しなければ false に戻す debounce 方式。スクロール停止後
-  // にバーが残らない仕様。閾値 (scrollY > 240) 判定は廃止 (停止判定が本旨)。
-  const [isScrolling, setIsScrolling] = useState(false)
+  // 「下方向にスクロール中だけ N 件の投稿バーを表示」(2026-05-07 仕様変更):
+  //   - 下スクロール → showPostCount = true
+  //   - 上スクロール → 即 false
+  //   - 停止後 500ms → false
+  //   - 初期表示 → false
+  // ±2px の閾値で iOS Safari のバウンド / 微動を無視する。
+  const [showPostCount, setShowPostCount] = useState(false)
+  const lastScrollYRef = useRef(0)
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // フォロー中 / フォロワー一覧（lazy load）。null = 未取得、[] = 0件、配列 = 取得済
@@ -370,10 +374,35 @@ export default function MyPage() {
   // (mypage wrapper の overflow-x-hidden / AppLayout sticky の
   // backdrop-filter による iOS Safari の containing block バグ回避)。
   useEffect(() => {
+    // [DEBUG TEMP 2026-05-07] 実描画ファイル特定用ログ。次 commit で除去予定。
+    console.log('[DEBUG 2026-05-07] ACTUAL MyPage rendering:', 'app/(app)/mypage/page.tsx')
+    let lastDirection: 'down' | 'up' | null = null
     function onScroll() {
-      setIsScrolling(true)
+      const currentY = window.scrollY
+      const delta = currentY - lastScrollYRef.current
+      let direction: 'down' | 'up' | null = null
+      if (delta > 2) {
+        setShowPostCount(true)
+        direction = 'down'
+      } else if (delta < -2) {
+        setShowPostCount(false)
+        direction = 'up'
+      }
+      lastScrollYRef.current = currentY
+      if (direction !== null && direction !== lastDirection) {
+        // [DEBUG TEMP 2026-05-07] 方向遷移時のみログ。次 commit で除去予定。
+        console.log('[DEBUG 2026-05-07] ACTUAL MyPage scroll direction:', direction)
+        lastDirection = direction
+      }
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
-      scrollTimeoutRef.current = setTimeout(() => setIsScrolling(false), 600)
+      scrollTimeoutRef.current = setTimeout(() => {
+        setShowPostCount(false)
+        if (lastDirection !== null) {
+          // [DEBUG TEMP 2026-05-07] 停止検知ログ。次 commit で除去予定。
+          console.log('[DEBUG 2026-05-07] ACTUAL MyPage scroll stopped → hide')
+          lastDirection = null
+        }
+      }, 500)
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => {
@@ -381,6 +410,11 @@ export default function MyPage() {
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
     }
   }, [])
+
+  // [DEBUG TEMP 2026-05-07] postCount 変化ログ。次 commit で除去予定。
+  useEffect(() => {
+    console.log('[DEBUG 2026-05-07] ACTUAL MyPage post count rendering:', postCount)
+  }, [postCount])
 
   useEffect(() => {
     async function load() {
@@ -701,7 +735,7 @@ export default function MyPage() {
           /profile/[userId] は wrapper に overflow-x-hidden が無いため Portal
           なしで動作するが、mypage は他の都合で overflow 制御が必要なため
           Portal で確実に viewport 基準に固定する。 */}
-      {isScrolling && postCount > 0 && typeof document !== 'undefined' && createPortal(
+      {showPostCount && postCount > 0 && typeof document !== 'undefined' && createPortal(
         <div
           className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center"
           style={{
