@@ -4,7 +4,7 @@
 // 注入する方式に統一。'use client' ページでは route segment config が
 // build error を起こすため使わない。
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag, timeAgo } from '@/lib/utils'
@@ -71,20 +71,26 @@ export default function UserProfilePage() {
   const [genreTitles, setGenreTitles] = useState<{ genre: string; awarded_at: string }[]>([])
   const [dmLoading, setDmLoading] = useState(false)
   const [dmToast, setDmToast] = useState<string | null>(null)
-  // X 風の「スクロールで件数表示」用。プロフィール情報がスクロールで
-  // 上に隠れたタイミングで上部固定バーに「N 件の投稿」を表示する。
-  const [showStickyCount, setShowStickyCount] = useState(false)
+  // 「スクロール中だけ N 件の投稿を表示」: スクロールが発生した瞬間 true、
+  // 600ms 何も発生しなければ false に戻す debounce 方式。スクロール停止後
+  // にバーが残らない仕様。閾値 (scrollY > 240) 判定は廃止 (停止判定が本旨)。
+  const [isScrolling, setIsScrolling] = useState(false)
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // X 風の「スクロールで件数表示」: scrollY が閾値を超えたら上部に
-  // 「N 件の投稿」を表示。プロフィールカードがスクロールで隠れた頃合
-  // (240px 付近) でフェードイン。passive listener で性能影響を最小化。
   useEffect(() => {
+    // [DEBUG TEMP 2026-05-07] 実描画ファイル確認用。次回 commit で除去。
+    console.log('[DEBUG] Rendering profile/[userId]:', 'app/(app)/profile/[userId]/page.tsx')
+
     function onScroll() {
-      setShowStickyCount(window.scrollY > 240)
+      setIsScrolling(true)
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
+      scrollTimeoutRef.current = setTimeout(() => setIsScrolling(false), 600)
     }
-    onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -302,8 +308,8 @@ if (loading) return (
   return (
     <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
 
-      {/* X 風スクロール時固定バー: 「N 件の投稿」を表示 */}
-      {showStickyCount && (
+      {/* 「スクロール中だけ N 件の投稿」表示。停止後 600ms で自動消滅 */}
+      {isScrolling && postCount > 0 && (
         <div
           className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center"
           style={{

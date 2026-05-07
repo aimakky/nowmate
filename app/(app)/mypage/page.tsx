@@ -4,7 +4,7 @@
 // 注入する方式に統一。'use client' ページでは route segment config が
 // build error ([object Object] revalidate error) を起こすため使わない。
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -276,27 +276,34 @@ export default function MyPage() {
   const [idCopied,       setIdCopied]       = useState(false)
   const [showIndustry,   setShowIndustry]   = useState(true)
   const [savingIndustry, setSavingIndustry] = useState(false)
-  // X 風の「スクロールで件数表示」用。プロフィール情報がスクロールで
-  // 上に隠れたタイミングで上部固定バーに「N 件の投稿」を表示する。
-  const [showStickyCount, setShowStickyCount] = useState(false)
+  // 「スクロール中だけ N 件の投稿を表示」: スクロールが発生した瞬間 true、
+  // 600ms 何も発生しなければ false に戻す debounce 方式。スクロール停止後
+  // にバーが残らない仕様。閾値 (scrollY > 240) 判定は廃止 (停止判定が本旨)。
+  const [isScrolling, setIsScrolling] = useState(false)
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // フォロー中 / フォロワー一覧（lazy load）。null = 未取得、[] = 0件、配列 = 取得済
   const [followingList,  setFollowingList]  = useState<FollowUser[] | null>(null)
   const [followersList,  setFollowersList]  = useState<FollowUser[] | null>(null)
   const [followListLoading, setFollowListLoading] = useState(false)
 
-  // X 風の「スクロールで件数表示」: scrollY が閾値を超えたら上部に
-  // 「N 件の投稿」を表示。/profile/[userId] と同じシンプル実装。
   // 上部固定バーは createPortal で document.body 直下に描画する
   // (mypage wrapper の overflow-x-hidden / AppLayout sticky の
   // backdrop-filter による iOS Safari の containing block バグ回避)。
   useEffect(() => {
+    // [DEBUG TEMP 2026-05-07] 実描画ファイル確認用。次回 commit で除去。
+    console.log('[DEBUG] Rendering mypage:', 'app/(app)/mypage/page.tsx')
+
     function onScroll() {
-      setShowStickyCount(window.scrollY > 240)
+      setIsScrolling(true)
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
+      scrollTimeoutRef.current = setTimeout(() => setIsScrolling(false), 600)
     }
-    onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -618,7 +625,7 @@ export default function MyPage() {
           /profile/[userId] は wrapper に overflow-x-hidden が無いため Portal
           なしで動作するが、mypage は他の都合で overflow 制御が必要なため
           Portal で確実に viewport 基準に固定する。 */}
-      {showStickyCount && typeof document !== 'undefined' && createPortal(
+      {isScrolling && postCount > 0 && typeof document !== 'undefined' && createPortal(
         <div
           className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center"
           style={{
