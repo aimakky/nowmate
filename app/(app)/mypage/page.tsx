@@ -284,16 +284,33 @@ export default function MyPage() {
   const [followersList,  setFollowersList]  = useState<FollowUser[] | null>(null)
   const [followListLoading, setFollowListLoading] = useState(false)
 
-  // X 風の「スクロールで件数表示」: scrollY が閾値を超えたら上部に
-  // 「N 件の投稿」を表示。アバター行が画面上端に来た時点 (80px) で出る
-  // ように閾値を低めに設定。passive listener で性能影響を最小化。
+  // X 風の「スクロールで件数表示」: 複数ソースから scroll position を取得し
+  // iOS Safari でも確実に発火するよう冗長化。
+  // - window.scrollY (標準)
+  // - window.pageYOffset (古い Safari fallback)
+  // - document.documentElement.scrollTop (html element scroll)
+  // - document.body.scrollTop (一部 mobile Safari)
+  // window と document 両方に listener を attach (passive)。
   useEffect(() => {
     function onScroll() {
-      setShowStickyCount(window.scrollY > 80)
+      const y =
+        (typeof window !== 'undefined' ? window.scrollY : 0) ||
+        (typeof window !== 'undefined' ? window.pageYOffset : 0) ||
+        (typeof document !== 'undefined' ? document.documentElement?.scrollTop : 0) ||
+        (typeof document !== 'undefined' ? document.body?.scrollTop : 0) ||
+        0
+      setShowStickyCount(y > 80)
     }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    document.addEventListener('scroll', onScroll, { passive: true })
+    // touchmove も fallback として登録 (iOS で scroll が遅延発火する対策)
+    window.addEventListener('touchmove', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      document.removeEventListener('scroll', onScroll)
+      window.removeEventListener('touchmove', onScroll)
+    }
   }, [])
 
   useEffect(() => {
