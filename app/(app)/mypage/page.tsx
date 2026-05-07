@@ -13,7 +13,8 @@ import { TrustCard } from '@/components/ui/TrustBadge'
 import TrustBadge from '@/components/ui/TrustBadge'
 // PhoneVerifyModal は TrustVerificationCard 内部で管理される
 import { getUserTrust, fetchTierProgress, getTierById, type TierProgress } from '@/lib/trust'
-import { Settings, LogOut, ChevronRight, Users, Copy, Check, Pencil, X, Eye, EyeOff, User, Heart, MessageCircle, Repeat2, MoreHorizontal } from 'lucide-react'
+import { Settings, LogOut, ChevronRight, Users, Copy, Check, Pencil, X, Eye, EyeOff, User, UserPlus, Heart, MessageCircle, Repeat2, MoreHorizontal } from 'lucide-react'
+import PurpleIconButton from '@/components/ui/PurpleIconButton'
 import { timeAgo, getNationalityFlag } from '@/lib/utils'
 import { getUserDisplayName, getAvatarInitial } from '@/lib/user-display'
 import Avatar from '@/components/ui/Avatar'
@@ -374,6 +375,9 @@ export default function MyPage() {
   // (mypage wrapper の overflow-x-hidden / AppLayout sticky の
   // backdrop-filter による iOS Safari の containing block バグ回避)。
   useEffect(() => {
+    // [DEBUG TEMP 2026-05-08] mypage 上部紫ボタン反映確認用。次 commit で除去予定。
+    // CLAUDE.md「UI 修正の鉄則」に従い、実描画ファイルを実機ログで証明する。
+    console.log('[DEBUG 2026-05-08] ACTUAL MyPage HEADER rendering:', 'app/(app)/mypage/page.tsx', 'PurpleIconButton applied = TRUE')
     function onScroll() {
       const currentY = window.scrollY
       const delta = currentY - lastScrollYRef.current
@@ -737,29 +741,15 @@ export default function MyPage() {
       <div className="absolute top-0 right-0 w-80 h-80 pointer-events-none z-0"
         style={{ background: 'radial-gradient(circle at 80% 15%, rgba(234,242,255,0.18) 0%, rgba(184,199,217,0.1) 40%, transparent 70%)' }} />
 
-      {/* ── ヘッダー行 ── */}
+      {/* ── ヘッダー行 ──
+          2026-05-07 マッキーさん指示: 左右を入れ替え + layout.tsx 上部の
+          紫グロー丸ボタンと同デザインに統一 (PurpleIconButton 共通化)。
+          - 左 = 設定 (Settings → /settings)
+          - 右 = フレンドを追加 (UserPlus → /users)
+          配置を /timeline 等の layout 上部 (右=友達追加) と揃えた。 */}
       <div className="relative z-10 flex items-center justify-between px-5 pt-12 pb-0">
-        {/* 左：ユーザーを探す（人アイコンタップで /users へ） */}
-        <Link
-          href="/users"
-          className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all"
-          style={{ border: '1.5px solid rgba(234,242,255,0.35)', background: 'rgba(234,242,255,0.06)' }}
-          title="ユーザーを探す"
-        >
-          <User size={18} style={{ color: '#EAF2FF' }} />
-        </Link>
-        {/* 右：設定アイコン（六角形） */}
-        <Link
-          href="/settings"
-          className="w-10 h-10 flex items-center justify-center active:scale-90 transition-all"
-          style={{
-            border: '1.5px solid rgba(234,242,255,0.35)',
-            background: 'rgba(234,242,255,0.06)',
-            clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
-          }}
-        >
-          <Settings size={16} style={{ color: '#EAF2FF' }} />
-        </Link>
+        <PurpleIconButton href="/settings" icon={Settings} ariaLabel="設定" />
+        <PurpleIconButton href="/users" icon={UserPlus} ariaLabel="フレンドを追加" />
       </div>
 
       {/* ── プロフィール行（アバター左 + 名前右） ── */}
