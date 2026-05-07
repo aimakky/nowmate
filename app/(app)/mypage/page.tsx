@@ -211,117 +211,139 @@ function MyVillagePostInline({
   const flag = getNationalityFlag(profile?.nationality || '')
   const villageHref = post.village_id ? `/villages/${post.village_id}` : '/timeline'
 
+  // 2026-05-08 マッキーさん指示: timeline の PostCard (app/(app)/timeline/page.tsx
+  // 行 360-480) と完全同一の視覚構造に統一。
+  // - 外側 wrapper: rounded-2xl + 紫グロー border + box shadow
+  // - 内側 padding: px-4 pt-3.5 pb-3
+  // - Avatar: 40x40 緑グラデ + 緑リング (Avatar コンポーネントから差し替え)
+  // - Action 行: 緑 borderTop 区切り + Heart / MessageCircle / Share2 同等の配置
+  // 動作面 (クリック → 村詳細) は mypage 固有のため維持。
+  const tierLabel = trust?.tier ? getTierById(trust.tier).label : null
   return (
     <div
-      className="px-4 py-4 border-b"
+      className="rounded-2xl overflow-hidden"
       style={{
         background: 'rgba(255,255,255,0.04)',
-        borderColor: 'rgba(157,92,255,0.1)',
+        border: '1px solid rgba(157,92,255,0.18)',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
       }}
     >
-      <div className="flex items-start gap-3">
-        {/* Avatar */}
-        <Link href="/mypage" className="flex-shrink-0 mt-0.5">
-          <Avatar src={profile?.avatar_url} name={profile?.display_name} size="sm" />
-        </Link>
-
-        <div className="flex-1 min-w-0">
-          {/* Name + badges + time + 三点メニュー */}
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-extrabold text-sm leading-tight" style={{ color: '#F0EEFF' }}>
-                {getUserDisplayName(profile)}
-              </span>
-              {isVerified && <VerifiedBadge verified size="sm" />}
-              {trust?.tier && (
-                <span
-                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 leading-none"
-                  style={{
-                    background: 'rgba(57,255,136,0.12)',
-                    color: '#39FF88',
-                    border: '1px solid rgba(57,255,136,0.3)',
-                  }}
-                >
-                  {getTierById(trust.tier).label}
+      <div className="px-4 pt-3.5 pb-3">
+        {/* ヘッダー */}
+        <div className="flex items-start justify-between gap-2">
+          <Link
+            href="/mypage"
+            className="flex items-center gap-2.5 min-w-0 flex-1 active:opacity-70 transition-opacity"
+          >
+            {/* アバター (timeline PostCard と同一: 緑グラデ + 緑リング) */}
+            <div
+              className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold text-white"
+              style={{
+                background: 'linear-gradient(135deg,#059669,#047857)',
+                boxShadow: '0 0 0 2px rgba(57,255,136,0.3)',
+              }}
+            >
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                : (getUserDisplayName(profile)?.[0] ?? '?')}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-sm font-bold leading-tight" style={{ color: '#F0EEFF' }}>
+                  {getUserDisplayName(profile)}
                 </span>
-              )}
-              <span className="text-base leading-none">{flag}</span>
-              <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                {isVerified && <VerifiedBadge verified size="sm" />}
+                {tierLabel && (
+                  <span
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                    style={{
+                      background: 'rgba(57,255,136,0.12)',
+                      color: '#39FF88',
+                      border: '1px solid rgba(57,255,136,0.3)',
+                    }}
+                  >
+                    {tierLabel}
+                  </span>
+                )}
+                <span className="text-sm leading-none">{flag}</span>
+              </div>
+              <span className="text-[10px]" style={{ color: 'rgba(240,238,255,0.3)' }}>
                 {timeAgo(post.created_at)}
               </span>
             </div>
-            <button
-              onClick={() => router.push(villageHref)}
-              className="w-7 h-7 flex items-center justify-center rounded-full transition-colors -mr-1 flex-shrink-0 active:opacity-60"
-              style={{ color: 'rgba(240,238,255,0.35)' }}
-              aria-label="村を開く"
-            >
-              <MoreHorizontal size={16} />
-            </button>
-          </div>
-
-          {/* Content */}
-          <p
-            className="text-sm leading-relaxed mb-3 whitespace-pre-wrap"
-            style={{ color: 'rgba(240,238,255,0.85)' }}
+          </Link>
+          <button
+            onClick={() => router.push(villageHref)}
+            className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full active:bg-white/5 transition-all"
+            style={{ color: 'rgba(240,238,255,0.25)' }}
+            aria-label="村を開く"
           >
-            {post.content}
-          </p>
-
-          {/* Action bar (視覚的統一・クリックは村ページへ遷移) */}
-          <div className="flex items-center gap-1 relative">
-            <button
-              onClick={() => router.push(villageHref)}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
-              style={{ color: '#39FF88', background: 'transparent' }}
-              aria-label="リアクションを見る"
-            >
-              {post.reaction_count > 0 ? (
-                <>
-                  <Heart size={12} fill="#39FF88" strokeWidth={0} />
-                  <span>{post.reaction_count}</span>
-                </>
-              ) : (
-                <span>＋ リアクション</span>
-              )}
-            </button>
-
-            <button
-              onClick={() => router.push(villageHref)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
-              style={{ color: 'rgba(240,238,255,0.4)' }}
-              aria-label="コメントを見る"
-            >
-              <MessageCircle size={13} />
-            </button>
-
-            <button
-              onClick={() => router.push(villageHref)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
-              style={{ color: 'rgba(240,238,255,0.4)' }}
-              aria-label="村を開く"
-            >
-              <Repeat2 size={13} />
-            </button>
-          </div>
-
-          {/* 村リンク (オプション・どの村への投稿かが分かるように小さく表示) */}
-          {post.village && (
-            <Link
-              href={`/villages/${post.village_id}`}
-              className="inline-flex items-center gap-1.5 mt-2 active:opacity-70 transition-opacity"
-            >
-              <span className="text-sm">{post.village.icon}</span>
-              <span
-                className="text-[11px] font-bold truncate max-w-[160px]"
-                style={{ color: 'rgba(184,199,217,0.7)' }}
-              >
-                {post.village.name}
-              </span>
-              <ChevronRight size={11} style={{ color: 'rgba(184,199,217,0.3)' }} className="flex-shrink-0" />
-            </Link>
-          )}
+            <MoreHorizontal size={14} />
+          </button>
         </div>
+
+        {/* 本文 */}
+        <p
+          className="text-sm leading-relaxed mt-3 whitespace-pre-wrap"
+          style={{ color: 'rgba(240,238,255,0.85)' }}
+        >
+          {post.content}
+        </p>
+
+        {/* アクション (timeline PostCard と同一の borderTop 区切り) */}
+        <div
+          className="flex items-center gap-4 mt-3 pt-2.5"
+          style={{ borderTop: '1px solid rgba(57,255,136,0.1)' }}
+        >
+          <button
+            onClick={() => router.push(villageHref)}
+            className="flex items-center gap-1.5 active:scale-90 transition-all"
+            style={{ color: post.reaction_count > 0 ? '#39FF88' : 'rgba(240,238,255,0.35)' }}
+            aria-label="リアクションを見る"
+          >
+            <Heart
+              size={15}
+              fill={post.reaction_count > 0 ? '#39FF88' : 'none'}
+              strokeWidth={post.reaction_count > 0 ? 0 : 1.8}
+            />
+            {post.reaction_count > 0 && (
+              <span className="text-xs font-semibold">{post.reaction_count}</span>
+            )}
+          </button>
+          <button
+            onClick={() => router.push(villageHref)}
+            className="flex items-center gap-1.5 active:scale-90 transition-all"
+            style={{ color: 'rgba(240,238,255,0.35)' }}
+            aria-label="コメントを見る"
+          >
+            <MessageCircle size={15} strokeWidth={1.8} />
+          </button>
+          <button
+            onClick={() => router.push(villageHref)}
+            className="flex items-center gap-1.5 active:scale-90 transition-all ml-auto"
+            style={{ color: 'rgba(240,238,255,0.35)' }}
+            aria-label="村を開く"
+          >
+            <Repeat2 size={14} strokeWidth={1.8} />
+          </button>
+        </div>
+
+        {/* 村リンク (どの村への投稿かが分かるように小さく表示) */}
+        {post.village && (
+          <Link
+            href={`/villages/${post.village_id}`}
+            className="inline-flex items-center gap-1.5 mt-2 active:opacity-70 transition-opacity"
+          >
+            <span className="text-sm">{post.village.icon}</span>
+            <span
+              className="text-[11px] font-bold truncate max-w-[160px]"
+              style={{ color: 'rgba(184,199,217,0.7)' }}
+            >
+              {post.village.name}
+            </span>
+            <ChevronRight size={11} style={{ color: 'rgba(184,199,217,0.3)' }} className="flex-shrink-0" />
+          </Link>
+        )}
       </div>
     </div>
   )
@@ -998,14 +1020,27 @@ export default function MyPage() {
                   ].sort((a, b) => b.ts - a.ts)
 
                   return items.map(item => item.kind === 'tweet' ? (
-                    <TweetCard
+                    // 2026-05-08 マッキーさん指示: timeline と完全同一の表示形式に統一。
+                    // timeline (app/(app)/timeline/page.tsx 行 1431-1441) と同じ
+                    // 紫グロー丸角 wrapper + avatarVariant="green" を採用。
+                    <div
                       key={`tweet-${item.data.id}`}
-                      tweet={item.data}
-                      myId={userId}
-                      onUpdate={() => userId && loadTweets(userId)}
-                      showBorder={false}
-                      canInteract={true}
-                    />
+                      className="rounded-2xl overflow-hidden"
+                      style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(157,92,255,0.18)',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
+                      }}
+                    >
+                      <TweetCard
+                        tweet={item.data}
+                        myId={userId}
+                        onUpdate={() => userId && loadTweets(userId)}
+                        showBorder={false}
+                        canInteract={true}
+                        avatarVariant="green"
+                      />
+                    </div>
                   ) : (
                     <MyVillagePostInline
                       key={`village-${item.data.id}`}
