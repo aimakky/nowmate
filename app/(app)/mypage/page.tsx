@@ -4,7 +4,7 @@
 // 注入する方式に統一。'use client' ページでは route segment config が
 // build error ([object Object] revalidate error) を起こすため使わない。
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -284,30 +284,17 @@ export default function MyPage() {
   const [followersList,  setFollowersList]  = useState<FollowUser[] | null>(null)
   const [followListLoading, setFollowListLoading] = useState(false)
 
-  // X 風の「スクロールで件数表示」を IntersectionObserver で実装。
-  // 重要: deps を [loading] にする。マイページは初期 loading=true で
-  // spinner だけ返すフローのため、useEffect が [] だと sentinel DOM が
-  // 未レンダリングのタイミングで実行されて observer が attach できず、
-  // 永久に showStickyCount が false のままだった (= ユーザー報告のバグ)。
-  // loading が false に変わったタイミングで再実行することで sentinel が
-  // DOM に存在する状態で observer を attach できる。
-  const sentinelRef = useRef<HTMLDivElement>(null)
+  // X 風の「スクロールで件数表示」: profile/[userId] (動作確認済) と
+  // 完全同一の実装に揃える。window scroll listener は DOM 要素に依存
+  // しないため、loading=true (spinner 表示中) でも attach 成功する。
   useEffect(() => {
-    if (loading) return
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries
-        // sentinel が viewport に入っている = 上部にいる = overlay 不要
-        // 見えなくなった = スクロールで上に消えた = overlay 表示
-        setShowStickyCount(!entry.isIntersecting)
-      },
-      { threshold: 0, rootMargin: '0px 0px 0px 0px' }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [loading])
+    function onScroll() {
+      setShowStickyCount(window.scrollY > 240)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     async function load() {
@@ -642,11 +629,6 @@ export default function MyPage() {
       {/* シルバーグロー（右上） */}
       <div className="absolute top-0 right-0 w-80 h-80 pointer-events-none z-0"
         style={{ background: 'radial-gradient(circle at 80% 15%, rgba(234,242,255,0.18) 0%, rgba(184,199,217,0.1) 40%, transparent 70%)' }} />
-
-      {/* IntersectionObserver 用センチネル: 画面上部から少し下のところに
-          配置。スクロールでこれが viewport を抜けたら overlay を表示する。
-          高さ 1px で視覚的影響なし。 */}
-      <div ref={sentinelRef} className="absolute pointer-events-none" style={{ top: '120px', left: 0, height: '1px', width: '1px' }} />
 
       {/* ── ヘッダー行 ── */}
       <div className="relative z-10 flex items-center justify-between px-5 pt-12 pb-0">
