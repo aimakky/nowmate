@@ -4,7 +4,7 @@
 // 注入する方式に統一。'use client' ページでは route segment config が
 // build error ([object Object] revalidate error) を起こすため使わない。
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -284,33 +284,31 @@ export default function MyPage() {
   const [followersList,  setFollowersList]  = useState<FollowUser[] | null>(null)
   const [followListLoading, setFollowListLoading] = useState(false)
 
-  // X 風の「スクロールで件数表示」: 複数ソースから scroll position を取得し
-  // iOS Safari でも確実に発火するよう冗長化。
-  // - window.scrollY (標準)
-  // - window.pageYOffset (古い Safari fallback)
-  // - document.documentElement.scrollTop (html element scroll)
-  // - document.body.scrollTop (一部 mobile Safari)
-  // window と document 両方に listener を attach (passive)。
+  // X 風の「スクロールで件数表示」を IntersectionObserver で実装。
+  // 旧版は scroll event + window.scrollY ベースだったが、iOS Safari の
+  // inertia / rubber-band で「一瞬だけ出てすぐ消える」という不安定挙動
+  // が発生した。IntersectionObserver は scroll event 非依存で
+  // 「sentinel 要素が viewport から出たか入ったか」を確実に検出する。
+  //
+  // sentinelRef はプロフィール上部のすぐ上に配置 → スクロールで
+  // viewport を抜けた瞬間に showStickyCount=true、戻ったら false。
+  const sentinelRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    function onScroll() {
-      const y =
-        (typeof window !== 'undefined' ? window.scrollY : 0) ||
-        (typeof window !== 'undefined' ? window.pageYOffset : 0) ||
-        (typeof document !== 'undefined' ? document.documentElement?.scrollTop : 0) ||
-        (typeof document !== 'undefined' ? document.body?.scrollTop : 0) ||
-        0
-      setShowStickyCount(y > 80)
-    }
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    document.addEventListener('scroll', onScroll, { passive: true })
-    // touchmove も fallback として登録 (iOS で scroll が遅延発火する対策)
-    window.addEventListener('touchmove', onScroll, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', onScroll)
-      document.removeEventListener('scroll', onScroll)
-      window.removeEventListener('touchmove', onScroll)
-    }
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries
+        // sentinel が viewport に入っている = 上部にいる = overlay 不要
+        // 見えなくなった = スクロールで上に消えた = overlay 表示
+        setShowStickyCount(!entry.isIntersecting)
+      },
+      // rootMargin: top: -1px で「画面上端から 1px 分外に出た」時点で
+      // 検知。閾値を細かく揃えるための設定。
+      { threshold: 0, rootMargin: '0px 0px 0px 0px' }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
   }, [])
 
   useEffect(() => {
@@ -646,6 +644,11 @@ export default function MyPage() {
       {/* シルバーグロー（右上） */}
       <div className="absolute top-0 right-0 w-80 h-80 pointer-events-none z-0"
         style={{ background: 'radial-gradient(circle at 80% 15%, rgba(234,242,255,0.18) 0%, rgba(184,199,217,0.1) 40%, transparent 70%)' }} />
+
+      {/* IntersectionObserver 用センチネル: 画面上部から少し下のところに
+          配置。スクロールでこれが viewport を抜けたら overlay を表示する。
+          高さ 1px で視覚的影響なし。 */}
+      <div ref={sentinelRef} className="absolute pointer-events-none" style={{ top: '120px', left: 0, height: '1px', width: '1px' }} />
 
       {/* ── ヘッダー行 ── */}
       <div className="relative z-10 flex items-center justify-between px-5 pt-12 pb-0">
