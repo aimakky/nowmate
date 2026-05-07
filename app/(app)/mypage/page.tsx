@@ -5,6 +5,7 @@
 // build error ([object Object] revalidate error) を起こすため使わない。
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -664,19 +665,26 @@ export default function MyPage() {
         }}
       >
         <div>MYPAGE</div>
-        <div>v6</div>
+        <div>v7</div>
         <div style={{ marginTop: '4px', fontSize: '9px' }}>y={debugScrollY}</div>
         <div style={{ fontSize: '9px' }}>show={String(showStickyCount)}</div>
         <div style={{ fontSize: '9px' }}>n={postCount}</div>
       </div>
 
-      {/* X 風スクロール時固定バー (v6 巨大赤テスト版): show=true なのに見えない
-          問題の最終切り分け。RED 背景 + 24px font + 大きな padding で
-          描画されていれば 100% 視認可能。これでも見えない場合は overlay が
-          rendering されていない確定。確認後に通常スタイルに戻す。 */}
-      {showStickyCount && (
+      {/* X 風スクロール時固定バー (v7 Portal版):
+          v6 までで判明したこと:
+            - debug box (v6) は表示される = 新版到達
+            - state は正常 (show=true / y=2332 / n=5)
+            - しかし fixed top-0 の overlay が iPhone Safari 上で不可視
+          原因仮説: AppLayout の sticky wrapper にある backdrop-filter:blur(12px)
+          が iOS Safari で fixed 子孫の containing block を viewport から
+          祖先要素に変えてしまう既知バグ (Safari 16+)。
+          解決策: createPortal で document.body 直下に描画 → 祖先連鎖を完全に
+          バイパス。これで描画されないなら別の根本原因 (描画パイプライン or
+          paint 抑制) が確定する。 */}
+      {showStickyCount && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed top-0 left-0 right-0 z-[95] flex items-center justify-center"
+          className="fixed top-0 left-0 right-0 z-[2147483600] flex items-center justify-center"
           style={{
             background: '#FF0033',
             borderBottom: '4px solid #FFFFFF',
@@ -686,9 +694,10 @@ export default function MyPage() {
           }}
         >
           <p style={{ color: '#FFFFFF', fontSize: '20px', fontWeight: 900, letterSpacing: '0.05em' }}>
-            v6 ▸ {postCount}件の投稿
+            v7 ▸ {postCount}件の投稿
           </p>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* シルバーグロー（右上） */}
