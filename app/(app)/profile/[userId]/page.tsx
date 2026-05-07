@@ -212,34 +212,18 @@ export default function UserProfilePage() {
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    // [DEBUG TEMP 2026-05-07] 実描画ファイル特定用ログ。次 commit で除去予定。
-    console.log('[DEBUG 2026-05-07] ACTUAL OtherProfile rendering:', 'app/(app)/profile/[userId]/page.tsx')
-    let lastDirection: 'down' | 'up' | null = null
     function onScroll() {
       const currentY = window.scrollY
       const delta = currentY - lastScrollYRef.current
-      let direction: 'down' | 'up' | null = null
       if (delta > 2) {
         setShowPostCount(true)
-        direction = 'down'
       } else if (delta < -2) {
         setShowPostCount(false)
-        direction = 'up'
       }
       lastScrollYRef.current = currentY
-      if (direction !== null && direction !== lastDirection) {
-        // [DEBUG TEMP 2026-05-07] 方向遷移時のみログ。次 commit で除去予定。
-        console.log('[DEBUG 2026-05-07] ACTUAL OtherProfile scroll direction:', direction)
-        lastDirection = direction
-      }
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
       scrollTimeoutRef.current = setTimeout(() => {
         setShowPostCount(false)
-        if (lastDirection !== null) {
-          // [DEBUG TEMP 2026-05-07] 停止検知ログ。次 commit で除去予定。
-          console.log('[DEBUG 2026-05-07] ACTUAL OtherProfile scroll stopped → hide')
-          lastDirection = null
-        }
       }, 500)
     }
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -248,11 +232,6 @@ export default function UserProfilePage() {
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
     }
   }, [])
-
-  // [DEBUG TEMP 2026-05-07] postCount 変化ログ。次 commit で除去予定。
-  useEffect(() => {
-    console.log('[DEBUG 2026-05-07] ACTUAL OtherProfile post count rendering:', postCount)
-  }, [postCount])
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
