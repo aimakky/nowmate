@@ -284,6 +284,9 @@ export default function MyPage() {
   const [followersList,  setFollowersList]  = useState<FollowUser[] | null>(null)
   const [followListLoading, setFollowListLoading] = useState(false)
 
+  // DEBUG 用 scrollY 表示 state (確認後の commit で除去)
+  const [debugScrollY, setDebugScrollY] = useState(0)
+
   // X 風の「スクロールで件数表示」: 多重防御で iOS Safari で確実に発火させる。
   // - window scroll listener (標準)
   // - document scroll listener (iOS で発火する場合あり)
@@ -304,7 +307,9 @@ export default function MyPage() {
       )
     }
     function check() {
-      setShowStickyCount(getScrollY() > 240)
+      const y = getScrollY()
+      setDebugScrollY(y)
+      setShowStickyCount(y > 240)
     }
     check()
     window.addEventListener('scroll', check, { passive: true })
@@ -630,12 +635,36 @@ export default function MyPage() {
   return (
     <div className="max-w-md mx-auto min-h-screen relative overflow-x-hidden" style={{ background: '#0d0b1f' }}>
 
+      {/* ────────────────────────────────────────────────
+          ★ DEBUG MARKER (確認後に除去予定) ★
+          このファイル app/(app)/mypage/page.tsx が実際に
+          描画されているか、scroll 検出が動いているかを
+          視覚的に検証するための一時バー。
+          - 常時表示 (z-[90]、左右いっぱい、上に貼り付け)
+          - 「scrollY=N show=true/false postCount=N」を表示
+          - これが見えれば mypage は確実に描画されている
+          ────────────────────────────────────────────────  */}
+      <div
+        className="fixed top-0 left-0 right-0 z-[90] flex items-center justify-center"
+        style={{
+          background: showStickyCount ? '#22c55e' : '#dc2626',
+          color: '#ffffff',
+          fontSize: '11px',
+          fontFamily: 'monospace',
+          padding: '4px 8px',
+          fontWeight: 800,
+          letterSpacing: '0.05em',
+        }}
+      >
+        MYPAGE-FILE • scrollY={debugScrollY} • show={String(showStickyCount)} • postCount={postCount}
+      </div>
+
       {/* X 風スクロール時固定バー: 「N 件の投稿」を表示。
           AppLayout の sticky 友達列 (z-40, backdrop-filter) よりも上に出すため
           z-[80] に。fixed で viewport 基準に貼り付け。 */}
       {showStickyCount && (
         <div
-          className="fixed top-0 left-0 right-0 z-[80] flex items-center justify-center"
+          className="fixed top-7 left-0 right-0 z-[80] flex items-center justify-center"
           style={{
             background: 'rgba(13,11,31,0.95)',
             backdropFilter: 'blur(14px)',
