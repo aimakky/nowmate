@@ -60,9 +60,18 @@ interface Props {
    * 例: マイページで自分の投稿一覧を表示するとき、profile.age_verified を渡す。
    */
   verified?: boolean
+  /**
+   * アバターのカラー指定。default = 共有 Avatar コンポーネント (紫 brand-100)、
+   * 'green' = タイムラインで PostCard と色味を統一するための緑グラデアバター
+   * (linear-gradient(135deg,#059669,#047857) + 緑リング)。
+   * 2026-05-08: マッキーさん指示「タイムラインの紫アイコンも緑に統一して
+   * フォーマットは変えないで」を受けて追加。timeline からのみ green を渡し、
+   * mypage / profile / tweet 詳細からは default (紫) のままにする。
+   */
+  avatarVariant?: 'default' | 'green'
 }
 
-export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, canInteract = true, verified }: Props) {
+export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, canInteract = true, verified, avatarVariant = 'default' }: Props) {
   // 投稿者の verified 判定: 明示 props 優先、次に tweet.profiles の既存カラム
   const isVerified = verified ?? isVerifiedByExistingSchema(tweet.profiles)
   const router = useRouter()
@@ -180,9 +189,25 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
         )}
 
         <div className="flex items-start gap-3">
-          {/* Avatar */}
+          {/* Avatar — avatarVariant により色味を切替。
+              default: 共有 Avatar (紫 brand-100)
+              green:   PostCard と同じ緑グラデ + 緑リング (タイムライン用) */}
           <button onClick={() => router.push(profileHref)} className="flex-shrink-0 mt-0.5">
-            <Avatar src={tweet.profiles?.avatar_url} name={tweet.profiles?.display_name} size="sm" />
+            {avatarVariant === 'green' ? (
+              <div
+                className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold text-white"
+                style={{
+                  background: 'linear-gradient(135deg,#059669,#047857)',
+                  boxShadow: '0 0 0 2px rgba(57,255,136,0.3)',
+                }}
+              >
+                {tweet.profiles?.avatar_url
+                  ? <img src={tweet.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                  : (tweet.profiles?.display_name?.[0] ?? '?')}
+              </div>
+            ) : (
+              <Avatar src={tweet.profiles?.avatar_url} name={tweet.profiles?.display_name} size="sm" />
+            )}
           </button>
 
           <div className="flex-1 min-w-0">
