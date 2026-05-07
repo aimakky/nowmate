@@ -135,17 +135,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             ダブル glow + アバター無し時は紫の塗りで「押せるボタン」感を
             明確に。コントラストを強化しつつ YVOICE 紫の世界観を維持。 */}
       {/* 共通ヘッダー: 左=マイページアバター / 右=友達追加。
-          全ページで同じ高さ・同じ縦位置に揃え、ヘッダー高のばらつきや
-          余計な広告枠 / 余白を排除する。
+          段差レイアウト (asymmetric vertical offset):
+            - 左マイページ: 安全領域 + 8px 下げて配置 (やや下寄せ)
+            - 右友達追加: 安全領域基準で配置 (やや上寄せ)
+            - 段差量 = 8px (subtle、押しやすさ・タップ領域は維持)
+          → 一直線に見えず、参考画像のような自然な高低差を表現
+          → 段差ルールは AppLayout 共通コンポーネントで管理し、ページごとの
+            個別ズレを防止 (全ページで 8px 差固定)
           mypage / villages/ / chat/ 詳細では各ページが独自ヘッダーを
           持つため hideAvatar=true で両方非表示にする (衝突回避)。 */}
       {!hideAvatar && (
         <>
           <Link
             href="/mypage"
-            className="fixed top-3 left-4 z-50 w-10 h-10 rounded-full overflow-hidden active:scale-90 transition-all"
+            className="fixed left-4 z-50 w-10 h-10 rounded-full overflow-hidden active:scale-90 transition-all"
             style={{
-              top: 'max(12px, env(safe-area-inset-top, 12px))',
+              // 左: 段差で「やや下寄せ」。右より +8px 下。
+              top: 'calc(max(12px, env(safe-area-inset-top, 12px)) + 8px)',
               border: '2px solid rgba(196,181,253,0.85)',
               boxShadow: '0 0 14px rgba(157,92,255,0.6), 0 0 28px rgba(157,92,255,0.22), 0 2px 6px rgba(0,0,0,0.5)',
             }}
@@ -166,14 +172,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           </Link>
 
-          {/* 友達追加ボタン (右上)。左のマイページアバターと完全対称配置。
-              サイズ・border・shadow・top 位置を揃えて、全ページで
-              ヘッダー高さ・アイコン縦位置がブレないようにする。
+          {/* 友達追加ボタン (右上)。サイズ・border・shadow は左と統一、
+              top 位置のみ 8px 上寄せして段差感を作る。
               遷移先: /users (既存のユーザー検索 / フレンド申請ページ) */}
           <Link
             href="/users"
-            className="fixed top-3 right-4 z-50 w-10 h-10 rounded-full overflow-hidden flex items-center justify-center active:scale-90 transition-all"
+            className="fixed right-4 z-50 w-10 h-10 rounded-full overflow-hidden flex items-center justify-center active:scale-90 transition-all"
             style={{
+              // 右: 段差で「やや上寄せ」。左より -8px 上 (= 安全領域基準)。
               top: 'max(12px, env(safe-area-inset-top, 12px))',
               border: '2px solid rgba(196,181,253,0.85)',
               boxShadow: '0 0 14px rgba(157,92,255,0.6), 0 0 28px rgba(157,92,255,0.22), 0 2px 6px rgba(0,0,0,0.5)',
