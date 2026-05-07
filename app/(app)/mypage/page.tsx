@@ -671,21 +671,23 @@ export default function MyPage() {
       </div>
 
       {/* X 風スクロール時固定バー: 「N 件の投稿」を表示。
-          AppLayout の sticky 友達列 (z-40, backdrop-filter) よりも上に出すため
-          z-[80] に。fixed で viewport 基準に貼り付け。 */}
+          z-[95] で AppLayout の sticky 友達列 (z-40, backdrop-filter)
+          よりも確実に上に。背景に半透明ではなく明確な紫不透明を使い、
+          iOS Safari の stacking context 重なり問題でも視認できるよう
+          にした。位置は top:0 にして safe-area-inset-top を padding に
+          して notch を回避する標準パターン。 */}
       {showStickyCount && (
         <div
-          className="fixed top-7 left-0 right-0 z-[80] flex items-center justify-center"
+          className="fixed top-0 left-0 right-0 z-[95] flex items-center justify-center"
           style={{
-            background: 'rgba(13,11,31,0.95)',
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
-            borderBottom: '1px solid rgba(157,92,255,0.18)',
-            paddingTop: 'max(12px, env(safe-area-inset-top, 12px))',
+            background: '#1a0d2e',
+            borderBottom: '2px solid rgba(157,92,255,0.5)',
+            paddingTop: 'calc(max(12px, env(safe-area-inset-top, 12px)) + 4px)',
             paddingBottom: '12px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
           }}
         >
-          <p className="text-sm font-extrabold" style={{ color: '#F0EEFF' }}>
+          <p className="text-base font-extrabold" style={{ color: '#F0EEFF' }}>
             {postCount}件の投稿
           </p>
         </div>
