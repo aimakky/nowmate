@@ -285,11 +285,13 @@ export default function MyPage() {
   const [followListLoading, setFollowListLoading] = useState(false)
 
   // X 風の「スクロールで件数表示」: scrollY が閾値を超えたら上部に
-  // 「N 件の投稿」を表示。プロフィール情報がスクロールで隠れた頃合い
-  // (240px 付近) でフェードイン。passive listener で性能影響を最小化。
+  // 「N 件の投稿」を表示。プロフィール情報のアバター行をスクロール
+  // した時点 (120px 前後) でフェードイン。閾値を 240→120 に下げて
+  // 「ちょっとスクロールしただけで件数が見える」UX に。
+  // passive listener で性能影響を最小化。
   useEffect(() => {
     function onScroll() {
-      setShowStickyCount(window.scrollY > 240)
+      setShowStickyCount(window.scrollY > 120)
     }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
