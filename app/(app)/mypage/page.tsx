@@ -970,12 +970,16 @@ export default function MyPage() {
                 </button>
               </div>
             ) : (
-              <div style={{ background: 'transparent' }}>
+              // 投稿一覧 wrapper の余白を profile/[userId] と完全一致させる。
+              // px-4: 左右 16px (カードを画面端から内側に inset)
+              // pt-4: タブ直下から最初のカードまで 16px の余白
+              // space-y-3: カード同士の縦間隔 12px
+              // これで profile/[userId] の `<div className="px-4 pt-4 pb-28 space-y-3">`
+              // と同じ視覚密度になる (2026-05-07 マッキーさん指示)。
+              <div className="px-4 pt-4 space-y-3" style={{ background: 'transparent' }}>
                 {/* tweets と村投稿を時系列降順でマージ。
-                    tweet は TweetCard でリッチに、村投稿は dark theme の
-                    シンプルカード (MyVillagePostInline) で表示。
-                    旧版は tweets のみ表示で「プロフィールには出るのに
-                    マイページに村投稿が出ない」差分の原因だった。 */}
+                    tweet は TweetCard でリッチに、村投稿は MyVillagePostInline
+                    (TweetCard 同等のリッチ UI) で表示。 */}
                 {(() => {
                   type Item =
                     | { kind: 'tweet'; data: TweetData; ts: number }
