@@ -4,9 +4,10 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag, timeAgo } from '@/lib/utils'
-import { MessageCircle, Repeat2, MoreHorizontal, Pencil, Trash2, X, Flag, Ban, Heart, Share2 } from 'lucide-react'
+import { Repeat2, MoreHorizontal, Pencil, Trash2, X, Flag, Ban } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import VerifiedBadge from '@/components/ui/VerifiedBadge'
+import PostActions from '@/components/ui/PostActions'
 import ReportModal from '@/components/features/ReportModal'
 import { getTierById } from '@/lib/trust'
 import { isVerifiedByExistingSchema } from '@/lib/identity-types'
@@ -162,6 +163,12 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
   const totalReactions = tweet.tweet_reactions.length
   const liked = myReaction === 'heart'
 
+  // DEBUG TEMP 2026-05-08: ミヤのマイページ反映漏れ調査用。
+  // 本番反映確認後に次 commit で除去。
+  if (typeof window !== 'undefined') {
+    console.log('[DEBUG TEMP 2026-05-08] Rendering TweetCard', { tweetId: tweet.id })
+  }
+
   return (
     <>
       <div
@@ -243,58 +250,20 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
               {tweet.content}
             </p>
 
-            {/* アクション (timeline PostCard と完全統一: Heart / Comment / Share)
-                2026-05-08 マッキーさん指示「全投稿カード下部を Heart/Comment/Share 統一」。
-                旧「+ リアクション」絵文字ピッカー UI / Repeat2 (リポスト) / Reaction summary
-                を撤去し、PostCard と同じ borderTop + gap-4 + Share2 ml-auto に揃える。
-                既存 tweet_reactions レコードは残したまま、Heart タップで 'heart' を upsert
-                する単純化方式 (B-1)。reaction count は全種類の合計を表示。 */}
-            <div
-              className="flex items-center gap-4 mt-3 pt-2.5"
-              style={{ borderTop: '1px solid rgba(57,255,136,0.1)' }}
-            >
-              {/* Heart */}
-              <button
-                onClick={() => canInteract && toggleReaction('heart')}
-                disabled={!canInteract}
-                className="flex items-center gap-1.5 active:scale-90 transition-all disabled:opacity-50"
-                style={{ color: liked ? '#FF4D90' : 'rgba(240,238,255,0.35)' }}
-                aria-label="ハート"
-              >
-                <Heart
-                  size={15}
-                  fill={liked ? '#FF4D90' : 'none'}
-                  strokeWidth={liked ? 0 : 1.8}
-                />
-                {totalReactions > 0 && (
-                  <span className="text-xs font-semibold">{totalReactions}</span>
-                )}
-              </button>
-
-              {/* Comment */}
-              <button
-                onClick={() => canInteract && router.push(`/tweet/${tweet.id}`)}
-                disabled={!canInteract}
-                className="flex items-center gap-1.5 active:scale-90 transition-all disabled:opacity-50"
-                style={{ color: 'rgba(240,238,255,0.35)' }}
-                aria-label="コメント"
-              >
-                <MessageCircle size={15} strokeWidth={1.8} />
-                {(tweet.reply_count ?? tweet.tweet_replies?.length ?? 0) > 0 && (
-                  <span className="text-xs font-semibold">{tweet.reply_count ?? tweet.tweet_replies?.length}</span>
-                )}
-              </button>
-
-              {/* Share */}
-              <button
-                onClick={shareToX}
-                className="flex items-center gap-1.5 active:scale-90 transition-all ml-auto"
-                style={{ color: 'rgba(240,238,255,0.35)' }}
-                aria-label="共有"
-              >
-                <Share2 size={14} strokeWidth={1.8} />
-              </button>
-            </div>
+            {/* アクション = 共通 PostActions コンポーネント
+                2026-05-08 (5 回目) マッキーさん指示「ミヤを含む全マイページで統一 +
+                共通コンポーネント化」を受け、行内 JSX から共通部品 PostActions に切替。
+                これにより今後アクション行を変更する際は components/ui/PostActions.tsx
+                の 1 ファイルだけ直せば timeline / mypage / profile すべてに反映される。 */}
+            <PostActions
+              liked={liked}
+              reactionCount={totalReactions}
+              replyCount={tweet.reply_count ?? tweet.tweet_replies?.length ?? 0}
+              canInteract={canInteract}
+              onHeart={() => toggleReaction('heart')}
+              onComment={() => router.push(`/tweet/${tweet.id}`)}
+              onShare={shareToX}
+            />
           </div>
         </div>
       </div>

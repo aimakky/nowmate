@@ -8,6 +8,7 @@ import { timeAgo } from '@/lib/utils'
 import { detectNgWords } from '@/lib/moderation'
 import { Heart, RefreshCw, Users, Globe, Home, Share2, HelpCircle, Send, CheckCircle, X, Plus, Waves, Mic, MessageCircle, Layers } from 'lucide-react'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
+import PostActions from '@/components/ui/PostActions'
 import { detectCrisisKeywords } from '@/lib/moderation'
 import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
 import { getTierById } from '@/lib/trust'
@@ -371,6 +372,11 @@ function PostCard({
   // 全 5 段階（見習い / 村人 / 常連 / 信頼の村人 / 村の柱）が自動反映される。
   const roleLabel = getTierById(post.user_trust?.tier ?? 'visitor').label
 
+  // DEBUG TEMP 2026-05-08: timeline 村投稿カード描画確認用。次 commit で除去。
+  if (typeof window !== 'undefined') {
+    console.log('[DEBUG TEMP 2026-05-08] Rendering Timeline PostCard', { postId: post.id })
+  }
+
   function shareToX() {
     const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'YVOICE'
     // SITE_HOST は lib/site.ts の export。NEXT_PUBLIC_SITE_URL の host 部分。
@@ -445,35 +451,17 @@ function PostCard({
           {post.content}
         </p>
 
-        {/* アクション */}
-        <div
-          className="flex items-center gap-4 mt-3 pt-2.5"
-          style={{ borderTop: '1px solid rgba(57,255,136,0.1)' }}
-        >
-          <button
-            onClick={() => onToggleLike(post.id)}
-            className="flex items-center gap-1.5 active:scale-90 transition-all"
-            style={{ color: liked ? '#FF4D90' : 'rgba(240,238,255,0.35)' }}
-          >
-            <Heart size={15} fill={liked ? '#FF4D90' : 'none'} strokeWidth={liked ? 0 : 1.8} />
-            {post.reaction_count > 0 && (
-              <span className="text-xs font-semibold">{post.reaction_count}</span>
-            )}
-          </button>
-          <button
-            className="flex items-center gap-1.5 active:scale-90 transition-all"
-            style={{ color: 'rgba(240,238,255,0.35)' }}
-          >
-            <MessageCircle size={15} strokeWidth={1.8} />
-          </button>
-          <button
-            onClick={shareToX}
-            className="flex items-center gap-1.5 active:scale-90 transition-all ml-auto"
-            style={{ color: 'rgba(240,238,255,0.35)' }}
-          >
-            <Share2 size={14} strokeWidth={1.8} />
-          </button>
-        </div>
+        {/* アクション = 共通 PostActions コンポーネント
+            2026-05-08 (5 回目): 4 ファイルで重複していた手書きアクション行を
+            components/ui/PostActions.tsx に集約し、ここからは props 経由で動作を渡す
+            だけにした。 */}
+        <PostActions
+          liked={liked}
+          reactionCount={post.reaction_count}
+          onHeart={() => onToggleLike(post.id)}
+          onComment={() => {}}
+          onShare={shareToX}
+        />
       </div>
     </div>
   )
