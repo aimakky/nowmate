@@ -22,9 +22,6 @@ function applyNoStoreHeaders(res: NextResponse): NextResponse {
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
-  let setAllInvocations = 0
-  let setAllAppliedMaxAges: Array<number | undefined> = []
-
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -44,11 +41,6 @@ export async function middleware(request: NextRequest) {
         getAll() { return request.cookies.getAll() },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
-          setAllInvocations += 1
-          setAllAppliedMaxAges = cookiesToSet.map(c => {
-            const o = applyCookieMaxAgeOverride(c.options)
-            return typeof o?.maxAge === 'number' ? o.maxAge : undefined
-          })
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
@@ -59,49 +51,7 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: { user }, error: authError } = (await supabase.auth.getUser()) as any
-
-  // ─────────────────────────────────────────────────────────────
-  // 一時 DEBUG (90 日ログイン維持の本番調査用、確認後に除去予定)
-  // CLAUDE.md「一時 console.log の最短ライフサイクル」準拠で、原因特定後
-  // (= マッキーさんが Vercel Logs を確認して結果を共有してくれた後) の
-  // 次 commit で除去する。
-  //
-  // 個人情報・トークン本体は出さない。出すのは:
-  //   - cookie の name のみ (値は出さない)
-  //   - hasUser (boolean)
-  //   - authError?.code (エラーコード文字列のみ、message は出さない)
-  //   - setAll が何回呼ばれたか + 適用された maxAge の値
-  //   - production / Vercel 環境変数の boolean だけ
-  //
-  // Vercel Functions Logs (Vercel ダッシュボード → Logs) でこのログを
-  // 検索できる。フィルタは [AUTH_DBG_2026-05-08]。
-  try {
-    const allCookies = request.cookies.getAll()
-    const cookieNames = allCookies.map(c => c.name)
-    const hasSupabaseAuthCookie = cookieNames.some(
-      n => n.startsWith('sb-') && (n.includes('auth-token') || n.includes('-auth-'))
-    )
-    // eslint-disable-next-line no-console
-    console.log('[AUTH_DBG_2026-05-08]', {
-      path: request.nextUrl.pathname,
-      method: request.method,
-      cookieCount: allCookies.length,
-      hasSupabaseAuthCookie,
-      cookieNames,
-      hasUser: Boolean(user),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      authErrorCode: (authError as any)?.code ?? null,
-      setAllInvocations,
-      setAllAppliedMaxAges,
-      isProduction: process.env.NODE_ENV === 'production',
-      vercelEnv: process.env.VERCEL_ENV ?? null,
-    })
-  } catch {
-    /* noop — debug 用。失敗しても middleware の動作は壊さない */
-  }
-  // ─────────────────────────────────────────────────────────────
+  const { data: { user } } = await supabase.auth.getUser()
 
   const protectedPaths = [
     '/home', '/matches', '/chat', '/mypage', '/settings', '/onboarding', '/profile',
