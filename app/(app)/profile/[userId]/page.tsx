@@ -70,15 +70,6 @@ function ProfileVillagePostInline({
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
 
-  // DEBUG TEMP 2026-05-08: ミヤのマイページ反映漏れ確定証明用。
-  // 本番反映後に次 commit で除去する一時ログ。
-  if (typeof window !== 'undefined') {
-    console.log('[DEBUG TEMP 2026-05-08] Rendering ProfileVillagePostInline', {
-      profileUserId,
-      postId: post.id,
-    })
-  }
-
   return (
     <div
       className="rounded-2xl overflow-hidden"
@@ -725,14 +716,28 @@ if (loading) return (
                   ...profileVillagePosts.map(v => ({ kind: 'village' as const, data: v, ts: new Date(v.created_at).getTime() })),
                 ].sort((a, b) => b.ts - a.ts)
                 return items.map(item => item.kind === 'tweet' ? (
-                  <TweetCard
+                  // 2026-05-08 (6 回目) マッキーさん指示: ミヤのマイページの tweet 投稿
+                  // (例: bivi二条なう) だけ wrapper なし + 紫アバターで他の村投稿カードと
+                  // 見た目が違っていたため、timeline / mypage と完全同じ rounded-2xl 紫グロー
+                  // wrapper + avatarVariant="green" に統一する。
+                  <div
                     key={`tweet-${item.data.id}`}
-                    tweet={item.data}
-                    myId={myId}
-                    onUpdate={() => { /* recentPosts re-fetch なし。reaction 反映は次回ロードで */ }}
-                    showBorder={false}
-                    canInteract={true}
-                  />
+                    className="rounded-2xl overflow-hidden"
+                    style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(157,92,255,0.18)',
+                      boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
+                    }}
+                  >
+                    <TweetCard
+                      tweet={item.data}
+                      myId={myId}
+                      onUpdate={() => { /* recentPosts re-fetch なし。reaction 反映は次回ロードで */ }}
+                      showBorder={false}
+                      canInteract={true}
+                      avatarVariant="green"
+                    />
+                  </div>
                 ) : (
                   <ProfileVillagePostInline
                     key={`village-${item.data.id}`}
