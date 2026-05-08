@@ -26,7 +26,21 @@ export default function TweetDetailPage() {
   const [replyInput, setReplyInput] = useState('')
   const [posting, setPosting] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [canInteract, setCanInteract] = useState(false)
+  // 2026-05-08 マッキーさん指示「位置情報取得処理は、明確に位置情報が必要な
+  // ボタン・画面でユーザーが操作した時だけ実行」遵守。
+  //
+  // 初期値 true: ページマウント時に位置情報を取らないため、UI は最初から
+  // 操作可能 (TweetCard の Heart / Comment / 返信フォーム) として描画する。
+  // 旧実装はマウント時に checkSupportedLocation() を自動呼出して
+  // canInteract を false から true に切り替えていたが、これが iPhone Safari
+  // の Geolocation ダイアログを「投稿カードのコメントボタンを押しただけで」
+  // 表示する真因だった (timeline → /tweet/[tweetId] 遷移で本ページが mount
+  // される瞬間に位置情報が要求されていた)。
+  //
+  // 新実装: 位置確認は postReply (= ユーザーが Reply ボタンを押した瞬間)
+  // でだけ行う。サポート外/拒否なら canInteract=false に切り替えて既存の
+  // 「supported countries」表示に分岐させる (L108 の三項演算子はそのまま使える)。
+  const [canInteract, setCanInteract] = useState(true)
 
   useEffect(() => {
     createClient().auth.getUser().then(async ({ data: { user } }) => {
@@ -37,7 +51,10 @@ export default function TweetDetailPage() {
         if (data) setMyProfile(data)
       }
     })
-    checkSupportedLocation().then(s => setCanInteract(s === 'supported'))
+    // 2026-05-08: マウント時の checkSupportedLocation() 自動呼出は撤去。
+    // 投稿カードのコメントボタン押下でこのページに遷移しただけで iPhone Safari
+    // が位置情報許可ダイアログを出す真因だった。位置確認は postReply 内で
+    // ユーザーが Reply ボタンを押した瞬間に初めて実行する。
   }, [])
 
   const load = useCallback(async () => {
@@ -62,6 +79,19 @@ export default function TweetDetailPage() {
   async function postReply() {
     if (!replyInput.trim() || !myId || posting) return
     setPosting(true)
+
+    // 2026-05-08 マッキーさん指示: 位置情報は「Reply ボタン押下時」だけに限定。
+    // ここで初めて checkSupportedLocation を呼ぶ (iPhone Safari の geolocation
+    // ダイアログはユーザーが明確にアクションした瞬間に出るので UX 上自然)。
+    // サポート外 / 拒否なら canInteract=false にして既存の「Replies are only
+    // available in supported countries」表示 (L108 の三項演算子) に切替える。
+    const status = await checkSupportedLocation()
+    if (status !== 'supported') {
+      setCanInteract(false)
+      setPosting(false)
+      return
+    }
+
     const supabase = createClient()
     const { data: newReply } = await supabase
       .from('tweet_replies')
