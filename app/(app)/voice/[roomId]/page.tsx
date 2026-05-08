@@ -1097,7 +1097,27 @@ export default function VoiceRoomPage() {
               </div>
             )}
 
-            <div className="space-y-2.5">
+            {/* 2026-05-08 YVOICE5 A-1: 接続中オーバーレイ。joinRoom 実行中は
+                既存の右端小さなスピナー (各ボタン内) に加えて、3 ボタン全体を覆う
+                オーバーレイで「いま接続している」が一目で分かるようにする。
+                既存の disabled 制御 / joinRoom 関数 / mode 引数は不変。 */}
+            <div className="relative space-y-2.5">
+              {joining && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl"
+                  style={{ background: 'rgba(8,8,18,0.7)', backdropFilter: 'blur(2px)' }}>
+                  <div className="flex flex-col items-center gap-2 px-5 py-4 rounded-2xl"
+                    style={{ background: 'rgba(157,92,255,0.12)', border: '1px solid rgba(157,92,255,0.45)' }}>
+                    <span className="w-6 h-6 border-[3px] border-t-transparent rounded-full animate-spin"
+                      style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }} />
+                    <p className="text-xs font-extrabold" style={{ color: '#F0EEFF' }}>
+                      {connState === 'connecting' ? '通話に接続中…' : connState === 'connected' ? 'もう少しで完了…' : '準備中…'}
+                    </p>
+                    <p className="text-[10px]" style={{ color: 'rgba(240,238,255,0.55)' }}>
+                      しばらくお待ちください
+                    </p>
+                  </div>
+                </div>
+              )}
               {/* 話す */}
               <button
                 onClick={() => joinRoom('speaker')}
