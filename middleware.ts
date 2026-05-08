@@ -1,7 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { SUPABASE_COOKIE_OPTIONS, applyCookieMaxAgeOverride } from '@/lib/supabase/cookie-options'
-import { debugAuthLog } from '@/lib/auth-debug'
 
 // 全レスポンスに強制的に no-store ヘッダーを注入するヘルパー。
 // Vercel Edge が古い HTML を 37 分以上 HIT で配信し続ける問題への
@@ -53,21 +52,6 @@ export async function middleware(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
-
-  // gated debug: DEBUG_AUTH=true のときだけ Vercel Logs に出力
-  // (token / cookie value は出さず、name 配列と boolean のみ)
-  const cookieNames = request.cookies.getAll().map(c => c.name)
-  const hasSupabaseAuthCookie = cookieNames.some(
-    n => n.startsWith('sb-') && (n.includes('auth-token') || n.includes('-auth-'))
-  )
-  debugAuthLog('middleware reached', {
-    path: request.nextUrl.pathname,
-    method: request.method,
-    cookieCount: cookieNames.length,
-    hasSupabaseAuthCookie,
-    cookieNames,
-    hasUser: Boolean(user),
-  })
 
   const protectedPaths = [
     '/home', '/matches', '/chat', '/mypage', '/settings', '/onboarding', '/profile',
