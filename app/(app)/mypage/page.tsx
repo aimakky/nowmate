@@ -229,6 +229,11 @@ function MyVillagePostInline({
     const text = `${post.content}\n\n— ${village}より\n#YVOICE #ゲームコミュニティ\n${host}`
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
+
+  // DEBUG TEMP 2026-05-08: mypage 村投稿カード描画確認用。次 commit で除去。
+  if (typeof window !== 'undefined') {
+    console.log('[DEBUG TEMP 2026-05-08] Rendering MyVillagePostInline', { postId: post.id })
+  }
   return (
     <div
       className="rounded-2xl overflow-hidden"

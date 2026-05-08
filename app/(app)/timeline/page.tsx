@@ -372,6 +372,11 @@ function PostCard({
   // 全 5 段階（見習い / 村人 / 常連 / 信頼の村人 / 村の柱）が自動反映される。
   const roleLabel = getTierById(post.user_trust?.tier ?? 'visitor').label
 
+  // DEBUG TEMP 2026-05-08: timeline 村投稿カード描画確認用。次 commit で除去。
+  if (typeof window !== 'undefined') {
+    console.log('[DEBUG TEMP 2026-05-08] Rendering Timeline PostCard', { postId: post.id })
+  }
+
   function shareToX() {
     const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'YVOICE'
     // SITE_HOST は lib/site.ts の export。NEXT_PUBLIC_SITE_URL の host 部分。
