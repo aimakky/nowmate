@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { SUPABASE_COOKIE_OPTIONS } from '@/lib/supabase/cookie-options'
+import { SUPABASE_COOKIE_OPTIONS, applyCookieMaxAgeOverride } from '@/lib/supabase/cookie-options'
 
 // 全レスポンスに強制的に no-store ヘッダーを注入するヘルパー。
 // Vercel Edge が古い HTML を 37 分以上 HIT で配信し続ける問題への
@@ -26,9 +26,16 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      // 2026-05-08 (YVOICE4 PR4): iOS Safari ITP 対策として cookieOptions を
-      // 明示。setAll に渡される options には Supabase SSR が cookieOptions を
-      // マージ済みなので、middleware 側で個別に上書きする必要はない。
+      // 2026-05-08 (YVOICE4 PR4 + ログイン維持改善): iOS Safari ITP 対策と
+      // 90 日ログイン維持のため cookieOptions を明示。
+      //
+      // ⚠ @supabase/ssr 0.4.1 の library bug 回避:
+      // setAll に渡ってくる options.maxAge は library 内部で
+      // DEFAULT_COOKIE_OPTIONS.maxAge (60*60*24*365*1000 ≒ 1000年 in 秒)
+      // に強制上書きされている。ブラウザは 400 日 (Chrome) / 7 日 (Safari ITP
+      // document.cookie 経由) でキャップするため挙動が不安定。
+      // → applyCookieMaxAgeOverride で 90 日に再上書きする hack を入れる。
+      // maxAge=0 (cookie 削除) はそのまま保持されるので signOut 動作不変。
       cookieOptions: SUPABASE_COOKIE_OPTIONS,
       cookies: {
         getAll() { return request.cookies.getAll() },
@@ -37,7 +44,7 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, applyCookieMaxAgeOverride(options))
           )
         },
       },
