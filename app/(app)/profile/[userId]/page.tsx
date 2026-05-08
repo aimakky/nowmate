@@ -51,12 +51,16 @@ type ProfileVillagePost = {
 // 乗せる) は profile 固有のため維持。村投稿は schema が tweets と異なり
 // tweet_reactions / tweet_replies の DB 操作はしない。
 function ProfileVillagePostInline({
-  post, profile, trustTier, profileUserId,
+  post, profile, trustTier, profileUserId, liked, onToggleLike,
 }: {
   post: ProfileVillagePost
   profile: any
   trustTier: string | null
   profileUserId: string
+  /** 自分がこの投稿にいいね済みか (UserProfilePage の likedIds から計算) */
+  liked: boolean
+  /** ハートボタン押下時に呼ぶ村投稿 like トグル関数 (画面遷移しない) */
+  onToggleLike: (postId: string) => void
 }) {
   const router = useRouter()
   const isVerified = isVerifiedByExistingSchema(profile)
@@ -99,11 +103,17 @@ function ProfileVillagePostInline({
         {post.content}
       </p>
 
-      {/* アクション = 共通 PostActions コンポーネント (timeline / mypage と完全同一) */}
+      {/* アクション = 共通 PostActions コンポーネント。
+          2026-05-08 マッキーさん指示「ハート押下時に画面遷移しない、いいね処理だけ
+          実行する」を受けて、Heart の onHeart は親 (UserProfilePage) から渡される
+          onToggleLike を呼ぶようにし、画面遷移しない仕様に変更。
+          liked 状態も親 likedIds から受け取る。
+          Comment は村ページでコメントするため村詳細遷移を維持。
+          Share は X 共有起動 (画面遷移なし)。 */}
       <PostActions
-        liked={false}
+        liked={liked}
         reactionCount={post.reaction_count}
-        onHeart={() => router.push(villageHref)}
+        onHeart={() => onToggleLike(post.id)}
         onComment={() => router.push(villageHref)}
         onShare={shareToX}
       />
@@ -140,6 +150,10 @@ export default function UserProfilePage() {
   // (tweets) / ProfileVillagePostInline (村投稿) でリッチに統一。
   const [richTweets, setRichTweets] = useState<TweetData[]>([])
   const [profileVillagePosts, setProfileVillagePosts] = useState<ProfileVillagePost[]>([])
+  // 自分がいいねした village_posts の id 集合。timeline / mypage と同じ
+  // village_reactions テーブルを正として、ハート押下で upsert/delete し
+  // 画面遷移は起こさない (マッキーさん指示 2026-05-08)。
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
   const [postCount, setPostCount] = useState(0)
   const [myId, setMyId] = useState<string | null>(null)
   const [isFollowing, setIsFollowing] = useState(false)
@@ -356,10 +370,43 @@ export default function UserProfilePage() {
       setFollowingCount(following ?? 0)
       if (trust?.tier) setTrustTier(trust.tier)
       setIsPremium(!!premSub)
+
+      // 自分 (= 現在ログイン中の user) がこの profile の村投稿にいいね済みかを
+      // 取得する。ハート色 (liked) と toggleLike の即時反映に使用。
+      // 未ログインなら likedIds は空のまま (timeline と同じ挙動)。
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      const visibleVillagePostIds = profileVillage.map(p => p.id)
+      if (currentUser?.id && visibleVillagePostIds.length > 0) {
+        const { data: myReactions } = await supabase
+          .from('village_reactions')
+          .select('post_id')
+          .eq('user_id', currentUser.id)
+          .in('post_id', visibleVillagePostIds)
+        setLikedIds(new Set((myReactions ?? []).map((r: any) => r.post_id)))
+      }
+
       setLoading(false)
     }
     load()
   }, [userId])
+
+  // 2026-05-08 マッキーさん指示「他人マイページの投稿カードでハート押下時に
+  // 画面遷移しない、いいね処理だけ実行する」への対応。
+  // timeline / mypage と同じ village_reactions テーブルを正として、optimistic
+  // update でハートの色と reaction_count を即時反映する。
+  function toggleLike(postId: string) {
+    if (!myId) return
+    const supabase = createClient()
+    if (likedIds.has(postId)) {
+      supabase.from('village_reactions').delete().eq('post_id', postId).eq('user_id', myId)
+      setLikedIds(prev => { const n = new Set(prev); n.delete(postId); return n })
+      setProfileVillagePosts(prev => prev.map(p => p.id === postId ? { ...p, reaction_count: Math.max(0, p.reaction_count - 1) } : p))
+    } else {
+      supabase.from('village_reactions').upsert({ post_id: postId, user_id: myId })
+      setLikedIds(prev => new Set([...prev, postId]))
+      setProfileVillagePosts(prev => prev.map(p => p.id === postId ? { ...p, reaction_count: p.reaction_count + 1 } : p))
+    }
+  }
 
   useEffect(() => {
     if (!myId || !userId) return
@@ -694,6 +741,8 @@ if (loading) return (
                     profile={profile}
                     trustTier={trustTier}
                     profileUserId={userId as string}
+                    liked={likedIds.has(item.data.id)}
+                    onToggleLike={toggleLike}
                   />
                 ))
               })()

@@ -44,8 +44,18 @@ export default function PostActions({
       className="flex items-center gap-4 mt-3 pt-2.5"
       style={{ borderTop: '1px solid rgba(57,255,136,0.1)' }}
     >
+      {/* Heart / Comment / Share の onClick で必ず e.preventDefault() と
+          e.stopPropagation() を呼ぶ。CLAUDE.md 「投稿カード本体タップだけ
+          仕様遷移を許可、ボタン操作は親へ伝播させない」原則。
+          将来 PostCardShell や header が <Link> wrap される変更が入っても、
+          ハート / コメント / 共有 タップで親 Link が誤発火しないよう防御的に
+          書いておく。 */}
       <button
-        onClick={() => canInteract && onHeart()}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (canInteract) onHeart()
+        }}
         disabled={!canInteract}
         className="flex items-center gap-1.5 active:scale-90 transition-all disabled:opacity-50"
         style={{ color: liked ? '#FF4D90' : 'rgba(240,238,255,0.35)' }}
@@ -62,7 +72,11 @@ export default function PostActions({
       </button>
 
       <button
-        onClick={() => canInteract && onComment()}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (canInteract) onComment()
+        }}
         disabled={!canInteract}
         className="flex items-center gap-1.5 active:scale-90 transition-all disabled:opacity-50"
         style={{ color: 'rgba(240,238,255,0.35)' }}
@@ -75,7 +89,11 @@ export default function PostActions({
       </button>
 
       <button
-        onClick={onShare}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onShare()
+        }}
         className="flex items-center gap-1.5 active:scale-90 transition-all ml-auto"
         style={{ color: 'rgba(240,238,255,0.35)' }}
         aria-label="共有"
