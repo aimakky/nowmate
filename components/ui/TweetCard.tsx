@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag, timeAgo } from '@/lib/utils'
-import { MessageCircle, Repeat2, MoreHorizontal, Pencil, Trash2, X, Flag, Ban } from 'lucide-react'
+import { MessageCircle, Repeat2, MoreHorizontal, Pencil, Trash2, X, Flag, Ban, Heart, Share2 } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import VerifiedBadge from '@/components/ui/VerifiedBadge'
 import ReportModal from '@/components/features/ReportModal'
@@ -75,8 +75,6 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
   // 投稿者の verified 判定: 明示 props 優先、次に tweet.profiles の既存カラム
   const isVerified = verified ?? isVerifiedByExistingSchema(tweet.profiles)
   const router = useRouter()
-  const [showPicker,  setShowPicker]  = useState(false)
-  const [reposting,   setReposting]   = useState(false)
   const [showMenu,    setShowMenu]    = useState(false)
   const [showEdit,    setShowEdit]    = useState(false)
   const [editText,    setEditText]    = useState(tweet.content)
@@ -94,14 +92,10 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
   const MAX = 280
 
   // ── reactions ────────────────────────────────────────────────
-  const reactionMap = tweet.tweet_reactions.reduce((acc, r) => {
-    acc[r.reaction] = (acc[r.reaction] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
-
-  const myReaction    = tweet.tweet_reactions.find(r => r.user_id === myId)?.reaction
-  const activeReactions = REACTIONS.filter(r => reactionMap[r.key])
-  const hasReactions  = activeReactions.length > 0
+  // 2026-05-08: B-1 方式 (Heart 1 種類リアクション) に統合。
+  // tweet_reactions テーブルは既存スキーマ維持 (heart/haha/wow/support/sad/fire 全 6 種を
+  // 引き続き保存可能) だが、UI からは Heart タップで 'heart' のみ upsert する。
+  const myReaction = tweet.tweet_reactions.find(r => r.user_id === myId)?.reaction
 
   async function toggleReaction(key: string) {
     if (!myId || !canInteract) return
@@ -114,19 +108,6 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
         { onConflict: 'tweet_id,user_id' }
       )
     }
-    setShowPicker(false)
-    onUpdate()
-  }
-
-  async function handleRepost() {
-    if (!myId || reposting || !canInteract) return
-    const supabase = createClient()
-    const { data: existing } = await supabase.from('tweets')
-      .select('id').eq('user_id', myId).eq('repost_of', tweet.id).maybeSingle()
-    if (existing) { setReposting(false); return }
-    setReposting(true)
-    await supabase.from('tweets').insert({ user_id: myId, content: tweet.content, repost_of: tweet.id })
-    setReposting(false)
     onUpdate()
   }
 
@@ -167,7 +148,19 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
     onUpdate()
   }
 
+  // ── share to X ───────────────────────────────────────────────
+  // 2026-05-08 マッキーさん指示: 投稿カード下部アクションを timeline PostCard と
+  // 完全統一 (Heart / Comment / Share)。Share2 タップで X 共有を起動。
+  function shareToX() {
+    const host = (typeof window !== 'undefined' ? window.location.host : '') || 'nowmatejapan.com'
+    const text = `${tweet.content}\n\n— YVOICE より\n#YVOICE #ゲームコミュニティ\n${host}`
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
+  }
+
   const flag = getNationalityFlag(tweet.profiles?.nationality || '')
+  // 全リアクション総数 (heart/haha/wow/support/sad/fire 全部を「いいね」として扱う)
+  const totalReactions = tweet.tweet_reactions.length
+  const liked = myReaction === 'heart'
 
   return (
     <>
@@ -250,98 +243,57 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
               {tweet.content}
             </p>
 
-            {/* Reaction summary */}
-            {hasReactions && (
-              <div className="flex items-center gap-1 mb-2 flex-wrap">
-                {activeReactions.map(r => (
-                  <button key={r.key} onClick={() => toggleReaction(r.key)}
-                    className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-all active:scale-90"
-                    style={myReaction === r.key
-                      ? { background: 'rgba(57,255,136,0.15)', color: '#39FF88', border: '1px solid rgba(57,255,136,0.4)' }
-                      : { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.55)', border: '1px solid rgba(255,255,255,0.08)' }
-                    }>
-                    <span>{r.emoji}</span>
-                    <span>{reactionMap[r.key]}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* アクション (timeline PostCard と完全統一: Heart / Comment / Share)
+                2026-05-08 マッキーさん指示「全投稿カード下部を Heart/Comment/Share 統一」。
+                旧「+ リアクション」絵文字ピッカー UI / Repeat2 (リポスト) / Reaction summary
+                を撤去し、PostCard と同じ borderTop + gap-4 + Share2 ml-auto に揃える。
+                既存 tweet_reactions レコードは残したまま、Heart タップで 'heart' を upsert
+                する単純化方式 (B-1)。reaction count は全種類の合計を表示。 */}
+            <div
+              className="flex items-center gap-4 mt-3 pt-2.5"
+              style={{ borderTop: '1px solid rgba(57,255,136,0.1)' }}
+            >
+              {/* Heart */}
+              <button
+                onClick={() => canInteract && toggleReaction('heart')}
+                disabled={!canInteract}
+                className="flex items-center gap-1.5 active:scale-90 transition-all disabled:opacity-50"
+                style={{ color: liked ? '#FF4D90' : 'rgba(240,238,255,0.35)' }}
+                aria-label="ハート"
+              >
+                <Heart
+                  size={15}
+                  fill={liked ? '#FF4D90' : 'none'}
+                  strokeWidth={liked ? 0 : 1.8}
+                />
+                {totalReactions > 0 && (
+                  <span className="text-xs font-semibold">{totalReactions}</span>
+                )}
+              </button>
 
-            {/* Action bar */}
-            <div className="flex items-center gap-1 relative">
-              {canInteract ? (
-                <>
-                  {/* Reaction picker */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowPicker(p => !p)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
-                      style={myReaction
-                        ? { color: '#39FF88', background: 'rgba(57,255,136,0.1)' }
-                        : { color: '#39FF88', background: 'transparent' }
-                      }>
-                      {myReaction
-                        ? <span>{REACTIONS.find(r => r.key === myReaction)?.emoji}</span>
-                        : <span>＋ リアクション</span>
-                      }
-                    </button>
-                    {showPicker && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
-                        <div className="absolute bottom-9 left-0 z-50 rounded-2xl shadow-xl p-2 flex gap-1"
-                          style={{ background: '#080f0a', border: '1px solid rgba(57,255,136,0.25)', boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 20px rgba(57,255,136,0.1)' }}>
-                          {REACTIONS.map(r => (
-                            <button key={r.key} onClick={() => toggleReaction(r.key)} title={r.label}
-                              className="w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all hover:scale-125 active:scale-95"
-                              style={myReaction === r.key
-                                ? { background: 'rgba(57,255,136,0.2)', border: '1px solid rgba(57,255,136,0.45)' }
-                                : { background: 'rgba(255,255,255,0.06)' }
-                              }>
-                              {r.emoji}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
+              {/* Comment */}
+              <button
+                onClick={() => canInteract && router.push(`/tweet/${tweet.id}`)}
+                disabled={!canInteract}
+                className="flex items-center gap-1.5 active:scale-90 transition-all disabled:opacity-50"
+                style={{ color: 'rgba(240,238,255,0.35)' }}
+                aria-label="コメント"
+              >
+                <MessageCircle size={15} strokeWidth={1.8} />
+                {(tweet.reply_count ?? tweet.tweet_replies?.length ?? 0) > 0 && (
+                  <span className="text-xs font-semibold">{tweet.reply_count ?? tweet.tweet_replies?.length}</span>
+                )}
+              </button>
 
-                  {/* Reply */}
-                  <button onClick={() => router.push(`/tweet/${tweet.id}`)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
-                    style={{ color: 'rgba(240,238,255,0.4)' }}>
-                    <MessageCircle size={13} />
-                    {(tweet.reply_count ?? tweet.tweet_replies?.length ?? 0) > 0 && (
-                      <span>{tweet.reply_count ?? tweet.tweet_replies?.length}</span>
-                    )}
-                  </button>
-
-                  {/* Repost */}
-                  {tweet.repost_of === null && (
-                    <button onClick={handleRepost} disabled={reposting}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90 disabled:opacity-40"
-                      style={{ color: 'rgba(240,238,255,0.4)' }}>
-                      <Repeat2 size={13} />
-                      {(tweet.repost_count ?? 0) > 0 && <span>{tweet.repost_count}</span>}
-                    </button>
-                  )}
-                </>
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  {!hasReactions && (
-                    <span className="text-[11px] font-medium" style={{ color: 'rgba(240,238,255,0.25)' }}>🇯🇵 Japan only</span>
-                  )}
-                  {(tweet.reply_count ?? 0) > 0 && (
-                    <span className="flex items-center gap-1 px-2 py-1 text-xs" style={{ color: 'rgba(240,238,255,0.3)' }}>
-                      <MessageCircle size={12} />{tweet.reply_count}
-                    </span>
-                  )}
-                  {(tweet.repost_count ?? 0) > 0 && (
-                    <span className="flex items-center gap-1 px-2 py-1 text-xs" style={{ color: 'rgba(240,238,255,0.3)' }}>
-                      <Repeat2 size={12} />{tweet.repost_count}
-                    </span>
-                  )}
-                </div>
-              )}
+              {/* Share */}
+              <button
+                onClick={shareToX}
+                className="flex items-center gap-1.5 active:scale-90 transition-all ml-auto"
+                style={{ color: 'rgba(240,238,255,0.35)' }}
+                aria-label="共有"
+              >
+                <Share2 size={14} strokeWidth={1.8} />
+              </button>
             </div>
           </div>
         </div>
