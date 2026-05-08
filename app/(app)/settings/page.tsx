@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Camera, Check, Trash2, Eye, EyeOff, ShieldCheck, ShieldAlert, BookOpen, Shield, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { INDUSTRIES } from '@/lib/guild'
+import { useReauth } from '@/hooks/useReauth'
+import ReAuthModal from '@/components/auth/ReAuthModal'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -24,6 +26,10 @@ export default function SettingsPage() {
   const [industry,       setIndustry]       = useState('')
   const [savingIndustry, setSavingIndustry] = useState(false)
   const [ageVerified,    setAgeVerified]    = useState(false)
+
+  // 再認証 (reauth) フック。退会のような重要操作の前に本人確認モーダルを出す。
+  // 直近 5 分以内に再認証済みなら modal を出さず即実行 (UX 優先)。
+  const reauth = useReauth()
 
   useEffect(() => {
     async function load() {
@@ -351,8 +357,11 @@ export default function SettingsPage() {
                   キャンセル
                 </button>
                 <button
-                  onClick={handleDeleteAccount}
-                  disabled={deleting}
+                  onClick={() => reauth.requestReauth(
+                    handleDeleteAccount,
+                    '退会するためには本人確認が必要です。パスワードを入力してください。'
+                  )}
+                  disabled={deleting || reauth.loading}
                   className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold disabled:opacity-40"
                 >
                   {deleting ? '削除中…' : '削除する'}
@@ -369,6 +378,18 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+
+      {/* 再認証モーダル: 退会前にパスワードを再確認する。
+          直近 5 分以内に再認証済みなら open しない (helper 内で判定)。
+          OAuth ユーザー向けに「Google で再認証」ボタンも併設済み (modal 内)。 */}
+      <ReAuthModal
+        isOpen={reauth.isOpen}
+        loading={reauth.loading}
+        error={reauth.error}
+        description={reauth.description}
+        onClose={reauth.closeReauth}
+        onSubmit={reauth.verifyAndContinue}
+      />
     </div>
   )
 }
