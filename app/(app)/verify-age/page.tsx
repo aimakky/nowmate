@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, ShieldCheck, FileText, Loader2 } from 'lucide-react'
+import { useReauth } from '@/hooks/useReauth'
+import ReAuthModal from '@/components/auth/ReAuthModal'
 
 export default function VerifyAgePage() {
   const router = useRouter()
@@ -11,6 +13,11 @@ export default function VerifyAgePage() {
   const [verified,  setVerified]  = useState(false)
   const [starting,  setStarting]  = useState(false)
   const [errMsg,    setErrMsg]    = useState<string | null>(null)
+
+  // 再認証 (reauth) フック。年齢確認のような本人確認情報の重要操作前に
+  // パスワード再確認モーダルを出す。直近 5 分以内に再認証済みなら modal を
+  // 出さず即実行 (UX 優先)。
+  const reauth = useReauth()
 
   useEffect(() => {
     async function check() {
@@ -146,10 +153,14 @@ export default function VerifyAgePage() {
               </div>
             )}
 
-            {/* CTA */}
+            {/* CTA — 本人確認情報の重要操作なので、開始前に reauth を要求する。
+                直近 5 分以内に再認証済みなら modal を出さず即実行 (UX 優先)。 */}
             <button
-              onClick={startVerification}
-              disabled={starting}
+              onClick={() => reauth.requestReauth(
+                startVerification,
+                '年齢認証を始めるため、本人確認のためパスワードを入力してください。'
+              )}
+              disabled={starting || reauth.loading}
               className="w-full py-4 rounded-2xl font-extrabold text-white text-base disabled:opacity-60 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               style={{
                 background: 'linear-gradient(135deg,#8b5cf6 0%,#6d28d9 100%)',
@@ -170,6 +181,18 @@ export default function VerifyAgePage() {
           </div>
         )}
       </div>
+
+      {/* 再認証モーダル: 年齢認証開始前にパスワードを再確認する。
+          直近 5 分以内に再認証済みなら open しない (helper 内で判定)。
+          OAuth ユーザー向けに「Google で再認証」ボタンも併設済み (modal 内)。 */}
+      <ReAuthModal
+        isOpen={reauth.isOpen}
+        loading={reauth.loading}
+        error={reauth.error}
+        description={reauth.description}
+        onClose={reauth.closeReauth}
+        onSubmit={reauth.verifyAndContinue}
+      />
     </div>
   )
 }
