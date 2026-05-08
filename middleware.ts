@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { SUPABASE_COOKIE_OPTIONS } from '@/lib/supabase/cookie-options'
 
 // 全レスポンスに強制的に no-store ヘッダーを注入するヘルパー。
 // Vercel Edge が古い HTML を 37 分以上 HIT で配信し続ける問題への
@@ -25,6 +26,10 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // 2026-05-08 (YVOICE4 PR4): iOS Safari ITP 対策として cookieOptions を
+      // 明示。setAll に渡される options には Supabase SSR が cookieOptions を
+      // マージ済みなので、middleware 側で個別に上書きする必要はない。
+      cookieOptions: SUPABASE_COOKIE_OPTIONS,
       cookies: {
         getAll() { return request.cookies.getAll() },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
