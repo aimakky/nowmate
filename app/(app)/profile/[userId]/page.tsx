@@ -20,6 +20,7 @@ import { getGenreTitles, getIndustry } from '@/lib/guild'
 import { startDM } from '@/lib/dm'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import PostActions from '@/components/ui/PostActions'
+import PostCardShell from '@/components/ui/PostCardShell'
 import { getTierById } from '@/lib/trust'
 import { getUserDisplayName } from '@/lib/user-display'
 
@@ -71,15 +72,7 @@ function ProfileVillagePostInline({
   }
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(157,92,255,0.18)',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
-      }}
-    >
-      <div className="px-4 pt-3.5 pb-3">
+    <PostCardShell>
         {/* ヘッダー */}
         <div className="flex items-start justify-between gap-2">
           <Link
@@ -167,8 +160,7 @@ function ProfileVillagePostInline({
             <ChevronRight size={11} style={{ color: 'rgba(184,199,217,0.3)' }} className="flex-shrink-0" />
           </Link>
         )}
-      </div>
-    </div>
+    </PostCardShell>
   )
 }
 
@@ -717,19 +709,11 @@ if (loading) return (
                   ...profileVillagePosts.map(v => ({ kind: 'village' as const, data: v, ts: new Date(v.created_at).getTime() })),
                 ].sort((a, b) => b.ts - a.ts)
                 return items.map(item => item.kind === 'tweet' ? (
-                  // 2026-05-08 (6 回目) マッキーさん指示: ミヤのマイページの tweet 投稿
-                  // (例: bivi二条なう) だけ wrapper なし + 紫アバターで他の村投稿カードと
-                  // 見た目が違っていたため、timeline / mypage と完全同じ rounded-2xl 紫グロー
-                  // wrapper + avatarVariant="green" に統一する。
-                  <div
-                    key={`tweet-${item.data.id}`}
-                    className="rounded-2xl overflow-hidden"
-                    style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(157,92,255,0.18)',
-                      boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
-                    }}
-                  >
+                  // 2026-05-08 (8 回目): wrapper を共通 PostCardShell に集約。
+                  // これにより village 投稿カードと完全に同一の wrapper となり、
+                  // 「bivi二条なう」だけ shadow / padding / 二重背景で違って見える
+                  // 事故が起きない構造になる。
+                  <PostCardShell key={`tweet-${item.data.id}`}>
                     <TweetCard
                       tweet={item.data}
                       myId={myId}
@@ -738,7 +722,7 @@ if (loading) return (
                       canInteract={true}
                       avatarVariant="green"
                     />
-                  </div>
+                  </PostCardShell>
                 ) : (
                   <ProfileVillagePostInline
                     key={`village-${item.data.id}`}

@@ -9,6 +9,7 @@ import { detectNgWords } from '@/lib/moderation'
 import { Heart, RefreshCw, Users, Globe, Home, Share2, HelpCircle, Send, CheckCircle, X, Plus, Waves, Mic, MessageCircle, Layers } from 'lucide-react'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import PostActions from '@/components/ui/PostActions'
+import PostCardShell from '@/components/ui/PostCardShell'
 import { detectCrisisKeywords } from '@/lib/moderation'
 import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
 import { getTierById } from '@/lib/trust'
@@ -386,15 +387,7 @@ function PostCard({
   const profileHref = userId === post.user_id ? '/mypage' : `/profile/${post.user_id}`
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(157,92,255,0.18)',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
-      }}
-    >
-      <div className="px-4 pt-3.5 pb-3">
+    <PostCardShell>
         {/* ヘッダー */}
         <div className="flex items-start justify-between gap-2">
           <Link
@@ -458,8 +451,7 @@ function PostCard({
           onComment={() => {}}
           onShare={shareToX}
         />
-      </div>
-    </div>
+    </PostCardShell>
   )
 }
 
@@ -1412,8 +1404,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
               onAnswered={handleAnswered}
             />
           ) : item.type === 'tweet' ? (
-            <div key={`tweet-${item.data.id}`} className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)', boxShadow: '0 4px 24px rgba(0,0,0,0.35)' }}>
+            <PostCardShell key={`tweet-${item.data.id}`}>
               <TweetCard
                 tweet={item.data}
                 myId={userId}
@@ -1422,7 +1413,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
                 canInteract={true}
                 avatarVariant="green"
               />
-            </div>
+            </PostCardShell>
           ) : (
             <PostCard
               key={`post-${item.data.id}`}

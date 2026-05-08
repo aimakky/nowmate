@@ -24,6 +24,7 @@ import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 // VILLAGE_TYPE_STYLES は旧 参加中タブで使用していたが、タブ削除に伴い未使用化
 import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
+import PostCardShell from '@/components/ui/PostCardShell'
 import DMPrivacySettings from '@/components/features/DMPrivacySettings'
 // GuideTab / FeaturesTab はマイページのタブから移動した。
 // 現在は app/(app)/safety と app/(app)/guide のスタンドアロンページに配置し、
@@ -231,15 +232,7 @@ function MyVillagePostInline({
   }
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(157,92,255,0.18)',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
-      }}
-    >
-      <div className="px-4 pt-3.5 pb-3">
+    <PostCardShell>
         {/* ヘッダー */}
         <div className="flex items-start justify-between gap-2">
           <Link
@@ -334,8 +327,7 @@ function MyVillagePostInline({
             <ChevronRight size={11} style={{ color: 'rgba(184,199,217,0.3)' }} className="flex-shrink-0" />
           </Link>
         )}
-      </div>
-    </div>
+    </PostCardShell>
   )
 }
 
@@ -1013,15 +1005,8 @@ export default function MyPage() {
                     // 2026-05-08 マッキーさん指示: timeline と完全同一の表示形式に統一。
                     // timeline (app/(app)/timeline/page.tsx 行 1431-1441) と同じ
                     // 紫グロー丸角 wrapper + avatarVariant="green" を採用。
-                    <div
-                      key={`tweet-${item.data.id}`}
-                      className="rounded-2xl overflow-hidden"
-                      style={{
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(157,92,255,0.18)',
-                        boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
-                      }}
-                    >
+                    // 2026-05-08 (8 回目): wrapper を共通 PostCardShell に集約。
+                    <PostCardShell key={`tweet-${item.data.id}`}>
                       <TweetCard
                         tweet={item.data}
                         myId={userId}
@@ -1030,7 +1015,7 @@ export default function MyPage() {
                         canInteract={true}
                         avatarVariant="green"
                       />
-                    </div>
+                    </PostCardShell>
                   ) : (
                     <MyVillagePostInline
                       key={`village-${item.data.id}`}
