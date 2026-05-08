@@ -428,10 +428,11 @@ function PostCard({
                 >
                   {roleLabel}
                 </span>
+                {/* 2026-05-08 (7 回目): TweetCard と完全同一の inline 配置に統一 */}
+                <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                  {timeAgo(post.created_at)}
+                </span>
               </div>
-              <span className="text-[10px]" style={{ color: 'rgba(240,238,255,0.3)' }}>
-                {timeAgo(post.created_at)}
-              </span>
             </div>
           </Link>
           {/* ... ボタン */}
