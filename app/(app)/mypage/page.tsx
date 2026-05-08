@@ -557,20 +557,34 @@ export default function MyPage() {
 
       // いいねタブ用: 自分が heart リアクションした tweets を取得 + enrich
       // tweet_reactions.user_id = 自分 AND reaction = 'heart' の tweet_id 群
+      // 2026-05-08 マッキーさん指示「いいねした投稿が一部しか表示されない」への対応:
+      // 旧実装は .limit(50) で 50 件以上いいねしたユーザーは漏れていた。
+      // limit を撤廃し、heart_reactions の全件 IN で取得するように変更。
+      // 並び順は当面「投稿作成日時 DESC」で暫定。tweet_reactions に created_at
+      // 列が存在することが確認できれば、次 PR で「いいねした日時 DESC」に改善する。
       const { data: heartReactions } = await supabase
         .from('tweet_reactions')
         .select('tweet_id')
         .eq('user_id', user.id)
         .eq('reaction', 'heart')
       const heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
+      // 一時 DEBUG ログ (マッキーさん指示「console.log で取得件数を確認」準拠)。
+      // 確認後、次 commit で除去する (CLAUDE.md「一時 console.log の最短ライフサイクル」)。
+      // eslint-disable-next-line no-console
+      console.log('[LIKES_DBG]', 'heartReactions', { count: heartTweetIds.length })
       if (heartTweetIds.length > 0) {
         const { data: ltRows } = await supabase
           .from('tweets')
           .select('*')
           .in('id', heartTweetIds)
           .order('created_at', { ascending: false })
-          .limit(50)
         const ltRaw = (ltRows ?? []) as any[]
+        // eslint-disable-next-line no-console
+        console.log('[LIKES_DBG]', 'tweets fetched', {
+          requested: heartTweetIds.length,
+          fetched: ltRaw.length,
+          missing: heartTweetIds.filter(id => !ltRaw.some(t => t.id === id)),
+        })
         if (ltRaw.length > 0) {
           // 投稿者プロフィール / リアクション / 返信 / 信頼スコアを別 query で並列取得し merge
           const ltIds = ltRaw.map((t: any) => t.id)
@@ -609,19 +623,28 @@ export default function MyPage() {
 
       // いいねタブ用: 自分が反応した village_posts (上で取得した likedIds は
       // 「自分が投稿した村投稿」だけだったので、ここで全範囲版を取得し直す)
+      // 2026-05-08 マッキーさん指示「いいねした投稿が一部しか表示されない」への対応:
+      // 旧実装は .limit(50) で 50 件以上いいねした人は漏れていた。limit を撤廃。
       const { data: allMyVillageReacts } = await supabase
         .from('village_reactions')
         .select('post_id')
         .eq('user_id', user.id)
       const likedVillageIds = ((allMyVillageReacts ?? []) as any[]).map(r => r.post_id).filter(Boolean)
+      // eslint-disable-next-line no-console
+      console.log('[LIKES_DBG]', 'villageReactions', { count: likedVillageIds.length })
       if (likedVillageIds.length > 0) {
         const { data: lvRows } = await supabase
           .from('village_posts')
           .select('id, content, category, created_at, village_id, reaction_count')
           .in('id', likedVillageIds)
           .order('created_at', { ascending: false })
-          .limit(50)
         const lvRaw = (lvRows ?? []) as any[]
+        // eslint-disable-next-line no-console
+        console.log('[LIKES_DBG]', 'villagePosts fetched', {
+          requested: likedVillageIds.length,
+          fetched: lvRaw.length,
+          missing: likedVillageIds.filter(id => !lvRaw.some(p => p.id === id)),
+        })
         const lvVillageIds = Array.from(new Set(lvRaw.map((p: any) => p.village_id).filter(Boolean)))
         let lvVMap = new Map<string, any>()
         if (lvVillageIds.length > 0) {
