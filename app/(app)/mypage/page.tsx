@@ -13,8 +13,9 @@ import { TrustCard } from '@/components/ui/TrustBadge'
 import TrustBadge from '@/components/ui/TrustBadge'
 // PhoneVerifyModal は TrustVerificationCard 内部で管理される
 import { getUserTrust, fetchTierProgress, getTierById, type TierProgress } from '@/lib/trust'
-import { Settings, LogOut, ChevronRight, Users, Copy, Check, Pencil, X, Eye, EyeOff, User, UserPlus, Heart, MessageCircle, Share2, MoreHorizontal } from 'lucide-react'
+import { Settings, LogOut, ChevronRight, Users, Copy, Check, Pencil, X, Eye, EyeOff, User, UserPlus, MoreHorizontal } from 'lucide-react'
 import PurpleIconButton from '@/components/ui/PurpleIconButton'
+import PostActions from '@/components/ui/PostActions'
 import { timeAgo, getNationalityFlag } from '@/lib/utils'
 import { getUserDisplayName, getAvatarInitial } from '@/lib/user-display'
 import Avatar from '@/components/ui/Avatar'
@@ -228,6 +229,11 @@ function MyVillagePostInline({
     const text = `${post.content}\n\n— ${village}より\n#YVOICE #ゲームコミュニティ\n${host}`
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
+
+  // DEBUG TEMP 2026-05-08: mypage 村投稿カード描画確認用。次 commit で除去。
+  if (typeof window !== 'undefined') {
+    console.log('[DEBUG TEMP 2026-05-08] Rendering MyVillagePostInline', { postId: post.id })
+  }
   return (
     <div
       className="rounded-2xl overflow-hidden"
@@ -299,43 +305,17 @@ function MyVillagePostInline({
           {post.content}
         </p>
 
-        {/* アクション (timeline PostCard と同一の borderTop 区切り) */}
-        <div
-          className="flex items-center gap-4 mt-3 pt-2.5"
-          style={{ borderTop: '1px solid rgba(57,255,136,0.1)' }}
-        >
-          <button
-            onClick={() => router.push(villageHref)}
-            className="flex items-center gap-1.5 active:scale-90 transition-all"
-            style={{ color: post.reaction_count > 0 ? '#39FF88' : 'rgba(240,238,255,0.35)' }}
-            aria-label="リアクションを見る"
-          >
-            <Heart
-              size={15}
-              fill={post.reaction_count > 0 ? '#39FF88' : 'none'}
-              strokeWidth={post.reaction_count > 0 ? 0 : 1.8}
-            />
-            {post.reaction_count > 0 && (
-              <span className="text-xs font-semibold">{post.reaction_count}</span>
-            )}
-          </button>
-          <button
-            onClick={() => router.push(villageHref)}
-            className="flex items-center gap-1.5 active:scale-90 transition-all"
-            style={{ color: 'rgba(240,238,255,0.35)' }}
-            aria-label="コメントを見る"
-          >
-            <MessageCircle size={15} strokeWidth={1.8} />
-          </button>
-          <button
-            onClick={shareToX}
-            className="flex items-center gap-1.5 active:scale-90 transition-all ml-auto"
-            style={{ color: 'rgba(240,238,255,0.35)' }}
-            aria-label="共有"
-          >
-            <Share2 size={14} strokeWidth={1.8} />
-          </button>
-        </div>
+        {/* アクション = 共通 PostActions コンポーネント
+            2026-05-08 (5 回目): 共通化により timeline / mypage / profile すべてで
+            完全同一のアクション行になる。村投稿は per-user like 情報を持たないので
+            liked=false 固定、Heart タップは村詳細遷移にフォールバック。 */}
+        <PostActions
+          liked={false}
+          reactionCount={post.reaction_count}
+          onHeart={() => router.push(villageHref)}
+          onComment={() => router.push(villageHref)}
+          onShare={shareToX}
+        />
 
         {/* 村リンク (どの村への投稿かが分かるように小さく表示) */}
         {post.village && (
