@@ -459,17 +459,20 @@ export default function GuildDetailPage() {
       {tab === 'posts' && (
         <div className="flex-1 flex flex-col">
 
-          {/* チャンネルヘッダー（Discordの#チャンネル説明） */}
+          {/* チャンネルヘッダー（サークル投稿の説明）
+              2026-05-08 YVOICE5: 「タイムライン」表記をやめ「投稿」に統一。
+              ギルドはサークル型コミュニティで、SNS タイムラインではなく
+              サークル内投稿ページとして見せる方針 (マッキーさん指示)。 */}
           <div className="px-4 py-4 mt-1 border-t border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
             <div className="flex items-center gap-2 mb-1">
               <div className="w-8 h-8 rounded-full flex items-center justify-center"
                 style={{ background: genre ? `${genre.color}20` : 'rgba(139,92,246,0.2)', border: `1px solid ${genre?.color ?? '#8b5cf6'}40` }}>
                 <FileText size={14} style={{ color: genre?.color ?? '#8b5cf6' }} />
               </div>
-              <span className="font-extrabold text-white text-sm">タイムライン</span>
+              <span className="font-extrabold text-white text-sm">投稿</span>
             </div>
             <p className="text-xs leading-relaxed pl-10" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              {guild.description || 'ギルドのタイムラインに投稿して、メンバーと交流しましょう。'}
+              {guild.description || 'サークルメンバーと投稿で交流しましょう。'}
             </p>
           </div>
 
@@ -480,7 +483,7 @@ export default function GuildDetailPage() {
                 <div className="text-4xl mb-3">{guild.icon}</div>
                 <p className="font-bold text-white mb-1">まだ投稿がありません</p>
                 <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                  {isMember ? 'ギルドのタイムラインに投稿して、メンバーと交流しましょう' : '参加して投稿しよう'}
+                  {isMember ? 'サークルメンバーと投稿で交流しましょう' : '参加して投稿しよう'}
                 </p>
               </div>
             ) : (
