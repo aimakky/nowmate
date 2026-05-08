@@ -13,7 +13,7 @@ import { TrustCard } from '@/components/ui/TrustBadge'
 import TrustBadge from '@/components/ui/TrustBadge'
 // PhoneVerifyModal は TrustVerificationCard 内部で管理される
 import { getUserTrust, fetchTierProgress, getTierById, type TierProgress } from '@/lib/trust'
-import { Settings, LogOut, ChevronRight, Users, Copy, Check, Pencil, X, Eye, EyeOff, User, UserPlus, Heart, MessageCircle, Repeat2, MoreHorizontal } from 'lucide-react'
+import { Settings, LogOut, ChevronRight, Users, Copy, Check, Pencil, X, Eye, EyeOff, User, UserPlus, Heart, MessageCircle, Share2, MoreHorizontal } from 'lucide-react'
 import PurpleIconButton from '@/components/ui/PurpleIconButton'
 import { timeAgo, getNationalityFlag } from '@/lib/utils'
 import { getUserDisplayName, getAvatarInitial } from '@/lib/user-display'
@@ -216,9 +216,18 @@ function MyVillagePostInline({
   // - 外側 wrapper: rounded-2xl + 紫グロー border + box shadow
   // - 内側 padding: px-4 pt-3.5 pb-3
   // - Avatar: 40x40 緑グラデ + 緑リング (Avatar コンポーネントから差し替え)
-  // - Action 行: 緑 borderTop 区切り + Heart / MessageCircle / Share2 同等の配置
-  // 動作面 (クリック → 村詳細) は mypage 固有のため維持。
+  // - Action 行: 緑 borderTop 区切り + Heart / MessageCircle / Share2 (PostCard と完全同一)
+  //   2026-05-08 (4 回目): 旧 Repeat2 → Share2 に変更し timeline PostCard と完全統一。
+  //   shareToX も PostCard と同等のロジックで X 共有を起動。
+  // 動作面 (Heart / Comment クリック → 村詳細) は mypage 固有のため維持。
   const tierLabel = trust?.tier ? getTierById(trust.tier).label : null
+
+  function shareToX() {
+    const village = post.village ? `${post.village.icon}${post.village.name}` : 'YVOICE'
+    const host = (typeof window !== 'undefined' ? window.location.host : '') || 'nowmatejapan.com'
+    const text = `${post.content}\n\n— ${village}より\n#YVOICE #ゲームコミュニティ\n${host}`
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
+  }
   return (
     <div
       className="rounded-2xl overflow-hidden"
@@ -319,12 +328,12 @@ function MyVillagePostInline({
             <MessageCircle size={15} strokeWidth={1.8} />
           </button>
           <button
-            onClick={() => router.push(villageHref)}
+            onClick={shareToX}
             className="flex items-center gap-1.5 active:scale-90 transition-all ml-auto"
             style={{ color: 'rgba(240,238,255,0.35)' }}
-            aria-label="村を開く"
+            aria-label="共有"
           >
-            <Repeat2 size={14} strokeWidth={1.8} />
+            <Share2 size={14} strokeWidth={1.8} />
           </button>
         </div>
 
