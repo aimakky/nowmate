@@ -163,12 +163,6 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
   const totalReactions = tweet.tweet_reactions.length
   const liked = myReaction === 'heart'
 
-  // DEBUG TEMP 2026-05-08: ミヤのマイページ反映漏れ調査用。
-  // 本番反映確認後に次 commit で除去。
-  if (typeof window !== 'undefined') {
-    console.log('[DEBUG TEMP 2026-05-08] Rendering TweetCard', { tweetId: tweet.id })
-  }
-
   return (
     <>
       <div
