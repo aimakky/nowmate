@@ -12,19 +12,19 @@ import { createClient } from '@/lib/supabase/client'
 import { TrustCard } from '@/components/ui/TrustBadge'
 import TrustBadge from '@/components/ui/TrustBadge'
 // PhoneVerifyModal は TrustVerificationCard 内部で管理される
-import { getUserTrust, fetchTierProgress, getTierById, type TierProgress } from '@/lib/trust'
-import { Settings, LogOut, ChevronRight, Users, Copy, Check, Pencil, X, Eye, EyeOff, User, UserPlus, MoreHorizontal } from 'lucide-react'
+import { getUserTrust, fetchTierProgress, type TierProgress } from '@/lib/trust'
+import { Settings, LogOut, ChevronRight, Users, Copy, Check, Pencil, X, Eye, EyeOff, User, UserPlus } from 'lucide-react'
 import PurpleIconButton from '@/components/ui/PurpleIconButton'
 import PostActions from '@/components/ui/PostActions'
-import { timeAgo, getNationalityFlag } from '@/lib/utils'
+import { getNationalityFlag } from '@/lib/utils'
 import { getUserDisplayName, getAvatarInitial } from '@/lib/user-display'
 import Avatar from '@/components/ui/Avatar'
-import VerifiedBadge from '@/components/ui/VerifiedBadge'
 import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 // VILLAGE_TYPE_STYLES は旧 参加中タブで使用していたが、タブ削除に伴い未使用化
 import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import PostCardShell from '@/components/ui/PostCardShell'
+import PostCardHeader from '@/components/ui/PostCardHeader'
 import DMPrivacySettings from '@/components/features/DMPrivacySettings'
 // GuideTab / FeaturesTab はマイページのタブから移動した。
 // 現在は app/(app)/safety と app/(app)/guide のスタンドアロンページに配置し、
@@ -222,8 +222,6 @@ function MyVillagePostInline({
   //   2026-05-08 (4 回目): 旧 Repeat2 → Share2 に変更し timeline PostCard と完全統一。
   //   shareToX も PostCard と同等のロジックで X 共有を起動。
   // 動作面 (Heart / Comment クリック → 村詳細) は mypage 固有のため維持。
-  const tierLabel = trust?.tier ? getTierById(trust.tier).label : null
-
   function shareToX() {
     const village = post.village ? `${post.village.icon}${post.village.name}` : 'YVOICE'
     const host = (typeof window !== 'undefined' ? window.location.host : '') || 'nowmatejapan.com'
@@ -233,83 +231,43 @@ function MyVillagePostInline({
 
   return (
     <PostCardShell>
-        {/* ヘッダー */}
-        <div className="flex items-start justify-between gap-2">
-          <Link
-            href="/mypage"
-            className="flex items-center gap-2.5 min-w-0 flex-1 active:opacity-70 transition-opacity"
-          >
-            {/* アバター (timeline PostCard と同一: 緑グラデ + 緑リング) */}
-            <div
-              className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold text-white"
-              style={{
-                background: 'linear-gradient(135deg,#059669,#047857)',
-                boxShadow: '0 0 0 2px rgba(57,255,136,0.3)',
-              }}
-            >
-              {profile?.avatar_url
-                ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                : (getUserDisplayName(profile)?.[0] ?? '?')}
-            </div>
-            <div className="min-w-0">
-              {/* 2026-05-08 (7 回目) マッキーさん指示: ミヤさんのマイページで
-                  「bivi二条にスズメ飛んでるなう」だけ時刻が改行されて表示が
-                  ズレていたため、TweetCard と完全同一の inline 配置 (flex-wrap
-                  の中に時刻も含める) に揃える。スタイルも text-xs +
-                  rgba(240,238,255,0.4) で TweetCard と一致させる。 */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-sm font-bold leading-tight" style={{ color: '#F0EEFF' }}>
-                  {getUserDisplayName(profile)}
-                </span>
-                {isVerified && <VerifiedBadge verified size="sm" />}
-                {tierLabel && (
-                  <span
-                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                    style={{
-                      background: 'rgba(57,255,136,0.12)',
-                      color: '#39FF88',
-                      border: '1px solid rgba(57,255,136,0.3)',
-                    }}
-                  >
-                    {tierLabel}
-                  </span>
-                )}
-                <span className="text-base leading-none">{flag}</span>
-                <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>
-                  {timeAgo(post.created_at)}
-                </span>
-              </div>
-            </div>
-          </Link>
-          <button
-            onClick={() => router.push(villageHref)}
-            className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full active:bg-white/5 transition-all"
-            style={{ color: 'rgba(240,238,255,0.25)' }}
-            aria-label="村を開く"
-          >
-            <MoreHorizontal size={14} />
-          </button>
-        </div>
+      {/* ヘッダー = 共通 PostCardHeader コンポーネント
+          2026-05-08 (9 回目): TweetCard と内部レイアウトを完全統一するため、
+          アバター + 名前 + バッジ + 国旗 + 時刻 + 三点メニューを PostCardHeader
+          (components/ui/PostCardHeader.tsx) に集約。動作面 (三点メニュー =
+          村遷移) は mypage 固有のため onMenuClick で委譲。 */}
+      <PostCardHeader
+        profileHref="/mypage"
+        displayName={getUserDisplayName(profile)}
+        avatarUrl={profile?.avatar_url}
+        avatarVariant="green"
+        isVerified={isVerified}
+        trustTier={trust?.tier ?? null}
+        flag={flag}
+        timestamp={post.created_at}
+        onMenuClick={() => router.push(villageHref)}
+        menuLabel="村を開く"
+      />
 
-        {/* 本文 */}
-        <p
-          className="text-sm leading-relaxed mt-3 whitespace-pre-wrap"
-          style={{ color: 'rgba(240,238,255,0.85)' }}
-        >
-          {post.content}
-        </p>
+      {/* 本文 */}
+      <p
+        className="text-sm leading-relaxed whitespace-pre-wrap"
+        style={{ color: 'rgba(240,238,255,0.85)' }}
+      >
+        {post.content}
+      </p>
 
-        {/* アクション = 共通 PostActions コンポーネント
-            2026-05-08 (5 回目): 共通化により timeline / mypage / profile すべてで
-            完全同一のアクション行になる。村投稿は per-user like 情報を持たないので
-            liked=false 固定、Heart タップは村詳細遷移にフォールバック。 */}
-        <PostActions
-          liked={false}
-          reactionCount={post.reaction_count}
-          onHeart={() => router.push(villageHref)}
-          onComment={() => router.push(villageHref)}
-          onShare={shareToX}
-        />
+      {/* アクション = 共通 PostActions コンポーネント
+          2026-05-08 (5 回目): 共通化により timeline / mypage / profile すべてで
+          完全同一のアクション行になる。村投稿は per-user like 情報を持たないので
+          liked=false 固定、Heart タップは村詳細遷移にフォールバック。 */}
+      <PostActions
+        liked={false}
+        reactionCount={post.reaction_count}
+        onHeart={() => router.push(villageHref)}
+        onComment={() => router.push(villageHref)}
+        onShare={shareToX}
+      />
 
         {/* 村リンク (どの村への投稿かが分かるように小さく表示) */}
         {post.village && (

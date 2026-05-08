@@ -10,9 +10,9 @@ import { Heart, RefreshCw, Users, Globe, Home, Share2, HelpCircle, Send, CheckCi
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import PostActions from '@/components/ui/PostActions'
 import PostCardShell from '@/components/ui/PostCardShell'
+import PostCardHeader from '@/components/ui/PostCardHeader'
 import { detectCrisisKeywords } from '@/lib/moderation'
 import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
-import { getTierById } from '@/lib/trust'
 import { getUserDisplayName } from '@/lib/user-display'
 
 // ── 型定義 ──────────────────────────────────────────────────────
@@ -369,9 +369,8 @@ function PostCard({
   showVillage?: boolean
 }) {
   const liked = likedIds.has(post.id)
-  // Trust Tier ラベルは lib/trust.ts の TRUST_TIERS を canonical 定義として使用。
-  // 全 5 段階（見習い / 村人 / 常連 / 信頼の村人 / 村の柱）が自動反映される。
-  const roleLabel = getTierById(post.user_trust?.tier ?? 'visitor').label
+  // Trust Tier の表示は共通 PostCardHeader が trustTier prop からラベルを引く。
+  // visitor フォールバックも PostCardHeader 側 (getTierById) で吸収済み。
 
   function shareToX() {
     const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'YVOICE'
@@ -388,69 +387,40 @@ function PostCard({
 
   return (
     <PostCardShell>
-        {/* ヘッダー */}
-        <div className="flex items-start justify-between gap-2">
-          <Link
-            href={profileHref}
-            className="flex items-center gap-2.5 min-w-0 flex-1 active:opacity-70 transition-opacity"
-          >
-            {/* アバター */}
-            <div
-              className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold text-white"
-              style={{
-                background: 'linear-gradient(135deg,#059669,#047857)',
-                boxShadow: '0 0 0 2px rgba(57,255,136,0.3)',
-              }}
-            >
-              {post.profiles?.avatar_url
-                ? <img src={post.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
-                : post.profiles?.display_name?.[0] ?? '?'}
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-sm font-bold leading-tight" style={{ color: '#F0EEFF' }}>
-                  {getUserDisplayName(post.profiles)}
-                </span>
-                <span
-                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                  style={{
-                    background: 'rgba(57,255,136,0.12)',
-                    color: '#39FF88',
-                    border: '1px solid rgba(57,255,136,0.3)',
-                  }}
-                >
-                  {roleLabel}
-                </span>
-                {/* 2026-05-08 (7 回目): TweetCard と完全同一の inline 配置に統一 */}
-                <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>
-                  {timeAgo(post.created_at)}
-                </span>
-              </div>
-            </div>
-          </Link>
-          {/* ... ボタン */}
-          <button className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full active:bg-white/5 transition-all"
-            style={{ color: 'rgba(240,238,255,0.25)' }}>
-            <span className="text-xs tracking-widest leading-none">•••</span>
-          </button>
-        </div>
+      {/* ヘッダー = 共通 PostCardHeader コンポーネント
+          2026-05-08 (9 回目): TweetCard と内部レイアウトを完全統一するため、
+          アバター + 名前 + バッジ + 時刻 + 三点メニューを PostCardHeader
+          (components/ui/PostCardHeader.tsx) に集約。
+          - flag は post.profiles に nationality が含まれていない (line 1002 の
+            select で取得しないため) ので非表示のまま (既存挙動と一致)。
+          - 三点メニューは旧 decorative ・・・ ボタンを撤去。村遷移にしないのは
+            timeline 上では Heart/Comment ですでに村遷移できるため重複機能を
+            避けるため。menuLabel を渡さなければ menu ボタン自体が描画されない。 */}
+      <PostCardHeader
+        profileHref={profileHref}
+        displayName={getUserDisplayName(post.profiles)}
+        avatarUrl={post.profiles?.avatar_url}
+        avatarVariant="green"
+        trustTier={post.user_trust?.tier ?? 'visitor'}
+        timestamp={post.created_at}
+      />
 
-        {/* 本文 */}
-        <p className="text-sm leading-relaxed mt-3" style={{ color: 'rgba(240,238,255,0.85)' }}>
-          {post.content}
-        </p>
+      {/* 本文 */}
+      <p className="text-sm leading-relaxed" style={{ color: 'rgba(240,238,255,0.85)' }}>
+        {post.content}
+      </p>
 
-        {/* アクション = 共通 PostActions コンポーネント
-            2026-05-08 (5 回目): 4 ファイルで重複していた手書きアクション行を
-            components/ui/PostActions.tsx に集約し、ここからは props 経由で動作を渡す
-            だけにした。 */}
-        <PostActions
-          liked={liked}
-          reactionCount={post.reaction_count}
-          onHeart={() => onToggleLike(post.id)}
-          onComment={() => {}}
-          onShare={shareToX}
-        />
+      {/* アクション = 共通 PostActions コンポーネント
+          2026-05-08 (5 回目): 4 ファイルで重複していた手書きアクション行を
+          components/ui/PostActions.tsx に集約し、ここからは props 経由で動作を渡す
+          だけにした。 */}
+      <PostActions
+        liked={liked}
+        reactionCount={post.reaction_count}
+        onHeart={() => onToggleLike(post.id)}
+        onComment={() => {}}
+        onShare={shareToX}
+      />
     </PostCardShell>
   )
 }

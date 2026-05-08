@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, timeAgo } from '@/lib/utils'
+import { getNationalityFlag } from '@/lib/utils'
 import { ChevronRight, MessageSquare, MoreHorizontal, Flag, Ban } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
@@ -21,7 +21,7 @@ import { startDM } from '@/lib/dm'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import PostActions from '@/components/ui/PostActions'
 import PostCardShell from '@/components/ui/PostCardShell'
-import { getTierById } from '@/lib/trust'
+import PostCardHeader from '@/components/ui/PostCardHeader'
 import { getUserDisplayName } from '@/lib/user-display'
 
 // 村投稿 (village_posts) を投稿タブで TweetCard 同等のリッチ UI で描画する型。
@@ -73,76 +73,40 @@ function ProfileVillagePostInline({
 
   return (
     <PostCardShell>
-        {/* ヘッダー */}
-        <div className="flex items-start justify-between gap-2">
-          <Link
-            href={profileHref}
-            className="flex items-center gap-2.5 min-w-0 flex-1 active:opacity-70 transition-opacity"
-          >
-            {/* アバター (timeline PostCard と同一: 緑グラデ + 緑リング) */}
-            <div
-              className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold text-white"
-              style={{
-                background: 'linear-gradient(135deg,#059669,#047857)',
-                boxShadow: '0 0 0 2px rgba(57,255,136,0.3)',
-              }}
-            >
-              {profile?.avatar_url
-                ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                : (getUserDisplayName(profile)?.[0] ?? '?')}
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-sm font-bold leading-tight" style={{ color: '#F0EEFF' }}>
-                  {getUserDisplayName(profile)}
-                </span>
-                {isVerified && <VerifiedBadge verified size="sm" />}
-                {trustTier && (
-                  <span
-                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                    style={{
-                      background: 'rgba(57,255,136,0.12)',
-                      color: '#39FF88',
-                      border: '1px solid rgba(57,255,136,0.3)',
-                    }}
-                  >
-                    {getTierById(trustTier).label}
-                  </span>
-                )}
-                <span className="text-base leading-none">{flag}</span>
-                {/* 2026-05-08 (7 回目): TweetCard と完全同一の inline 配置に統一 */}
-                <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>
-                  {timeAgo(post.created_at)}
-                </span>
-              </div>
-            </div>
-          </Link>
-          <button
-            onClick={() => router.push(villageHref)}
-            className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full active:bg-white/5 transition-all"
-            style={{ color: 'rgba(240,238,255,0.25)' }}
-            aria-label="村を開く"
-          >
-            <MoreHorizontal size={14} />
-          </button>
-        </div>
+      {/* ヘッダー = 共通 PostCardHeader コンポーネント
+          2026-05-08 (9 回目): TweetCard と内部レイアウトを完全統一するため、
+          アバター + 名前 + バッジ + 国旗 + 時刻 + 三点メニューを PostCardHeader
+          (components/ui/PostCardHeader.tsx) に集約。動作面 (三点メニュー =
+          村遷移) は profile 固有のため onMenuClick で委譲。 */}
+      <PostCardHeader
+        profileHref={profileHref}
+        displayName={getUserDisplayName(profile)}
+        avatarUrl={profile?.avatar_url}
+        avatarVariant="green"
+        isVerified={isVerified}
+        trustTier={trustTier}
+        flag={flag}
+        timestamp={post.created_at}
+        onMenuClick={() => router.push(villageHref)}
+        menuLabel="村を開く"
+      />
 
-        {/* 本文 */}
-        <p
-          className="text-sm leading-relaxed mt-3 whitespace-pre-wrap"
-          style={{ color: 'rgba(240,238,255,0.85)' }}
-        >
-          {post.content}
-        </p>
+      {/* 本文 */}
+      <p
+        className="text-sm leading-relaxed whitespace-pre-wrap"
+        style={{ color: 'rgba(240,238,255,0.85)' }}
+      >
+        {post.content}
+      </p>
 
-        {/* アクション = 共通 PostActions コンポーネント (timeline / mypage と完全同一) */}
-        <PostActions
-          liked={false}
-          reactionCount={post.reaction_count}
-          onHeart={() => router.push(villageHref)}
-          onComment={() => router.push(villageHref)}
-          onShare={shareToX}
-        />
+      {/* アクション = 共通 PostActions コンポーネント (timeline / mypage と完全同一) */}
+      <PostActions
+        liked={false}
+        reactionCount={post.reaction_count}
+        onHeart={() => router.push(villageHref)}
+        onComment={() => router.push(villageHref)}
+        onShare={shareToX}
+      />
 
         {/* 村リンク (どの村への投稿かが分かるように小さく表示) */}
         {post.village && (

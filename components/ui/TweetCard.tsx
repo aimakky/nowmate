@@ -3,13 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, timeAgo } from '@/lib/utils'
-import { Repeat2, MoreHorizontal, Pencil, Trash2, X, Flag, Ban } from 'lucide-react'
-import Avatar from '@/components/ui/Avatar'
-import VerifiedBadge from '@/components/ui/VerifiedBadge'
+import { getNationalityFlag } from '@/lib/utils'
+import { Repeat2, Pencil, Trash2, X, Flag, Ban } from 'lucide-react'
 import PostActions from '@/components/ui/PostActions'
+import PostCardHeader from '@/components/ui/PostCardHeader'
 import ReportModal from '@/components/features/ReportModal'
-import { getTierById } from '@/lib/trust'
 import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 import { getUserDisplayName } from '@/lib/user-display'
 
@@ -172,7 +170,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
 
   return (
     <>
-      {/* Repost header */}
+      {/* Repost header (リポスト時のみ) */}
       {tweet.repost_of && (
         <div className="flex items-center gap-1.5 text-xs font-semibold mb-2 ml-1"
           style={{ color: 'rgba(240,238,255,0.4)' }}>
@@ -181,84 +179,44 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
         </div>
       )}
 
-      <div className="flex items-start gap-3">
-          {/* Avatar — avatarVariant により色味を切替。
-              default: 共有 Avatar (紫 brand-100)
-              green:   PostCard と同じ緑グラデ + 緑リング (タイムライン用) */}
-          <button onClick={() => router.push(profileHref)} className="flex-shrink-0 mt-0.5">
-            {avatarVariant === 'green' ? (
-              <div
-                className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold text-white"
-                style={{
-                  background: 'linear-gradient(135deg,#059669,#047857)',
-                  boxShadow: '0 0 0 2px rgba(57,255,136,0.3)',
-                }}
-              >
-                {tweet.profiles?.avatar_url
-                  ? <img src={tweet.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
-                  : (tweet.profiles?.display_name?.[0] ?? '?')}
-              </div>
-            ) : (
-              <Avatar src={tweet.profiles?.avatar_url} name={tweet.profiles?.display_name} size="sm" />
-            )}
-          </button>
+      {/* ヘッダー = 共通 PostCardHeader コンポーネント
+          2026-05-08 (9 回目): village 投稿カードと内部レイアウトを完全統一する
+          ため、アバター + 名前 + バッジ + 国旗 + 時刻 + 三点メニューを
+          PostCardHeader (components/ui/PostCardHeader.tsx) に集約。
+          本文と PostActions はヘッダーの sibling になり、カード左端から
+          フル幅で配置される (旧: アバター右にインデント)。 */}
+      <PostCardHeader
+        profileHref={profileHref}
+        displayName={getUserDisplayName(tweet.profiles)}
+        avatarUrl={tweet.profiles?.avatar_url}
+        avatarVariant={avatarVariant}
+        isVerified={isVerified}
+        trustTier={tweet.user_trust?.tier ?? null}
+        flag={flag}
+        timestamp={tweet.created_at}
+        onMenuClick={myId ? () => setShowMenu(true) : undefined}
+        menuLabel="投稿メニュー"
+      />
 
-          <div className="flex-1 min-w-0">
-            {/* Name + time + menu */}
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <button onClick={() => router.push(profileHref)}
-                  className="font-extrabold text-sm leading-tight"
-                  style={{ color: '#F0EEFF' }}>
-                  {getUserDisplayName(tweet.profiles)}
-                </button>
-                {isVerified && <VerifiedBadge verified size="sm" />}
-                {tweet.user_trust?.tier && (
-                  <span
-                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 leading-none"
-                    style={{
-                      background: 'rgba(57,255,136,0.12)',
-                      color: '#39FF88',
-                      border: '1px solid rgba(57,255,136,0.3)',
-                    }}
-                  >
-                    {getTierById(tweet.user_trust.tier).label}
-                  </span>
-                )}
-                <span className="text-base leading-none">{flag}</span>
-                <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>{timeAgo(tweet.created_at)}</span>
-              </div>
-              {myId && (
-                <button
-                  onClick={() => setShowMenu(true)}
-                  className="w-7 h-7 flex items-center justify-center rounded-full transition-colors -mr-1 flex-shrink-0 active:opacity-60"
-                  style={{ color: 'rgba(240,238,255,0.35)' }}>
-                  <MoreHorizontal size={16} />
-                </button>
-              )}
-            </div>
+      {/* Content (カード左端からフル幅で配置) */}
+      <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(240,238,255,0.85)' }}>
+        {tweet.content}
+      </p>
 
-            {/* Content */}
-            <p className="text-sm leading-relaxed mb-3 whitespace-pre-wrap" style={{ color: 'rgba(240,238,255,0.85)' }}>
-              {tweet.content}
-            </p>
-
-            {/* アクション = 共通 PostActions コンポーネント
-                2026-05-08 (5 回目) マッキーさん指示「ミヤを含む全マイページで統一 +
-                共通コンポーネント化」を受け、行内 JSX から共通部品 PostActions に切替。
-                これにより今後アクション行を変更する際は components/ui/PostActions.tsx
-                の 1 ファイルだけ直せば timeline / mypage / profile すべてに反映される。 */}
-            <PostActions
-              liked={liked}
-              reactionCount={totalReactions}
-              replyCount={tweet.reply_count ?? tweet.tweet_replies?.length ?? 0}
-              canInteract={canInteract}
-              onHeart={() => toggleReaction('heart')}
-              onComment={() => router.push(`/tweet/${tweet.id}`)}
-              onShare={shareToX}
-            />
-          </div>
-        </div>
+      {/* アクション = 共通 PostActions コンポーネント
+          2026-05-08 (5 回目) マッキーさん指示「ミヤを含む全マイページで統一 +
+          共通コンポーネント化」を受け、行内 JSX から共通部品 PostActions に切替。
+          これにより今後アクション行を変更する際は components/ui/PostActions.tsx
+          の 1 ファイルだけ直せば timeline / mypage / profile すべてに反映される。 */}
+      <PostActions
+        liked={liked}
+        reactionCount={totalReactions}
+        replyCount={tweet.reply_count ?? tweet.tweet_replies?.length ?? 0}
+        canInteract={canInteract}
+        onHeart={() => toggleReaction('heart')}
+        onComment={() => router.push(`/tweet/${tweet.id}`)}
+        onShare={shareToX}
+      />
 
       {/* ── アクションシート ── */}
       {showMenu && (
