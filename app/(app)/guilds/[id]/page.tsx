@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Users, Send, Heart, MessageSquare, MoreHorizontal, Info, FileText, Hash, Crown, Mic, Shield, Share2, X, Headphones, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Users, Send, Heart, MessageSquare, MoreHorizontal, Info, FileText, Hash, Crown, Shield, Share2, X, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { INDUSTRIES } from '@/lib/guild'
 import { startDM } from '@/lib/dm'
@@ -31,16 +31,9 @@ type Member = {
     age_verification_status?: string | null
   }
 }
-// 通話ルーム表示用（既存 voice_rooms スキーマ準拠。ここでは表示のみで参加処理は
-// 既存の /voice/[roomId] へ委譲するため、参加者数とタイトル等を select する）
-type VoiceRoom = {
-  id: string
-  title: string
-  category: string | null
-  is_open: boolean | null
-  status: string
-  voice_participants?: { user_id: string }[]
-}
+// 2026-05-08 YVOICE5: ギルドをサークル型コミュニティに変更したため、
+// VoiceRoom 型はここから撤去。通話ルーム表示は /voice 画面に集約済。
+// LiveKit / voice_rooms / voice_participants の DB は完全に残置。
 
 // ─── ヘルパー ────────────────────────────────────────────────────
 function timeAgo(iso: string) {
@@ -164,10 +157,9 @@ export default function GuildDetailPage() {
   const [guild,    setGuild]    = useState<Guild | null>(null)
   const [posts,    setPosts]    = useState<Post[]>([])
   const [members,  setMembers]  = useState<Member[]>([])
-  // 旧: 'post' | 'info' の 2 タブ ('# 投稿' と 'メンバー')。
-  // 仕様変更で「メンバー」をタブから外し詳細モーダル側に移動したため、
-  // タブは「タイムライン」のみ。state は将来の拡張余地を残して enum を維持する。
-  const [tab,      setTab]      = useState<'timeline'>('timeline')
+  // 2026-05-08 YVOICE5: ギルドをサークル型に変更し 4 タブ化
+  // (投稿 / 写真 / 動画 / 情報)。動画は DB に video カラムが無いため空状態のみ。
+  const [tab,      setTab]      = useState<'posts' | 'photos' | 'videos' | 'info'>('posts')
   const [userId,   setUserId]   = useState<string | null>(null)
   const [isMember, setIsMember] = useState(false)
   const [joining,  setJoining]  = useState(false)
@@ -177,8 +169,9 @@ export default function GuildDetailPage() {
   // ギルド詳細モーダル (旧メンバータブの中身 + ギルド概要 + ホスト)
   // ギルドアイコン押下で開く
   const [showDetail, setShowDetail] = useState(false)
-  // 通話ルーム一覧（voice_rooms から、status='active' & is_open=true で取得）
-  const [voiceRooms, setVoiceRooms] = useState<VoiceRoom[]>([])
+  // 写真タブ用: village_posts のうち image_url が NOT NULL のレコード。
+  // image_url カラムが DB に無い場合は空配列で返るため自然に空状態表示になる。
+  const [imagePosts, setImagePosts] = useState<Array<{ id: string; image_url: string; content: string | null; created_at: string }>>([])
   // 招待 (Web Share API → clipboard フォールバック) のフィードバック
   const [inviteCopied, setInviteCopied] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -218,18 +211,23 @@ export default function GuildDetailPage() {
         .limit(30)
       setMembers((mb ?? []) as unknown as Member[])
 
-      // 通話ルームを表示のみ取得 (この画面では参加導線のみで、参加処理自体は
-      // /voice/[roomId] 側の既存実装に委譲する。voice_rooms は guild と
-      // テーブル上は紐付いていないので、今は status='active' なルームを
-      // 全件取得し、ジャンルが一致するものを優先表示する)
-      const { data: vr, error: vrErr } = await supabase
-        .from('voice_rooms')
-        .select('id, title, category, is_open, status, voice_participants(user_id)')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(20)
-      if (vrErr) console.error('[guild] voice_rooms fetch error:', vrErr)
-      setVoiceRooms((vr ?? []) as VoiceRoom[])
+      // 2026-05-08 YVOICE5: 通話ルーム取得は撤去 (ギルド画面では通話導線を
+      // 出さない方針。通話は /voice / /voice/[roomId] / ゲーム村に集約)。
+      // 写真タブ用に village_posts の image_url IS NOT NULL を取得。
+      // image_url カラムが DB に存在しない場合はエラーになるが catch で空配列に
+      // 倒す (将来の DB 列追加時に自動で表示が始まる fail-open 設計)。
+      try {
+        const { data: ip } = await supabase
+          .from('village_posts')
+          .select('id, image_url, content, created_at')
+          .eq('village_id', id)
+          .not('image_url', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(50)
+        setImagePosts((ip ?? []) as any[])
+      } catch {
+        setImagePosts([])
+      }
 
       setLoading(false)
     }
@@ -427,123 +425,39 @@ export default function GuildDetailPage() {
         </div>
       </div>
 
-      {/* ── タブバー（タイムライン一本化）──
-          旧: # 投稿 / メンバー の 2 タブ。
-          新: タイムライン のみ。メンバー一覧はギルドアイコン押下で開く詳細
-          モーダル側へ移動した。 */}
-      <div
-        className="flex-shrink-0 flex border-b sticky z-10"
-        style={{ top: 48, background: 'rgba(15,15,26,0.95)', borderColor: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(12px)' }}
-      >
-        <button
-          onClick={() => setTab('timeline')}
-          className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-bold transition-colors relative"
-          style={{ color: genre?.color ?? '#8b5cf6' }}
-          aria-pressed={tab === 'timeline'}
-        >
-          <FileText size={13} />
-          タイムライン
-          <span
-            className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
-            style={{ background: genre?.color ?? '#8b5cf6' }}
-          />
-        </button>
+      {/* 2026-05-08 YVOICE5: 旧「タイムライン一本化タブバー」は撤去し、
+          下記の 4 タブバー (投稿 / 写真 / 動画 / 情報) に置き換え。
+          ギルドをサークル型コミュニティ画面に変更。
+          通話ルーム表示は削除。通話機能は /voice / /voice/[roomId] /
+          ゲーム村 (/guild) / いますぐ村に集約。LiveKit / voice_rooms /
+          voice_participants の DB / 接続ロジックは無変更で残置。
+          タブを 投稿 / 写真 / 動画 / 情報 の 4 タブに拡張。 */}
+      <div className="flex sticky top-[57px] z-10 px-1"
+        style={{ background: '#0f0f1a', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        {([
+          { id: 'posts',  label: '投稿' },
+          { id: 'photos', label: '写真' },
+          { id: 'videos', label: '動画' },
+          { id: 'info',   label: '情報' },
+        ] as const).map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className="flex-1 py-3 text-xs font-bold relative transition-colors"
+            style={{ color: tab === t.id ? '#F0EEFF' : 'rgba(240,238,255,0.4)' }}
+          >
+            {t.label}
+            {tab === t.id && (
+              <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full"
+                style={{ background: 'linear-gradient(90deg, #9D5CFF, #7B3FE4)', boxShadow: '0 0 8px rgba(157,92,255,0.5)' }} />
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* ══ タイムライン ══ */}
-      {tab === 'timeline' && (
+      {/* ══ 投稿タブ (旧タイムライン UI を流用) ══ */}
+      {tab === 'posts' && (
         <div className="flex-1 flex flex-col">
-
-          {/* ── 通話ルームセクション ── */}
-          <div className="px-4 pt-4 pb-2">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <Mic size={12} style={{ color: genre?.color ?? '#8b5cf6' }} />
-                <span className="text-[11px] font-extrabold uppercase tracking-widest"
-                  style={{ color: 'rgba(255,255,255,0.55)' }}>
-                  通話ルーム
-                </span>
-              </div>
-              <Link
-                href="/voice"
-                className="text-[10px] font-bold flex items-center gap-0.5 active:opacity-70"
-                style={{ color: 'rgba(255,255,255,0.4)' }}
-              >
-                すべて見る
-                <ChevronRight size={10} />
-              </Link>
-            </div>
-
-            {voiceRooms.length === 0 ? (
-              <div
-                className="rounded-2xl px-4 py-5 text-center"
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px dashed rgba(255,255,255,0.12)',
-                }}
-              >
-                <p className="text-xs font-bold mb-1" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                  まだ通話ルームがありません
-                </p>
-                <p className="text-[11px] mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  ルームを作成して、ギルドメンバーと話してみましょう
-                </p>
-                <Link
-                  href="/voice"
-                  className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[11px] font-extrabold active:scale-95 transition-all"
-                  style={{
-                    background: genre?.color ?? '#8b5cf6',
-                    color: '#fff',
-                    boxShadow: `0 4px 14px ${genre?.color ?? '#8b5cf6'}50`,
-                  }}
-                >
-                  <Mic size={11} />
-                  ルームを作成
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {voiceRooms.slice(0, 6).map(r => {
-                  const participantCount = (r.voice_participants ?? []).length
-                  return (
-                    <Link
-                      key={r.id}
-                      href={`/voice/${r.id}`}
-                      className="flex items-center gap-3 px-4 py-3 rounded-2xl active:scale-[0.99] transition-all"
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                      }}
-                    >
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{
-                          background: `${genre?.color ?? '#8b5cf6'}22`,
-                          border: `1px solid ${genre?.color ?? '#8b5cf6'}40`,
-                        }}
-                      >
-                        <Headphones size={16} style={{ color: genre?.color ?? '#8b5cf6' }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-extrabold truncate" style={{ color: 'rgba(255,255,255,0.92)' }}>
-                          {r.title || '通話ルーム'}
-                        </p>
-                        <p className="text-[11px] mt-0.5 flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                          <span className="flex items-center gap-0.5">
-                            <Users size={10} />
-                            {participantCount}人
-                          </span>
-                          <span style={{ color: 'rgba(255,255,255,0.25)' }}>・</span>
-                          <span>ルームに入りましょう</span>
-                        </p>
-                      </div>
-                      <ChevronRight size={14} style={{ color: 'rgba(255,255,255,0.3)' }} className="flex-shrink-0" />
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </div>
 
           {/* チャンネルヘッダー（Discordの#チャンネル説明） */}
           <div className="px-4 py-4 mt-1 border-t border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -627,6 +541,146 @@ export default function GuildDetailPage() {
                 参加してメッセージを送る
               </button>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ══ 写真タブ (2026-05-08 YVOICE5) ══
+          village_posts.image_url IS NOT NULL のレコードを 3 列グリッドで表示。
+          image_url カラムが DB に存在しなければ空配列に倒れて自然に空状態へ。 */}
+      {tab === 'photos' && (
+        <div className="flex-1 px-4 pt-4 pb-20">
+          {imagePosts.length === 0 ? (
+            <div className="rounded-2xl p-8 text-center"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+              <p className="text-3xl mb-2">🖼️</p>
+              <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ写真投稿はありません</p>
+              <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>ゲームスクショやプレイ画像を投稿するとここに並びます</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {imagePosts.map(ip => (
+                <div key={ip.id}
+                  className="aspect-square overflow-hidden rounded-xl"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+                  <img src={ip.image_url} alt={ip.content ?? ''} className="w-full h-full object-cover" loading="lazy" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══ 動画タブ (2026-05-08 YVOICE5)
+          DB に video_url 等が無いため空状態のみ。将来 video カラム追加時に拡張。 */}
+      {tab === 'videos' && (
+        <div className="flex-1 px-4 pt-4 pb-20">
+          <div className="rounded-2xl p-8 text-center"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+            <p className="text-3xl mb-2">🎬</p>
+            <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ動画投稿はありません</p>
+            <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>ゲームプレイ動画やクリップを投稿するとここに並びます</p>
+          </div>
+        </div>
+      )}
+
+      {/* ══ 情報タブ (2026-05-08 YVOICE5)
+          サークル説明 (villages.description) / カテゴリ / メンバー数 / ホスト
+          を集約表示。「活動内容 / 参加ルール / 初心者歓迎 / 活動時間帯」用の
+          追加カラムは現状の DB に無いため、将来の DB 変更時に拡張する。 */}
+      {tab === 'info' && (
+        <div className="flex-1 px-4 pt-4 pb-20 space-y-3">
+          {/* サークル説明 */}
+          <div className="rounded-2xl p-4"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: '#9D5CFF' }}>
+              サークル説明
+            </p>
+            {guild.description ? (
+              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(240,238,255,0.85)' }}>
+                {guild.description}
+              </p>
+            ) : (
+              <>
+                <p className="text-sm font-bold mb-1" style={{ color: 'rgba(240,238,255,0.55)' }}>サークル説明はまだ設定されていません</p>
+                <p className="text-xs leading-relaxed" style={{ color: 'rgba(240,238,255,0.35)' }}>
+                  ギルドオーナーは編集画面から、活動内容・対象ゲーム・初心者歓迎の有無などを書き加えられます。
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* カテゴリ / ジャンル */}
+          {genre && (
+            <div className="rounded-2xl p-4"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+              <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: '#9D5CFF' }}>
+                対象ゲーム / ジャンル
+              </p>
+              <span className="inline-flex items-center gap-1.5 text-sm font-extrabold px-3 py-1.5 rounded-full"
+                style={{ background: `${genre.color}20`, color: genre.color, border: `1px solid ${genre.color}40` }}>
+                <Shield size={12} /> {genre.emoji} {guild.category}
+              </span>
+            </div>
+          )}
+
+          {/* メンバー数 / 公開設定 */}
+          <div className="rounded-2xl p-4"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: '#9D5CFF' }}>
+              サークル状況
+            </p>
+            <div className="flex items-center gap-4 text-sm" style={{ color: 'rgba(240,238,255,0.85)' }}>
+              <div className="flex items-center gap-1.5">
+                <Users size={14} style={{ color: 'rgba(240,238,255,0.5)' }} />
+                <span><span className="font-extrabold">{guild.member_count}</span> 人</span>
+              </div>
+              {guild.visibility && (
+                <div className="flex items-center gap-1.5">
+                  <Hash size={14} style={{ color: 'rgba(240,238,255,0.5)' }} />
+                  <span>{guild.visibility === 'public' ? '公開サークル' : guild.visibility}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ホスト情報 */}
+          {(() => {
+            const host = members.find(m => m.role === 'host')
+            if (!host) return null
+            return (
+              <div className="rounded-2xl p-4"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+                <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: '#9D5CFF' }}>
+                  ホスト
+                </p>
+                <Link href={`/profile/${host.user_id}`}
+                  className="flex items-center gap-3 active:opacity-80 transition-opacity">
+                  <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.18)' }}>
+                    {host.profiles?.avatar_url
+                      ? <img src={host.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                      : <Crown size={16} style={{ color: '#FCD34D' }} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-extrabold truncate" style={{ color: '#F0EEFF' }}>
+                      <Crown size={11} className="inline mr-1" style={{ color: '#FCD34D' }} />
+                      {getUserDisplayName(host.profiles)}
+                    </p>
+                  </div>
+                  <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} />
+                </Link>
+              </div>
+            )
+          })()}
+
+          {/* 参加 / 退出 */}
+          {!isMember && (
+            <button onClick={handleJoin} disabled={joining}
+              className="w-full py-3 rounded-2xl text-sm font-extrabold text-white active:scale-95 transition-all"
+              style={{ background: genre?.color ?? '#8b5cf6', boxShadow: `0 4px 14px ${genre?.color ?? '#8b5cf6'}50` }}>
+              {joining ? '参加中…' : 'このサークルに参加する'}
+            </button>
           )}
         </div>
       )}
