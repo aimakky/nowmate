@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag } from '@/lib/utils'
-import { ArrowLeft, Mic, MicOff, Radio, LogOut, Send, ChevronUp, ChevronDown, ShieldCheck, Lock } from 'lucide-react'
+import { ArrowLeft, Mic, MicOff, Radio, LogOut, Send, ChevronUp, ChevronDown, ShieldCheck, Lock, Settings, Volume2, X } from 'lucide-react'
 import { awardPoints, getTierById } from '@/lib/trust'
 import { canSpeakInVoiceRoom, type AgeVerificationStatus } from '@/lib/permissions'
 import { Room, RoomEvent, Track, type RemoteTrack, type RemoteTrackPublication, type RemoteParticipant, type Participant as LkParticipant } from 'livekit-client'
@@ -102,6 +102,20 @@ export default function VoiceRoomPage() {
   const [chatInput,   setChatInput]   = useState('')
   const [chatUnread,  setChatUnread]  = useState(0)
   const chatEndRef = useRef<HTMLDivElement>(null)
+
+  // ── 2026-05-08 YVOICE5 PR-A: 設定 / 音声設定 / 入退室トースト ──
+  // すべて UI のみ追加。LiveKit 接続 / mute / publish / Realtime / DB は不変。
+  const [showSettings,      setShowSettings]      = useState(false)
+  const [showAudioSettings, setShowAudioSettings] = useState(false)
+  // Web Speech API による通話チャット読み上げ ON/OFF (localStorage で永続化)。
+  // ブラウザが speechSynthesis をサポートしていれば動作、未対応なら trueでも no-op。
+  const [ttsEnabled, setTtsEnabled] = useState(false)
+  // 入退室トースト: participants 配列の差分で「○○が入室しました」「退出しました」を
+  // 下部に短時間表示。voice_chat_messages の DB 変更は行わない。
+  type ToastItem = { id: string; text: string; kind: 'enter' | 'leave' }
+  const [presenceToasts, setPresenceToasts] = useState<ToastItem[]>([])
+  const prevParticipantIdsRef = useRef<Set<string>>(new Set())
+  const prevParticipantNamesRef = useRef<Map<string, string>>(new Map())
 
   // ── YouTube 同時視聴（Supabase Realtime channel 経由・DB 永続化なし） ──
   // 誰かが URL を貼ると 'youtube' broadcast が飛び、ルーム全員の videoId state が
@@ -201,6 +215,77 @@ export default function VoiceRoomPage() {
     return () => { supabase.removeChannel(ch) }
   }, [roomId, fetchParticipants])
 
+  // ── 2026-05-08 YVOICE5 PR-A: 入退室トースト用差分検知 ──
+  // participants が更新されるたびに前回値と比較し、新規 user は「入室」、消えた
+  // user は「退出」のトーストを下部に追加する。3 秒後に自動で消える。
+  // DB 変更なし。voice_chat_messages にも書き込まない (純表示のみ)。
+  useEffect(() => {
+    if (!joined || !userId) return
+    const currentIds = new Set(participants.map(p => p.user_id))
+    const currentNames = new Map<string, string>()
+    for (const p of participants) {
+      const display = p.join_mode === 'silent'
+        ? 'こっそり参加者'
+        : (p.profiles?.display_name?.split(' ')[0] ?? 'ゲスト')
+      currentNames.set(p.user_id, display)
+    }
+    const prevIds = prevParticipantIdsRef.current
+    const prevNames = prevParticipantNamesRef.current
+
+    // 初回 (prevIds が空) は通知しない (= ロード直後の初期化扱い)
+    if (prevIds.size === 0) {
+      prevParticipantIdsRef.current = currentIds
+      prevParticipantNamesRef.current = currentNames
+      return
+    }
+
+    const newToasts: ToastItem[] = []
+    // 入室検知: 自分の入室は出さない
+    for (const id of currentIds) {
+      if (!prevIds.has(id) && id !== userId) {
+        const name = currentNames.get(id) ?? 'ゲスト'
+        newToasts.push({ id: `enter-${id}-${Date.now()}`, text: `${name}が入室しました`, kind: 'enter' })
+      }
+    }
+    // 退出検知
+    for (const id of prevIds) {
+      if (!currentIds.has(id) && id !== userId) {
+        const name = prevNames.get(id) ?? 'ゲスト'
+        newToasts.push({ id: `leave-${id}-${Date.now()}`, text: `${name}が退出しました`, kind: 'leave' })
+      }
+    }
+    if (newToasts.length > 0) {
+      setPresenceToasts(prev => [...prev, ...newToasts].slice(-3)) // 最大 3 件
+      // 3 秒後に削除
+      newToasts.forEach(t => {
+        setTimeout(() => {
+          setPresenceToasts(prev => prev.filter(x => x.id !== t.id))
+        }, 3000)
+      })
+    }
+    prevParticipantIdsRef.current = currentIds
+    prevParticipantNamesRef.current = currentNames
+  }, [participants, joined, userId])
+
+  // ── 2026-05-08 YVOICE5 PR-A: 通話チャット読み上げ (Web Speech API) ──
+  // 設定の永続化のみここで行う。実際の発話はチャット受信ハンドラ (voice_chat_messages
+  // の Realtime callback) で window.speechSynthesis を呼ぶ。
+  // ブラウザ未対応 (古い Safari / 一部 Android) の場合は trueでも no-op になる。
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('yvoice_voice_room_tts_enabled')
+      if (v === '1') setTtsEnabled(true)
+    } catch { /* noop (private mode 等) */ }
+  }, [])
+  useEffect(() => {
+    try {
+      localStorage.setItem('yvoice_voice_room_tts_enabled', ttsEnabled ? '1' : '0')
+    } catch { /* noop */ }
+  }, [ttsEnabled])
+  // ttsEnabled の最新値を Realtime ハンドラ内のクロージャから参照するため ref 化。
+  const ttsEnabledRef = useRef(ttsEnabled)
+  useEffect(() => { ttsEnabledRef.current = ttsEnabled }, [ttsEnabled])
+
   // ── チャット購読 ─────────────────────────────────────────
   useEffect(() => {
     if (!roomId) return
@@ -217,6 +302,21 @@ export default function VoiceRoomPage() {
         }
         setChatMsgs(prev => [...prev.slice(-49), msg])
         if (!chatOpen) setChatUnread(n => n + 1)
+        // 2026-05-08 YVOICE5 PR-A: 通話チャット読み上げ。
+        // 自分自身の投稿は読み上げず、設定 ON + ブラウザ対応時のみ発話。
+        try {
+          if (
+            ttsEnabledRef.current &&
+            row.user_id !== userId &&
+            typeof window !== 'undefined' &&
+            'speechSynthesis' in window
+          ) {
+            const u = new SpeechSynthesisUtterance(`${p?.display_name?.split(' ')[0] ?? '誰か'}: ${row.message}`)
+            u.lang = 'ja-JP'
+            u.volume = 0.7
+            window.speechSynthesis.speak(u)
+          }
+        } catch { /* noop: TTS 失敗は静かに無視 */ }
       })
       .subscribe()
     return () => { supabase.removeChannel(ch) }
@@ -1118,7 +1218,10 @@ export default function VoiceRoomPage() {
                   </div>
                 </div>
               )}
-              {/* 話す */}
+              {/* マイクONで参加 (内部 role: speaker、内部 mode 名は不変)
+                  2026-05-08 YVOICE5 PR-A 文言整理: 表示文言のみ「登壇する」→
+                  「マイクONで参加」に変更。joinRoom('speaker') / role: 'speaker' /
+                  join_mode: 'speaker' などの内部値は不変。 */}
               <button
                 onClick={() => joinRoom('speaker')}
                 disabled={joining || speakers.length >= MAX_SPEAKERS || myTier === 'visitor'}
@@ -1135,29 +1238,34 @@ export default function VoiceRoomPage() {
                       ? 'rgba(240,238,255,0.35)'
                       : '#a5b4fc' }}>
                     {!myAgeVerified
-                      ? '登壇する（年齢確認が必要）'
+                      ? 'マイクONで参加（年齢確認が必要）'
                       : myTier === 'visitor'
-                        ? '登壇する（村人以上で解放）'
+                        ? 'マイクONで参加（村人以上で解放）'
                         : speakers.length >= MAX_SPEAKERS
-                          ? `登壇する（上限${MAX_SPEAKERS}名）`
-                          : `登壇する（残り${MAX_SPEAKERS - speakers.length}枠）`}
+                          ? `マイクONで参加（上限${MAX_SPEAKERS}名）`
+                          : `マイクONで参加（残り${MAX_SPEAKERS - speakers.length}枠）`}
                   </p>
                   <p className="text-[10px]" style={{ color: 'rgba(240,238,255,0.3)' }}>
-                    {!myAgeVerified ? '年齢確認済みユーザーのみ話せます' : 'マイクをオンにしてステージへ'}
+                    {!myAgeVerified ? '年齢確認済みユーザーのみ話せます' : 'マイクをONにしてステージへ'}
                   </p>
                 </div>
                 {joining && <span className="ml-auto w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
                   style={{ borderColor: '#6366f1', borderTopColor: 'transparent' }} />}
               </button>
 
-              {/* 観客として参加 */}
+              {/* 聞くだけで参加 (内部 role: listener、内部 mode 名は不変)
+                  2026-05-08 YVOICE5 PR-A 文言整理: 表示文言のみ「観客として参加」→
+                  「聞くだけで参加」に変更。joinRoom('listener') / role: 'listener' /
+                  is_listener: true / join_mode: 'listener' などの内部値は不変。
+                  参加直後はマイク OFF (LiveKit publish しない既存仕様) で入室、
+                  下部のマイクボタンから後で ON に切替可能 (既存 promotion フロー)。 */}
               <button onClick={() => joinRoom('listener')} disabled={joining}
                 className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.98] transition-all text-left"
                 style={{ background: 'rgba(124,255,130,0.08)', border: '1.5px solid rgba(124,255,130,0.3)' }}>
                 <span className="text-2xl flex-shrink-0">👂</span>
                 <div>
-                  <p className="font-extrabold text-sm" style={{ color: '#7CFF82' }}>観客として参加</p>
-                  <p className="text-[10px]" style={{ color: 'rgba(124,255,130,0.55)' }}>✋ 手を挙げて登壇リクエスト可能</p>
+                  <p className="font-extrabold text-sm" style={{ color: '#7CFF82' }}>聞くだけで参加</p>
+                  <p className="text-[10px]" style={{ color: 'rgba(124,255,130,0.55)' }}>マイクOFFで入室・後で手を挙げて登壇可能</p>
                 </div>
               </button>
 
@@ -1382,6 +1490,26 @@ export default function VoiceRoomPage() {
                   <span className="text-xs">{isRaisingHand ? '手を下げる' : '登壇リクエスト'}</span>
                 </button>
               )}
+              {/* 2026-05-08 YVOICE5 PR-A: 音声設定ボタン (新規)
+                  押下で音声設定パネル (スピーカー / マイク音量 / 自動低下 / 読み上げ) を開く。
+                  ブラウザ制限項目は「未対応」と明示し、見た目だけ ON/OFF の偽装はしない。
+                  読み上げのみ Web Speech API で実機能。 */}
+              <button onClick={() => setShowAudioSettings(true)}
+                className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90"
+                style={{ background: 'rgba(99,102,241,0.12)', border: '1.5px solid rgba(99,102,241,0.35)', color: '#a5b4fc' }}
+                title="音声設定">
+                <Volume2 size={18} />
+              </button>
+              {/* 2026-05-08 YVOICE5 PR-A: 設定ボタン (新規)
+                  押下で設定パネル (退出 / ルーム情報 / 音声設定への入口) を開く。
+                  退出ボタンは setShowSettings 内に移動するのではなく既存ボタンも維持し、
+                  ユーザーが迷わないよう既存挙動と並列にする。 */}
+              <button onClick={() => setShowSettings(true)}
+                className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(255,255,255,0.12)', color: 'rgba(240,238,255,0.7)' }}
+                title="設定">
+                <Settings size={18} />
+              </button>
               <button onClick={leaveRoom}
                 className="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center active:scale-90 transition-all"
                 style={{ boxShadow: '0 4px 12px rgba(239,68,68,0.4)' }}>
@@ -1396,6 +1524,176 @@ export default function VoiceRoomPage() {
                   Host 👑
                 </span>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 2026-05-08 YVOICE5 PR-A: 入退室トースト ──
+          下部コントロールの少し上に短時間表示。3秒で自動消滅。pointer-events-none
+          でクリックを妨げない。voice_chat_messages には書き込まない (純表示のみ)。 */}
+      {presenceToasts.length > 0 && joined && (
+        <div className="fixed left-0 right-0 z-30 flex flex-col items-center gap-1.5 pointer-events-none"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6.5rem)' }}>
+          {presenceToasts.map(t => (
+            <div key={t.id}
+              className="px-3.5 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-2"
+              style={t.kind === 'enter'
+                ? { background: 'rgba(124,255,130,0.18)', border: '1px solid rgba(124,255,130,0.4)', color: '#7CFF82', backdropFilter: 'blur(8px)' }
+                : { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(240,238,255,0.6)', backdropFilter: 'blur(8px)' }}>
+              <span>{t.kind === 'enter' ? '👋' : '🚪'}</span>
+              <span>{t.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── 2026-05-08 YVOICE5 PR-A: 設定パネル ──
+          下部の歯車ボタン押下で開く。退出 / ルーム情報 / 音声設定への入口。
+          既存の退出ボタン (下部赤丸) も維持しているので、ユーザーが迷わないよう
+          設定パネル内の「退出」も同じ leaveRoom 関数を呼ぶ。 */}
+      {showSettings && joined && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowSettings(false)} />
+          <div className="relative w-full max-w-md rounded-3xl p-5"
+            style={{ background: '#0d0d1f', border: '1px solid rgba(157,92,255,0.3)', boxShadow: '0 0 40px rgba(157,92,255,0.2)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-extrabold text-base" style={{ color: '#F0EEFF' }}>設定</h3>
+              <button onClick={() => setShowSettings(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all"
+                style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <X size={16} style={{ color: 'rgba(240,238,255,0.6)' }} />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {/* ルーム情報 (静的表示) */}
+              <div className="px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'rgba(240,238,255,0.4)' }}>通話ルーム情報</p>
+                <p className="text-sm font-extrabold mb-0.5" style={{ color: '#F0EEFF' }}>{room?.title ?? '-'}</p>
+                <p className="text-xs" style={{ color: 'rgba(240,238,255,0.5)' }}>カテゴリ: {room?.category ?? '-'} · {participants.length}人参加中</p>
+              </div>
+              {/* 音声設定 */}
+              <button
+                onClick={() => { setShowSettings(false); setShowAudioSettings(true) }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.99] transition-all text-left"
+                style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)' }}>
+                <Volume2 size={20} style={{ color: '#a5b4fc' }} />
+                <div className="flex-1">
+                  <p className="font-bold text-sm" style={{ color: '#a5b4fc' }}>音声設定</p>
+                  <p className="text-[10px]" style={{ color: 'rgba(165,180,252,0.6)' }}>マイク・スピーカー・読み上げ</p>
+                </div>
+              </button>
+              {/* 退出 (既存 leaveRoom を呼ぶ。下部の赤退出ボタンと同じ処理) */}
+              <button
+                onClick={() => { setShowSettings(false); leaveRoom() }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.99] transition-all text-left"
+                style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)' }}>
+                <LogOut size={20} style={{ color: '#ef4444' }} />
+                <div className="flex-1">
+                  <p className="font-bold text-sm" style={{ color: '#ef4444' }}>通話ルームを退出</p>
+                  <p className="text-[10px]" style={{ color: 'rgba(239,68,68,0.6)' }}>ホストの場合はルームが閉じます</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 2026-05-08 YVOICE5 PR-A: 音声設定パネル ──
+          スピーカー / マイク音量 / ゲーム音自動低下はブラウザ / iOS Safari 制限で
+          実効制御不可のため、トグルや実値スライダーを置かず「未対応」表記のみ。
+          見た目だけ ON/OFF で実際は効かない偽装 UI を作らない方針 (CLAUDE.md 準拠)。
+          通話チャット読み上げのみ Web Speech API で実機能 (ttsEnabled state)。 */}
+      {showAudioSettings && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowAudioSettings(false)} />
+          <div className="relative w-full max-w-md rounded-3xl p-5"
+            style={{ background: '#0d0d1f', border: '1px solid rgba(157,92,255,0.3)', boxShadow: '0 0 40px rgba(157,92,255,0.2)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-extrabold text-base" style={{ color: '#F0EEFF' }}>音声設定</h3>
+              <button onClick={() => setShowAudioSettings(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all"
+                style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <X size={16} style={{ color: 'rgba(240,238,255,0.6)' }} />
+              </button>
+            </div>
+            <div className="space-y-3">
+
+              {/* スピーカー (出力先) */}
+              <div className="px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-extrabold" style={{ color: '#F0EEFF' }}>🔊 スピーカー</p>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    端末スピーカー
+                  </span>
+                </div>
+                <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                  iPhone Safariでは出力先の切替・音量調整は本体の音量ボタンで行ってください（ブラウザ制限により未対応）。
+                </p>
+              </div>
+
+              {/* マイク音量 */}
+              <div className="px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-extrabold" style={{ color: '#F0EEFF' }}>🎤 マイク音量</p>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    未対応
+                  </span>
+                </div>
+                <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                  ブラウザの制約によりマイク音量の数値制御はできません。マイクの ON/OFF は下部のマイクボタンから切替できます。
+                </p>
+              </div>
+
+              {/* ゲーム音を自動で小さくする */}
+              <div className="px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-extrabold" style={{ color: '#F0EEFF' }}>🎮 ゲーム音を自動で小さくする</p>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    未対応
+                  </span>
+                </div>
+                <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                  ブラウザではゲーム音を自動で下げる機能（オーディオダッキング）は利用できません。
+                </p>
+              </div>
+
+              {/* 通話チャット読み上げ (Web Speech API で実機能) */}
+              <button
+                onClick={() => setTtsEnabled(v => !v)}
+                className="w-full px-4 py-3 rounded-2xl text-left active:scale-[0.99] transition-all"
+                style={{
+                  background: ttsEnabled ? 'rgba(124,255,130,0.10)' : 'rgba(255,255,255,0.04)',
+                  border: ttsEnabled ? '1px solid rgba(124,255,130,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 pr-3">
+                    <p className="text-xs font-extrabold" style={{ color: ttsEnabled ? '#7CFF82' : '#F0EEFF' }}>🗣️ 通話チャットを読み上げる</p>
+                    <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'rgba(240,238,255,0.45)' }}>
+                      届いた他の人のメッセージをブラウザの音声合成で読み上げます。自分の投稿は読み上げません。
+                    </p>
+                  </div>
+                  {/* トグルスイッチ風表示 */}
+                  <div className="w-11 h-6 rounded-full flex-shrink-0 flex items-center transition-colors"
+                    style={{
+                      background: ttsEnabled ? '#7CFF82' : 'rgba(255,255,255,0.18)',
+                      paddingLeft: ttsEnabled ? '22px' : '2px',
+                    }}>
+                    <span className="w-5 h-5 rounded-full bg-white" />
+                  </div>
+                </div>
+              </button>
+
+              <p className="text-[10px] leading-relaxed pt-1" style={{ color: 'rgba(240,238,255,0.3)' }}>
+                ※ 「未対応」表記の項目はブラウザ仕様の制約により、現時点では対応していません。今後のブラウザ対応や PWA / ネイティブ対応で順次拡張予定です。
+              </p>
             </div>
           </div>
         </div>
