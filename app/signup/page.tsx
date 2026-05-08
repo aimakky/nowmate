@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import YVoiceLogo from '@/components/ui/icons/YVoiceLogo'
-import { debugAuthLog } from '@/lib/auth-debug'
 
 function SignupForm() {
   const router       = useRouter()
@@ -32,7 +31,6 @@ function SignupForm() {
     async function checkAuth() {
       const { data: { user } } = await createClient().auth.getUser()
       if (cancelled) return
-      debugAuthLog('signup page auth check', { hasSession: Boolean(user) })
       if (user) {
         router.replace('/timeline')
         return
