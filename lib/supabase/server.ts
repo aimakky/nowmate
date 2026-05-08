@@ -1,10 +1,15 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { SUPABASE_COOKIE_OPTIONS } from '@/lib/supabase/cookie-options'
+import { SUPABASE_COOKIE_OPTIONS, applyCookieMaxAgeOverride } from '@/lib/supabase/cookie-options'
 
-// 2026-05-08 (YVOICE4 PR4): iOS Safari ITP 対策として cookieOptions を明示。
+// 2026-05-08 (YVOICE4 PR4 + ログイン維持改善): iOS Safari ITP 対策と
+// 90 日ログイン維持のため cookieOptions を明示。
 // canonical 値は lib/supabase/cookie-options.ts で 1 ファイル集約。
-// setAll に渡される options には Supabase SSR が cookieOptions をマージ済み。
+//
+// ⚠ @supabase/ssr 0.4.1 の library bug 回避:
+// setAll に渡ってくる options.maxAge は library 内部で強制上書きされている。
+// applyCookieMaxAgeOverride で 90 日に再上書きする hack を入れる。
+// maxAge=0 (cookie 削除) はそのまま保持されるので signOut 動作不変。
 export function createClient() {
   const cookieStore = cookies()
   return createServerClient(
@@ -18,7 +23,7 @@ export function createClient() {
         setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, applyCookieMaxAgeOverride(options))
             )
           } catch {}
         },
