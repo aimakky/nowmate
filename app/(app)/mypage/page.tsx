@@ -259,6 +259,11 @@ function MyVillagePostInline({
                 : (getUserDisplayName(profile)?.[0] ?? '?')}
             </div>
             <div className="min-w-0">
+              {/* 2026-05-08 (7 回目) マッキーさん指示: ミヤさんのマイページで
+                  「bivi二条にスズメ飛んでるなう」だけ時刻が改行されて表示が
+                  ズレていたため、TweetCard と完全同一の inline 配置 (flex-wrap
+                  の中に時刻も含める) に揃える。スタイルも text-xs +
+                  rgba(240,238,255,0.4) で TweetCard と一致させる。 */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-sm font-bold leading-tight" style={{ color: '#F0EEFF' }}>
                   {getUserDisplayName(profile)}
@@ -276,11 +281,11 @@ function MyVillagePostInline({
                     {tierLabel}
                   </span>
                 )}
-                <span className="text-sm leading-none">{flag}</span>
+                <span className="text-base leading-none">{flag}</span>
+                <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                  {timeAgo(post.created_at)}
+                </span>
               </div>
-              <span className="text-[10px]" style={{ color: 'rgba(240,238,255,0.3)' }}>
-                {timeAgo(post.created_at)}
-              </span>
             </div>
           </Link>
           <button
