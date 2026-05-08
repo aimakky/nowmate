@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag } from '@/lib/utils'
+import { getNationalityFlag, timeAgo } from '@/lib/utils'
 import { ChevronRight, MessageSquare, MoreHorizontal, Flag, Ban } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
@@ -167,10 +167,13 @@ export default function UserProfilePage() {
   const [blockDone,  setBlockDone]  = useState(false)
   const [trustTier, setTrustTier] = useState<string | null>(null)
   const [isPremium, setIsPremium] = useState(false)
-  // 旧: 'posts' | 'answers' の 2 タブ。回答タブは優先度が低いためユーザー
-  // 可視タブから外し、代わりに 'videos' (動画投稿) と 'images' (画像投稿) を
-  // 追加。回答データそのものは未削除 (DB に残置) で、将来の復活余地あり。
-  const [activeTab, setActiveTab] = useState<'posts' | 'videos' | 'images'>('posts')
+  // 2026-05-08 YVOICE5: 5 タブ化 (投稿 / 返信 / 写真 / 動画 / ギルド)。
+  // いいねタブはマイページ専用で他人プロフィールには出さない (プライバシー配慮)。
+  const [activeTab, setActiveTab] = useState<'posts' | 'replies' | 'images' | 'videos' | 'guilds'>('posts')
+  // 返信タブ用: profile owner が他の投稿に書いた返信
+  const [theirReplies, setTheirReplies] = useState<Array<{ id: string; tweet_id: string; content: string; created_at: string }>>([])
+  // ギルドタブ用: profile owner が参加中のギルド (village_members JOIN villages)
+  const [theirGuilds, setTheirGuilds] = useState<Array<{ id: string; name: string; icon: string | null; member_count: number | null }>>([])
   // 画像投稿: guild_posts.image_url IS NOT NULL のレコード。マイページの
   // imageRes と同じデータ源 (guild_posts は画像付き投稿の DB 保管庫)。
   const [imagePosts, setImagePosts] = useState<Array<{ id: string; image_url: string; content: string | null; created_at: string }>>([])
@@ -257,6 +260,8 @@ export default function UserProfilePage() {
         { data: trust },
         { data: premSub },
         { data: titlesData },
+        repliesRes,
+        guildsRes,
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
         supabase.from('village_posts')
@@ -280,6 +285,16 @@ export default function UserProfilePage() {
         supabase.from('user_trust').select('tier').eq('user_id', userId).maybeSingle(),
         supabase.from('premium_subscriptions').select('id').eq('user_id', userId).eq('status', 'active').gt('expires_at', new Date().toISOString()).maybeSingle(),
         supabase.from('qa_titles').select('*').eq('user_id', userId).order('awarded_at', { ascending: false }),
+        // 2026-05-08 YVOICE5: 返信タブ用 (profile owner の tweet_replies)
+        supabase.from('tweet_replies')
+          .select('id, tweet_id, content, created_at')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(50),
+        // 2026-05-08 YVOICE5: ギルドタブ用 (profile owner の参加ギルド)
+        supabase.from('village_members')
+          .select('village_id, role')
+          .eq('user_id', userId),
       ])
 
       if ((villagePostsRes as any)?.error) {
@@ -383,6 +398,25 @@ export default function UserProfilePage() {
           .eq('user_id', currentUser.id)
           .in('post_id', visibleVillagePostIds)
         setLikedIds(new Set((myReactions ?? []).map((r: any) => r.post_id)))
+      }
+
+      // 2026-05-08 YVOICE5: 返信タブ用データを state に格納
+      setTheirReplies(((repliesRes as any)?.data ?? []) as any[])
+
+      // 2026-05-08 YVOICE5: ギルドタブ用 — village_members から village_id 群を取得し、
+      // 別 query で villages の表示用情報をまとめて取得して merge
+      const memberRows = ((guildsRes as any)?.data ?? []) as any[]
+      const memberVillageIds = Array.from(new Set(
+        memberRows.map((r: any) => r.village_id).filter(Boolean)
+      ))
+      if (memberVillageIds.length > 0) {
+        const { data: gvRows } = await supabase
+          .from('villages')
+          .select('id, name, icon, member_count')
+          .in('id', memberVillageIds)
+        setTheirGuilds((gvRows ?? []) as any[])
+      } else {
+        setTheirGuilds([])
       }
 
       setLoading(false)
@@ -654,26 +688,30 @@ if (loading) return (
         )}
       </div>
 
-      {/* ── タブ (投稿 / 動画 / 画像) ──
-          回答タブは UI から削除 (DB 上の qa_answers は未削除で残置)。
-          動画タブは現状 DB に video_url 等が無いため空状態のみ表示。 */}
-      {/* ── タブ (投稿 / 写真 / 動画) ── */}
+      {/* ── タブ (投稿 / 返信 / 写真 / 動画 / ギルド) ──
+          2026-05-08 YVOICE5: 5 タブ化。スマホ画面で flex-1 等分だと窮屈なため、
+          横スクロール (overflow-x-auto + min-width 確保) に変更。
+          いいねタブはマイページ専用で他人プロフィールには表示しない (プライバシー配慮)。 */}
       <div
-        className="flex sticky top-[57px] z-10"
+        className="flex overflow-x-auto whitespace-nowrap sticky top-[57px] z-10"
         style={{
           background: '#080812',
           borderBottom: '1px solid rgba(255,255,255,0.06)',
+          scrollbarWidth: 'none',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
         {([
-          { id: 'posts',  label: '投稿' },
-          { id: 'images', label: '写真' },
-          { id: 'videos', label: '動画' },
+          { id: 'posts',   label: '投稿' },
+          { id: 'replies', label: '返信' },
+          { id: 'images',  label: '写真' },
+          { id: 'videos',  label: '動画' },
+          { id: 'guilds',  label: 'ギルド' },
         ] as const).map(t => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
-            className="flex-1 flex items-center justify-center gap-1 py-3 text-xs font-bold relative transition-colors"
+            className="flex-1 min-w-[68px] flex items-center justify-center gap-1 py-3 text-xs font-bold relative transition-colors"
             style={{ color: activeTab === t.id ? '#F0EEFF' : 'rgba(240,238,255,0.4)' }}
           >
             {t.label}
@@ -746,6 +784,76 @@ if (loading) return (
                   />
                 ))
               })()
+            )}
+          </>
+        )}
+
+        {/* ── 返信タブ (2026-05-08 YVOICE5) ── */}
+        {activeTab === 'replies' && (
+          <>
+            {theirReplies.length === 0 ? (
+              <div className="rounded-2xl p-8 text-center"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+                <p className="text-3xl mb-2">💬</p>
+                <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ返信はありません</p>
+                <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>このユーザーが投稿に返信するとここに表示されます</p>
+              </div>
+            ) : (
+              theirReplies.map(r => (
+                <Link
+                  key={r.id}
+                  href={`/tweet/${r.tweet_id}`}
+                  className="block rounded-2xl px-4 py-3.5 active:opacity-80 transition-opacity"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)', boxShadow: '0 2px 12px rgba(0,0,0,0.3)' }}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#9D5CFF' }}>返信</span>
+                    <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>· {timeAgo(r.created_at)}</span>
+                  </div>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'rgba(240,238,255,0.85)' }}>
+                    {r.content}
+                  </p>
+                  <p className="text-[11px] mt-2" style={{ color: 'rgba(240,238,255,0.35)' }}>
+                    元の投稿を見る →
+                  </p>
+                </Link>
+              ))
+            )}
+          </>
+        )}
+
+        {/* ── ギルドタブ (2026-05-08 YVOICE5) ── */}
+        {activeTab === 'guilds' && (
+          <>
+            {theirGuilds.length === 0 ? (
+              <div className="rounded-2xl p-8 text-center"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+                <p className="text-3xl mb-2">🛡️</p>
+                <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ参加中のギルドはありません</p>
+                <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>このユーザーがギルドに参加するとここに表示されます</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {theirGuilds.map(g => (
+                  <Link
+                    key={g.id}
+                    href={`/guilds/${g.id}`}
+                    className="flex items-center gap-3 rounded-2xl px-4 py-3 active:opacity-80 transition-opacity"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}
+                  >
+                    <span className="text-2xl flex-shrink-0">{g.icon ?? '🛡️'}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-extrabold truncate" style={{ color: '#F0EEFF' }}>{g.name}</p>
+                      {g.member_count != null && (
+                        <p className="text-[11px] mt-0.5" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                          メンバー {g.member_count}人
+                        </p>
+                      )}
+                    </div>
+                    <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
+                  </Link>
+                ))}
+              </div>
             )}
           </>
         )}

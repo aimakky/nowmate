@@ -16,7 +16,7 @@ import { getUserTrust, fetchTierProgress, type TierProgress } from '@/lib/trust'
 import { Settings, LogOut, ChevronRight, Users, Copy, Check, Pencil, X, Eye, EyeOff, User, UserPlus } from 'lucide-react'
 import PurpleIconButton from '@/components/ui/PurpleIconButton'
 import PostActions from '@/components/ui/PostActions'
-import { getNationalityFlag } from '@/lib/utils'
+import { getNationalityFlag, timeAgo } from '@/lib/utils'
 import { getUserDisplayName, getAvatarInitial } from '@/lib/user-display'
 import Avatar from '@/components/ui/Avatar'
 import { isVerifiedByExistingSchema } from '@/lib/identity-types'
@@ -39,7 +39,7 @@ import TrustVerificationCard from '@/components/features/TrustVerificationCard'
 //  - 動画 (videos): UI 先行で空状態のみ
 //  - 画像 (images): guild_posts.image_url IS NOT NULL のレコードを表示
 //  - following / followers は統計カードクリックで切り替わる「擬似タブ」として維持
-type ProfileTab = 'tweets' | 'videos' | 'images' | 'following' | 'followers'
+type ProfileTab = 'tweets' | 'replies' | 'images' | 'videos' | 'guilds' | 'likes' | 'following' | 'followers'
 
 // マイページ「投稿」タブ用: 村投稿 (village_posts) を統合表示するための型。
 // tweets は TweetCard でリッチに表示し、村投稿は dark theme の simple card で
@@ -321,6 +321,16 @@ export default function MyPage() {
   // 2026-05-08 マッキーさん指示「マイページ・他人マイページの投稿カードで
   // ハート押下時に別ページへ遷移しないようにする」への対応。
   const [likedIds,       setLikedIds]       = useState<Set<string>>(new Set())
+  // 2026-05-08 マッキーさん指示 (YVOICE5): 6 タブ化
+  // (投稿 / 返信 / 写真 / 動画 / ギルド / いいね)。
+  // 返信タブ: tweet_replies で本人が他の投稿に書いた返信
+  // いいねタブ: 自分がハート押した tweets + village_posts (本人だけ閲覧可、プライバシー配慮)
+  // ギルドタブ: 既存 joinedVillages / hostedVillages を再利用
+  const [myReplies, setMyReplies] = useState<Array<{ id: string; tweet_id: string; content: string; created_at: string }>>([])
+  const [likedTweets, setLikedTweets] = useState<TweetData[]>([])
+  const [likedVillagePosts, setLikedVillagePosts] = useState<MyVillagePost[]>([])
+  // 返信 / いいねは初回ロード時に一括取得 (タブ切替で空白を避けるため)。
+  // タブ未訪問でも UI 完全描画したいので、loaded フラグは持たない。
   const [tweetLoading,   setTweetLoading]   = useState(false)
   const [userId,         setUserId]         = useState<string | null>(null)
   const [activeTab,      setActiveTab]      = useState<ProfileTab>('tweets')
@@ -533,6 +543,106 @@ export default function MyPage() {
           .eq('user_id', user.id)
           .in('post_id', myVillagePostIds)
         setLikedIds(new Set((myReactions ?? []).map((r: any) => r.post_id)))
+      }
+
+      // ── 2026-05-08 YVOICE5 6 タブ化: 返信 / いいね の追加データ取得 ──
+      // 返信タブ用: 本人が他の投稿に書いた返信 (tweet_replies)
+      const { data: repliesRows } = await supabase
+        .from('tweet_replies')
+        .select('id, tweet_id, content, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      setMyReplies((repliesRows ?? []) as any[])
+
+      // いいねタブ用: 自分が heart リアクションした tweets を取得 + enrich
+      // tweet_reactions.user_id = 自分 AND reaction = 'heart' の tweet_id 群
+      const { data: heartReactions } = await supabase
+        .from('tweet_reactions')
+        .select('tweet_id')
+        .eq('user_id', user.id)
+        .eq('reaction', 'heart')
+      const heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
+      if (heartTweetIds.length > 0) {
+        const { data: ltRows } = await supabase
+          .from('tweets')
+          .select('*')
+          .in('id', heartTweetIds)
+          .order('created_at', { ascending: false })
+          .limit(50)
+        const ltRaw = (ltRows ?? []) as any[]
+        if (ltRaw.length > 0) {
+          // 投稿者プロフィール / リアクション / 返信 / 信頼スコアを別 query で並列取得し merge
+          const ltIds = ltRaw.map((t: any) => t.id)
+          const ltAuthorIds = Array.from(new Set(ltRaw.map((t: any) => t.user_id).filter(Boolean)))
+          const [authProfRes, ltReactRes, ltReplyRes, authTrustRes] = await Promise.all([
+            supabase.from('profiles')
+              .select('id, display_name, nationality, avatar_url, age_verified, age_verification_status')
+              .in('id', ltAuthorIds),
+            supabase.from('tweet_reactions').select('tweet_id, user_id, reaction').in('tweet_id', ltIds),
+            supabase.from('tweet_replies').select('id, tweet_id').in('tweet_id', ltIds),
+            supabase.from('user_trust').select('user_id, tier').in('user_id', ltAuthorIds),
+          ])
+          const profMap = new Map<string, any>()
+          for (const p of ((authProfRes as any).data ?? [])) profMap.set(p.id, p)
+          const reactByT = new Map<string, any[]>()
+          for (const r of ((ltReactRes as any).data ?? [])) {
+            if (!reactByT.has(r.tweet_id)) reactByT.set(r.tweet_id, [])
+            reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
+          }
+          const replyByT = new Map<string, any[]>()
+          for (const r of ((ltReplyRes as any).data ?? [])) {
+            if (!replyByT.has(r.tweet_id)) replyByT.set(r.tweet_id, [])
+            replyByT.get(r.tweet_id)!.push({ id: r.id })
+          }
+          const trustMap = new Map<string, string>()
+          for (const t of ((authTrustRes as any).data ?? [])) trustMap.set(t.user_id, t.tier)
+          for (const t of ltRaw) {
+            t.profiles = profMap.get(t.user_id) ?? null
+            t.tweet_reactions = reactByT.get(t.id) ?? []
+            t.tweet_replies = replyByT.get(t.id) ?? []
+            t.user_trust = trustMap.has(t.user_id) ? { tier: trustMap.get(t.user_id) } : null
+          }
+          setLikedTweets(ltRaw as TweetData[])
+        }
+      }
+
+      // いいねタブ用: 自分が反応した village_posts (上で取得した likedIds は
+      // 「自分が投稿した村投稿」だけだったので、ここで全範囲版を取得し直す)
+      const { data: allMyVillageReacts } = await supabase
+        .from('village_reactions')
+        .select('post_id')
+        .eq('user_id', user.id)
+      const likedVillageIds = ((allMyVillageReacts ?? []) as any[]).map(r => r.post_id).filter(Boolean)
+      if (likedVillageIds.length > 0) {
+        const { data: lvRows } = await supabase
+          .from('village_posts')
+          .select('id, content, category, created_at, village_id, reaction_count')
+          .in('id', likedVillageIds)
+          .order('created_at', { ascending: false })
+          .limit(50)
+        const lvRaw = (lvRows ?? []) as any[]
+        const lvVillageIds = Array.from(new Set(lvRaw.map((p: any) => p.village_id).filter(Boolean)))
+        let lvVMap = new Map<string, any>()
+        if (lvVillageIds.length > 0) {
+          const { data: vRows } = await supabase
+            .from('villages').select('id, name, icon').in('id', lvVillageIds)
+          for (const v of (vRows ?? []) as any[]) lvVMap.set(v.id, v)
+        }
+        setLikedVillagePosts(lvRaw.map((p: any) => ({
+          id: p.id,
+          content: p.content,
+          created_at: p.created_at,
+          village_id: p.village_id ?? null,
+          reaction_count: p.reaction_count ?? 0,
+          village: p.village_id ? lvVMap.get(p.village_id) ?? null : null,
+        })))
+        // 全範囲 likedIds に上書き (mypage 内 toggleLike が他人の村投稿でも動作するため)
+        setLikedIds(prev => {
+          const n = new Set(prev)
+          for (const id of likedVillageIds) n.add(id)
+          return n
+        })
       }
 
       setLoading(false)
@@ -907,19 +1017,28 @@ export default function MyPage() {
         </div>
       )}
 
-      {/* ── タブ (投稿 / 写真 / 動画) — profile/[userId] と統一 ── */}
-      <div className="relative z-10 mx-4 mb-1 rounded-2xl overflow-hidden sticky top-2"
+      {/* ── タブ (投稿 / 返信 / 写真 / 動画 / ギルド / いいね) ──
+          2026-05-08 YVOICE5: 6 タブ化。スマホ画面で flex-1 等分だと窮屈なため、
+          横スクロール (overflow-x-auto + whitespace-nowrap) に変更。
+          いいねタブはマイページのみ (他人プロフィールでは表示しない、プライバシー配慮)。 */}
+      <div className="relative z-10 mx-4 mb-1 rounded-2xl sticky top-2"
         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)', boxShadow: '0 0 16px rgba(157,92,255,0.08)' }}>
-        <div className="flex">
+        <div
+          className="flex overflow-x-auto whitespace-nowrap"
+          style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+        >
           {([
-            { id: 'tweets', label: '投稿' },
-            { id: 'images', label: '写真' },
-            { id: 'videos', label: '動画' },
+            { id: 'tweets',  label: '投稿' },
+            { id: 'replies', label: '返信' },
+            { id: 'images',  label: '写真' },
+            { id: 'videos',  label: '動画' },
+            { id: 'guilds',  label: 'ギルド' },
+            { id: 'likes',   label: 'いいね' },
           ] as { id: ProfileTab; label: string }[]).map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="flex-1 py-3.5 text-xs font-bold transition-colors relative"
+              className="flex-1 min-w-[68px] py-3.5 text-xs font-bold transition-colors relative"
               style={{ color: activeTab === tab.id ? '#F0EEFF' : 'rgba(240,238,255,0.4)' }}
             >
               {tab.label}
@@ -1029,6 +1148,144 @@ export default function MyPage() {
                   ))
                 })()}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* ── 返信タブ (2026-05-08 YVOICE5) ── */}
+        {activeTab === 'replies' && (
+          <div className="px-4 pt-4 space-y-3">
+            {myReplies.length === 0 ? (
+              <div className="rounded-2xl p-8 text-center"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+                <p className="text-3xl mb-2">💬</p>
+                <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ返信はありません</p>
+                <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>投稿に返信するとここに履歴が並びます</p>
+              </div>
+            ) : (
+              myReplies.map(r => (
+                <Link
+                  key={r.id}
+                  href={`/tweet/${r.tweet_id}`}
+                  className="block rounded-2xl px-4 py-3.5 active:opacity-80 transition-opacity"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)', boxShadow: '0 2px 12px rgba(0,0,0,0.3)' }}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#9D5CFF' }}>返信</span>
+                    <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>· {timeAgo(r.created_at)}</span>
+                  </div>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'rgba(240,238,255,0.85)' }}>
+                    {r.content}
+                  </p>
+                  <p className="text-[11px] mt-2" style={{ color: 'rgba(240,238,255,0.35)' }}>
+                    元の投稿を見る →
+                  </p>
+                </Link>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* ── ギルドタブ (2026-05-08 YVOICE5) ── */}
+        {activeTab === 'guilds' && (
+          <div className="px-4 pt-4">
+            {(() => {
+              const allGuilds = [...hostedVillages, ...joinedVillages].filter(Boolean)
+              // 重複除去 (host と member を兼ねている場合)
+              const uniqueGuilds: any[] = []
+              const seenIds = new Set<string>()
+              for (const g of allGuilds) {
+                if (!g || !g.id || seenIds.has(g.id)) continue
+                seenIds.add(g.id)
+                uniqueGuilds.push(g)
+              }
+              if (uniqueGuilds.length === 0) {
+                return (
+                  <div className="rounded-2xl p-8 text-center"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+                    <p className="text-3xl mb-2">🛡️</p>
+                    <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ参加中のギルドはありません</p>
+                    <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>気になるギルドに参加してみよう</p>
+                    <Link
+                      href="/guild"
+                      className="inline-block mt-5 px-5 py-2.5 rounded-full text-sm font-bold text-white active:scale-95 transition-all"
+                      style={{ background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)', boxShadow: '0 4px 20px rgba(157,92,255,0.3)' }}
+                    >
+                      ギルドを探す
+                    </Link>
+                  </div>
+                )
+              }
+              return (
+                <div className="space-y-2">
+                  {uniqueGuilds.map((g: any) => (
+                    <Link
+                      key={g.id}
+                      href={`/guilds/${g.id}`}
+                      className="flex items-center gap-3 rounded-2xl px-4 py-3 active:opacity-80 transition-opacity"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}
+                    >
+                      <span className="text-2xl flex-shrink-0">{g.icon ?? '🛡️'}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-extrabold truncate" style={{ color: '#F0EEFF' }}>{g.name}</p>
+                        {(g.member_count != null) && (
+                          <p className="text-[11px] mt-0.5" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                            メンバー {g.member_count}人
+                          </p>
+                        )}
+                      </div>
+                      <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} className="flex-shrink-0" />
+                    </Link>
+                  ))}
+                </div>
+              )
+            })()}
+          </div>
+        )}
+
+        {/* ── いいねタブ (2026-05-08 YVOICE5) ──
+            プライバシー配慮: 本人のマイページでのみ表示。
+            自分がハートを押した tweets + village_posts を時系列降順で表示。 */}
+        {activeTab === 'likes' && (
+          <div className="px-4 pt-4 space-y-3">
+            {likedTweets.length === 0 && likedVillagePosts.length === 0 ? (
+              <div className="rounded-2xl p-8 text-center"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+                <p className="text-3xl mb-2">❤️</p>
+                <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだいいねした投稿はありません</p>
+                <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>気になる投稿にハートを押すとここに溜まります</p>
+              </div>
+            ) : (
+              (() => {
+                type LItem =
+                  | { kind: 'tweet'; data: TweetData; ts: number }
+                  | { kind: 'village'; data: MyVillagePost; ts: number }
+                const items: LItem[] = [
+                  ...likedTweets.map(t => ({ kind: 'tweet' as const, data: t, ts: new Date(t.created_at).getTime() })),
+                  ...likedVillagePosts.map(v => ({ kind: 'village' as const, data: v, ts: new Date(v.created_at).getTime() })),
+                ].sort((a, b) => b.ts - a.ts)
+                return items.map(item => item.kind === 'tweet' ? (
+                  <PostCardShell key={`liked-tweet-${item.data.id}`}>
+                    <TweetCard
+                      tweet={item.data}
+                      myId={userId}
+                      onUpdate={() => userId && loadTweets(userId)}
+                      showBorder={false}
+                      canInteract={true}
+                      avatarVariant="green"
+                    />
+                  </PostCardShell>
+                ) : (
+                  <MyVillagePostInline
+                    key={`liked-village-${item.data.id}`}
+                    post={item.data}
+                    profile={profile}
+                    trust={trust}
+                    liked={likedIds.has(item.data.id)}
+                    onToggleLike={toggleLike}
+                  />
+                ))
+              })()
             )}
           </div>
         )}
