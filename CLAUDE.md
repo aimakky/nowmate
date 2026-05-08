@@ -621,6 +621,103 @@ UI 修正・バグ修正・本番反映作業では、**push / PR / merge で完
 
 ---
 
+## Vercel デプロイ反映の鉄則 — 今日の学びを恒久ルール化
+
+本日 (2026-05-08) の事故から学んだ Vercel 特有の落とし穴。
+「コードは正しい / Webhook も生きている / なのに本番が古いまま」という
+パターンに遭遇したら、以下を必ずチェックする。コードを書き直す前に。
+
+### 1. 「Redeploy」は新しい commit を取り込まない
+
+Vercel の **「Redeploy」ボタンは同じ commit を再ビルドするだけ**。
+新しい commit を本番に反映する手段ではない。「Redeploy したのに古いまま」は
+バグではなく仕様。
+
+「反映されない」報告に対し Redeploy を提案するのは禁止。代わりに:
+
+- **Promote to Production** ボタン（別 deployment を本番扱いに昇格）
+- **Settings → Git** で Production Branch を確認
+- 必要なら Vercel CLI `vercel --prod` で最新 main から手動デプロイ
+
+### 2. Vercel プロジェクトが複数ある可能性を必ず疑う
+
+YVOICE / nowmate リポジトリには **複数の Vercel プロジェクト** が紐付いている:
+
+- `nowmate-ytxw` — preview / 検証用 (ドメイン nowmate-ytxw.vercel.app)
+- `nowmate` — **本物の本番** (ドメイン www.nowmatejapan.com / nowmate.vercel.app)
+
+マッキーさんの iPhone が見ている本番は **`nowmate` プロジェクト** なので、
+`nowmate-ytxw` をいくら直しても iPhone には反映されない。
+反映トラブル時は最初に「どの Vercel プロジェクトの話か」をスクショの
+**プロジェクト名** とドメインで必ず確認する。混同したまま作業を進めない。
+
+スクショで見るべき項目:
+- ヘッダのプロジェクト名 (nowmate / nowmate-ytxw)
+- Domains 欄の値 (www.nowmatejapan.com 等)
+- Production Deployment の commit message と hash
+
+### 3. Deployments 画面のフィルタが情報を隠している
+
+デフォルトでは **「Production」のみ / 「Status 5/6」（1 つ非表示）** で
+表示されているため、Preview deployment や Failed deployment が見えない。
+反映トラブル調査時は必ず:
+
+- **「Production」→「All Environments」** に変更
+- **「Status 5/6」をタップ** して全ステータス（Failed / Canceled 含む）を ON
+
+これをやらないと「Preview としては成功している」「Failed が裏で発生している」を
+見落とす。本日の調査で Preview デプロイが見えたことで一気に原因特定できた。
+
+### 4. Preview URL は最強の動作確認ツール
+
+`<branch名>` を push すると Vercel が自動的に Preview deployment を作る:
+
+```
+https://<project>-git-<branch名>-<team>.vercel.app
+```
+
+このフォーマットで **本番に影響を与えずに iPhone 実機で目視確認** できる。
+「コードは正しいのか / それとも本番設定の問題なのか」を切り分ける最速手段。
+
+ルール:
+- 反映トラブル発生時、**まず Preview URL を iPhone で開いて目視確認**
+- Preview で正しく出る → 本番側の Promote / 設定問題と確定
+- Preview でも出ない → コード自体に問題（書き直し対象）
+
+### 5. main → Production が切れたときの即時復旧 = Promote to Production
+
+main 経由の auto-deploy が止まっていても、以下があれば即時復旧できる:
+
+- main HEAD と内容が等価な Preview deployment が一覧に存在する
+- その deployment を **「Promote to Production」** で本番昇格
+
+この手段を覚えておけば、Settings の根本修正は後回しにできる。
+マッキーさんに「すぐ iPhone を直したい」場合の最速ルート。
+
+### 6. 反映トラブル調査の正しい順番（恒久版）
+
+「iPhone に反映されない」と報告を受けたら、必ずこの順で:
+
+1. **GitHub MCP** で main HEAD と該当 commit を確認 (コードが main にあるか)
+2. **どの Vercel プロジェクトを見ているか** をスクショで確認 (nowmate? nowmate-ytxw?)
+3. **Deployments 画面を「All Environments」+ 全ステータス ON** に変更
+4. **Preview URL で iPhone 実機目視** (コードが動くか確定)
+5. 動くなら → **Promote to Production** で即時復旧
+6. 同時に **Settings → Git** で Production Branch / Ignored Build Step / Webhook を確認
+7. 結果を「マッキーさん向けやさしい説明」でまとめる
+
+「Redeploy 押してください」「もう 1 回 push してください」は
+**やってはいけない誘導**（時間を浪費する）。
+
+### 7. 同じ deployment ID を別プロジェクトで見間違えない
+
+Vercel の deployment ID (例: `H8djkWbFp` `2454N33Ge`) は **プロジェクト固有**。
+複数プロジェクトをスクショで往復する時は、毎回プロジェクト名/ドメインで
+所属を確定してから議論する。本日「同じ ID だから同じ deployment」と
+誤認した結果、診断が一周遅れた。
+
+---
+
 ## このファイルの更新ルール
 
 - 既存の項目を削除しない（追記方式）
@@ -674,6 +771,18 @@ UI 修正・バグ修正・本番反映作業では、**push / PR / merge で完
   4. 一時 console.log は反映確認後に同一 branch で即除去。本番に撒き散らさない
   5. squash merge 後の branch divergence は `git merge origin/main` + `git checkout --ours` で force push を使わず安全に解消する手順を明記
 - これにより「PR 作って許可待ちにする」モードを禁止し、**マッキーさんが指示したスコープを Claude Code 側で完了させる** 運用に統一
+
+### 2026-05-08（同日 4 回目）— Vercel デプロイ反映の鉄則を追加 (今日の学びを 7 条で恒久化)
+
+- 本日のトラブル調査で得た「Vercel 特有の落とし穴」を 7 条にまとめて恒久ルール化
+- 1: 「Redeploy」は同じ commit を再ビルドするだけで新しい commit を取り込まない仕様。Redeploy 提案を禁止
+- 2: 同じ GitHub repo に複数 Vercel プロジェクト (`nowmate` と `nowmate-ytxw`) が紐付いている。本物の本番は `nowmate` (www.nowmatejapan.com)。最初にプロジェクト名・ドメインで所属確定
+- 3: Deployments 画面はデフォルトで Preview と一部ステータスを非表示。「All Environments」+ 全ステータス ON への切替を必須化
+- 4: Preview URL (`<project>-git-<branch>-<team>.vercel.app`) は本番に触れずに iPhone 実機で目視確認できる最強ツール。反映トラブル時はまず Preview で動作確認
+- 5: main → Production の auto-deploy が止まっていても、Preview deployment があれば「Promote to Production」で即時復旧可能
+- 6: 反映トラブル調査の正しい順番を 7 ステップで固定（main 確認 → プロジェクト確定 → フィルタ解除 → Preview 目視 → Promote → Settings 確認 → やさしい説明）
+- 7: deployment ID はプロジェクト固有。複数プロジェクトをスクショで往復する時は毎回プロジェクト名で所属を確定する
+- 「Redeploy 押して」「もう 1 回 push して」を **やってはいけない誘導** として明文化
 
 ### 2026-05-08（同日 3 回目）— MCP 確認の鉄則を追加 (UI 修正・バグ修正・本番反映で 4 系統 MCP 必須)
 
