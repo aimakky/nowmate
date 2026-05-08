@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { debugAuthLog } from '@/lib/auth-debug'
 import YVoiceIcon from '@/components/ui/icons/YVoiceIcon'
 import YVoiceLogo from '@/components/ui/icons/YVoiceLogo'
 
@@ -29,6 +30,7 @@ export default function LoginPage() {
     async function checkAuth() {
       const { data: { user } } = await createClient().auth.getUser()
       if (cancelled) return
+      debugAuthLog('login page auth check', { hasSession: Boolean(user) })
       if (user) {
         // 既ログイン → タイムラインへ
         router.replace('/timeline')

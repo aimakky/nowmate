@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import YVoiceIcon from '@/components/ui/icons/YVoiceIcon'
 import { SITE_URL } from '@/lib/site'
+import { debugAuthLog } from '@/lib/auth-debug'
 
 export const metadata: Metadata = {
   title: 'YVOICE — 20歳以上限定の大人ゲーム通話コミュニティ',
@@ -45,14 +46,21 @@ export default async function TopPage() {
   //   - profile 無し → /onboarding (新規登録途中)
   // Server Component の redirect なので Cookie 復元前の flash が起きない。
   const { data: { user } } = await supabase.auth.getUser()
+
+  // gated debug: 本番で root が getUser でログイン済みを認識しているか確認するため
+  debugAuthLog('root reached', { hasUser: Boolean(user) })
+
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('id')
       .eq('id', user.id)
       .maybeSingle()
-    redirect(profile ? '/timeline' : '/onboarding')
+    const target = profile ? '/timeline' : '/onboarding'
+    debugAuthLog('root redirect', { profileExists: Boolean(profile), target })
+    redirect(target)
   }
+  debugAuthLog('root render LP', { reason: 'no user' })
 
   const { count } = await supabase
     .from('profiles')
