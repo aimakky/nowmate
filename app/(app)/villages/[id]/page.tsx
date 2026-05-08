@@ -16,6 +16,7 @@ import VerificationGate, { type GateType } from '@/components/features/Verificat
 import MoodWeather from '@/components/features/MoodWeather'
 import DriftBottle from '@/components/features/DriftBottle'
 import { getUserTrust, getTierById, awardPoints } from '@/lib/trust'
+import { isVerificationBypassEnabled } from '@/lib/test-mode'
 import { checkGenreMastery, getIndustry, INDUSTRIES } from '@/lib/guild'
 import CulturalCharter, { shouldShowCharter, markCharterShown } from '@/components/features/CulturalCharter'
 import FirstPostPrompt from '@/components/features/FirstPostPrompt'
@@ -1289,7 +1290,17 @@ export default function VillageDetailPage() {
     return () => clearInterval(t)
   }, [fetchFreeNow])
 
-  const tier       = userTrust ? getTierById(userTrust.tier) : getTierById('visitor')
+  const baseTier = userTrust ? getTierById(userTrust.tier) : getTierById('visitor')
+  // 2026-05-08 YVOICE5 テスト期間中バイパス: NEXT_PUBLIC_DISABLE_VERIFICATION_GATE=true
+  // のとき、Trust Tier (visitor) 由来の権限制限 (canPost / canSpeak / canCreateRoom /
+  // canCreateVillage / canConsult) をすべて true に上書きして、テストプレイ中の
+  // 通話参加・投稿動作を確認できるようにする。正式リリース時は env を未設定 or
+  // 'false' に戻すだけで baseTier がそのまま使われる従来挙動に戻る。
+  // tier.id / tier.label / tier.icon / tier.color / tier.desc / tier.min は不変
+  // (UI の tier バッジ表示は元の tier を維持)。
+  const tier = isVerificationBypassEnabled()
+    ? { ...baseTier, canPost: true, canSpeak: true, canCreateRoom: true, canCreateVillage: true, canConsult: true }
+    : baseTier
   const isPillarUser = tier.id === 'pillar'
 
   // ── Actions ───────────────────────────────────────────────

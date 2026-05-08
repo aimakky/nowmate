@@ -7,6 +7,7 @@ import { getNationalityFlag } from '@/lib/utils'
 import { ArrowLeft, Mic, MicOff, Radio, LogOut, Send, ChevronUp, ChevronDown, ShieldCheck, Lock, Settings, Volume2, X } from 'lucide-react'
 import { awardPoints, getTierById } from '@/lib/trust'
 import { canSpeakInVoiceRoom, type AgeVerificationStatus } from '@/lib/permissions'
+import { isVerificationBypassEnabled } from '@/lib/test-mode'
 import { Room, RoomEvent, Track, type RemoteTrack, type RemoteTrackPublication, type RemoteParticipant, type Participant as LkParticipant } from 'livekit-client'
 import { logVoice, userTag, startTimer, endTimer } from '@/lib/voice-telemetry'
 import VerifiedBadge from '@/components/ui/VerifiedBadge'
@@ -80,6 +81,13 @@ export default function VoiceRoomPage() {
   const [myAgeVerified,     setMyAgeVerified]     = useState(false)
   const [myAgeStatus,       setMyAgeStatus]       = useState<AgeVerificationStatus>('unverified')
   const [showAgeGate,       setShowAgeGate]       = useState(false)
+  // 2026-05-08 YVOICE5 テスト期間中バイパス: 年齢確認 / Tier (visitor) による
+  // マイクON参加ブロックを一時的に無効化する。bypass = true なら下記 2 変数は
+  // 常に false (= ブロックしない)、UI ボタンを press 可能 / 説明文を通常版に。
+  // canSpeakInVoiceRoom や canJoinVoiceRoom も lib/permissions.ts 側で同じ env を
+  // 見て bypass しているので、L505 付近のチェックも整合的に通る。
+  const ageBlocked     = !myAgeVerified && !isVerificationBypassEnabled()
+  const visitorBlocked = myTier === 'visitor' && !isVerificationBypassEnabled()
   const MAX_SPEAKERS = 8  // 広場トークは最大8名まで登壇可能
 
   // ── 広場トーク: 挙手・昇格 ───────────────────────────────
@@ -1146,8 +1154,8 @@ export default function VoiceRoomPage() {
             <p className="text-xs text-center mb-1" style={{ color: 'rgba(240,238,255,0.4)' }}>広場トーク</p>
             <p className="text-xs text-center mb-5" style={{ color: 'rgba(240,238,255,0.4)' }}>どのモードで入りますか？</p>
 
-            {/* 見習いはスピーカー不可 */}
-            {myTier === 'visitor' && (
+            {/* 見習いはスピーカー不可 (テスト期間中バイパス時は非表示) */}
+            {visitorBlocked && (
               <div className="rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2"
                 style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)' }}>
                 <span className="text-base flex-shrink-0">🪴</span>
@@ -1224,29 +1232,29 @@ export default function VoiceRoomPage() {
                   join_mode: 'speaker' などの内部値は不変。 */}
               <button
                 onClick={() => joinRoom('speaker')}
-                disabled={joining || speakers.length >= MAX_SPEAKERS || myTier === 'visitor'}
+                disabled={joining || speakers.length >= MAX_SPEAKERS || visitorBlocked}
                 className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.98] transition-all text-left disabled:opacity-40"
-                style={!myAgeVerified || speakers.length >= MAX_SPEAKERS || myTier === 'visitor'
+                style={ageBlocked || speakers.length >= MAX_SPEAKERS || visitorBlocked
                   ? { background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.1)' }
                   : { background: 'rgba(99,102,241,0.12)', border: '1.5px solid rgba(99,102,241,0.4)' }}>
                 <span className="text-2xl flex-shrink-0">
-                  {!myAgeVerified ? '🔒' : '🎙️'}
+                  {ageBlocked ? '🔒' : '🎙️'}
                 </span>
                 <div>
                   <p className="font-extrabold text-sm"
-                    style={{ color: !myAgeVerified || speakers.length >= MAX_SPEAKERS || myTier === 'visitor'
+                    style={{ color: ageBlocked || speakers.length >= MAX_SPEAKERS || visitorBlocked
                       ? 'rgba(240,238,255,0.35)'
                       : '#a5b4fc' }}>
-                    {!myAgeVerified
+                    {ageBlocked
                       ? 'マイクONで参加（年齢確認が必要）'
-                      : myTier === 'visitor'
+                      : visitorBlocked
                         ? 'マイクONで参加（村人以上で解放）'
                         : speakers.length >= MAX_SPEAKERS
                           ? `マイクONで参加（上限${MAX_SPEAKERS}名）`
                           : `マイクONで参加（残り${MAX_SPEAKERS - speakers.length}枠）`}
                   </p>
                   <p className="text-[10px]" style={{ color: 'rgba(240,238,255,0.3)' }}>
-                    {!myAgeVerified ? '年齢確認済みユーザーのみ話せます' : 'マイクをONにしてステージへ'}
+                    {ageBlocked ? '年齢確認済みユーザーのみ話せます' : 'マイクをONにしてステージへ'}
                   </p>
                 </div>
                 {joining && <span className="ml-auto w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
@@ -1460,9 +1468,9 @@ export default function VoiceRoomPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* 登壇者: ミュートボタン */}
+              {/* 登壇者: ミュートボタン (テスト期間中バイパス時は年齢未確認でも表示) */}
               {!isListener && (
-                myAgeVerified ? (
+                !ageBlocked ? (
                   <button onClick={toggleMute}
                     className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90"
                     style={isMuted
