@@ -72,7 +72,14 @@ interface Props {
   avatarVariant?: 'default' | 'green'
 }
 
-export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, canInteract = true, verified, avatarVariant = 'default' }: Props) {
+// 2026-05-08 (8 回目): TweetCard の外側 wrapper (background / padding /
+// border / shadow) は撤去し、呼出側の PostCardShell (timeline / mypage /
+// profile/[userId]) または白背景 wrapper (/tweet/[tweetId] 詳細) に
+// 委譲する。これにより village 投稿カードと色味・浮き方・余白が完全一致し、
+// 「同じ画面で 1 投稿だけ違う」事故 (PR #13〜#17 で 4 連続発生) を構造的に
+// 防止する。showBorder prop は API 互換のため残置するが no-op。
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBorder = true, canInteract = true, verified, avatarVariant = 'default' }: Props) {
   // 投稿者の verified 判定: 明示 props 優先、次に tweet.profiles の既存カラム
   const isVerified = verified ?? isVerifiedByExistingSchema(tweet.profiles)
   const router = useRouter()
@@ -165,24 +172,16 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
 
   return (
     <>
-      <div
-        className={`px-4 py-4 ${showBorder ? 'border-b' : ''}`}
-        style={{
-          background: 'rgba(255,255,255,0.04)',
-          borderColor: 'rgba(157,92,255,0.1)',
-          ...(showBorder ? {} : { borderBottom: 'none' }),
-        }}
-      >
-        {/* Repost header */}
-        {tweet.repost_of && (
-          <div className="flex items-center gap-1.5 text-xs font-semibold mb-2 ml-1"
-            style={{ color: 'rgba(240,238,255,0.4)' }}>
-            <Repeat2 size={12} />
-            <span>{getUserDisplayName(tweet.profiles)} reposted</span>
-          </div>
-        )}
+      {/* Repost header */}
+      {tweet.repost_of && (
+        <div className="flex items-center gap-1.5 text-xs font-semibold mb-2 ml-1"
+          style={{ color: 'rgba(240,238,255,0.4)' }}>
+          <Repeat2 size={12} />
+          <span>{getUserDisplayName(tweet.profiles)} reposted</span>
+        </div>
+      )}
 
-        <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3">
           {/* Avatar — avatarVariant により色味を切替。
               default: 共有 Avatar (紫 brand-100)
               green:   PostCard と同じ緑グラデ + 緑リング (タイムライン用) */}
@@ -260,7 +259,6 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
             />
           </div>
         </div>
-      </div>
 
       {/* ── アクションシート ── */}
       {showMenu && (

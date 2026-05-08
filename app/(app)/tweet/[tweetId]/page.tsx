@@ -94,8 +94,12 @@ export default function TweetDetailPage() {
         <p className="font-extrabold text-stone-900">Post</p>
       </div>
 
-      {/* Main tweet */}
-      <div className="bg-white border-b-4 border-stone-100">
+      {/* Main tweet
+          2026-05-08 (8 回目): TweetCard 自身が持っていた px-4 py-4 内側 padding を
+          PostCardShell 統一に伴い撤去したため、ここで明示的に補填する。
+          詳細画面は白背景の旧 light theme コンテキストのため PostCardShell
+          (dark glass card) は当てず、既存白 wrapper にパディングを追加する。 */}
+      <div className="bg-white border-b-4 border-stone-100 px-4 py-4">
         <TweetCard tweet={tweet} myId={myId} onUpdate={load} showBorder={false} canInteract={canInteract} />
       </div>
 
