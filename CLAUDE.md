@@ -555,6 +555,72 @@ git push origin <branch名>
 
 ---
 
+## MCP 確認の鉄則 — UI 修正・バグ修正・本番反映で必ず 4 系統 MCP を通す
+
+UI 修正・バグ修正・本番反映作業では、**push / PR / merge で完了扱いにしない**。
+必ず以下 4 系統を MCP（Model Context Protocol）経由で確認し、最後にやさしい説明でまとめる。
+
+本日 (2026-05-08) の事故「Vercel auto-deploy が止まっていたのに気付かず、
+マッキーさんに 2 回も『反映されてないよ』と言わせてしまった」を恒久対策するためのルール。
+
+### 必ず通す 4 系統 + 1
+
+1. **GitHub MCP** — 該当 commit が `main` に到達しているか確認
+   - `mcp__github__get_commit` / `mcp__github__list_commits` で main の HEAD を物理確認
+   - PR の merge 状態 / squash 後の commit hash を取得し、自分の変更が main に入っているか目視
+
+2. **Vercel MCP** — 最新デプロイが成功しているか確認
+   - 最新 production deployment の **state**（Building / Ready / Failed / Queued）を取得
+   - Ready の deployment の **commit hash** が GitHub MCP で確認した main HEAD と一致しているか照合
+   - 一致していなければ **auto-deploy が止まっている** = 修正の反映前に Redeploy / 設定確認を促す
+
+3. **Supabase MCP** — データ取得・RLS・auth・profiles・posts 関連に問題がないか確認
+   - DB スキーマに依存する変更を入れた場合は、対象テーブルの構造・RLS ポリシー・関連 column の存在を確認
+   - profiles / posts / tweets / village_posts / blocks / tweet_reactions 等の主要テーブルの読み書き権限が壊れていないか確認
+   - auth / session 系の変更を入れた場合は middleware / RLS / cookie ドメインの整合性も確認
+
+4. **実画面 / プレビュー反映確認** — 4 系統が揃った後、最後に必ず実機 or プレビュー URL で動作確認
+   - iOS Safari は bfcache があるので、必ず下に引っ張ってリロード
+   - 該当画面・該当機能・隣接機能（壊していないか）の 3 点を確認
+
+5. **やさしい説明でまとめる** — 上記 1〜4 の結果を「マッキーさん向けやさしい説明」セクションで報告
+   - 何を MCP で確認したか / どこが OK / どこが NG / 次にどうするか をやさしい言葉で書く
+
+### 完了扱いにしてはいけない状態
+
+以下の状態を「完了」と報告したら **重大な手抜き** とみなす:
+
+- push しただけ
+- PR 作成しただけ
+- merge しただけ
+- main に commit が到達しただけ
+- Vercel deployment が Building のまま
+- Vercel deployment は Ready だが production の commit hash が古いまま
+- DB スキーマや RLS を変えたのに Supabase MCP で確認していない
+- 実画面 / プレビューで動作確認していない
+
+### MCP が利用不可な場合の代替
+
+各 MCP server が disconnect / 未設定の場合は、**MCP が使えないことを明示** した上で
+代替手段（Bash の `git`, ブラウザでの Vercel ダッシュボード確認, Supabase ダッシュボード確認）
+を使い、何で確認したかを報告に明記する。MCP が無いから確認をスキップするのは禁止。
+
+### このルールの適用対象
+
+- すべての UI 修正
+- すべてのバグ修正
+- すべての本番反映を伴う作業
+- DB / RLS / auth / Webhook / 環境変数 を触る作業
+- スコープが小さくても適用 (5 行修正でも 4 系統チェック)
+
+### 適用しなくていい例外
+
+- ドキュメント (CLAUDE.md / README 等) の修正のみ → GitHub MCP の commit 到達確認だけでよい
+- ローカル調査・コード読みのみ → MCP 確認不要
+- マッキーさんが「MCP 確認不要」と明示した場合のみスキップ可
+
+---
+
 ## このファイルの更新ルール
 
 - 既存の項目を削除しない（追記方式）
@@ -608,6 +674,19 @@ git push origin <branch名>
   4. 一時 console.log は反映確認後に同一 branch で即除去。本番に撒き散らさない
   5. squash merge 後の branch divergence は `git merge origin/main` + `git checkout --ours` で force push を使わず安全に解消する手順を明記
 - これにより「PR 作って許可待ちにする」モードを禁止し、**マッキーさんが指示したスコープを Claude Code 側で完了させる** 運用に統一
+
+### 2026-05-08（同日 3 回目）— MCP 確認の鉄則を追加 (UI 修正・バグ修正・本番反映で 4 系統 MCP 必須)
+
+- 本日 mypage アバター緑化 (#10) が main に入っていたのに **Vercel auto-deploy が止まっていた**ため iPhone で反映されず、マッキーさんに 2 回「反映されてない」と言わせてしまった事故を踏まえ、**MCP 確認の鉄則** を新設
+- UI 修正・バグ修正・本番反映作業では必ず以下 4 系統 + 1 を通す:
+  1. GitHub MCP — commit が main に到達しているか
+  2. Vercel MCP — 最新 deployment が Ready で、その commit hash が main HEAD と一致しているか
+  3. Supabase MCP — DB / RLS / auth / profiles / posts に問題がないか
+  4. 実画面 / プレビュー反映確認
+  5. やさしい説明でまとめる
+- 「push しただけ」「PR 作っただけ」「merge しただけ」「Vercel が Building のまま」「production hash が古いまま」を完了扱いにすることを **禁止事項として明文化**
+- MCP が未設定 / disconnect のときは「MCP 使えません」と明示した上で Bash / ダッシュボードで代替し、何で確認したかを報告に明記する運用に
+- ドキュメント修正のみ / ローカル調査のみ / マッキーさん明示で「MCP 確認不要」と言われた場合のみ例外として明記
 
 ### 2026-05-08（同日 2 回目）— 全返答末尾に「マッキーさん向けやさしい説明」セクションを必須化
 
