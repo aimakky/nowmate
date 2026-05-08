@@ -11,6 +11,8 @@
 
 // ─── 型定義 ─────────────────────────────────────────────────────
 
+import { isVerificationBypassEnabled } from './test-mode'
+
 export type AgeVerificationStatus =
   | 'unverified'
   | 'age_verified'
@@ -122,6 +124,12 @@ export function canJoinVoiceRoom(
     return { allowed: false, asListenerOnly: false, reason: 'ログインが必要です' }
   }
 
+  // 2026-05-08 YVOICE5 テスト期間中バイパス: ログイン済みなら全 room_type で参加可。
+  // 正式リリース時は NEXT_PUBLIC_DISABLE_VERIFICATION_GATE を false / 未設定に戻す。
+  if (isVerificationBypassEnabled()) {
+    return { allowed: true, asListenerOnly: false }
+  }
+
   const verified = isAgeVerified(user)
 
   if (room.room_type === 'open_voice_room') {
@@ -183,6 +191,8 @@ export function canSpeakInVoiceRoom(
   _room?: VoiceRoomContext,
 ): { allowed: boolean; reason?: string } {
   if (!user) return { allowed: false, reason: 'ログインが必要です' }
+  // 2026-05-08 YVOICE5 テスト期間中バイパス: 年齢確認なしでもマイクON可。
+  if (isVerificationBypassEnabled()) return { allowed: true }
   if (!isAgeVerified(user)) {
     return {
       allowed: false,
@@ -211,6 +221,8 @@ export function canCreateVoiceRoom(
   user: UserPermissionContext | null,
 ): { allowed: boolean; reason?: string } {
   if (!user) return { allowed: false, reason: 'ログインが必要です' }
+  // 2026-05-08 YVOICE5 テスト期間中バイパス: 年齢確認なしでもルーム作成可。
+  if (isVerificationBypassEnabled()) return { allowed: true }
   if (!isAgeVerified(user)) {
     return {
       allowed: false,
@@ -250,6 +262,8 @@ export function canSendDM(
   _targetUser?: UserPermissionContext,
 ): { allowed: boolean; reason?: string } {
   if (!user) return { allowed: false, reason: 'ログインが必要です' }
+  // 2026-05-08 YVOICE5 テスト期間中バイパス: 年齢確認なしでも DM 送信可。
+  if (isVerificationBypassEnabled()) return { allowed: true }
   if (!isAgeVerified(user)) {
     return {
       allowed: false,
@@ -268,6 +282,8 @@ export function canStartOneToOneCall(
   targetUser: UserPermissionContext | null,
 ): { allowed: boolean; reason?: string } {
   if (!user) return { allowed: false, reason: 'ログインが必要です' }
+  // 2026-05-08 YVOICE5 テスト期間中バイパス: 年齢確認なしでも 1対1通話可。
+  if (isVerificationBypassEnabled()) return { allowed: true }
   if (!isAgeVerified(user)) {
     return {
       allowed: false,
