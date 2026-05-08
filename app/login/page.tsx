@@ -4,7 +4,7 @@
 // 注入する方式に統一。'use client' ページでは route segment config
 // (export const revalidate = 0 等) が build error を起こすため使わない。
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -17,6 +17,28 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
+  // 既ログインチェック完了まで login form を出さない (session 復元中の flash 防止)
+  const [authChecking, setAuthChecking] = useState(true)
+
+  // 2026-05-08 マッキーさん指示「一度ログインしたら 90 日維持」への補完対応。
+  // 既ログイン user が /login にアクセスしたとき login form を見せず即 /timeline へ
+  // 振る。root page (app/page.tsx) の server redirect と組み合わせて、ログイン済み
+  // user が誤って login 画面に到達するルートを全部塞ぐ。
+  useEffect(() => {
+    let cancelled = false
+    async function checkAuth() {
+      const { data: { user } } = await createClient().auth.getUser()
+      if (cancelled) return
+      if (user) {
+        // 既ログイン → タイムラインへ
+        router.replace('/timeline')
+        return
+      }
+      setAuthChecking(false)
+    }
+    checkAuth()
+    return () => { cancelled = true }
+  }, [router])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -39,6 +61,19 @@ export default function LoginPage() {
       provider: 'google',
       options: { redirectTo: `${location.origin}/auth/callback?next=/timeline` },
     })
+  }
+
+  // 既ログインチェック中: login form を見せず full screen loading
+  // (Cookie が 90 日生きていれば即 /timeline へ replace されるので一瞬だけ)
+  if (authChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#080812' }}>
+        <span
+          className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: 'rgba(157,92,255,0.6)', borderTopColor: 'transparent' }}
+        />
+      </div>
+    )
   }
 
   return (

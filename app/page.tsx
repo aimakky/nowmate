@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import YVoiceIcon from '@/components/ui/icons/YVoiceIcon'
@@ -29,6 +30,30 @@ const GENRES = [
 
 export default async function TopPage() {
   const supabase = createClient()
+
+  // 2026-05-08 マッキーさん指示「一度ログインしたら 90 日維持。タスクキル後も
+  // 再アクセス時にログイン後の画面が表示されること」への根本対応。
+  //
+  // 真因: 旧実装は root LP が全ユーザー (ログイン済み・未ログイン共通) に LP を
+  // 表示しており、ログイン済み user を /timeline へ redirect する処理が無かった。
+  // そのため Cookie が 90 日有効でも、root にアクセスするたびに「ログインボタン
+  // のある LP」が出て「毎回ログイン画面」と体感されていた。
+  //
+  // 修正: 既存 /auth/callback と同じパターンで、ログイン済みなら server-side
+  // redirect する。
+  //   - profile 有り → /timeline (タイムライン本体)
+  //   - profile 無し → /onboarding (新規登録途中)
+  // Server Component の redirect なので Cookie 復元前の flash が起きない。
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle()
+    redirect(profile ? '/timeline' : '/onboarding')
+  }
+
   const { count } = await supabase
     .from('profiles')
     .select('*', { count: 'exact', head: true })
