@@ -1322,8 +1322,12 @@ export default function MyPage() {
               <p className="text-[10px] mt-1" style={{ color: 'rgba(240,238,255,0.7)' }}>
                 reaction 内訳: {Object.entries(reactionDist).map(([k, v]) => `${k}=${v}`).join(' / ') || '(なし)'}
               </p>
+              <p className="text-[10px] mt-1 font-mono" style={{ color: '#7CFF82' }}>
+                build: {(process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? 'local').slice(0, 7)} / env: {process.env.NEXT_PUBLIC_VERCEL_ENV ?? 'unknown'}
+              </p>
               <p className="text-[10px] mt-1" style={{ color: 'rgba(240,238,255,0.45)' }}>
                 旧 6 種 (heart/haha/wow/support/sad/fire) 全部いいね扱いに統合。確認後に削除します。
+                build sha が main HEAD と一致しなければ Vercel 未反映。
               </p>
             </div>
             {likedTweets.length === 0 && likedVillagePosts.length === 0 ? (
