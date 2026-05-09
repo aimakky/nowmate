@@ -118,6 +118,20 @@ export default function GuildPage() {
     if (params.get('tab') === 'guild') setTopTab('guild')
   }, [])
 
+  // DEBUG (2026-05-09 マッキーさん指示「いますぐ村/ギルド切替時の高さズレ修正の実描画ファイル証明」)
+  // 確認後、次 commit で除去する (CLAUDE.md「一時 console.log の最短ライフサイクル」)。
+  // ブラウザコンソールで `[GUILD_TAB_DEBUG_2026-05-09]` を含むログが見えれば、
+  // app/(app)/guild/page.tsx (いますぐ村側) と components/features/GuildsContent.tsx (ギルド側)
+  // が実描画ファイルだと証明される。
+  useEffect(() => {
+    console.log('[GUILD_TAB_DEBUG_2026-05-09] topTab=', topTab,
+      'instant_file=app/(app)/guild/page.tsx',
+      'guild_file=components/features/GuildsContent.tsx',
+      'firstCardWrapperPt=', topTab === 'instant'
+        ? '今夜カードwrapper px-4 pt-4 (post-fix)'
+        : 'ギルドリストwrapper px-4 pt-4 pb-28')
+  }, [topTab])
+
   const [villages,  setVillages]  = useState<Village[]>([])
   const [loading,   setLoading]   = useState(true)
   const [genre,     setGenre]     = useState('all')
@@ -392,7 +406,12 @@ export default function GuildPage() {
           </div>
 
           {/* ── 今夜あそぶ人を探す (紫カード、機能維持) ── */}
-          <div className="px-4 pt-3">
+          {/* 2026-05-09 マッキーさん指示「いますぐ村/ギルドの切り替えで一覧カード開始位置を揃える」対応。
+              ギルド側 (GuildsContent.tsx L299) の `<div className="px-4 pt-4 pb-28">` と
+              pt を一致させ、sticky filter 直下の最初のカード start 位置を完全一致させる。
+              旧: pt-3 (= 12px) → 新: pt-4 (= 16px、ギルドと完全一致)。
+              4px のズレが「タブ切り替え時にガタつく」原因だった。 */}
+          <div className="px-4 pt-4">
             <div className="rounded-2xl overflow-hidden"
               style={{
                 background: 'linear-gradient(135deg, rgba(157,92,255,0.10), rgba(124,58,237,0.05))',
