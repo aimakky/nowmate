@@ -293,7 +293,10 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
       </div>
 
       {/* ── 一覧 ── */}
-      <div className="px-4 pt-3 pb-32">
+      {/* 2026-05-09: いますぐ村 (guild/page.tsx L553) と同じ pt-4 pb-28 に統一。
+          - pt-4: タブ切り替え時にコンテンツ開始位置がズレないよう揃え (旧 pt-3 = 4px ズレ)
+          - pb-28: BottomNav クリアランスを他のページ (TL/通知/チャット) と統一 */}
+      <div className="px-4 pt-4 pb-28">
         {loading ? (
           <div className="space-y-2.5">
             {[...Array(5)].map((_, i) => (

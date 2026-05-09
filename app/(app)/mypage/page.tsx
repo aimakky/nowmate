@@ -1240,7 +1240,11 @@ export default function MyPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="flex-1 min-w-[68px] py-3.5 text-xs font-bold transition-colors relative"
+              // 2026-05-09 マッキーさん指示「タブ切り替えで高さ・余白がズレないよう統一」
+              // profile/[userId] のタブと完全に同じ DOM 構造に統一:
+              //   flex items-center justify-center gap-1 py-3 (= 12px)
+              // (旧: py-3.5 で profile と 4px ズレていた)
+              className="flex-1 min-w-[68px] flex items-center justify-center gap-1 py-3 text-xs font-bold transition-colors relative"
               style={{ color: activeTab === tab.id ? '#F0EEFF' : 'rgba(240,238,255,0.4)' }}
             >
               {tab.label}
@@ -1509,8 +1513,10 @@ export default function MyPage() {
 
         {/* 動画タブ (現状 DB に video_url 等が無いため空状態のみ。
             UI 先行で profile/[userId] と同等。将来 video カラム追加時に拡張) */}
+        {/* 2026-05-09: 投稿/返信/いいね/ギルドタブと同じ pt-4 を追加し、
+            タブ切り替え時の縦ズレ (16px) を解消 */}
         {activeTab === 'videos' && (
-          <div className="px-4">
+          <div className="px-4 pt-4">
             <div
               className="rounded-2xl p-8 text-center"
               style={{
@@ -1527,8 +1533,10 @@ export default function MyPage() {
 
         {/* 画像タブ (guild_posts.image_url IS NOT NULL のレコードを 3 列グリッドで表示)。
             profile/[userId] と同等のレイアウト。imagePosts は初期 load で取得済。 */}
+        {/* 2026-05-09: 投稿/返信/いいね/ギルドタブと同じ pt-4 を追加し、
+            タブ切り替え時の縦ズレ (16px) を解消 */}
         {activeTab === 'images' && (
-          <div className="px-4">
+          <div className="px-4 pt-4">
             {imagePosts.length === 0 ? (
               <div
                 className="rounded-2xl p-8 text-center"

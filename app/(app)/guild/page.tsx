@@ -550,7 +550,8 @@ export default function GuildPage() {
           </div>
 
           {/* ── ゲーム村一覧 (シンプル縦並び) ── */}
-          <div className="px-4 pt-4 pb-32">
+          {/* 2026-05-09: BottomNav クリアランスを TL/通知/チャット と同じ pb-28 に統一 */}
+          <div className="px-4 pt-4 pb-28">
             {loading ? (
               <div className="space-y-2.5">
                 {[...Array(5)].map((_, i) => (
