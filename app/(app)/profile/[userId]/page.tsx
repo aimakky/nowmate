@@ -457,6 +457,23 @@ export default function UserProfilePage() {
         alert(`いいね保存エラー (profile)\nmessage: ${r.error.message ?? ''}\ncode: ${(r.error as any).code ?? ''}\ndetails: ${(r.error as any).details ?? ''}\nhint: ${(r.error as any).hint ?? ''}`)
         return
       }
+      // 2026-05-09 一時 DEBUG: silent RLS rejection 切り分け。upsert 直後に
+      // 同じ行を select して、自分で書いた行が自分で読めるか確認する。
+      // PR #46 後も「alert 出ない / でも再取得で消える」現象が継続している場合、
+      // INSERT 時の WITH CHECK は通るが SELECT 時の USING で拒否される RLS の
+      // 可能性が高い。これを画面で目視できるように。
+      const verify = await supabase
+        .from('village_reactions')
+        .select('post_id, user_id')
+        .eq('post_id', postId)
+        .eq('user_id', myId)
+      // eslint-disable-next-line no-console
+      console.log('[LIKE_DEBUG] profile post-upsert verify:', { rows: verify.data, error: verify.error })
+      if (!verify.error && (!verify.data || verify.data.length === 0)) {
+        alert(`保存後 SELECT 確認 (profile)\n書き込み直後なのに自分で読めない\n→ village_reactions の SELECT RLS で自分の行が拒否されている可能性\nrows: ${JSON.stringify(verify.data)}\nerror: ${JSON.stringify(verify.error)}`)
+      } else if (verify.error) {
+        alert(`保存後 SELECT エラー (profile)\nmessage: ${verify.error.message}\ncode: ${(verify.error as any).code ?? ''}`)
+      }
       setLikedIds(prev => new Set([...prev, postId]))
       setProfileVillagePosts(prev => prev.map(p => p.id === postId ? { ...p, reaction_count: p.reaction_count + 1 } : p))
     }
