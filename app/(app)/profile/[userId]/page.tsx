@@ -202,9 +202,11 @@ export default function UserProfilePage() {
       }
       lastScrollYRef.current = currentY
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
+      // 2026-05-09 マッキーさん指示「投稿数の表示はスクロールをやめた瞬間に消えて欲しい」
+      // 旧 500ms → 新 100ms に短縮 (体感「即消える」)。
       scrollTimeoutRef.current = setTimeout(() => {
         setShowPostCount(false)
-      }, 500)
+      }, 100)
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => {

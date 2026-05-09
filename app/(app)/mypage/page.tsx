@@ -383,9 +383,13 @@ export default function MyPage() {
       }
       lastScrollYRef.current = currentY
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
+      // 2026-05-09 マッキーさん指示「投稿数の表示はスクロールをやめた瞬間に消えて欲しい」
+      // 旧 500ms → 新 100ms に短縮 (体感「即消える」)。
+      // scroll イベント間隔 (~16ms) より十分長いのでスクロール中は表示維持、
+      // 停止すると 100ms で消える。
       scrollTimeoutRef.current = setTimeout(() => {
         setShowPostCount(false)
-      }, 500)
+      }, 100)
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => {
