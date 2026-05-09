@@ -196,16 +196,11 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
           borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}`,
         }}
       >
-        {/* タイトル: コンパクトに */}
-        <div className="flex items-center gap-2 mb-3">
-          <GuildShieldIcon size={18} active={true} />
-          <h1 className="font-extrabold text-base" style={{ color: SIMPLE_COLORS.textPrimary }}>
-            ギルド
-          </h1>
-          <span className="text-[11px] font-medium" style={{ color: SIMPLE_COLORS.textTertiary }}>
-            ゲーム仲間とつながろう
-          </span>
-        </div>
+        {/* 2026-05-09 マッキーさん指示「ギルドタブの『🛡️ ギルド』『ゲーム仲間と
+            つながろう』見出しを削除」対応。検索欄を上部タブ直下に配置し、
+            上部タブとの最低限の余白だけ残して詰まりすぎないようにする。
+            GuildShieldIcon は別箇所 (SUB_FILTERS の参加中アイコン / 空状態アイコン)
+            で引き続き使うので import は残置。 */}
 
         {/* 検索 */}
         <div className="relative mb-2.5">
