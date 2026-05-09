@@ -52,6 +52,12 @@ type MyVillagePost = {
   village_id: string | null
   reaction_count: number
   village: { id: string; name: string; icon: string } | null
+  // 2026-05-09 マッキーさん指示「いいね欄で他人の村投稿の投稿者名が自分になる」
+  // 真因対応。元投稿者の profile / trust を持たせて、いいねタブから表示する時に
+  // 元投稿者として表示できるようにする。自分の村投稿 (mypage の投稿タブ) では
+  // 未設定でよい (mypage の自分 profile を fallback で渡す)。
+  author_profile?: any
+  author_trust?: any
 }
 
 type FollowUser = {
@@ -650,9 +656,11 @@ export default function MyPage() {
       // eslint-disable-next-line no-console
       console.log('[LIKES_DBG]', 'villageReactions', { count: likedVillageIds.length })
       if (likedVillageIds.length > 0) {
+        // 2026-05-09 マッキーさん指示「いいね欄で他人の村投稿の投稿者名が自分に
+        // なる」真因対応: select に user_id を追加 + 元投稿者の profile / trust を merge
         const { data: lvRows } = await supabase
           .from('village_posts')
-          .select('id, content, category, created_at, village_id, reaction_count')
+          .select('id, content, category, created_at, village_id, reaction_count, user_id')
           .in('id', likedVillageIds)
           .order('created_at', { ascending: false })
         const lvRaw = (lvRows ?? []) as any[]
@@ -663,12 +671,26 @@ export default function MyPage() {
           missing: likedVillageIds.filter(id => !lvRaw.some(p => p.id === id)),
         })
         const lvVillageIds = Array.from(new Set(lvRaw.map((p: any) => p.village_id).filter(Boolean)))
-        let lvVMap = new Map<string, any>()
-        if (lvVillageIds.length > 0) {
-          const { data: vRows } = await supabase
-            .from('villages').select('id, name, icon').in('id', lvVillageIds)
-          for (const v of (vRows ?? []) as any[]) lvVMap.set(v.id, v)
-        }
+        const lvAuthorIds = Array.from(new Set(lvRaw.map((p: any) => p.user_id).filter(Boolean)))
+        const [vRowsRes, vAuthorProfRes, vAuthorTrustRes] = await Promise.all([
+          lvVillageIds.length > 0
+            ? supabase.from('villages').select('id, name, icon').in('id', lvVillageIds)
+            : Promise.resolve({ data: [] }),
+          lvAuthorIds.length > 0
+            ? supabase.from('profiles')
+                .select('id, display_name, nationality, avatar_url, age_verified, age_verification_status')
+                .in('id', lvAuthorIds)
+            : Promise.resolve({ data: [] }),
+          lvAuthorIds.length > 0
+            ? supabase.from('user_trust').select('user_id, tier').in('user_id', lvAuthorIds)
+            : Promise.resolve({ data: [] }),
+        ])
+        const lvVMap = new Map<string, any>()
+        for (const v of ((vRowsRes as any).data ?? [])) lvVMap.set(v.id, v)
+        const lvAuthorProfMap = new Map<string, any>()
+        for (const p of ((vAuthorProfRes as any).data ?? [])) lvAuthorProfMap.set(p.id, p)
+        const lvAuthorTrustMap = new Map<string, string>()
+        for (const t of ((vAuthorTrustRes as any).data ?? [])) lvAuthorTrustMap.set(t.user_id, t.tier)
         setLikedVillagePosts(lvRaw.map((p: any) => ({
           id: p.id,
           content: p.content,
@@ -676,6 +698,8 @@ export default function MyPage() {
           village_id: p.village_id ?? null,
           reaction_count: p.reaction_count ?? 0,
           village: p.village_id ? lvVMap.get(p.village_id) ?? null : null,
+          author_profile: p.user_id ? lvAuthorProfMap.get(p.user_id) ?? null : null,
+          author_trust: p.user_id && lvAuthorTrustMap.has(p.user_id) ? { tier: lvAuthorTrustMap.get(p.user_id) } : null,
         })))
         // 全範囲 likedIds に上書き (mypage 内 toggleLike が他人の村投稿でも動作するため)
         setLikedIds(prev => {
@@ -776,9 +800,12 @@ export default function MyPage() {
       // eslint-disable-next-line no-console
       console.log('[LIKED_TAB_DEBUG] villageReactions:', { count: likedVillageIds.length })
       if (likedVillageIds.length > 0) {
+        // 2026-05-09 マッキーさん指示「いいね欄で他人の村投稿の投稿者名が自分に
+        // なる」真因対応: select で user_id も取得し、元投稿者の profiles / user_trust
+        // を別 query で merge して MyVillagePostInline に渡せるようにする。
         const { data: lvRows } = await supabase
           .from('village_posts')
-          .select('id, content, category, created_at, village_id, reaction_count')
+          .select('id, content, category, created_at, village_id, reaction_count, user_id')
           .in('id', likedVillageIds)
           .order('created_at', { ascending: false })
         if (cancelled) return
@@ -786,13 +813,27 @@ export default function MyPage() {
         // eslint-disable-next-line no-console
         console.log('[LIKED_TAB_DEBUG] village_posts fetched:', { requested: likedVillageIds.length, fetched: lvRaw.length })
         const lvVillageIds = Array.from(new Set(lvRaw.map((p: any) => p.village_id).filter(Boolean)))
+        const lvAuthorIds = Array.from(new Set(lvRaw.map((p: any) => p.user_id).filter(Boolean)))
+        const [vRowsRes, vAuthorProfRes, vAuthorTrustRes] = await Promise.all([
+          lvVillageIds.length > 0
+            ? supabase.from('villages').select('id, name, icon').in('id', lvVillageIds)
+            : Promise.resolve({ data: [] }),
+          lvAuthorIds.length > 0
+            ? supabase.from('profiles')
+                .select('id, display_name, nationality, avatar_url, age_verified, age_verification_status')
+                .in('id', lvAuthorIds)
+            : Promise.resolve({ data: [] }),
+          lvAuthorIds.length > 0
+            ? supabase.from('user_trust').select('user_id, tier').in('user_id', lvAuthorIds)
+            : Promise.resolve({ data: [] }),
+        ])
+        if (cancelled) return
         const lvVMap = new Map<string, any>()
-        if (lvVillageIds.length > 0) {
-          const { data: vRows } = await supabase
-            .from('villages').select('id, name, icon').in('id', lvVillageIds)
-          if (cancelled) return
-          for (const v of (vRows ?? []) as any[]) lvVMap.set(v.id, v)
-        }
+        for (const v of ((vRowsRes as any).data ?? [])) lvVMap.set(v.id, v)
+        const lvAuthorProfMap = new Map<string, any>()
+        for (const p of ((vAuthorProfRes as any).data ?? [])) lvAuthorProfMap.set(p.id, p)
+        const lvAuthorTrustMap = new Map<string, string>()
+        for (const t of ((vAuthorTrustRes as any).data ?? [])) lvAuthorTrustMap.set(t.user_id, t.tier)
         setLikedVillagePosts(lvRaw.map((p: any) => ({
           id: p.id,
           content: p.content,
@@ -800,6 +841,9 @@ export default function MyPage() {
           village_id: p.village_id ?? null,
           reaction_count: p.reaction_count ?? 0,
           village: p.village_id ? lvVMap.get(p.village_id) ?? null : null,
+          // 元投稿者の profile / trust を保持 (いいねタブで他人の村投稿を表示する時に使う)
+          author_profile: p.user_id ? lvAuthorProfMap.get(p.user_id) ?? null : null,
+          author_trust: p.user_id && lvAuthorTrustMap.has(p.user_id) ? { tier: lvAuthorTrustMap.get(p.user_id) } : null,
         })))
         setLikedIds(prev => {
           const n = new Set(prev)
@@ -1498,8 +1542,10 @@ export default function MyPage() {
                   <MyVillagePostInline
                     key={`liked-village-${item.data.id}`}
                     post={item.data}
-                    profile={profile}
-                    trust={trust}
+                    /* 2026-05-09: いいねタブでは元投稿者の profile / trust を渡す。
+                       無ければ自分 profile fallback (自分の村投稿に自分でいいねした場合の保険) */
+                    profile={item.data.author_profile ?? profile}
+                    trust={item.data.author_trust ?? trust}
                     liked={likedIds.has(item.data.id)}
                     onToggleLike={toggleLike}
                   />
