@@ -339,10 +339,6 @@ export default function MyPage() {
   const [myReplies, setMyReplies] = useState<Array<{ id: string; tweet_id: string; content: string; created_at: string }>>([])
   const [likedTweets, setLikedTweets] = useState<TweetData[]>([])
   const [likedVillagePosts, setLikedVillagePosts] = useState<MyVillagePost[]>([])
-  // 2026-05-09 一時 DEBUG: tweet_reactions.reaction 値の分布。
-  // 旧仕様 (heart / haha / wow / support / sad / fire の 6 種) → 新仕様 (heart 1 種)
-  // 統合の過渡期で、過去レコードに heart 以外の値が残っている可能性を画面で確認する。
-  const [reactionDist, setReactionDist] = useState<Record<string, number>>({})
   // 返信 / いいねは初回ロード時に一括取得 (タブ切替で空白を避けるため)。
   // タブ未訪問でも UI 完全描画したいので、loaded フラグは持たない。
   const [tweetLoading,   setTweetLoading]   = useState(false)
@@ -574,43 +570,17 @@ export default function MyPage() {
       setMyReplies((repliesRows ?? []) as any[])
 
       // いいねタブ用: 自分がリアクションした tweets を取得 + enrich
-      // tweet_reactions.user_id = 自分 の全行 (reaction 値は問わない)
-      //
-      // 2026-05-08 PR #41: .limit(50) を撤廃 (50 件超で漏れていた問題解決)
-      // 2026-05-09 PR #4X: reaction フィルタを撤廃 (このコミット)
-      //   旧仕様 (TweetCard の 6 種リアクション: heart / haha / wow / support / sad
-      //   / fire) 時代に押した reactions は DB に残っているが、reaction='heart' で
-      //   フィルタするとそれらが取れていなかった。Heart 1 種に統合された現在は
-      //   ハートタップ = 'heart' upsert だが、過去レコード互換のため reaction 値
-      //   フィルタを撤廃し、user_id = 自分のすべてのリアクションを「いいね」扱いに
-      //   する。これによりマッキーさんが過去に押した😂🔥🙌等もいいねタブで見える。
-      //
-      // 並び順は当面「投稿作成日時 DESC」で暫定。tweet_reactions の created_at
-      // 列の存在確認後、別 PR で「いいねした日時 DESC」に改善する。
+      // PR #41: .limit(50) を撤廃 / PR #44: reaction フィルタを撤廃 (旧 6 種互換)
+      // PR #52: tweet_id → liked_at Map で「いいね押した日時 DESC」に並び替え
       const { data: heartReactions } = await supabase
         .from('tweet_reactions')
         .select('tweet_id, reaction, created_at')
         .eq('user_id', user.id)
-      // 一時 DEBUG: reaction 値の分布を計算 (確認後の次 commit で除去)
-      const dist: Record<string, number> = {}
-      for (const r of ((heartReactions ?? []) as any[])) {
-        const key = (r.reaction as string | null) ?? 'null'
-        dist[key] = (dist[key] ?? 0) + 1
-      }
-      setReactionDist(dist)
       const heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
-      // 2026-05-09 マッキーさん指示「いいね欄をいいね押した順 (likes.created_at DESC) に」対応:
-      // tweet_id → liked_at の Map を作成。後で likedTweets の各 tweet に merge して
-      // 表示時にこの値で降順ソート。DB 列が無ければ liked_at が undefined になり、
-      // 投稿の created_at に fallback (fail-open)。
       const ltLikedAtMap = new Map<string, string>()
       for (const r of ((heartReactions ?? []) as any[])) {
         if (r.tweet_id && r.created_at) ltLikedAtMap.set(r.tweet_id, r.created_at)
       }
-      // 一時 DEBUG ログ (マッキーさん指示「console.log で取得件数を確認」準拠)。
-      // 確認後、次 commit で除去する (CLAUDE.md「一時 console.log の最短ライフサイクル」)。
-      // eslint-disable-next-line no-console
-      console.log('[LIKES_DBG]', 'heartReactions', { count: heartTweetIds.length })
       if (heartTweetIds.length > 0) {
         const { data: ltRows } = await supabase
           .from('tweets')
@@ -618,12 +588,6 @@ export default function MyPage() {
           .in('id', heartTweetIds)
           .order('created_at', { ascending: false })
         const ltRaw = (ltRows ?? []) as any[]
-        // eslint-disable-next-line no-console
-        console.log('[LIKES_DBG]', 'tweets fetched', {
-          requested: heartTweetIds.length,
-          fetched: ltRaw.length,
-          missing: heartTweetIds.filter(id => !ltRaw.some(t => t.id === id)),
-        })
         if (ltRaw.length > 0) {
           // 投稿者プロフィール / リアクション / 返信 / 信頼スコアを別 query で並列取得し merge
           const ltIds = ltRaw.map((t: any) => t.id)
@@ -662,37 +626,24 @@ export default function MyPage() {
         }
       }
 
-      // いいねタブ用: 自分が反応した village_posts (上で取得した likedIds は
-      // 「自分が投稿した村投稿」だけだったので、ここで全範囲版を取得し直す)
-      // 2026-05-08 マッキーさん指示「いいねした投稿が一部しか表示されない」への対応:
-      // 旧実装は .limit(50) で 50 件以上いいねした人は漏れていた。limit を撤廃。
+      // いいねタブ用: 自分が反応した village_posts 全範囲版
+      // PR #41: .limit(50) を撤廃 / PR #50: 元投稿者 profile を保持 / PR #52: liked_at で並び替え
       const { data: allMyVillageReacts } = await supabase
         .from('village_reactions')
         .select('post_id, created_at')
         .eq('user_id', user.id)
       const likedVillageIds = ((allMyVillageReacts ?? []) as any[]).map(r => r.post_id).filter(Boolean)
-      // 2026-05-09: いいね欄ソート用 post_id → liked_at Map (load() 用)
       const lvLikedAtMap = new Map<string, string>()
       for (const r of ((allMyVillageReacts ?? []) as any[])) {
         if (r.post_id && r.created_at) lvLikedAtMap.set(r.post_id, r.created_at)
       }
-      // eslint-disable-next-line no-console
-      console.log('[LIKES_DBG]', 'villageReactions', { count: likedVillageIds.length })
       if (likedVillageIds.length > 0) {
-        // 2026-05-09 マッキーさん指示「いいね欄で他人の村投稿の投稿者名が自分に
-        // なる」真因対応: select に user_id を追加 + 元投稿者の profile / trust を merge
         const { data: lvRows } = await supabase
           .from('village_posts')
           .select('id, content, category, created_at, village_id, reaction_count, user_id')
           .in('id', likedVillageIds)
           .order('created_at', { ascending: false })
         const lvRaw = (lvRows ?? []) as any[]
-        // eslint-disable-next-line no-console
-        console.log('[LIKES_DBG]', 'villagePosts fetched', {
-          requested: likedVillageIds.length,
-          fetched: lvRaw.length,
-          missing: likedVillageIds.filter(id => !lvRaw.some(p => p.id === id)),
-        })
         const lvVillageIds = Array.from(new Set(lvRaw.map((p: any) => p.village_id).filter(Boolean)))
         const lvAuthorIds = Array.from(new Set(lvRaw.map((p: any) => p.user_id).filter(Boolean)))
         const [vRowsRes, vAuthorProfRes, vAuthorTrustRes] = await Promise.all([
@@ -753,8 +704,6 @@ export default function MyPage() {
     let cancelled = false
     async function reloadLikes() {
       const supabase = createClient()
-      // eslint-disable-next-line no-console
-      console.log('[LIKED_TAB_DEBUG] reloadLikes start:', { userId })
       // tweet_reactions 全件 (PR #44 で reaction フィルタ撤廃済)
       const { data: heartReactions } = await supabase
         .from('tweet_reactions')
@@ -762,26 +711,16 @@ export default function MyPage() {
         .eq('user_id', userId)
       if (cancelled) return
       const heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
-      const dist: Record<string, number> = {}
-      for (const r of ((heartReactions ?? []) as any[])) {
-        const key = (r.reaction as string | null) ?? 'null'
-        dist[key] = (dist[key] ?? 0) + 1
-      }
-      setReactionDist(dist)
-      // 2026-05-09: いいね欄ソート用 tweet_id → liked_at Map (reloadLikes 用)
+      // PR #52: いいね欄ソート用 tweet_id → liked_at Map
       const ltLikedAtMap = new Map<string, string>()
       for (const r of ((heartReactions ?? []) as any[])) {
         if (r.tweet_id && r.created_at) ltLikedAtMap.set(r.tweet_id, r.created_at)
       }
-      // eslint-disable-next-line no-console
-      console.log('[LIKED_TAB_DEBUG] heartReactions:', { count: heartTweetIds.length, dist })
       if (heartTweetIds.length > 0) {
         const { data: ltRows } = await supabase
           .from('tweets').select('*').in('id', heartTweetIds).order('created_at', { ascending: false })
         if (cancelled) return
         const ltRaw = (ltRows ?? []) as any[]
-        // eslint-disable-next-line no-console
-        console.log('[LIKED_TAB_DEBUG] tweets fetched:', { requested: heartTweetIds.length, fetched: ltRaw.length })
         if (ltRaw.length > 0) {
           const ltIds = ltRaw.map((t: any) => t.id)
           const ltAuthorIds = Array.from(new Set(ltRaw.map((t: any) => t.user_id).filter(Boolean)))
@@ -833,8 +772,6 @@ export default function MyPage() {
       for (const r of ((allMyVillageReacts ?? []) as any[])) {
         if (r.post_id && r.created_at) lvLikedAtMap.set(r.post_id, r.created_at)
       }
-      // eslint-disable-next-line no-console
-      console.log('[LIKED_TAB_DEBUG] villageReactions:', { count: likedVillageIds.length })
       if (likedVillageIds.length > 0) {
         // 2026-05-09 マッキーさん指示「いいね欄で他人の村投稿の投稿者名が自分に
         // なる」真因対応: select で user_id も取得し、元投稿者の profiles / user_trust
@@ -846,8 +783,6 @@ export default function MyPage() {
           .order('created_at', { ascending: false })
         if (cancelled) return
         const lvRaw = (lvRows ?? []) as any[]
-        // eslint-disable-next-line no-console
-        console.log('[LIKED_TAB_DEBUG] village_posts fetched:', { requested: likedVillageIds.length, fetched: lvRaw.length })
         const lvVillageIds = Array.from(new Set(lvRaw.map((p: any) => p.village_id).filter(Boolean)))
         const lvAuthorIds = Array.from(new Set(lvRaw.map((p: any) => p.user_id).filter(Boolean)))
         const [vRowsRes, vAuthorProfRes, vAuthorTrustRes] = await Promise.all([
@@ -895,24 +830,15 @@ export default function MyPage() {
     return () => { cancelled = true }
   }, [activeTab, userId])
 
-  // 2026-05-08 マッキーさん指示「マイページの投稿カードでハート押下時に画面
-  // 遷移しない、いいね処理だけ実行する」への対応。
-  // 2026-05-09 マッキーさん指示「ハート押下後に別ページから戻ると消える」
-  // 真因究明のため async 化 + await + error 検出 + alert + onConflict 明示
-  // + [LIKE_DEBUG] ログ。silent failure を完全に解消する。
-  // timeline と同じ village_reactions テーブルを正として、optimistic update で
-  // ハートの色と reaction_count を即時反映する。
+  // PR #31: ハート押下時に画面遷移せず、いいね処理だけ実行。
+  // PR #46: async + await + error 検出 + onConflict 明示で silent failure 解消。
   async function toggleLike(postId: string) {
     if (!userId) return
-    // eslint-disable-next-line no-console
-    console.log('[LIKE_DEBUG] mypage toggleLike start:', { postId, currentLiked: likedIds.has(postId), userId })
     const supabase = createClient()
     if (likedIds.has(postId)) {
       const r = await supabase.from('village_reactions').delete().eq('post_id', postId).eq('user_id', userId)
-      // eslint-disable-next-line no-console
-      console.log('[LIKE_DEBUG] mypage delete result:', { error: r.error, status: r.status })
       if (r.error) {
-        alert(`いいね解除エラー (mypage)\nmessage: ${r.error.message ?? ''}\ncode: ${(r.error as any).code ?? ''}\ndetails: ${(r.error as any).details ?? ''}\nhint: ${(r.error as any).hint ?? ''}`)
+        console.error('[toggleLike] delete error:', r.error)
         return
       }
       setLikedIds(prev => { const n = new Set(prev); n.delete(postId); return n })
@@ -922,24 +848,9 @@ export default function MyPage() {
         { post_id: postId, user_id: userId },
         { onConflict: 'post_id,user_id' }
       )
-      // eslint-disable-next-line no-console
-      console.log('[LIKE_DEBUG] mypage upsert result:', { error: r.error, status: r.status })
       if (r.error) {
-        alert(`いいね保存エラー (mypage)\nmessage: ${r.error.message ?? ''}\ncode: ${(r.error as any).code ?? ''}\ndetails: ${(r.error as any).details ?? ''}\nhint: ${(r.error as any).hint ?? ''}`)
+        console.error('[toggleLike] upsert error:', r.error)
         return
-      }
-      // 2026-05-09 一時 DEBUG: silent RLS rejection 切り分け
-      const verify = await supabase
-        .from('village_reactions')
-        .select('post_id, user_id')
-        .eq('post_id', postId)
-        .eq('user_id', userId)
-      // eslint-disable-next-line no-console
-      console.log('[LIKE_DEBUG] mypage post-upsert verify:', { rows: verify.data, error: verify.error })
-      if (!verify.error && (!verify.data || verify.data.length === 0)) {
-        alert(`保存後 SELECT 確認 (mypage)\n書き込み直後なのに自分で読めない\n→ village_reactions の SELECT RLS で自分の行が拒否されている可能性\nrows: ${JSON.stringify(verify.data)}`)
-      } else if (verify.error) {
-        alert(`保存後 SELECT エラー (mypage)\nmessage: ${verify.error.message}\ncode: ${(verify.error as any).code ?? ''}`)
       }
       setLikedIds(prev => new Set([...prev, postId]))
       setVillagePosts(prev => prev.map(p => p.id === postId ? { ...p, reaction_count: p.reaction_count + 1 } : p))
@@ -1526,28 +1437,6 @@ export default function MyPage() {
             自分がハートを押した tweets + village_posts を時系列降順で表示。 */}
         {activeTab === 'likes' && (
           <div className="px-4 pt-4 space-y-3">
-            {/* 2026-05-09 一時 DEBUG 表示 (マッキーさん指示「いいね反映されない」切り分け用)。
-                取得件数を画面に出すことで、DB 実件数 vs 表示件数の差を目視できる。
-                確認後の次 commit で除去する (CLAUDE.md「一時 console.log の最短ライフサイクル」)。 */}
-            <div className="rounded-2xl px-3 py-2"
-              style={{ background: 'rgba(157,92,255,0.10)', border: '1px solid rgba(157,92,255,0.3)' }}>
-              <p className="text-[10px] font-extrabold uppercase tracking-widest mb-0.5" style={{ color: '#9D5CFF' }}>
-                LIKES_DBG (一時表示)
-              </p>
-              <p className="text-[11px]" style={{ color: 'rgba(240,238,255,0.7)' }}>
-                tweet いいね: {likedTweets.length} 件 / 村投稿いいね: {likedVillagePosts.length} 件 (合計 {likedTweets.length + likedVillagePosts.length} 件)
-              </p>
-              <p className="text-[10px] mt-1" style={{ color: 'rgba(240,238,255,0.7)' }}>
-                reaction 内訳: {Object.entries(reactionDist).map(([k, v]) => `${k}=${v}`).join(' / ') || '(なし)'}
-              </p>
-              <p className="text-[10px] mt-1 font-mono" style={{ color: '#7CFF82' }}>
-                build: {(process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? 'local').slice(0, 7)} / env: {process.env.NEXT_PUBLIC_VERCEL_ENV ?? 'unknown'}
-              </p>
-              <p className="text-[10px] mt-1" style={{ color: 'rgba(240,238,255,0.45)' }}>
-                旧 6 種 (heart/haha/wow/support/sad/fire) 全部いいね扱いに統合。確認後に削除します。
-                build sha が main HEAD と一致しなければ Vercel 未反映。
-              </p>
-            </div>
             {likedTweets.length === 0 && likedVillagePosts.length === 0 ? (
               <div className="rounded-2xl p-8 text-center"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>

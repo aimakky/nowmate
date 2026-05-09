@@ -1234,20 +1234,14 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
   }, [userId, tab, fetchPosts, fetchQA, fetchTweets, fetchVoiceRooms, myVillageIds, followingIds])
 
   // ── いいね ──────────────────────────────────────────────────
-  // 2026-05-09 マッキーさん指示「ハート押下後に別ページから戻ると消える」
-  // 真因究明のため async 化 + await + error 検出 + alert + onConflict 明示
-  // + [LIKE_DEBUG] ログ。silent failure を完全に解消する。
+  // PR #46: async + await + error 検出 + onConflict 明示で silent failure を解消。
   async function toggleLike(postId: string) {
     if (!userId) return
-    // eslint-disable-next-line no-console
-    console.log('[LIKE_DEBUG] timeline toggleLike start:', { postId, currentLiked: likedIds.has(postId), userId })
     const supabase = createClient()
     if (likedIds.has(postId)) {
       const r = await supabase.from('village_reactions').delete().eq('post_id', postId).eq('user_id', userId)
-      // eslint-disable-next-line no-console
-      console.log('[LIKE_DEBUG] timeline delete result:', { error: r.error, status: r.status })
       if (r.error) {
-        alert(`いいね解除エラー (timeline)\nmessage: ${r.error.message ?? ''}\ncode: ${(r.error as any).code ?? ''}\ndetails: ${(r.error as any).details ?? ''}\nhint: ${(r.error as any).hint ?? ''}`)
+        console.error('[toggleLike] delete error:', r.error)
         return
       }
       setLikedIds(prev => { const n = new Set(prev); n.delete(postId); return n })
@@ -1257,24 +1251,9 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         { post_id: postId, user_id: userId },
         { onConflict: 'post_id,user_id' }
       )
-      // eslint-disable-next-line no-console
-      console.log('[LIKE_DEBUG] timeline upsert result:', { error: r.error, status: r.status })
       if (r.error) {
-        alert(`いいね保存エラー (timeline)\nmessage: ${r.error.message ?? ''}\ncode: ${(r.error as any).code ?? ''}\ndetails: ${(r.error as any).details ?? ''}\nhint: ${(r.error as any).hint ?? ''}`)
+        console.error('[toggleLike] upsert error:', r.error)
         return
-      }
-      // 2026-05-09 一時 DEBUG: silent RLS rejection 切り分け
-      const verify = await supabase
-        .from('village_reactions')
-        .select('post_id, user_id')
-        .eq('post_id', postId)
-        .eq('user_id', userId)
-      // eslint-disable-next-line no-console
-      console.log('[LIKE_DEBUG] timeline post-upsert verify:', { rows: verify.data, error: verify.error })
-      if (!verify.error && (!verify.data || verify.data.length === 0)) {
-        alert(`保存後 SELECT 確認 (timeline)\n書き込み直後なのに自分で読めない\n→ village_reactions の SELECT RLS で自分の行が拒否されている可能性\nrows: ${JSON.stringify(verify.data)}`)
-      } else if (verify.error) {
-        alert(`保存後 SELECT エラー (timeline)\nmessage: ${verify.error.message}\ncode: ${(verify.error as any).code ?? ''}`)
       }
       setLikedIds(prev => new Set([...prev, postId]))
       setPosts(prev => prev.map(p => p.id === postId ? { ...p, reaction_count: p.reaction_count + 1 } : p))

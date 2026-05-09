@@ -426,24 +426,15 @@ export default function UserProfilePage() {
     load()
   }, [userId])
 
-  // 2026-05-08 マッキーさん指示「他人マイページの投稿カードでハート押下時に
-  // 画面遷移しない、いいね処理だけ実行する」への対応。
-  // 2026-05-09 マッキーさん指示「ハート押下後に別ページから戻ると消える」
-  // 真因究明のため async 化 + await + error 検出 + alert + onConflict 明示
-  // + [LIKE_DEBUG] ログ。silent failure を完全に解消する。
-  // timeline / mypage と同じ village_reactions テーブルを正として、optimistic
-  // update でハートの色と reaction_count を即時反映する。
+  // PR #31: ハート押下時に画面遷移せず、いいね処理だけ実行。
+  // PR #46: async + await + error 検出 + onConflict 明示で silent failure 解消。
   async function toggleLike(postId: string) {
     if (!myId) return
-    // eslint-disable-next-line no-console
-    console.log('[LIKE_DEBUG] profile toggleLike start:', { postId, currentLiked: likedIds.has(postId), myId })
     const supabase = createClient()
     if (likedIds.has(postId)) {
       const r = await supabase.from('village_reactions').delete().eq('post_id', postId).eq('user_id', myId)
-      // eslint-disable-next-line no-console
-      console.log('[LIKE_DEBUG] profile delete result:', { error: r.error, status: r.status })
       if (r.error) {
-        alert(`いいね解除エラー (profile)\nmessage: ${r.error.message ?? ''}\ncode: ${(r.error as any).code ?? ''}\ndetails: ${(r.error as any).details ?? ''}\nhint: ${(r.error as any).hint ?? ''}`)
+        console.error('[toggleLike] delete error:', r.error)
         return
       }
       setLikedIds(prev => { const n = new Set(prev); n.delete(postId); return n })
@@ -453,28 +444,9 @@ export default function UserProfilePage() {
         { post_id: postId, user_id: myId },
         { onConflict: 'post_id,user_id' }
       )
-      // eslint-disable-next-line no-console
-      console.log('[LIKE_DEBUG] profile upsert result:', { error: r.error, status: r.status })
       if (r.error) {
-        alert(`いいね保存エラー (profile)\nmessage: ${r.error.message ?? ''}\ncode: ${(r.error as any).code ?? ''}\ndetails: ${(r.error as any).details ?? ''}\nhint: ${(r.error as any).hint ?? ''}`)
+        console.error('[toggleLike] upsert error:', r.error)
         return
-      }
-      // 2026-05-09 一時 DEBUG: silent RLS rejection 切り分け。upsert 直後に
-      // 同じ行を select して、自分で書いた行が自分で読めるか確認する。
-      // PR #46 後も「alert 出ない / でも再取得で消える」現象が継続している場合、
-      // INSERT 時の WITH CHECK は通るが SELECT 時の USING で拒否される RLS の
-      // 可能性が高い。これを画面で目視できるように。
-      const verify = await supabase
-        .from('village_reactions')
-        .select('post_id, user_id')
-        .eq('post_id', postId)
-        .eq('user_id', myId)
-      // eslint-disable-next-line no-console
-      console.log('[LIKE_DEBUG] profile post-upsert verify:', { rows: verify.data, error: verify.error })
-      if (!verify.error && (!verify.data || verify.data.length === 0)) {
-        alert(`保存後 SELECT 確認 (profile)\n書き込み直後なのに自分で読めない\n→ village_reactions の SELECT RLS で自分の行が拒否されている可能性\nrows: ${JSON.stringify(verify.data)}\nerror: ${JSON.stringify(verify.error)}`)
-      } else if (verify.error) {
-        alert(`保存後 SELECT エラー (profile)\nmessage: ${verify.error.message}\ncode: ${(verify.error as any).code ?? ''}`)
       }
       setLikedIds(prev => new Set([...prev, postId]))
       setProfileVillagePosts(prev => prev.map(p => p.id === postId ? { ...p, reaction_count: p.reaction_count + 1 } : p))
