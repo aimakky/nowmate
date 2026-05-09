@@ -692,17 +692,37 @@ export default function MyPage() {
 
   // 2026-05-08 マッキーさん指示「マイページの投稿カードでハート押下時に画面
   // 遷移しない、いいね処理だけ実行する」への対応。
+  // 2026-05-09 マッキーさん指示「ハート押下後に別ページから戻ると消える」
+  // 真因究明のため async 化 + await + error 検出 + alert + onConflict 明示
+  // + [LIKE_DEBUG] ログ。silent failure を完全に解消する。
   // timeline と同じ village_reactions テーブルを正として、optimistic update で
   // ハートの色と reaction_count を即時反映する。
-  function toggleLike(postId: string) {
+  async function toggleLike(postId: string) {
     if (!userId) return
+    // eslint-disable-next-line no-console
+    console.log('[LIKE_DEBUG] mypage toggleLike start:', { postId, currentLiked: likedIds.has(postId), userId })
     const supabase = createClient()
     if (likedIds.has(postId)) {
-      supabase.from('village_reactions').delete().eq('post_id', postId).eq('user_id', userId)
+      const r = await supabase.from('village_reactions').delete().eq('post_id', postId).eq('user_id', userId)
+      // eslint-disable-next-line no-console
+      console.log('[LIKE_DEBUG] mypage delete result:', { error: r.error, status: r.status })
+      if (r.error) {
+        alert(`いいね解除エラー (mypage)\nmessage: ${r.error.message ?? ''}\ncode: ${(r.error as any).code ?? ''}\ndetails: ${(r.error as any).details ?? ''}\nhint: ${(r.error as any).hint ?? ''}`)
+        return
+      }
       setLikedIds(prev => { const n = new Set(prev); n.delete(postId); return n })
       setVillagePosts(prev => prev.map(p => p.id === postId ? { ...p, reaction_count: Math.max(0, p.reaction_count - 1) } : p))
     } else {
-      supabase.from('village_reactions').upsert({ post_id: postId, user_id: userId })
+      const r = await supabase.from('village_reactions').upsert(
+        { post_id: postId, user_id: userId },
+        { onConflict: 'post_id,user_id' }
+      )
+      // eslint-disable-next-line no-console
+      console.log('[LIKE_DEBUG] mypage upsert result:', { error: r.error, status: r.status })
+      if (r.error) {
+        alert(`いいね保存エラー (mypage)\nmessage: ${r.error.message ?? ''}\ncode: ${(r.error as any).code ?? ''}\ndetails: ${(r.error as any).details ?? ''}\nhint: ${(r.error as any).hint ?? ''}`)
+        return
+      }
       setLikedIds(prev => new Set([...prev, postId]))
       setVillagePosts(prev => prev.map(p => p.id === postId ? { ...p, reaction_count: p.reaction_count + 1 } : p))
     }
