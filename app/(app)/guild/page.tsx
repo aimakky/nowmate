@@ -11,17 +11,22 @@
 //
 // 維持:
 //  - 上部タブ (いますぐ村 / ギルド)
-//  - 「今夜あそぶ人を探す」紫カード (機能維持、視覚的にコンパクト化)
 //  - サブフィルター (にぎやか / 新着 / 参加中) は最小限に維持
 //  - 検索 (シンプルに)
 //  - 右下 FAB
-//  - DB / fetch ロジック / handleJoin / handleTonightRegister / handleTonightCancel すべて維持
+//  - DB / fetch ロジック / handleJoin すべて維持
+//
+// 2026-05-09 削除追記:
+//  - 「今夜あそぶ人を探す」紫カード一式 (現状参加者がいない空表示で過疎印象を与えるため)
+//  - 関連 state / useEffect / handler / TonightSlot 型 / TIME_SLOTS / SKILL_LEVELS 定数
+//  - tonight_slots テーブル本体は将来復活に備えて DB 側は残置
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-// Trophy / X / Briefcase は WorkCupTeaserCard で使用していたが、削除に伴い未使用化
-import { Plus, Search, Moon, Mic, MicOff, Check, ChevronRight } from 'lucide-react'
+// 2026-05-09: 「今夜あそぶ人を探す」セクション削除に伴い、Moon / Mic / MicOff / Check
+// を未使用化したため削除。ChevronRight も元から未使用だったため一緒に整理。
+import { Plus, Search } from 'lucide-react'
 import { INDUSTRIES } from '@/lib/guild'
 import { type Village } from '@/components/ui/VillageCard'
 import GuildsContent from '@/components/features/GuildsContent'
@@ -30,20 +35,9 @@ import { SIMPLE_COLORS } from '@/components/ui/SimpleCard'
 
 const TOP_TAB_HEIGHT = 44
 
-type TonightSlot = {
-  id: string
-  user_id: string
-  game: string
-  time_slot: string
-  skill_level: string
-  has_voice: boolean
-  note: string | null
-  created_at: string
-  profiles: { display_name: string; avatar_url: string | null } | null
-}
+// 2026-05-09: 「今夜あそぶ人を探す」セクション削除に伴い、TonightSlot 型 / TIME_SLOTS /
+// SKILL_LEVELS は不要となり削除。tonight_slots テーブルは将来復活に備えて DB 側は残置。
 
-const TIME_SLOTS = ['19-21時', '20-22時', '21-23時', '22-24時', '23時〜']
-const SKILL_LEVELS = ['問わない', 'ビギナー', '中級', '上級']
 const GAME_CATEGORIES = INDUSTRIES.map(i => i.id)
 
 const SUB_FILTERS = [
@@ -118,18 +112,15 @@ export default function GuildPage() {
     if (params.get('tab') === 'guild') setTopTab('guild')
   }, [])
 
-  // DEBUG (2026-05-09 マッキーさん指示「いますぐ村/ギルド切替時の高さズレ修正の実描画ファイル証明」)
-  // 確認後、次 commit で除去する (CLAUDE.md「一時 console.log の最短ライフサイクル」)。
+  // DEBUG (2026-05-09 マッキーさん指示「今夜あそぶ人を探すセクション削除」の
+  // 実描画ファイル証明)。確認後、次 commit で除去する
+  // (CLAUDE.md「一時 console.log の最短ライフサイクル」)。
   // ブラウザコンソールで `[GUILD_TAB_DEBUG_2026-05-09]` を含むログが見えれば、
-  // app/(app)/guild/page.tsx (いますぐ村側) と components/features/GuildsContent.tsx (ギルド側)
-  // が実描画ファイルだと証明される。
+  // app/(app)/guild/page.tsx が実描画ファイルだと証明される。
   useEffect(() => {
     console.log('[GUILD_TAB_DEBUG_2026-05-09] topTab=', topTab,
-      'instant_file=app/(app)/guild/page.tsx',
-      'guild_file=components/features/GuildsContent.tsx',
-      'firstCardWrapperPt=', topTab === 'instant'
-        ? '今夜カードwrapper px-4 pt-4 (post-fix)'
-        : 'ギルドリストwrapper px-4 pt-4 pb-28')
+      'file=app/(app)/guild/page.tsx',
+      'tonightSection=REMOVED (post-fix)')
   }, [topTab])
 
   const [villages,  setVillages]  = useState<Village[]>([])
@@ -140,77 +131,15 @@ export default function GuildPage() {
   const [userId,    setUserId]    = useState<string | null>(null)
   const [memberIds, setMemberIds] = useState<Set<string>>(new Set())
 
-  // 今夜マッチング state
-  const [tonightSlots, setTonightSlots] = useState<TonightSlot[]>([])
-  const [mySlot,       setMySlot]       = useState<TonightSlot | null>(null)
-  const [showForm,     setShowForm]     = useState(false)
-  const [tGame,        setTGame]        = useState('')
-  const [tTimeSlot,    setTTimeSlot]    = useState('21-23時')
-  const [tSkill,       setTSkill]       = useState('問わない')
-  const [tVoice,       setTVoice]       = useState(true)
-  const [tNote,        setTNote]        = useState('')
-  const [tSaving,      setTSaving]      = useState(false)
+  // 2026-05-09: 「今夜あそぶ人を探す」セクション削除に伴い、tonight 関連 state /
+  // useEffect / handler / fetch をすべて削除。tonight_slots テーブルは将来復活に備えて
+  // DB 側は残置 (Supabase 側は touch していない)。
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id)
     })
   }, [])
-
-  // 今夜スロット取得
-  const fetchTonightSlots = useCallback(async () => {
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('tonight_slots')
-      .select('*, profiles(display_name, avatar_url)')
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false })
-      .limit(20)
-    setTonightSlots((data ?? []) as TonightSlot[])
-  }, [])
-
-  const fetchMySlot = useCallback(async () => {
-    if (!userId) return
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('tonight_slots')
-      .select('*, profiles(display_name, avatar_url)')
-      .eq('user_id', userId)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle()
-    setMySlot(data as TonightSlot | null)
-  }, [userId])
-
-  useEffect(() => { fetchTonightSlots() }, [fetchTonightSlots])
-  useEffect(() => { fetchMySlot() }, [fetchMySlot])
-
-  async function handleTonightRegister() {
-    if (!userId || !tGame.trim() || tSaving) return
-    setTSaving(true)
-    const supabase = createClient()
-    await supabase.from('tonight_slots').upsert({
-      user_id:     userId,
-      game:        tGame.trim(),
-      time_slot:   tTimeSlot,
-      skill_level: tSkill,
-      has_voice:   tVoice,
-      note:        tNote.trim() || null,
-      expires_at:  new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString(),
-    }, { onConflict: 'user_id' })
-    await Promise.all([fetchTonightSlots(), fetchMySlot()])
-    setShowForm(false)
-    setTGame('')
-    setTNote('')
-    setTSaving(false)
-  }
-
-  async function handleTonightCancel() {
-    if (!userId) return
-    const supabase = createClient()
-    await supabase.from('tonight_slots').delete().eq('user_id', userId)
-    setMySlot(null)
-    setTonightSlots(prev => prev.filter(s => s.user_id !== userId))
-  }
 
   const fetchVillages = useCallback(async () => {
     setLoading(true)
@@ -405,171 +334,12 @@ export default function GuildPage() {
             </div>
           </div>
 
-          {/* ── 今夜あそぶ人を探す (紫カード、機能維持) ── */}
-          {/* 2026-05-09 マッキーさん指示「いますぐ村/ギルドの切り替えで一覧カード開始位置を揃える」対応。
-              ギルド側 (GuildsContent.tsx L299) の `<div className="px-4 pt-4 pb-28">` と
-              pt を一致させ、sticky filter 直下の最初のカード start 位置を完全一致させる。
-              旧: pt-3 (= 12px) → 新: pt-4 (= 16px、ギルドと完全一致)。
-              4px のズレが「タブ切り替え時にガタつく」原因だった。 */}
-          <div className="px-4 pt-4">
-            <div className="rounded-2xl overflow-hidden"
-              style={{
-                background: 'linear-gradient(135deg, rgba(157,92,255,0.10), rgba(124,58,237,0.05))',
-                border: '1px solid rgba(157,92,255,0.25)',
-              }}>
-              <div className="flex items-center justify-between px-4 pt-3 pb-2">
-                <div className="flex items-center gap-2">
-                  <Moon size={14} style={{ color: '#c4b5fd' }} />
-                  <span className="text-sm font-extrabold" style={{ color: SIMPLE_COLORS.textPrimary }}>
-                    今夜あそぶ人を探す
-                  </span>
-                  {tonightSlots.length > 0 && (
-                    <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background: 'rgba(157,92,255,0.18)', color: '#c4b5fd', border: '1px solid rgba(157,92,255,0.3)' }}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      {tonightSlots.length}人
-                    </span>
-                  )}
-                </div>
-                {mySlot ? (
-                  <button onClick={handleTonightCancel}
-                    className="text-[10px] font-bold px-2.5 py-1 rounded-full transition-all active:scale-95"
-                    style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}>
-                    解除
-                  </button>
-                ) : (
-                  <button onClick={() => setShowForm(v => !v)}
-                    className="text-[10px] font-bold px-2.5 py-1 rounded-full transition-all active:scale-95"
-                    style={showForm
-                      ? { background: 'rgba(255,255,255,0.06)', color: SIMPLE_COLORS.textSecondary, border: '1px solid rgba(157,92,255,0.18)' }
-                      : { background: 'rgba(157,92,255,0.25)', color: '#c4b5fd', border: '1px solid rgba(157,92,255,0.4)' }
-                    }>
-                    {showForm ? 'とじる' : '+ 登録'}
-                  </button>
-                )}
-              </div>
-
-              {mySlot && !showForm && (
-                <div className="mx-3 mb-3 px-3 py-2 rounded-xl flex items-center gap-2"
-                  style={{ background: 'rgba(157,92,255,0.12)', border: '1px solid rgba(157,92,255,0.3)' }}>
-                  <Check size={11} style={{ color: '#c4b5fd', flexShrink: 0 }} />
-                  <span className="text-xs font-bold truncate" style={{ color: SIMPLE_COLORS.textPrimary }}>{mySlot.game}</span>
-                  <span className="text-[10px]" style={{ color: SIMPLE_COLORS.textSecondary }}>{mySlot.time_slot}</span>
-                  {mySlot.has_voice
-                    ? <Mic size={10} style={{ color: '#c4b5fd', flexShrink: 0 }} />
-                    : <MicOff size={10} style={{ color: SIMPLE_COLORS.textTertiary, flexShrink: 0 }} />
-                  }
-                </div>
-              )}
-
-              {showForm && (
-                <div className="mx-3 mb-3 p-3 rounded-2xl space-y-2"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
-                  <input
-                    value={tGame}
-                    onChange={e => setTGame(e.target.value)}
-                    placeholder="ゲーム名（例: Apex、ヴァロ、原神…）"
-                    maxLength={40}
-                    className="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
-                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.18)', color: SIMPLE_COLORS.textPrimary }}
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <select value={tTimeSlot} onChange={e => setTTimeSlot(e.target.value)}
-                      className="px-3 py-2 rounded-xl text-xs font-bold focus:outline-none"
-                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.18)', color: SIMPLE_COLORS.textPrimary }}>
-                      {TIME_SLOTS.map(t => <option key={t} value={t} style={{ background: '#0a0a18' }}>{t}</option>)}
-                    </select>
-                    <select value={tSkill} onChange={e => setTSkill(e.target.value)}
-                      className="px-3 py-2 rounded-xl text-xs font-bold focus:outline-none"
-                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.18)', color: SIMPLE_COLORS.textPrimary }}>
-                      {SKILL_LEVELS.map(s => <option key={s} value={s} style={{ background: '#0a0a18' }}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setTVoice(v => !v)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold flex-shrink-0 transition-all active:scale-95"
-                      style={tVoice
-                        ? { background: 'rgba(157,92,255,0.20)', color: '#c4b5fd', border: '1px solid rgba(157,92,255,0.35)' }
-                        : { background: 'rgba(255,255,255,0.04)', color: SIMPLE_COLORS.textSecondary, border: '1px solid rgba(157,92,255,0.12)' }
-                      }>
-                      {tVoice ? <Mic size={10} /> : <MicOff size={10} />}
-                      ボイチャ{tVoice ? 'あり' : 'なし'}
-                    </button>
-                    <input
-                      value={tNote}
-                      onChange={e => setTNote(e.target.value)}
-                      placeholder="ひとこと（任意）"
-                      maxLength={30}
-                      className="flex-1 px-3 py-1.5 rounded-xl text-xs focus:outline-none"
-                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.18)', color: SIMPLE_COLORS.textPrimary }}
-                    />
-                  </div>
-                  <button onClick={handleTonightRegister}
-                    disabled={!tGame.trim() || tSaving}
-                    className="w-full py-2.5 rounded-xl text-sm font-extrabold text-white transition-all active:scale-[0.98] disabled:opacity-40"
-                    style={{ background: SIMPLE_COLORS.accent, boxShadow: '0 4px 14px rgba(157,92,255,0.4)' }}>
-                    {tSaving ? '登録中…' : '今夜の参加を登録する'}
-                  </button>
-                </div>
-              )}
-
-              {tonightSlots.length === 0 && !showForm && !mySlot && (
-                <div className="px-4 pb-3 text-center">
-                  <p className="text-xs" style={{ color: SIMPLE_COLORS.textTertiary }}>
-                    今夜の参加者がまだいません
-                  </p>
-                </div>
-              )}
-
-              {tonightSlots.length > 0 && (
-                <div className="divide-y" style={{ borderColor: 'rgba(157,92,255,0.10)' }}>
-                  {tonightSlots.map(slot => {
-                    const isMe = slot.user_id === userId
-                    const prof = slot.profiles as any
-                    return (
-                      <div key={slot.id} className="flex items-center gap-3 px-4 py-2.5">
-                        <div className="relative flex-shrink-0">
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-extrabold overflow-hidden"
-                            style={{ background: SIMPLE_COLORS.accent, color: 'white' }}>
-                            {prof?.avatar_url
-                              ? <img src={prof.avatar_url} alt="" className="w-full h-full object-cover" />
-                              : (prof?.display_name?.[0] ?? '?')}
-                          </div>
-                          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400"
-                            style={{ border: '2px solid #0a0a18' }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                            <span className="text-xs font-extrabold truncate" style={{ color: SIMPLE_COLORS.textPrimary }}>
-                              {prof?.display_name ?? '名無し'}
-                            </span>
-                            {isMe && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                                style={{ color: '#c4b5fd', background: 'rgba(157,92,255,0.18)', border: '1px solid rgba(157,92,255,0.3)' }}>
-                                あなた
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-bold" style={{ color: '#c4b5fd' }}>{slot.game}</span>
-                            <span className="text-[10px]" style={{ color: SIMPLE_COLORS.textTertiary }}>{slot.time_slot}</span>
-                            <span className="text-[10px]" style={{ color: SIMPLE_COLORS.textTertiary }}>{slot.skill_level}</span>
-                            {slot.has_voice
-                              ? <Mic size={10} style={{ color: '#c4b5fd' }} />
-                              : <MicOff size={10} style={{ color: SIMPLE_COLORS.textTertiary }} />
-                            }
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* ── ゲーム村一覧 (シンプル縦並び) ── */}
-          {/* 2026-05-09: BottomNav クリアランスを TL/通知/チャット と同じ pb-28 に統一 */}
+          {/* 2026-05-09: BottomNav クリアランスを TL/通知/チャット と同じ pb-28 に統一
+              2026-05-09 マッキーさん指示「今夜あそぶ人を探すセクションを削除」対応で、
+              旧 162 行の紫カードブロック (L408-L569) と関連 state / handler / type / 定数 /
+              icon import (Moon/Mic/MicOff/Check) を完全削除。tonight_slots テーブル本体は
+              将来戻す可能性に備えて DB は触らずに残置。 */}
           <div className="px-4 pt-4 pb-28">
             {loading ? (
               <div className="space-y-2.5">
