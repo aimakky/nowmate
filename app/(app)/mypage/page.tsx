@@ -358,6 +358,19 @@ export default function MyPage() {
   const [userId,         setUserId]         = useState<string | null>(null)
   const [activeTab,      setActiveTab]      = useState<ProfileTab>('tweets')
   const [loading,        setLoading]        = useState(true)
+
+  // DEBUG (2026-05-09 マッキーさん指示「写真/動画タブの高さズレ修正の実描画ファイル証明」)
+  // 確認後、次 commit で除去する (CLAUDE.md「一時 console.log の最短ライフサイクル」)。
+  // ブラウザコンソールで `[TAB_HEIGHT_DEBUG_2026-05-09]` を含むログが見えれば、
+  // app/(app)/mypage/page.tsx が実描画ファイルだと証明される。
+  useEffect(() => {
+    console.log('[TAB_HEIGHT_DEBUG_2026-05-09] activeTab=', activeTab,
+      'file=app/(app)/mypage/page.tsx',
+      'wrapperClassName=', activeTab === 'replies' ? 'px-4 pt-4 space-y-3'
+        : activeTab === 'videos' ? 'px-4 pt-4 space-y-3 (post-fix)'
+        : activeTab === 'images' ? 'px-4 pt-4 space-y-3 (post-fix)'
+        : '(other tab)')
+  }, [activeTab])
   // 電話認証モーダルの状態は TrustVerificationCard が内部で持つため不要
   const [showCompose,    setShowCompose]    = useState(false)
   const [idCopied,       setIdCopied]       = useState(false)
@@ -1513,17 +1526,13 @@ export default function MyPage() {
 
         {/* 動画タブ (現状 DB に video_url 等が無いため空状態のみ。
             UI 先行で profile/[userId] と同等。将来 video カラム追加時に拡張) */}
-        {/* 2026-05-09: 投稿/返信/いいね/ギルドタブと同じ pt-4 を追加し、
-            タブ切り替え時の縦ズレ (16px) を解消 */}
+        {/* 2026-05-09 マッキーさん指示「写真/動画タブの空状態カード位置を返信タブと
+            完全に揃える」対応。返信タブ (L1364) の wrapper className `px-4 pt-4 space-y-3`
+            と完全一致させ、空状態カードの DOM 構造・style 記法も返信と単一行スタイル属性で揃える。 */}
         {activeTab === 'videos' && (
-          <div className="px-4 pt-4">
-            <div
-              className="rounded-2xl p-8 text-center"
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(157,92,255,0.18)',
-              }}
-            >
+          <div className="px-4 pt-4 space-y-3">
+            <div className="rounded-2xl p-8 text-center"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
               <p className="text-3xl mb-2">🎬</p>
               <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ動画の投稿がありません</p>
               <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>動画を投稿するとここに表示されます</p>
@@ -1533,18 +1542,14 @@ export default function MyPage() {
 
         {/* 画像タブ (guild_posts.image_url IS NOT NULL のレコードを 3 列グリッドで表示)。
             profile/[userId] と同等のレイアウト。imagePosts は初期 load で取得済。 */}
-        {/* 2026-05-09: 投稿/返信/いいね/ギルドタブと同じ pt-4 を追加し、
-            タブ切り替え時の縦ズレ (16px) を解消 */}
+        {/* 2026-05-09 マッキーさん指示「写真/動画タブの空状態カード位置を返信タブと
+            完全に揃える」対応。返信タブ (L1364) の wrapper className `px-4 pt-4 space-y-3`
+            と完全一致させ、空状態カードの DOM 構造・style 記法も返信と単一行スタイル属性で揃える。 */}
         {activeTab === 'images' && (
-          <div className="px-4 pt-4">
+          <div className="px-4 pt-4 space-y-3">
             {imagePosts.length === 0 ? (
-              <div
-                className="rounded-2xl p-8 text-center"
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(157,92,255,0.18)',
-                }}
-              >
+              <div className="rounded-2xl p-8 text-center"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
                 <p className="text-3xl mb-2">🖼️</p>
                 <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ写真の投稿がありません</p>
                 <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>写真を投稿するとここに表示されます</p>
