@@ -329,6 +329,10 @@ export default function MyPage() {
   const [myReplies, setMyReplies] = useState<Array<{ id: string; tweet_id: string; content: string; created_at: string }>>([])
   const [likedTweets, setLikedTweets] = useState<TweetData[]>([])
   const [likedVillagePosts, setLikedVillagePosts] = useState<MyVillagePost[]>([])
+  // 2026-05-09 一時 DEBUG: tweet_reactions.reaction 値の分布。
+  // 旧仕様 (heart / haha / wow / support / sad / fire の 6 種) → 新仕様 (heart 1 種)
+  // 統合の過渡期で、過去レコードに heart 以外の値が残っている可能性を画面で確認する。
+  const [reactionDist, setReactionDist] = useState<Record<string, number>>({})
   // 返信 / いいねは初回ロード時に一括取得 (タブ切替で空白を避けるため)。
   // タブ未訪問でも UI 完全描画したいので、loaded フラグは持たない。
   const [tweetLoading,   setTweetLoading]   = useState(false)
@@ -555,18 +559,31 @@ export default function MyPage() {
         .limit(50)
       setMyReplies((repliesRows ?? []) as any[])
 
-      // いいねタブ用: 自分が heart リアクションした tweets を取得 + enrich
-      // tweet_reactions.user_id = 自分 AND reaction = 'heart' の tweet_id 群
-      // 2026-05-08 マッキーさん指示「いいねした投稿が一部しか表示されない」への対応:
-      // 旧実装は .limit(50) で 50 件以上いいねしたユーザーは漏れていた。
-      // limit を撤廃し、heart_reactions の全件 IN で取得するように変更。
-      // 並び順は当面「投稿作成日時 DESC」で暫定。tweet_reactions に created_at
-      // 列が存在することが確認できれば、次 PR で「いいねした日時 DESC」に改善する。
+      // いいねタブ用: 自分がリアクションした tweets を取得 + enrich
+      // tweet_reactions.user_id = 自分 の全行 (reaction 値は問わない)
+      //
+      // 2026-05-08 PR #41: .limit(50) を撤廃 (50 件超で漏れていた問題解決)
+      // 2026-05-09 PR #4X: reaction フィルタを撤廃 (このコミット)
+      //   旧仕様 (TweetCard の 6 種リアクション: heart / haha / wow / support / sad
+      //   / fire) 時代に押した reactions は DB に残っているが、reaction='heart' で
+      //   フィルタするとそれらが取れていなかった。Heart 1 種に統合された現在は
+      //   ハートタップ = 'heart' upsert だが、過去レコード互換のため reaction 値
+      //   フィルタを撤廃し、user_id = 自分のすべてのリアクションを「いいね」扱いに
+      //   する。これによりマッキーさんが過去に押した😂🔥🙌等もいいねタブで見える。
+      //
+      // 並び順は当面「投稿作成日時 DESC」で暫定。tweet_reactions の created_at
+      // 列の存在確認後、別 PR で「いいねした日時 DESC」に改善する。
       const { data: heartReactions } = await supabase
         .from('tweet_reactions')
-        .select('tweet_id')
+        .select('tweet_id, reaction')
         .eq('user_id', user.id)
-        .eq('reaction', 'heart')
+      // 一時 DEBUG: reaction 値の分布を計算 (確認後の次 commit で除去)
+      const dist: Record<string, number> = {}
+      for (const r of ((heartReactions ?? []) as any[])) {
+        const key = (r.reaction as string | null) ?? 'null'
+        dist[key] = (dist[key] ?? 0) + 1
+      }
+      setReactionDist(dist)
       const heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
       // 一時 DEBUG ログ (マッキーさん指示「console.log で取得件数を確認」準拠)。
       // 確認後、次 commit で除去する (CLAUDE.md「一時 console.log の最短ライフサイクル」)。
@@ -1282,8 +1299,11 @@ export default function MyPage() {
               <p className="text-[11px]" style={{ color: 'rgba(240,238,255,0.7)' }}>
                 tweet いいね: {likedTweets.length} 件 / 村投稿いいね: {likedVillagePosts.length} 件 (合計 {likedTweets.length + likedVillagePosts.length} 件)
               </p>
+              <p className="text-[10px] mt-1" style={{ color: 'rgba(240,238,255,0.7)' }}>
+                reaction 内訳: {Object.entries(reactionDist).map(([k, v]) => `${k}=${v}`).join(' / ') || '(なし)'}
+              </p>
               <p className="text-[10px] mt-1" style={{ color: 'rgba(240,238,255,0.45)' }}>
-                これは確認用。実際の DB 上のハート記録件数。確認後に削除します。
+                旧 6 種 (heart/haha/wow/support/sad/fire) 全部いいね扱いに統合。確認後に削除します。
               </p>
             </div>
             {likedTweets.length === 0 && likedVillagePosts.length === 0 ? (
