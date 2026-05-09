@@ -252,7 +252,15 @@ export default function GuildPage() {
   return (
     <div className="max-w-md mx-auto min-h-screen" style={{ background: SIMPLE_COLORS.pageBg }}>
 
-      {/* ── 上部タブ：いますぐ村 / ギルド ── */}
+      {/* ── 上部タブ：いますぐ村 / ギルド ──
+          2026-05-09 マッキーさん指示「左右タブを完全に同一 DOM / CSS / 高さ /
+          余白 / 下線位置に揃える」対応:
+          - TOP_TABS 配列を map で展開し、左右の button を完全同一ロジックで出力
+          - 下線は left-1/4 right-1/4 (親幅依存の可変) → left-1/2 -translate-x-1/2
+            w-12 (中央固定 48px 幅) に変更し、文字数に依らず完全対称に
+          - active / inactive の差は color と下線表示のみ。height / padding /
+            font-size / line-height / margin は同一。
+          - button 全体は flex-1 で 50% / 50% 均等。 */}
       <div
         className="sticky top-0 z-30 flex"
         style={{
@@ -263,30 +271,29 @@ export default function GuildPage() {
           borderBottom: `1px solid ${SIMPLE_COLORS.cardBorder}`,
         }}
       >
-        <button
-          onClick={() => setTopTab('instant')}
-          className="flex-1 flex items-center justify-center text-xs font-extrabold transition-all relative"
-          style={{ color: topTab === 'instant' ? SIMPLE_COLORS.accentDeep : SIMPLE_COLORS.textSecondary }}
-          aria-pressed={topTab === 'instant'}
-        >
-          いますぐ村
-          {topTab === 'instant' && (
-            <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
-              style={{ background: SIMPLE_COLORS.accent }} />
-          )}
-        </button>
-        <button
-          onClick={() => setTopTab('guild')}
-          className="flex-1 flex items-center justify-center text-xs font-extrabold transition-all relative"
-          style={{ color: topTab === 'guild' ? SIMPLE_COLORS.accentDeep : SIMPLE_COLORS.textSecondary }}
-          aria-pressed={topTab === 'guild'}
-        >
-          ギルド
-          {topTab === 'guild' && (
-            <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
-              style={{ background: SIMPLE_COLORS.accent }} />
-          )}
-        </button>
+        {([
+          { id: 'instant', label: 'いますぐ村' },
+          { id: 'guild',   label: 'ギルド' },
+        ] as const).map(t => {
+          const active = topTab === t.id
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTopTab(t.id)}
+              className="flex-1 flex items-center justify-center text-xs font-extrabold transition-all relative"
+              style={{ color: active ? SIMPLE_COLORS.accentDeep : SIMPLE_COLORS.textSecondary }}
+              aria-pressed={active}
+            >
+              {t.label}
+              {active && (
+                <span
+                  className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-0.5 rounded-full"
+                  style={{ background: SIMPLE_COLORS.accent }}
+                />
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {/* ── ギルドタブ ── */}
