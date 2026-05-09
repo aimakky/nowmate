@@ -358,19 +358,6 @@ export default function MyPage() {
   const [userId,         setUserId]         = useState<string | null>(null)
   const [activeTab,      setActiveTab]      = useState<ProfileTab>('tweets')
   const [loading,        setLoading]        = useState(true)
-
-  // DEBUG (2026-05-09 マッキーさん指示「写真/動画タブの高さズレ修正の実描画ファイル証明」)
-  // 確認後、次 commit で除去する (CLAUDE.md「一時 console.log の最短ライフサイクル」)。
-  // ブラウザコンソールで `[TAB_HEIGHT_DEBUG_2026-05-09]` を含むログが見えれば、
-  // app/(app)/mypage/page.tsx が実描画ファイルだと証明される。
-  useEffect(() => {
-    console.log('[TAB_HEIGHT_DEBUG_2026-05-09] activeTab=', activeTab,
-      'file=app/(app)/mypage/page.tsx',
-      'wrapperClassName=', activeTab === 'replies' ? 'px-4 pt-4 space-y-3'
-        : activeTab === 'videos' ? 'px-4 pt-4 space-y-3 (post-fix)'
-        : activeTab === 'images' ? 'px-4 pt-4 space-y-3 (post-fix)'
-        : '(other tab)')
-  }, [activeTab])
   // 電話認証モーダルの状態は TrustVerificationCard が内部で持つため不要
   const [showCompose,    setShowCompose]    = useState(false)
   const [idCopied,       setIdCopied]       = useState(false)
