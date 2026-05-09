@@ -28,6 +28,13 @@ type Friend = {
 
 const ONLINE_WINDOW_MS = 5 * 60 * 1000
 
+// 2026-05-09 マッキーさん指示「下部ナビ切替時にページが一瞬下にズレるバグ修正」対応。
+// 3 状態 (loading / empty / loaded) で高さが揃わず、
+// 特に empty 状態で `return null` していたためページ切替時に rail が急に
+// 0px に潰れてコンテンツが上にジャンプする現象を起こしていた。
+// 全 3 状態で同じ高さを minHeight で確保する。
+const RAIL_MIN_HEIGHT = 80 // px - paddingY 16 + avatar 48 + label 12 + gap 4
+
 function isOnline(lastSeen: string | null): boolean {
   if (!lastSeen) return false
   return Date.now() - new Date(lastSeen).getTime() < ONLINE_WINDOW_MS
@@ -35,6 +42,17 @@ function isOnline(lastSeen: string | null): boolean {
 
 export default function FriendAvatarRail() {
   const [friends, setFriends] = useState<Friend[] | null>(null)
+
+  // DEBUG (2026-05-09 マッキーさん指示「下部ナビ切替時の一瞬下にズレる現象修正」の実描画ファイル証明)
+  // 確認後、次 commit で除去予定 (CLAUDE.md「最短ライフサイクル」)。
+  // ブラウザコンソールで `[FRIEND_RAIL_DEBUG_2026-05-09]` を含むログが見えれば、
+  // components/layout/FriendAvatarRail.tsx が実描画ファイルだと証明される。
+  useEffect(() => {
+    const state = friends === null ? 'loading' : friends.length === 0 ? 'empty' : `loaded(n=${friends.length})`
+    console.log('[FRIEND_RAIL_DEBUG_2026-05-09] state=', state,
+      'minHeight=80px (post-fix)',
+      'file=components/layout/FriendAvatarRail.tsx')
+  }, [friends])
 
   useEffect(() => {
     let cancelled = false
@@ -105,16 +123,21 @@ export default function FriendAvatarRail() {
   // だった。親の sticky wrapper 内で「縦に並ぶ別の行」として描画される
   // ことで参考画像のような明確な 2 段構成を実現する。
 
-  // フォロー 0 件は丸ごと非表示 (画面のスペース節約)
+  // 2026-05-09 マッキーさん指示「下部ナビ切替時にページが一瞬下にズレるバグ修正」対応。
+  // 旧仕様: friends === null は skeleton (~76px)、friends.length === 0 は return null (0px)。
+  //          ページ切替直後は loading → empty に状態が遷移しコンテンツが ~76px 上にジャンプ。
+  // 新仕様: 3 状態すべてで minHeight: RAIL_MIN_HEIGHT (80px) を確保。
+  //          - loading: 既存スケルトン (高さ揃え)
+  //          - empty (friends.length === 0): 「フレンドを増やそう」CTA を 1 個表示して高さ確保
+  //          - loaded: 既存横スクロール表示 (loaded 側にも minHeight 適用、4px ズレ解消)
   if (friends === null) {
-    // 読み込み中はスケルトン (高さは確保して、後から friend rail が出てきたときに
-    // 下のページが飛ばないように)
     return (
       <div
         className="py-2 flex gap-2.5 overflow-x-hidden"
         style={{
           paddingLeft: 12,
           paddingRight: 12,
+          minHeight: RAIL_MIN_HEIGHT,
         }}
       >
         {[...Array(6)].map((_, i) => (
@@ -126,7 +149,48 @@ export default function FriendAvatarRail() {
       </div>
     )
   }
-  if (friends.length === 0) return null
+  // フォロー 0 件: 高さを RAIL_MIN_HEIGHT で確保しつつ、フレンド追加 CTA を 1 個表示
+  if (friends.length === 0) {
+    return (
+      <div
+        className="py-2 flex gap-2.5 overflow-x-hidden items-center"
+        style={{
+          paddingLeft: 12,
+          paddingRight: 12,
+          minHeight: RAIL_MIN_HEIGHT,
+        }}
+      >
+        <Link
+          href="/users"
+          className="flex flex-col items-center gap-1 flex-shrink-0 active:scale-95 transition-transform"
+          style={{ width: 56 }}
+          aria-label="フレンドを探す"
+        >
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center"
+            style={{
+              background: 'rgba(157,92,255,0.12)',
+              border: '1.5px dashed rgba(157,92,255,0.45)',
+            }}
+          >
+            <Users size={18} style={{ color: '#c4b5fd' }} />
+          </div>
+          <span
+            className="text-[10px] font-bold leading-tight truncate w-full text-center"
+            style={{ color: 'rgba(196,181,253,0.85)' }}
+          >
+            フレンド
+          </span>
+        </Link>
+        <span
+          className="text-[11px] font-bold"
+          style={{ color: 'rgba(240,238,255,0.45)' }}
+        >
+          フレンドを探そう
+        </span>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -136,6 +200,7 @@ export default function FriendAvatarRail() {
         paddingBottom: '8px',
         paddingLeft: 12,
         paddingRight: 12,
+        minHeight: RAIL_MIN_HEIGHT,
       }}
     >
       {friends.map(f => {
