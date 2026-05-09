@@ -106,13 +106,29 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
   async function toggleReaction(key: string) {
     if (!myId || !canInteract) return
     const supabase = createClient()
+    // 2026-05-09 マッキーさん指示: 「ハート押しても DB に保存されない」事象の
+    // 真因究明のためエラーを画面に出す。旧実装は await の result を受け取らず
+    // RLS や validation エラーを silent failure させていた (楽観的 UI でハートが
+    // 赤くなるが DB には保存されない → ページ離れて戻ると消える)。
+    // 確認後、エラーが出ない正常状態が確認できたら alert は除去予定。
+    let error: { message: string; code?: string; details?: string; hint?: string } | null = null
     if (myReaction === key) {
-      await supabase.from('tweet_reactions').delete().eq('tweet_id', tweet.id).eq('user_id', myId)
+      const r = await supabase.from('tweet_reactions').delete().eq('tweet_id', tweet.id).eq('user_id', myId)
+      error = r.error as any
     } else {
-      await supabase.from('tweet_reactions').upsert(
+      const r = await supabase.from('tweet_reactions').upsert(
         { tweet_id: tweet.id, user_id: myId, reaction: key },
         { onConflict: 'tweet_id,user_id' }
       )
+      error = r.error as any
+    }
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.error('[toggleReaction] supabase error:', error)
+      // 一時 alert: マッキーさんが iPhone で原因を目視できるように。
+      // 確認後の次 commit で除去 (CLAUDE.md「一時 console.log の最短ライフサイクル」)。
+      alert(`いいね保存エラー\nmessage: ${error.message ?? '(no message)'}\ncode: ${error.code ?? '(no code)'}\ndetails: ${error.details ?? '(no details)'}\nhint: ${error.hint ?? '(no hint)'}`)
+      return
     }
     onUpdate()
   }
