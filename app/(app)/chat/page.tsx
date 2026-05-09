@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
 import { Edit2, MessageSquareDashed, Check, X, MessageSquare, UserPlus } from 'lucide-react'
 import VerifiedBadge from '@/components/ui/VerifiedBadge'
+import PageHeader from '@/components/layout/PageHeader'
 
 interface DirectChat {
   matchId: string
@@ -146,17 +147,17 @@ export default function ChatListPage() {
   return (
     <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
 
-      {/* ヘッダー */}
-      <div className="sticky top-0 z-10 px-4 pt-12 pb-0 backdrop-blur-md"
-        style={{ background: 'rgba(8,8,18,0.96)', borderBottom: '1px solid rgba(255,79,216,0.2)' }}>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(255,79,216,0.7)' }}>MESSAGES</p>
-            <h1 className="font-extrabold text-xl flex items-center gap-2" style={{ color: '#F0EEFF' }}>
-              <MessageSquare size={20} strokeWidth={2.2} style={{ color: '#FF4FD8' }} />
-              チャット
-            </h1>
-          </div>
+      {/* ヘッダー (2026-05-09: 共通 PageHeader に移行)
+          - 旧: sticky top-0 / pt-12 pb-0 / 桃アクセント / タブ内蔵
+          - 新: 共通 PageHeader / pt-12 / 桃アクセント (#FF4FD8) / bottomTab でタブ
+          - title 文字サイズが旧 text-xl から PageHeader 共通の text-2xl に変更 (4 ページ統一) */}
+      <PageHeader
+        label="MESSAGES"
+        title="チャット"
+        icon={MessageSquare}
+        accentColor="#FF4FD8"
+        bgColor="rgba(8,8,18,0.96)"
+        actions={
           <div className="flex items-center gap-2">
             <Link
               href="/users"
@@ -175,34 +176,35 @@ export default function ChatListPage() {
               編集
             </button>
           </div>
-        </div>
-        {/* タブ */}
-        <div className="flex">
-          {[
-            { id: 'chat',    label: 'メッセージ', count: 0 },
-            { id: 'request', label: 'リクエスト', count: requests.length },
-          ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id as 'chat' | 'request')}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold relative transition-colors"
-              style={{ color: tab === t.id ? '#F0EEFF' : 'rgba(240,238,255,0.3)' }}
-            >
-              {t.label}
-              {t.count > 0 && (
-                <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-extrabold text-white"
-                  style={{ background: 'linear-gradient(135deg,#FF4FD8,#E03BC0)', boxShadow: '0 2px 8px rgba(255,79,216,0.4)' }}>
-                  {t.count}
-                </span>
-              )}
-              {tab === t.id && (
-                <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
-                  style={{ background: '#FF4FD8' }} />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+        }
+        bottomTab={
+          <div className="flex">
+            {[
+              { id: 'chat',    label: 'メッセージ', count: 0 },
+              { id: 'request', label: 'リクエスト', count: requests.length },
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id as 'chat' | 'request')}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold relative transition-colors"
+                style={{ color: tab === t.id ? '#F0EEFF' : 'rgba(240,238,255,0.3)' }}
+              >
+                {t.label}
+                {t.count > 0 && (
+                  <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-extrabold text-white"
+                    style={{ background: 'linear-gradient(135deg,#FF4FD8,#E03BC0)', boxShadow: '0 2px 8px rgba(255,79,216,0.4)' }}>
+                    {t.count}
+                  </span>
+                )}
+                {tab === t.id && (
+                  <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
+                    style={{ background: '#FF4FD8' }} />
+                )}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       <div className="pb-28">
 

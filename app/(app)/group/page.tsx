@@ -20,6 +20,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Users, Mic, Plus, X, ChevronRight, Headphones, Loader2 } from 'lucide-react'
 import { canCreateVoiceRoom } from '@/lib/permissions'
 import { SIMPLE_COLORS } from '@/components/ui/SimpleCard'
+import PageHeader from '@/components/layout/PageHeader'
 
 type GroupRoom = {
   id: string
@@ -156,26 +157,17 @@ export default function GroupPage() {
   return (
     <div className="max-w-md mx-auto min-h-screen" style={{ background: SIMPLE_COLORS.pageBg }}>
 
-      {/* ── コンパクトヘッダー ── */}
-      <div className="px-5 pt-5 pb-3">
-        <div className="flex items-center gap-2 mb-1">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{
-              background: 'rgba(59,130,246,0.18)',
-              border: '1px solid rgba(59,130,246,0.35)',
-            }}
-          >
-            <Users size={16} style={{ color: '#c4b5fd' }} />
-          </div>
-          <h1 className="text-lg font-extrabold" style={{ color: SIMPLE_COLORS.textPrimary }}>
-            グループ
-          </h1>
-        </div>
-        <p className="text-xs" style={{ color: SIMPLE_COLORS.textSecondary }}>
-          フレンドとグループ通話できます
-        </p>
-      </div>
+      {/* ── ヘッダー (2026-05-09: 共通 PageHeader に移行) ──
+          - 旧: 非 sticky / pt-5 pb-3 / アクセントなし / label/subtitle なし
+          - 新: 共通 PageHeader (sticky top-0 z-10) / pt-12 pb-3 / 青アクセント
+          - 既存の青系ネオンを accentColor=#3B82F6 として継承 */}
+      <PageHeader
+        label="GROUPS"
+        title="グループ"
+        subtitle="フレンドとグループ通話できます"
+        icon={Users}
+        accentColor="#3B82F6"
+      />
 
       {/* ── 一覧 ── */}
       {/* 2026-05-09: BottomNav (h-16=64px) クリアランスを TL/通知/チャット と同じ pb-28 に統一 */}

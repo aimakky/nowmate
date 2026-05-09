@@ -7,6 +7,7 @@ import { timeAgo } from '@/lib/utils'
 import Avatar from '@/components/ui/Avatar'
 import { Bell } from 'lucide-react'
 import { getUserDisplayName } from '@/lib/user-display'
+import PageHeader from '@/components/layout/PageHeader'
 
 type Notif = {
   id: string
@@ -151,26 +152,27 @@ export default function NotificationsPage() {
   return (
     <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
 
-      {/* ── ヘッダー ── */}
-      <div className="sticky top-0 z-10 px-4 pt-12 pb-3 backdrop-blur-md"
-        style={{ background: 'rgba(8,8,18,0.92)', borderBottom: '1px solid rgba(255,201,40,0.2)' }}>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#FFC928' }}>NOTIFICATIONS</p>
-            <h1 className="font-extrabold text-2xl leading-tight flex items-center gap-2" style={{ color: '#F0EEFF' }}>
-              <Bell size={22} strokeWidth={2.2} style={{ color: '#FFC928' }} />
-              通知
-            </h1>
-          </div>
-          {unreadCount > 0 && (
-            <span className="flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-full"
-              style={{ background: 'rgba(255,201,40,0.15)', color: '#FFC928', border: '1px solid rgba(255,201,40,0.35)' }}>
+      {/* ── ヘッダー (2026-05-09: 共通 PageHeader に移行) ──
+          - 旧: sticky top-0 / pt-12 pb-3 / 黄アクセント / 未読バッジ右上
+          - 新: 共通 PageHeader / pt-12 pb-3 / 黄アクセント (#FFC928)
+          - 未読バッジは actions prop で右側に維持 */}
+      <PageHeader
+        label="NOTIFICATIONS"
+        title="通知"
+        icon={Bell}
+        accentColor="#FFC928"
+        actions={
+          unreadCount > 0 ? (
+            <span
+              className="flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-full"
+              style={{ background: 'rgba(255,201,40,0.15)', color: '#FFC928', border: '1px solid rgba(255,201,40,0.35)' }}
+            >
               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#FFC928' }} />
               {unreadCount}件未読
             </span>
-          )}
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
 
       {loading ? (
         <div className="px-4 pt-4 space-y-2">
