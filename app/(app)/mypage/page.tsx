@@ -690,6 +690,130 @@ export default function MyPage() {
     load()
   }, [router])
 
+  // 2026-05-09 マッキーさん指示「ハートを押した投稿が必ずいいね欄に表示される
+  // ように」への対応。真因: load() の useEffect は [router] 依存で初回 mount の
+  // 1 回しか実行されない。マッキーさんがミヤさんプロフィールで新しいハート押下
+  // → mypage に戻る (component cache で残っている) → load() 再実行されない →
+  // likedTweets / likedVillagePosts が古いまま。
+  //
+  // 修正: いいねタブを開いた瞬間 (activeTab === 'likes' になった時) に
+  // tweet_reactions / village_reactions を再取得して likedTweets /
+  // likedVillagePosts を最新化する独立 useEffect を追加。
+  // 確認後、DEBUG ログは除去予定 (CLAUDE.md「最短ライフサイクル」)。
+  useEffect(() => {
+    if (activeTab !== 'likes' || !userId) return
+    let cancelled = false
+    async function reloadLikes() {
+      const supabase = createClient()
+      // eslint-disable-next-line no-console
+      console.log('[LIKED_TAB_DEBUG] reloadLikes start:', { userId })
+      // tweet_reactions 全件 (PR #44 で reaction フィルタ撤廃済)
+      const { data: heartReactions } = await supabase
+        .from('tweet_reactions')
+        .select('tweet_id, reaction')
+        .eq('user_id', userId)
+      if (cancelled) return
+      const heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
+      const dist: Record<string, number> = {}
+      for (const r of ((heartReactions ?? []) as any[])) {
+        const key = (r.reaction as string | null) ?? 'null'
+        dist[key] = (dist[key] ?? 0) + 1
+      }
+      setReactionDist(dist)
+      // eslint-disable-next-line no-console
+      console.log('[LIKED_TAB_DEBUG] heartReactions:', { count: heartTweetIds.length, dist })
+      if (heartTweetIds.length > 0) {
+        const { data: ltRows } = await supabase
+          .from('tweets').select('*').in('id', heartTweetIds).order('created_at', { ascending: false })
+        if (cancelled) return
+        const ltRaw = (ltRows ?? []) as any[]
+        // eslint-disable-next-line no-console
+        console.log('[LIKED_TAB_DEBUG] tweets fetched:', { requested: heartTweetIds.length, fetched: ltRaw.length })
+        if (ltRaw.length > 0) {
+          const ltIds = ltRaw.map((t: any) => t.id)
+          const ltAuthorIds = Array.from(new Set(ltRaw.map((t: any) => t.user_id).filter(Boolean)))
+          const [authProfRes, ltReactRes, ltReplyRes, authTrustRes] = await Promise.all([
+            supabase.from('profiles')
+              .select('id, display_name, nationality, avatar_url, age_verified, age_verification_status')
+              .in('id', ltAuthorIds),
+            supabase.from('tweet_reactions').select('tweet_id, user_id, reaction').in('tweet_id', ltIds),
+            supabase.from('tweet_replies').select('id, tweet_id').in('tweet_id', ltIds),
+            supabase.from('user_trust').select('user_id, tier').in('user_id', ltAuthorIds),
+          ])
+          if (cancelled) return
+          const profMap = new Map<string, any>()
+          for (const p of ((authProfRes as any).data ?? [])) profMap.set(p.id, p)
+          const reactByT = new Map<string, any[]>()
+          for (const r of ((ltReactRes as any).data ?? [])) {
+            if (!reactByT.has(r.tweet_id)) reactByT.set(r.tweet_id, [])
+            reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
+          }
+          const replyByT = new Map<string, any[]>()
+          for (const r of ((ltReplyRes as any).data ?? [])) {
+            if (!replyByT.has(r.tweet_id)) replyByT.set(r.tweet_id, [])
+            replyByT.get(r.tweet_id)!.push({ id: r.id })
+          }
+          const trustMap = new Map<string, string>()
+          for (const t of ((authTrustRes as any).data ?? [])) trustMap.set(t.user_id, t.tier)
+          for (const t of ltRaw) {
+            t.profiles = profMap.get(t.user_id) ?? null
+            t.tweet_reactions = reactByT.get(t.id) ?? []
+            t.tweet_replies = replyByT.get(t.id) ?? []
+            t.user_trust = trustMap.has(t.user_id) ? { tier: trustMap.get(t.user_id) } : null
+          }
+          setLikedTweets(ltRaw as TweetData[])
+        } else {
+          setLikedTweets([])
+        }
+      } else {
+        setLikedTweets([])
+      }
+      // village_reactions 全件
+      const { data: allMyVillageReacts } = await supabase
+        .from('village_reactions').select('post_id').eq('user_id', userId)
+      if (cancelled) return
+      const likedVillageIds = ((allMyVillageReacts ?? []) as any[]).map(r => r.post_id).filter(Boolean)
+      // eslint-disable-next-line no-console
+      console.log('[LIKED_TAB_DEBUG] villageReactions:', { count: likedVillageIds.length })
+      if (likedVillageIds.length > 0) {
+        const { data: lvRows } = await supabase
+          .from('village_posts')
+          .select('id, content, category, created_at, village_id, reaction_count')
+          .in('id', likedVillageIds)
+          .order('created_at', { ascending: false })
+        if (cancelled) return
+        const lvRaw = (lvRows ?? []) as any[]
+        // eslint-disable-next-line no-console
+        console.log('[LIKED_TAB_DEBUG] village_posts fetched:', { requested: likedVillageIds.length, fetched: lvRaw.length })
+        const lvVillageIds = Array.from(new Set(lvRaw.map((p: any) => p.village_id).filter(Boolean)))
+        const lvVMap = new Map<string, any>()
+        if (lvVillageIds.length > 0) {
+          const { data: vRows } = await supabase
+            .from('villages').select('id, name, icon').in('id', lvVillageIds)
+          if (cancelled) return
+          for (const v of (vRows ?? []) as any[]) lvVMap.set(v.id, v)
+        }
+        setLikedVillagePosts(lvRaw.map((p: any) => ({
+          id: p.id,
+          content: p.content,
+          created_at: p.created_at,
+          village_id: p.village_id ?? null,
+          reaction_count: p.reaction_count ?? 0,
+          village: p.village_id ? lvVMap.get(p.village_id) ?? null : null,
+        })))
+        setLikedIds(prev => {
+          const n = new Set(prev)
+          for (const id of likedVillageIds) n.add(id)
+          return n
+        })
+      } else {
+        setLikedVillagePosts([])
+      }
+    }
+    reloadLikes()
+    return () => { cancelled = true }
+  }, [activeTab, userId])
+
   // 2026-05-08 マッキーさん指示「マイページの投稿カードでハート押下時に画面
   // 遷移しない、いいね処理だけ実行する」への対応。
   // 2026-05-09 マッキーさん指示「ハート押下後に別ページから戻ると消える」
