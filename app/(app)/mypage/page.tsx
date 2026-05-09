@@ -58,6 +58,10 @@ type MyVillagePost = {
   // 未設定でよい (mypage の自分 profile を fallback で渡す)。
   author_profile?: any
   author_trust?: any
+  // 2026-05-09 マッキーさん指示「いいね欄を『いいね押した順 (likes.created_at DESC)』
+  // に並び替える」対応。村投稿に対する自分の village_reactions.created_at を保持。
+  // DB 列が無ければ undefined → 表示時に投稿の created_at に fallback (fail-open)。
+  liked_at?: string | null
 }
 
 type FollowUser = {
@@ -581,7 +585,7 @@ export default function MyPage() {
       // 列の存在確認後、別 PR で「いいねした日時 DESC」に改善する。
       const { data: heartReactions } = await supabase
         .from('tweet_reactions')
-        .select('tweet_id, reaction')
+        .select('tweet_id, reaction, created_at')
         .eq('user_id', user.id)
       // 一時 DEBUG: reaction 値の分布を計算 (確認後の次 commit で除去)
       const dist: Record<string, number> = {}
@@ -591,6 +595,14 @@ export default function MyPage() {
       }
       setReactionDist(dist)
       const heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
+      // 2026-05-09 マッキーさん指示「いいね欄をいいね押した順 (likes.created_at DESC) に」対応:
+      // tweet_id → liked_at の Map を作成。後で likedTweets の各 tweet に merge して
+      // 表示時にこの値で降順ソート。DB 列が無ければ liked_at が undefined になり、
+      // 投稿の created_at に fallback (fail-open)。
+      const ltLikedAtMap = new Map<string, string>()
+      for (const r of ((heartReactions ?? []) as any[])) {
+        if (r.tweet_id && r.created_at) ltLikedAtMap.set(r.tweet_id, r.created_at)
+      }
       // 一時 DEBUG ログ (マッキーさん指示「console.log で取得件数を確認」準拠)。
       // 確認後、次 commit で除去する (CLAUDE.md「一時 console.log の最短ライフサイクル」)。
       // eslint-disable-next-line no-console
@@ -639,6 +651,8 @@ export default function MyPage() {
             t.tweet_reactions = reactByT.get(t.id) ?? []
             t.tweet_replies = replyByT.get(t.id) ?? []
             t.user_trust = trustMap.has(t.user_id) ? { tier: trustMap.get(t.user_id) } : null
+            // 2026-05-09: いいね欄ソート用に liked_at を merge
+            t.liked_at = ltLikedAtMap.get(t.id) ?? null
           }
           setLikedTweets(ltRaw as TweetData[])
         }
@@ -650,9 +664,14 @@ export default function MyPage() {
       // 旧実装は .limit(50) で 50 件以上いいねした人は漏れていた。limit を撤廃。
       const { data: allMyVillageReacts } = await supabase
         .from('village_reactions')
-        .select('post_id')
+        .select('post_id, created_at')
         .eq('user_id', user.id)
       const likedVillageIds = ((allMyVillageReacts ?? []) as any[]).map(r => r.post_id).filter(Boolean)
+      // 2026-05-09: いいね欄ソート用 post_id → liked_at Map (load() 用)
+      const lvLikedAtMap = new Map<string, string>()
+      for (const r of ((allMyVillageReacts ?? []) as any[])) {
+        if (r.post_id && r.created_at) lvLikedAtMap.set(r.post_id, r.created_at)
+      }
       // eslint-disable-next-line no-console
       console.log('[LIKES_DBG]', 'villageReactions', { count: likedVillageIds.length })
       if (likedVillageIds.length > 0) {
@@ -700,6 +719,7 @@ export default function MyPage() {
           village: p.village_id ? lvVMap.get(p.village_id) ?? null : null,
           author_profile: p.user_id ? lvAuthorProfMap.get(p.user_id) ?? null : null,
           author_trust: p.user_id && lvAuthorTrustMap.has(p.user_id) ? { tier: lvAuthorTrustMap.get(p.user_id) } : null,
+          liked_at: lvLikedAtMap.get(p.id) ?? null,
         })))
         // 全範囲 likedIds に上書き (mypage 内 toggleLike が他人の村投稿でも動作するため)
         setLikedIds(prev => {
@@ -734,7 +754,7 @@ export default function MyPage() {
       // tweet_reactions 全件 (PR #44 で reaction フィルタ撤廃済)
       const { data: heartReactions } = await supabase
         .from('tweet_reactions')
-        .select('tweet_id, reaction')
+        .select('tweet_id, reaction, created_at')
         .eq('user_id', userId)
       if (cancelled) return
       const heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
@@ -744,6 +764,11 @@ export default function MyPage() {
         dist[key] = (dist[key] ?? 0) + 1
       }
       setReactionDist(dist)
+      // 2026-05-09: いいね欄ソート用 tweet_id → liked_at Map (reloadLikes 用)
+      const ltLikedAtMap = new Map<string, string>()
+      for (const r of ((heartReactions ?? []) as any[])) {
+        if (r.tweet_id && r.created_at) ltLikedAtMap.set(r.tweet_id, r.created_at)
+      }
       // eslint-disable-next-line no-console
       console.log('[LIKED_TAB_DEBUG] heartReactions:', { count: heartTweetIds.length, dist })
       if (heartTweetIds.length > 0) {
@@ -784,6 +809,8 @@ export default function MyPage() {
             t.tweet_reactions = reactByT.get(t.id) ?? []
             t.tweet_replies = replyByT.get(t.id) ?? []
             t.user_trust = trustMap.has(t.user_id) ? { tier: trustMap.get(t.user_id) } : null
+            // 2026-05-09: いいね欄ソート用に liked_at を merge
+            t.liked_at = ltLikedAtMap.get(t.id) ?? null
           }
           setLikedTweets(ltRaw as TweetData[])
         } else {
@@ -794,9 +821,14 @@ export default function MyPage() {
       }
       // village_reactions 全件
       const { data: allMyVillageReacts } = await supabase
-        .from('village_reactions').select('post_id').eq('user_id', userId)
+        .from('village_reactions').select('post_id, created_at').eq('user_id', userId)
       if (cancelled) return
       const likedVillageIds = ((allMyVillageReacts ?? []) as any[]).map(r => r.post_id).filter(Boolean)
+      // 2026-05-09: いいね欄ソート用 post_id → liked_at Map (reloadLikes 用)
+      const lvLikedAtMap = new Map<string, string>()
+      for (const r of ((allMyVillageReacts ?? []) as any[])) {
+        if (r.post_id && r.created_at) lvLikedAtMap.set(r.post_id, r.created_at)
+      }
       // eslint-disable-next-line no-console
       console.log('[LIKED_TAB_DEBUG] villageReactions:', { count: likedVillageIds.length })
       if (likedVillageIds.length > 0) {
@@ -844,6 +876,7 @@ export default function MyPage() {
           // 元投稿者の profile / trust を保持 (いいねタブで他人の村投稿を表示する時に使う)
           author_profile: p.user_id ? lvAuthorProfMap.get(p.user_id) ?? null : null,
           author_trust: p.user_id && lvAuthorTrustMap.has(p.user_id) ? { tier: lvAuthorTrustMap.get(p.user_id) } : null,
+          liked_at: lvLikedAtMap.get(p.id) ?? null,
         })))
         setLikedIds(prev => {
           const n = new Set(prev)
@@ -1523,9 +1556,20 @@ export default function MyPage() {
                 type LItem =
                   | { kind: 'tweet'; data: TweetData; ts: number }
                   | { kind: 'village'; data: MyVillagePost; ts: number }
+                // 2026-05-09 マッキーさん指示「いいね欄をいいね押した順 (likes.created_at DESC) に」
+                // ts は liked_at (= tweet_reactions.created_at / village_reactions.created_at) を優先。
+                // DB 列が無くて undefined の場合は 投稿の created_at に fallback (fail-open)。
+                // CLAUDE.md「投稿者情報の混同防止」準拠: liked_at は「いいね押した日時」、
+                // 投稿の created_at は「元投稿者が投稿した日時」。両者を絶対に混同しない。
                 const items: LItem[] = [
-                  ...likedTweets.map(t => ({ kind: 'tweet' as const, data: t, ts: new Date(t.created_at).getTime() })),
-                  ...likedVillagePosts.map(v => ({ kind: 'village' as const, data: v, ts: new Date(v.created_at).getTime() })),
+                  ...likedTweets.map(t => {
+                    const likedAt = (t as any).liked_at as string | null | undefined
+                    return { kind: 'tweet' as const, data: t, ts: new Date(likedAt ?? t.created_at).getTime() }
+                  }),
+                  ...likedVillagePosts.map(v => {
+                    const likedAt = v.liked_at
+                    return { kind: 'village' as const, data: v, ts: new Date(likedAt ?? v.created_at).getTime() }
+                  }),
                 ].sort((a, b) => b.ts - a.ts)
                 return items.map(item => item.kind === 'tweet' ? (
                   <PostCardShell key={`liked-tweet-${item.data.id}`}>
