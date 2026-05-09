@@ -185,9 +185,14 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
   return (
     <div style={{ background: SIMPLE_COLORS.pageBg, minHeight: embedded ? 'auto' : '100vh' }}>
 
-      {/* ── ヘッダー (ダーク + シンプル) ── */}
+      {/* ── ヘッダー (ダーク + シンプル) ──
+          2026-05-09 マッキーさん指示「タブ切替時に高さが変わる」対応:
+          /guild/page.tsx (いますぐ村タブ) の sticky wrapper と完全同一の
+          padding に揃える (px-4 pt-3 pb-2.5)。旧 px-4 pt-4 pb-3 は上下合計
+          6px ぶん高かったため、ギルドタブに切替えると検索欄が下にズレて
+          見えていた。 */}
       <div
-        className="sticky z-10 px-4 pt-4 pb-3"
+        className="sticky z-10 px-4 pt-3 pb-2.5"
         style={{
           top: headerTopOffset,
           background: 'rgba(10,10,24,0.95)',
