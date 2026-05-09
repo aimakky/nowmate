@@ -212,7 +212,7 @@ function TweetComposeSheet({
 //     本来のリアクション動線に乗せる (= 機能としても自然)
 //   - 三点メニューも同じく villages 詳細遷移に統一
 function MyVillagePostInline({
-  post, profile, trust, liked, onToggleLike,
+  post, profile, trust, liked, onToggleLike, currentUserId,
 }: {
   post: MyVillagePost
   profile: any
@@ -221,11 +221,24 @@ function MyVillagePostInline({
   liked: boolean
   /** ハートボタン押下時に呼ぶ村投稿 like トグル関数 (画面遷移しない) */
   onToggleLike: (postId: string) => void
+  /** 現在ログイン中のユーザー ID (= mypage の userId state)。
+      profileHref を「自分なら /mypage、他人なら /profile/${id}」と切り替えるために使用。 */
+  currentUserId?: string | null
 }) {
   const router = useRouter()
   const isVerified = isVerifiedByExistingSchema(profile)
   const flag = getNationalityFlag(profile?.nationality || '')
   const villageHref = post.village_id ? `/villages/${post.village_id}` : '/timeline'
+  // 2026-05-09 マッキーさん指示「いいね欄のプロフィール押してもその人のマイページに飛ばない」
+  // 真因対応。MyVillagePostInline はマイページの投稿タブ (= 必ず自分の投稿) と
+  // いいねタブ (= 他人の投稿もあり) の両方で使われるため、profileHref を動的に算出する。
+  // - author_profile.id が存在し、かつ currentUserId と一致しなければ → 他人の profile へ
+  // - それ以外 → 自分の /mypage
+  const authorId = post.author_profile?.id ?? null
+  const profileHref =
+    authorId && authorId !== currentUserId
+      ? `/profile/${authorId}`
+      : '/mypage'
 
   // 2026-05-08 マッキーさん指示: timeline の PostCard (app/(app)/timeline/page.tsx
   // 行 360-480) と完全同一の視覚構造に統一。
@@ -251,7 +264,7 @@ function MyVillagePostInline({
           (components/ui/PostCardHeader.tsx) に集約。動作面 (三点メニュー =
           村遷移) は mypage 固有のため onMenuClick で委譲。 */}
       <PostCardHeader
-        profileHref="/mypage"
+        profileHref={profileHref}
         displayName={getUserDisplayName(profile)}
         avatarUrl={profile?.avatar_url}
         avatarVariant="green"
@@ -1333,6 +1346,7 @@ export default function MyPage() {
                       trust={trust}
                       liked={likedIds.has(item.data.id)}
                       onToggleLike={toggleLike}
+                      currentUserId={userId}
                     />
                   ))
                 })()}
@@ -1485,6 +1499,7 @@ export default function MyPage() {
                     trust={item.data.author_trust ?? trust}
                     liked={likedIds.has(item.data.id)}
                     onToggleLike={toggleLike}
+                    currentUserId={userId}
                   />
                 ))
               })()
