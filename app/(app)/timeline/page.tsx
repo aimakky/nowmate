@@ -1234,15 +1234,35 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
   }, [userId, tab, fetchPosts, fetchQA, fetchTweets, fetchVoiceRooms, myVillageIds, followingIds])
 
   // ── いいね ──────────────────────────────────────────────────
-  function toggleLike(postId: string) {
+  // 2026-05-09 マッキーさん指示「ハート押下後に別ページから戻ると消える」
+  // 真因究明のため async 化 + await + error 検出 + alert + onConflict 明示
+  // + [LIKE_DEBUG] ログ。silent failure を完全に解消する。
+  async function toggleLike(postId: string) {
     if (!userId) return
+    // eslint-disable-next-line no-console
+    console.log('[LIKE_DEBUG] timeline toggleLike start:', { postId, currentLiked: likedIds.has(postId), userId })
     const supabase = createClient()
     if (likedIds.has(postId)) {
-      supabase.from('village_reactions').delete().eq('post_id', postId).eq('user_id', userId)
+      const r = await supabase.from('village_reactions').delete().eq('post_id', postId).eq('user_id', userId)
+      // eslint-disable-next-line no-console
+      console.log('[LIKE_DEBUG] timeline delete result:', { error: r.error, status: r.status })
+      if (r.error) {
+        alert(`いいね解除エラー (timeline)\nmessage: ${r.error.message ?? ''}\ncode: ${(r.error as any).code ?? ''}\ndetails: ${(r.error as any).details ?? ''}\nhint: ${(r.error as any).hint ?? ''}`)
+        return
+      }
       setLikedIds(prev => { const n = new Set(prev); n.delete(postId); return n })
       setPosts(prev => prev.map(p => p.id === postId ? { ...p, reaction_count: Math.max(0, p.reaction_count - 1) } : p))
     } else {
-      supabase.from('village_reactions').upsert({ post_id: postId, user_id: userId })
+      const r = await supabase.from('village_reactions').upsert(
+        { post_id: postId, user_id: userId },
+        { onConflict: 'post_id,user_id' }
+      )
+      // eslint-disable-next-line no-console
+      console.log('[LIKE_DEBUG] timeline upsert result:', { error: r.error, status: r.status })
+      if (r.error) {
+        alert(`いいね保存エラー (timeline)\nmessage: ${r.error.message ?? ''}\ncode: ${(r.error as any).code ?? ''}\ndetails: ${(r.error as any).details ?? ''}\nhint: ${(r.error as any).hint ?? ''}`)
+        return
+      }
       setLikedIds(prev => new Set([...prev, postId]))
       setPosts(prev => prev.map(p => p.id === postId ? { ...p, reaction_count: p.reaction_count + 1 } : p))
     }
