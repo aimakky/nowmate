@@ -178,7 +178,8 @@ export default function GroupPage() {
       </div>
 
       {/* ── 一覧 ── */}
-      <div className="px-4 pb-32">
+      {/* 2026-05-09: BottomNav (h-16=64px) クリアランスを TL/通知/チャット と同じ pb-28 に統一 */}
+      <div className="px-4 pb-28">
         {loading ? (
           <div className="space-y-2.5">
             {[...Array(4)].map((_, i) => (
