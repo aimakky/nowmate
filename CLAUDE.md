@@ -993,6 +993,170 @@ UI 統一修正の作業完了時は、必ず以下の形式で報告する:
 
 ---
 
+## 投稿者情報の混同防止 — currentUser / 操作した人 / 元投稿者を絶対に区別する
+
+投稿カード（TweetCard / MyVillagePostInline / ProfileVillagePostInline 等）の
+表示名・アイコン・バッジ・プロフィール情報は **「操作した人」ではなく
+「元投稿者」から取得すること**。
+
+本日 (2026-05-09) の事故「自分のいいね欄にミヤさんの投稿は表示されたが、
+投稿者名が makky になっていた」(PR #50 で修正) を恒久対策するためのルール。
+
+### user_id の意味を必ず区別する
+
+| カラム / 値 | 意味 | 用途 |
+|---|---|---|
+| `currentUser.id` (auth.uid()) | 今ログインしているユーザー | 画面を見ている本人。自分の操作判定。 |
+| `tweet_reactions.user_id` | リアクション (heart 等) **操作した人** | 「誰がいいね？」の集計のみ |
+| `village_reactions.user_id` | 村投稿いいね **操作した人** | 同上 |
+| `tweet_reposts.user_id` (将来) | リポスト **操作した人** | 「誰がリポスト？」の集計のみ |
+| `tweets.user_id` | tweet を作成した **元投稿者** | **投稿カードの作者表示はここから** |
+| `village_posts.user_id` | 村投稿を作成した **元投稿者** | **投稿カードの作者表示はここから** |
+| `tweet_replies.user_id` | 返信を書いた人 (= その返信の元投稿者) | 返信表示の作者 |
+
+### 投稿カードに表示する作者情報は必ず「元投稿者」から
+
+#### 正しい流れ (いいねタブの例)
+
+1. `tweet_reactions` / `village_reactions` を `user_id = currentUser.id` で取得
+2. 取得した `tweet_id` / `post_id` で `tweets` / `village_posts` を取得
+3. **その投稿の `user_id` (= 元投稿者)** から `profiles` を別 query で取得
+4. 投稿カードに **元投稿者 profile** を渡す
+5. `currentUser.profile` で上書きしない
+
+#### 間違った例 (やってはいけない)
+
+```ts
+// NG: いいね tab で mypage の自分 profile を渡している (PR #50 以前のバグ)
+<MyVillagePostInline
+  post={item.data}
+  profile={profile}  // ← mypage state = 自分 profile。他人の投稿でも自分として表示される。
+/>
+
+// NG: likes.user_id を投稿者として profiles を取得
+const { data: likedPosts } = await supabase
+  .from('tweet_reactions')
+  .select('*, profiles(...)')   // ← profiles が「いいねした人 (= 自分)」になってしまう
+  .eq('user_id', currentUser.id)
+
+// NG: tweets fetch 後に profile を currentUser に上書き
+likedTweets.map(t => ({ ...t, profiles: currentUserProfile }))   // ← 全員自分扱い
+```
+
+#### 正しい例
+
+```ts
+// OK: 元投稿者 (tweets.user_id) から profile を取得
+const { data: likedTweetIds } = await supabase
+  .from('tweet_reactions').select('tweet_id').eq('user_id', currentUser.id)
+
+const { data: tweets } = await supabase
+  .from('tweets').select('id, content, created_at, user_id').in('id', tweetIds)
+
+const authorIds = Array.from(new Set(tweets.map(t => t.user_id)))
+const { data: authors } = await supabase
+  .from('profiles').select('id, display_name, avatar_url, ...')
+  .in('id', authorIds)   // ← 元投稿者の profiles だけ取得
+
+const profMap = new Map(authors.map(p => [p.id, p]))
+for (const t of tweets) {
+  t.profiles = profMap.get(t.user_id) ?? null   // ← 元投稿者を merge
+}
+
+// OK: 表示時、author_profile を fallback で渡す
+<MyVillagePostInline
+  post={item.data}
+  profile={item.data.author_profile ?? selfProfile}   // 元投稿者優先
+  trust={item.data.author_trust ?? selfTrust}
+/>
+```
+
+### 修正前の必須チェック (投稿カード関連の修正をする時は毎回)
+
+1. 表示している投稿の **元投稿者 ID** はどれか (`tweets.user_id` / `village_posts.user_id`)
+2. 投稿カードの表示名・アイコンが **元投稿者 ID 側から取得** されているか
+3. `tweet_reactions.user_id` / `village_reactions.user_id` を **投稿者として使っていない**か
+4. `currentUser.profile` で **投稿者情報を上書きしていない** か
+5. 自分のマイページ・他人プロフィール・いいね欄・リポスト欄・通知欄で **同じ混同が起きていない** か
+6. データ整形 `map` の中で `author` / `profile` / `user` 情報を間違って **差し替えていない** か
+7. Supabase join が `likes.user_id` ではなく **投稿側の `user_id` / `author_id`** に対して行われているか
+8. 投稿本文・投稿日時・バッジ・アイコン・表示名が **元投稿者の情報** になっているか
+9. 操作者情報を表示する場合は、**「〇〇がいいねしました」「〇〇がリポストしました」のような補助表示に限定**し、投稿カード本体の作者とは分けること
+
+### 確認用 console.log
+
+修正前後で以下のような console.log を入れて、実際の表示データを確認すること。
+
+```ts
+console.log('[AUTHOR_CHECK] currentUser:', {
+  currentUserId: user?.id,
+  currentUsername: currentProfile?.display_name,
+})
+
+console.log('[AUTHOR_CHECK] post data:', {
+  postId: post.id,
+  postUserId: post.user_id,        // 元投稿者
+  authorName: post.profiles?.display_name,
+})
+
+console.log('[AUTHOR_CHECK] operation data:', {
+  likedByUserId: like?.user_id,    // 操作した人
+  repostedByUserId: repost?.user_id,
+})
+
+console.log('[AUTHOR_CHECK] displayed author:', {
+  displayedName: displayedAuthorName,
+  displayedAvatar: displayedAvatarUrl,
+  shouldComeFrom: 'posts.user_id / tweets.user_id / author_id',
+})
+```
+
+### 適用対象
+
+以下の修正では **必ずこのルールを適用**:
+
+- いいねタブ / いいね欄 / 「いいねした投稿」一覧
+- リポスト機能 (操作者と元投稿者の区別)
+- 通知欄 (通知を発生させた人 ≠ 元投稿者)
+- マイページの投稿タブ (自分が投稿者なので一致するが、構造を将来流用しないよう注意)
+- 他人プロフィールの投稿タブ (プロフィール owner = 元投稿者)
+- ギルドの投稿タブ (各投稿の元投稿者を表示)
+- タイムライン (各投稿の元投稿者を表示)
+- 検索結果 / トレンド表示
+- DM の引用投稿表示
+
+### 報告フォーマット (投稿カード関連修正時)
+
+投稿カード関連の修正時は、最後に必ず以下を含める:
+
+```
+- 現在の状況:
+- 原因:
+- 修正したファイル:
+- currentUser / 操作者 / 元投稿者の区別:
+- 投稿者情報の取得元:
+- 修正内容:
+- 動作確認したこと:
+- lint / build 結果:
+- 未完了のこと:
+- 次に確認してほしいこと:
+```
+
+### 禁止事項
+
+- `likes.user_id` を投稿者 ID として扱うこと
+- `reposts.user_id` を元投稿者 ID として扱うこと
+- `currentUser.profile` を全投稿の `profiles` に上書きすること
+- 取得時に `select('*, profiles(...)')` で **どの user_id に紐付くか曖昧** な join をすること (PostgREST embed 禁止ルールも併用)
+- 操作者情報と元投稿者情報を **同じ変数名** で扱うこと (例: `userProfile` → `currentUserProfile` / `authorProfile` に分ける)
+- 投稿カードの作者表示と「〇〇 reposted」のような補助表示を **混在** させること
+
+### 最重要 (一行サマリー)
+
+**投稿カードに表示する名前・アイコン・プロフィール情報は、原則として「操作した人」ではなく「元投稿者」から取得する。`likes.user_id` / `reposts.user_id` は操作した人。`tweets.user_id` / `village_posts.user_id` / `author_id` は元投稿者。この区別を今後のすべての投稿関連修正で必ず守る。**
+
+---
+
 ## このファイルの更新ルール
 
 - 既存の項目を削除しない（追記方式）
@@ -1002,6 +1166,20 @@ UI 統一修正の作業完了時は、必ず以下の形式で報告する:
 ---
 
 ## 更新履歴
+
+### 2026-05-09 — 投稿者情報の混同防止ルールを追加 (currentUser / 操作者 / 元投稿者の区別)
+
+- 本日「自分のいいね欄にミヤさんの投稿は表示されたが、投稿者名が makky になっていた」事故 (PR #50 で修正) を踏まえ、投稿カード関連の修正で必ず守るべきルールを恒久化
+- `tweet_reactions.user_id` / `village_reactions.user_id` (= 操作した人) と `tweets.user_id` / `village_posts.user_id` (= 元投稿者) を絶対に混同しない原則を明文化
+- 投稿カードの表示名・アイコン・バッジ・プロフィール情報は **必ず元投稿者から取得** (操作した人を投稿者として使わない)
+- いいねタブ実装時は `select` に `user_id` を含めて取得し、`profiles` を別 query で取得して merge する設計を必須化
+- `currentUser.profile` で全投稿の `profiles` を上書きすることを禁止事項に追加
+- 修正前の 9 項目チェックリスト (元投稿者 ID 確認 / Supabase join 対象確認 / 投稿カード表示の作者情報確認 等) を必須化
+- 確認用 `[AUTHOR_CHECK]` console.log のテンプレートを規定 (currentUser / post data / operation data / displayed author の 4 系統)
+- 適用対象を明示: いいねタブ / リポスト / 通知欄 / マイページ / 他人プロフィール / ギルド投稿 / タイムライン / 検索 / DM 引用
+- 投稿カード関連修正時の専用報告フォーマット (10 項目) を新設
+- 操作者情報を表示する場合は「〇〇がいいねしました」「〇〇がリポストしました」のような **補助表示に限定** し、投稿カード本体の作者とは分けることを義務化
+- 一行サマリー: **投稿カードに表示する名前・アイコン・プロフィール情報は、原則として「操作した人」ではなく「元投稿者」から取得する**
 
 ### 2026-05-05 — 作業報告ルールを 2 種類 → 3 種類へ拡張
 
