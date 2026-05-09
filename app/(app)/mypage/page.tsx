@@ -1271,6 +1271,21 @@ export default function MyPage() {
             自分がハートを押した tweets + village_posts を時系列降順で表示。 */}
         {activeTab === 'likes' && (
           <div className="px-4 pt-4 space-y-3">
+            {/* 2026-05-09 一時 DEBUG 表示 (マッキーさん指示「いいね反映されない」切り分け用)。
+                取得件数を画面に出すことで、DB 実件数 vs 表示件数の差を目視できる。
+                確認後の次 commit で除去する (CLAUDE.md「一時 console.log の最短ライフサイクル」)。 */}
+            <div className="rounded-2xl px-3 py-2"
+              style={{ background: 'rgba(157,92,255,0.10)', border: '1px solid rgba(157,92,255,0.3)' }}>
+              <p className="text-[10px] font-extrabold uppercase tracking-widest mb-0.5" style={{ color: '#9D5CFF' }}>
+                LIKES_DBG (一時表示)
+              </p>
+              <p className="text-[11px]" style={{ color: 'rgba(240,238,255,0.7)' }}>
+                tweet いいね: {likedTweets.length} 件 / 村投稿いいね: {likedVillagePosts.length} 件 (合計 {likedTweets.length + likedVillagePosts.length} 件)
+              </p>
+              <p className="text-[10px] mt-1" style={{ color: 'rgba(240,238,255,0.45)' }}>
+                これは確認用。実際の DB 上のハート記録件数。確認後に削除します。
+              </p>
+            </div>
             {likedTweets.length === 0 && likedVillagePosts.length === 0 ? (
               <div className="rounded-2xl p-8 text-center"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
