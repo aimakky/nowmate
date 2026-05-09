@@ -10,6 +10,7 @@ import { Heart, RefreshCw, Users, Globe, Home, Share2, HelpCircle, Send, CheckCi
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import PostActions from '@/components/ui/PostActions'
 import PostCardShell from '@/components/ui/PostCardShell'
+import PageHeader from '@/components/layout/PageHeader'
 import PostCardHeader from '@/components/ui/PostCardHeader'
 import { detectCrisisKeywords } from '@/lib/moderation'
 import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
@@ -1298,48 +1299,46 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
   return (
     <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
 
-      {/* ヘッダー */}
-      <div className="px-4 pt-12 pb-0"
-        style={{
-          background: 'linear-gradient(160deg,rgba(8,8,18,0.98) 0%,rgba(8,18,12,0.98) 60%,rgba(9,20,14,0.95) 100%)',
-          borderBottom: '1px solid rgba(57,255,136,0.15)',
-        }}>
-        <div className="flex items-end justify-between mb-3">
-          <div>
-            <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(57,255,136,0.65)' }}>TIMELINE</p>
-            <h1 className="font-extrabold text-2xl leading-tight flex items-center gap-2" style={{ color: '#F0EEFF' }}>
-              <Layers size={22} strokeWidth={2.2} style={{ color: '#39FF88' }} />
-              タイムライン
-            </h1>
-            <p className="text-xs mt-0.5" style={{ color: 'rgba(240,238,255,0.3)' }}>みんなの声が流れる場所</p>
-          </div>
-          <button onClick={() => { fetchPosts(true); fetchVoiceRooms(); if (userId) fetchQA(userId, myVillageIds); if (tab === 'all') fetchTweets(); else if (tab === 'following') fetchTweets(followingIds) }}
+      {/* ヘッダー (2026-05-09: 共通 PageHeader に移行)
+          - 旧: 非 sticky / 緑グラデ / pt-12 pb-0 + 内部タブ
+          - 新: 共通 PageHeader (sticky top-0 z-10) + bottomTab で内部タブを渡す
+          - 緑アクセント (#39FF88) と Refresh ボタンは維持 */}
+      <PageHeader
+        label="TIMELINE"
+        title="タイムライン"
+        subtitle="みんなの声が流れる場所"
+        icon={Layers}
+        accentColor="#39FF88"
+        actions={
+          <button
+            onClick={() => { fetchPosts(true); fetchVoiceRooms(); if (userId) fetchQA(userId, myVillageIds); if (tab === 'all') fetchTweets(); else if (tab === 'following') fetchTweets(followingIds) }}
             className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
-            style={{ background: 'rgba(57,255,136,0.1)', border: '1px solid rgba(57,255,136,0.25)' }}>
+            style={{ background: 'rgba(57,255,136,0.1)', border: '1px solid rgba(57,255,136,0.25)' }}
+          >
             <RefreshCw size={15} style={{ color: 'rgba(57,255,136,0.7)' }} />
           </button>
-        </div>
-
-        {/* タブ */}
-        <div className="flex" style={{ borderBottom: '1px solid rgba(57,255,136,0.15)' }}>
-          {TAB_CONFIG.map(({ key, label, icon: Icon }) => (
-            <button key={key} onClick={() => setTab(key)}
-              className="flex-1 flex flex-col items-center gap-0.5 pt-2 pb-3 transition-all relative">
-              <Icon size={16}
-                style={{ color: tab === key ? '#39FF88' : 'rgba(240,238,255,0.3)' }}
-                strokeWidth={tab === key ? 2.5 : 1.8} />
-              <span className="text-[10px] font-bold whitespace-nowrap"
-                style={{ color: tab === key ? '#F0EEFF' : 'rgba(240,238,255,0.3)' }}>
-                {label}
-              </span>
-              {tab === key && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                  style={{ background: 'linear-gradient(90deg,#39FF88,#059669)' }} />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+        }
+        bottomTab={
+          <div className="flex" style={{ borderBottom: '1px solid rgba(57,255,136,0.15)' }}>
+            {TAB_CONFIG.map(({ key, label, icon: Icon }) => (
+              <button key={key} onClick={() => setTab(key)}
+                className="flex-1 flex flex-col items-center gap-0.5 pt-2 pb-3 transition-all relative">
+                <Icon size={16}
+                  style={{ color: tab === key ? '#39FF88' : 'rgba(240,238,255,0.3)' }}
+                  strokeWidth={tab === key ? 2.5 : 1.8} />
+                <span className="text-[10px] font-bold whitespace-nowrap"
+                  style={{ color: tab === key ? '#F0EEFF' : 'rgba(240,238,255,0.3)' }}>
+                  {label}
+                </span>
+                {tab === key && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
+                    style={{ background: 'linear-gradient(90deg,#39FF88,#059669)' }} />
+                )}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {/* コンテンツ */}
       <div className="px-4 pt-4 pb-28 space-y-3">
