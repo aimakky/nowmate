@@ -26,6 +26,14 @@ const SUB_FILTERS = [
   { id: 'member',  label: '参加中',   emoji: '🛡️' },
 ]
 
+// 2026-05-09 マッキーさん指示「ギルドタブにもジャンルフィルターを表示」対応。
+// /guild/page.tsx (いますぐ村タブ) の GENRE_TABS と完全同一の定義。
+// すべて + INDUSTRIES の 10 ジャンル (FPS・TPS / RPG / アクション 等)。
+const GENRE_TABS = [
+  { id: 'all', emoji: '🎮', label: 'すべて' },
+  ...INDUSTRIES.map(i => ({ id: i.id, emoji: i.emoji, label: i.id })),
+]
+
 // ── シンプル一覧カード (icon + name + count + 参加状態) ──
 function GuildSimpleCard({
   village,
@@ -104,6 +112,9 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
   const [search,    setSearch]    = useState('')
   const [userId,    setUserId]    = useState<string | null>(null)
   const [memberIds, setMemberIds] = useState<Set<string>>(new Set())
+  // 2026-05-09 マッキーさん指示「ギルドタブにもジャンルフィルター」対応。
+  // 'all' = フィルタなし、それ以外は INDUSTRIES の category id (例 'FPS・TPS') で絞り込む。
+  const [genre, setGenre] = useState<string>('all')
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -121,7 +132,15 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
       .select('*')
       .eq('is_public', true)
       .neq('comm_style', 'voice')
-      .in('category', gameCategories)
+
+    // 2026-05-09: ジャンル絞り込み (いますぐ村タブと同じロジック)
+    // - genre === 'all' なら全ジャンル (INDUSTRIES の 10 種類すべて)
+    // - genre が特定 INDUSTRY id ならその category 完全一致
+    if (genre === 'all') {
+      q = q.in('category', gameCategories)
+    } else {
+      q = q.eq('category', genre)
+    }
 
     if (subFilter === 'popular') q = q.order('post_count_7d', { ascending: false })
     else if (subFilter === 'new') q = q.order('created_at',   { ascending: false })
@@ -130,7 +149,7 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
     const { data } = await q.limit(40)
     setVillages((data || []) as Village[])
     setLoading(false)
-  }, [subFilter])
+  }, [subFilter, genre])
 
   const fetchMemberships = useCallback(async () => {
     if (!userId) return
@@ -211,6 +230,36 @@ export default function GuildsContent({ embedded = false, headerTopOffset = 0 }:
               e.currentTarget.style.boxShadow = 'none'
             }}
           />
+        </div>
+
+        {/* 2026-05-09 マッキーさん指示「ギルドタブにもジャンルフィルター表示」対応。
+            /guild/page.tsx (いますぐ村タブ) の GENRE_TABS UI を完全移植。
+            DOM / className / wrapper / スタイルは「いますぐ村」と完全同一。 */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 px-4 mb-2.5">
+          {GENRE_TABS.map(g => {
+            const active = genre === g.id
+            return (
+              <button key={g.id}
+                onClick={() => { setGenre(g.id); setSearch(''); setSubFilter(null) }}
+                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95"
+                style={active
+                  ? {
+                      background: SIMPLE_COLORS.accentBg,
+                      color: SIMPLE_COLORS.accentDeep,
+                      border: `1px solid ${SIMPLE_COLORS.accentBorder}`,
+                    }
+                  : {
+                      background: 'rgba(255,255,255,0.04)',
+                      color: SIMPLE_COLORS.textSecondary,
+                      border: '1px solid rgba(157,92,255,0.12)',
+                    }
+                }
+              >
+                <span>{g.emoji}</span>
+                <span className="whitespace-nowrap">{g.label}</span>
+              </button>
+            )
+          })}
         </div>
 
         {/* サブフィルター (にぎやか / 新着 / 参加中) */}
