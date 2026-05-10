@@ -8,6 +8,7 @@ import Avatar from '@/components/ui/Avatar'
 import { Bell } from 'lucide-react'
 import { getUserDisplayName } from '@/lib/user-display'
 import PageHeader from '@/components/layout/PageHeader'
+import { useDelayedSkeleton } from '@/hooks/useDelayedSkeleton'
 
 type Notif = {
   id: string
@@ -46,6 +47,10 @@ export default function NotificationsPage() {
   // 初回訪問 (cachedNotifs === null) のみ loading=true で skeleton 表示。
   // 再訪問は cached を即時表示しつつ裏で再 fetch (loading=false 維持)。
   const [loading, setLoading] = useState(cachedNotifs === null)
+  // 2026-05-09: 速い読込 (<200ms) では skeleton を表示しない。
+  // 遅い読込のみ skeleton を出すことで、skeleton↔loaded の切替に伴うわずかな
+  // ズレが見えなくなる。
+  const showSkeleton = useDelayedSkeleton(loading)
 
   const load = useCallback(async () => {
     const supabase = createClient()
@@ -185,12 +190,18 @@ export default function NotificationsPage() {
         }
       />
 
-      {loading ? (
+      {loading && !showSkeleton ? (
+        // 2026-05-09: 速い読込 (<200ms) は skeleton を出さず空のまま。
+        // PageHeader は表示済みなので、ユーザーには「ヘッダーだけ見える」状態が一瞬。
+        // 多くの読込は <200ms で完了するため、結果的にこの分岐がほとんどのケースになる。
+        <div style={{ minHeight: '50vh' }} aria-busy="true" />
+      ) : loading ? (
         // 2026-05-09 マッキーさん指示「skeleton と本表示の高さを揃える」対応。
         // 旧 skeleton (5 行フラット px-4 pt-4 space-y-2) は loaded 状態 (3 セクション
         // ラベル + 容器) と構造が違い、loading→loaded で ~90px のジャンプが発生していた。
         // 新 skeleton: 本表示と同じ構造 (pb-28 pt-2 wrapper + section ラベル + 容器内 row)
         // で 1 セクション分を描画。本表示に切替った瞬間の高さ・余白が一致する。
+        // この分岐は「読込が 200ms 以上かかった場合のみ」発火する (useDelayedSkeleton)。
         <div className="pb-28 pt-2">
           <div className="px-4 mb-4">
             {/* セクションラベル placeholder (本表示の「返信・反応」と同位置) */}

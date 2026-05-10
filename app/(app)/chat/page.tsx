@@ -10,6 +10,7 @@ import { timeAgo } from '@/lib/utils'
 import { Edit2, MessageSquareDashed, Check, X, MessageSquare, UserPlus } from 'lucide-react'
 import VerifiedBadge from '@/components/ui/VerifiedBadge'
 import PageHeader from '@/components/layout/PageHeader'
+import { useDelayedSkeleton } from '@/hooks/useDelayedSkeleton'
 
 interface DirectChat {
   matchId: string
@@ -49,6 +50,9 @@ export default function ChatListPage() {
   const [loading,   setLoading]   = useState(cachedDirects === null)
   const [userId,    setUserId]    = useState<string | null>(null)
   const [tab,       setTab]       = useState<'chat' | 'request'>('chat')
+  // 2026-05-09: 速い読込 (<200ms) では skeleton を表示しない。
+  // skeleton↔loaded の切替に伴うわずかなズレが見えなくなる。
+  const showSkeleton = useDelayedSkeleton(loading)
 
   useEffect(() => {
     async function load() {
@@ -348,14 +352,17 @@ export default function ChatListPage() {
 
         {/* チャットリスト */}
         <div className="pt-2">
-          {loading ? (
+          {loading && !showSkeleton ? (
+            // 2026-05-09: 速い読込 (<200ms) は skeleton を出さず空のまま。
+            // 多くの読込はここで終わるため、skeleton flash 自体が発生しない。
+            <div style={{ minHeight: '50vh' }} aria-busy="true" />
+          ) : loading ? (
             // 2026-05-09 マッキーさん指示「skeleton と本表示の高さを揃える」対応。
             // 旧 skeleton: 6 行フラット (~360px)。本表示の「オンライン中フレンド」rail
             // (~80px) が loaded 後に上から差し込まれてコンテンツが ~80px 下にジャンプ。
             // 新 skeleton: オンライン中 rail の placeholder を上部に確保 (~80px) + 6 行 row。
             // loaded 後にオンラインフレンドあり → placeholder と入替 (高さ同じ、ジャンプなし)
-            // loaded 後にオンラインフレンドなし → placeholder が消えて 80px 上に詰まるが、
-            //   従来の「下にジャンプ」よりは UX 的に自然。
+            // この分岐は「読込が 200ms 以上かかった場合のみ」発火する (useDelayedSkeleton)。
             <>
               {/* オンライン中 rail placeholder (本表示の onlineUsers section と同位置・同高さ) */}
               <div className="px-4 pt-4 pb-3">
