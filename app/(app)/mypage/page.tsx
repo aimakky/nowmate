@@ -839,45 +839,57 @@ export default function MyPage() {
     let cancelled = false
     async function reloadLikes() {
       const supabase = createClient()
-      // tweet_reactions 全件 (PR #44 で reaction フィルタ撤廃済)
-      const { data: heartReactions } = await supabase
-        .from('tweet_reactions')
-        .select('tweet_id, reaction, created_at')
-        .eq('user_id', userId)
-      if (cancelled) return
-      let heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
-      // PR #52: いいね欄ソート用 tweet_id → liked_at Map
+      // ── 2026-05-10 (6 回目) 完全書き直し ──
+      // RLS の非対称挙動 (`.eq('user_id', me)` が 0 を返すが
+      // `.in('tweet_id', [own_ids])` では取れる) が確定したため、
+      // 全ての self-like 取得を `.in('tweet_id', [...])` または
+      // `.in('post_id', [...])` パターンに統一。
+      // テストボタンの [5] で動作確認済の方法。
       const ltLikedAtMap = new Map<string, string>()
-      for (const r of ((heartReactions ?? []) as any[])) {
-        if (r.tweet_id && r.created_at) ltLikedAtMap.set(r.tweet_id, r.created_at)
-      }
-      // 2026-05-10 (4 回目): RLS の非対称挙動への fallback。
-      // self-like を tweet_reactions WHERE user_id=me で取れない場合がある
-      // (DEBUG パネルで count=0 だが投稿 tab では heart RED で表示) ため、
-      // own tweets を直接 fetch → その reactions を取って user_id=me で
-      // JS フィルタという別ルートで補完。
+      let heartTweetIds: string[] = []
+
+      // ── tweets 系 self-like 取得 ──
+      // 1) own tweets を fetch (`.eq('user_id', me)` は tweets テーブルでは
+      //    動いているので OK / `tweets state count: 5` と一致する想定)
       const { data: ownTweetsForReact } = await supabase
         .from('tweets').select('id').eq('user_id', userId)
       if (cancelled) return
-      const ownTweetIdsForFallback = ((ownTweetsForReact ?? []) as any[]).map(t => t.id).filter(Boolean)
-      if (ownTweetIdsForFallback.length > 0) {
+      const ownTweetIds = ((ownTweetsForReact ?? []) as any[]).map(t => t.id).filter(Boolean)
+
+      // 2) own tweets に対する全 reactions を `.in('tweet_id', [...])` で取得し
+      //    JS で `user_id === me` を filter
+      if (ownTweetIds.length > 0) {
         const { data: reactionsOnOwn } = await supabase
           .from('tweet_reactions')
           .select('tweet_id, user_id, created_at')
-          .in('tweet_id', ownTweetIdsForFallback)
+          .in('tweet_id', ownTweetIds)
         if (cancelled) return
-        const fallbackSelfLikes = ((reactionsOnOwn ?? []) as any[])
-          .filter(r => r.user_id === userId)
-        for (const r of fallbackSelfLikes) {
-          if (!ltLikedAtMap.has(r.tweet_id) && r.created_at) {
-            ltLikedAtMap.set(r.tweet_id, r.created_at)
-          }
-          if (!heartTweetIds.includes(r.tweet_id)) {
+        for (const r of ((reactionsOnOwn ?? []) as any[])) {
+          if (r.user_id === userId && r.tweet_id) {
             heartTweetIds.push(r.tweet_id)
+            if (r.created_at) ltLikedAtMap.set(r.tweet_id, r.created_at)
           }
         }
       }
+
+      // 3) (オプション) primary `.eq('user_id', me)` も試す。RLS の非対称
+      //    挙動で 0 件だが、もし将来 RLS が直ったら他人 tweet への
+      //    self-like も取れるようになる
+      const { data: heartReactions } = await supabase
+        .from('tweet_reactions')
+        .select('tweet_id, user_id, created_at')
+        .eq('user_id', userId)
+      if (cancelled) return
+      for (const r of ((heartReactions ?? []) as any[])) {
+        if (r.tweet_id && !heartTweetIds.includes(r.tweet_id)) {
+          heartTweetIds.push(r.tweet_id)
+          if (r.created_at) ltLikedAtMap.set(r.tweet_id, r.created_at)
+        }
+      }
+
       setDebugHeartTweetIds(heartTweetIds)
+
+      // 4) heartTweetIds に対応する tweets 本体を fetch + enrich
       if (heartTweetIds.length > 0) {
         const { data: ltRows } = await supabase
           .from('tweets').select('*').in('id', heartTweetIds).order('created_at', { ascending: false })
@@ -910,11 +922,14 @@ export default function MyPage() {
           const trustMap = new Map<string, string>()
           for (const t of ((authTrustRes as any).data ?? [])) trustMap.set(t.user_id, t.tier)
           for (const t of ltRaw) {
-            t.profiles = profMap.get(t.user_id) ?? null
+            // own tweet の場合は self の profile / trust を使う
+            const isOwn = t.user_id === userId
+            t.profiles = isOwn ? profile : (profMap.get(t.user_id) ?? null)
             t.tweet_reactions = reactByT.get(t.id) ?? []
             t.tweet_replies = replyByT.get(t.id) ?? []
-            t.user_trust = trustMap.has(t.user_id) ? { tier: trustMap.get(t.user_id) } : null
-            // 2026-05-09: いいね欄ソート用に liked_at を merge
+            t.user_trust = isOwn
+              ? (trust ? { tier: trust.tier ?? null } : null)
+              : (trustMap.has(t.user_id) ? { tier: trustMap.get(t.user_id) } : null)
             t.liked_at = ltLikedAtMap.get(t.id) ?? null
           }
           setLikedTweets(ltRaw as TweetData[])
@@ -924,43 +939,9 @@ export default function MyPage() {
       } else {
         setLikedTweets([])
       }
-      // 2026-05-10 マッキーさん指示「自分の投稿に自分でハートを押しても、
-      // いいね欄に表示されない」事象の防御策 (reloadLikes 版)。
-      // 2026-05-10 (2 回目): tweets state は reloadLikes の closure で stale な
-      // 可能性があるため、Supabase に own user_id 限定で直接再取得する明示的
-      // フォールバックに変更。
-      if (heartTweetIds.length > 0) {
-        const { data: ownLikedTweetsRows } = await supabase
-          .from('tweets')
-          .select('*')
-          .eq('user_id', userId)
-          .in('id', heartTweetIds)
-        if (cancelled) return
-        const ownRows = (ownLikedTweetsRows ?? []) as any[]
-        console.log('[likes-debug:reload:tweets]', {
-          heartTweetIds,
-          ownLikedTweetsRowsCount: ownRows.length,
-          tweetsStateCount: tweets.length,
-        })
-        if (ownRows.length > 0) {
-          // 自分の投稿なので profile / trust は profile / trust state (= 自分のもの)
-          const myProf = profile
-          const myTrust = trust ? { tier: trust.tier ?? null } : null
-          for (const t of ownRows) {
-            t.profiles = myProf
-            t.tweet_reactions = []
-            t.tweet_replies = []
-            t.user_trust = myTrust
-            t.liked_at = ltLikedAtMap.get(t.id) ?? null
-          }
-          setLikedTweets(prev => {
-            const existingIds = new Set(prev.map(t => t.id))
-            const toAdd = ownRows.filter((t: any) => !existingIds.has(t.id))
-            return [...prev, ...toAdd] as TweetData[]
-          })
-        }
-      }
-      // village_reactions 全件
+
+      // ── village_reactions 系 ──
+      // village_reactions は `.eq('user_id', me)` で動作確認済 (count: 8)
       const { data: allMyVillageReacts } = await supabase
         .from('village_reactions').select('post_id, created_at').eq('user_id', userId)
       if (cancelled) return
