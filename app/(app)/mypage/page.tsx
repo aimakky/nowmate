@@ -353,6 +353,11 @@ export default function MyPage() {
   const [myReplies, setMyReplies] = useState<Array<{ id: string; tweet_id: string; content: string; created_at: string }>>([])
   const [likedTweets, setLikedTweets] = useState<TweetData[]>([])
   const [likedVillagePosts, setLikedVillagePosts] = useState<MyVillagePost[]>([])
+  // 2026-05-10 一時 DEBUG state: いいね欄に self-like 過去分が出ない事象の
+  // 真因切り分け用。tweet_reactions / village_reactions の生 id 配列を保持し、
+  // DEBUG パネルに表示する。確認後の次 commit で除去予定。
+  const [debugHeartTweetIds, setDebugHeartTweetIds] = useState<string[]>([])
+  const [debugLikedVillageIds, setDebugLikedVillageIds] = useState<string[]>([])
   // 返信 / いいねは初回ロード時に一括取得 (タブ切替で空白を避けるため)。
   // タブ未訪問でも UI 完全描画したいので、loaded フラグは持たない。
   const [tweetLoading,   setTweetLoading]   = useState(false)
@@ -591,6 +596,7 @@ export default function MyPage() {
         .select('tweet_id, reaction, created_at')
         .eq('user_id', user.id)
       const heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
+      setDebugHeartTweetIds(heartTweetIds)
       const ltLikedAtMap = new Map<string, string>()
       for (const r of ((heartReactions ?? []) as any[])) {
         if (r.tweet_id && r.created_at) ltLikedAtMap.set(r.tweet_id, r.created_at)
@@ -687,6 +693,7 @@ export default function MyPage() {
         .select('post_id, created_at')
         .eq('user_id', user.id)
       const likedVillageIds = ((allMyVillageReacts ?? []) as any[]).map(r => r.post_id).filter(Boolean)
+      setDebugLikedVillageIds(likedVillageIds)
       const lvLikedAtMap = new Map<string, string>()
       for (const r of ((allMyVillageReacts ?? []) as any[])) {
         if (r.post_id && r.created_at) lvLikedAtMap.set(r.post_id, r.created_at)
@@ -810,6 +817,7 @@ export default function MyPage() {
         .eq('user_id', userId)
       if (cancelled) return
       const heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
+      setDebugHeartTweetIds(heartTweetIds)
       // PR #52: いいね欄ソート用 tweet_id → liked_at Map
       const ltLikedAtMap = new Map<string, string>()
       for (const r of ((heartReactions ?? []) as any[])) {
@@ -902,6 +910,7 @@ export default function MyPage() {
         .from('village_reactions').select('post_id, created_at').eq('user_id', userId)
       if (cancelled) return
       const likedVillageIds = ((allMyVillageReacts ?? []) as any[]).map(r => r.post_id).filter(Boolean)
+      setDebugLikedVillageIds(likedVillageIds)
       // 2026-05-09: いいね欄ソート用 post_id → liked_at Map (reloadLikes 用)
       const lvLikedAtMap = new Map<string, string>()
       for (const r of ((allMyVillageReacts ?? []) as any[])) {
@@ -1628,22 +1637,29 @@ export default function MyPage() {
               style={{ background: 'rgba(255,255,0,0.08)', border: '1px solid rgba(255,255,0,0.3)', color: 'rgba(255,255,255,0.85)' }}>
               <div style={{ fontWeight: 'bold', marginBottom: 4 }}>🔧 一時 DEBUG 表示 (確認後に除去)</div>
               <div>userId: {userId ? userId.slice(0, 8) + '...' : 'null'}</div>
-              <div>likedTweets count: {likedTweets.length}</div>
-              <div>likedVillagePosts count: {likedVillagePosts.length}</div>
-              <div>likedIds Set size: {likedIds.size}</div>
-              <div>tweets state count: {tweets.length}</div>
-              <div>villagePosts state count: {villagePosts.length}</div>
-              <div style={{ marginTop: 4 }}>likedTweets ids:</div>
-              <div style={{ wordBreak: 'break-all' }}>
+              <div style={{ marginTop: 4, color: '#fbbf24', fontWeight: 'bold' }}>★ tweet_reactions WHERE user_id=me の生件数:</div>
+              <div>debugHeartTweetIds count: <strong>{debugHeartTweetIds.length}</strong></div>
+              <div style={{ wordBreak: 'break-all', fontSize: 10 }}>
+                {debugHeartTweetIds.length === 0 ? '(空 = DB に行なし)' : debugHeartTweetIds.slice(0, 10).map(id => id.slice(0,8)).join(', ')}
+              </div>
+              <div style={{ marginTop: 4, color: '#fbbf24', fontWeight: 'bold' }}>★ village_reactions WHERE user_id=me の生件数:</div>
+              <div>debugLikedVillageIds count: <strong>{debugLikedVillageIds.length}</strong></div>
+              <div style={{ wordBreak: 'break-all', fontSize: 10 }}>
+                {debugLikedVillageIds.length === 0 ? '(空 = DB に行なし)' : debugLikedVillageIds.slice(0, 10).map(id => id.slice(0,8)).join(', ')}
+              </div>
+              <div style={{ marginTop: 4, borderTop: '1px solid rgba(255,255,0,0.3)', paddingTop: 4 }}>
+                <div>likedTweets count: {likedTweets.length} (= 表示される件数)</div>
+                <div>likedVillagePosts count: {likedVillagePosts.length}</div>
+                <div>tweets state (own) count: {tweets.length}</div>
+                <div>villagePosts state (own) count: {villagePosts.length}</div>
+              </div>
+              <div style={{ marginTop: 4 }}>likedTweets ids (author 付):</div>
+              <div style={{ wordBreak: 'break-all', fontSize: 10 }}>
                 {likedTweets.length === 0 ? '(空)' : likedTweets.map(t => `${t.id.slice(0,8)}(by:${(t as any).user_id?.slice(0,8) ?? '?'})`).join(', ')}
               </div>
-              <div style={{ marginTop: 4 }}>likedVillagePosts ids:</div>
-              <div style={{ wordBreak: 'break-all' }}>
-                {likedVillagePosts.length === 0 ? '(空)' : likedVillagePosts.map(v => v.id.slice(0,8)).join(', ')}
-              </div>
-              <div style={{ marginTop: 4 }}>tweets state ids (own):</div>
-              <div style={{ wordBreak: 'break-all' }}>
-                {tweets.length === 0 ? '(空)' : tweets.slice(0, 5).map(t => t.id.slice(0,8)).join(', ')}
+              <div style={{ marginTop: 4 }}>tweets (own) ids:</div>
+              <div style={{ wordBreak: 'break-all', fontSize: 10 }}>
+                {tweets.length === 0 ? '(空)' : tweets.slice(0, 10).map(t => t.id.slice(0,8)).join(', ')}
               </div>
             </div>
 
