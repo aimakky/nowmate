@@ -358,6 +358,9 @@ export default function MyPage() {
   // DEBUG パネルに表示する。確認後の次 commit で除去予定。
   const [debugHeartTweetIds, setDebugHeartTweetIds] = useState<string[]>([])
   const [debugLikedVillageIds, setDebugLikedVillageIds] = useState<string[]>([])
+  // 2026-05-10 (5 回目): tweet_reactions の insert が silent fail している
+  // 真因を完全特定するため、画面上テストボタンの結果を保持。
+  const [debugTestResult, setDebugTestResult] = useState<string>('(未実行)')
   // 返信 / いいねは初回ロード時に一括取得 (タブ切替で空白を避けるため)。
   // タブ未訪問でも UI 完全描画したいので、loaded フラグは持たない。
   const [tweetLoading,   setTweetLoading]   = useState(false)
@@ -1708,6 +1711,108 @@ export default function MyPage() {
               <div style={{ marginTop: 4 }}>tweets (own) ids:</div>
               <div style={{ wordBreak: 'break-all', fontSize: 10 }}>
                 {tweets.length === 0 ? '(空)' : tweets.slice(0, 10).map(t => t.id.slice(0,8)).join(', ')}
+              </div>
+              {/* 2026-05-10 (5 回目): tweet_reactions の insert silent fail
+                  真因を完全特定するためのテストボタン。
+                  押すと自分の tweet 1 件に対して upsert を実行し、結果と
+                  直後の SELECT 確認結果を画面に表示。 */}
+              <div style={{ marginTop: 8, borderTop: '1px solid rgba(255,255,0,0.3)', paddingTop: 8 }}>
+                <button
+                  onClick={async () => {
+                    if (!userId || tweets.length === 0) {
+                      setDebugTestResult('userId または own tweet が空')
+                      return
+                    }
+                    const supabase = createClient()
+                    const targetTweetId = tweets[0].id
+                    const lines: string[] = []
+                    lines.push(`=== TEST: tweet_reactions insert ===`)
+                    lines.push(`target_tweet_id: ${targetTweetId.slice(0, 12)}...`)
+                    lines.push(`my_userId: ${userId.slice(0, 12)}...`)
+
+                    // 1. auth.getUser() で auth.uid を再確認
+                    try {
+                      const { data: authData, error: authErr } = await supabase.auth.getUser()
+                      lines.push(`\n[1] auth.getUser():`)
+                      lines.push(`  user.id: ${authData?.user?.id?.slice(0, 12) ?? 'null'}...`)
+                      lines.push(`  matches userId: ${authData?.user?.id === userId}`)
+                      lines.push(`  err: ${authErr ? authErr.message : 'none'}`)
+                    } catch (e: any) {
+                      lines.push(`  EXCEPTION: ${e?.message ?? e}`)
+                    }
+
+                    // 2. 既存行を SELECT
+                    try {
+                      const { data: existingRow, error: e1 } = await supabase
+                        .from('tweet_reactions')
+                        .select('*')
+                        .eq('tweet_id', targetTweetId)
+                        .eq('user_id', userId)
+                        .maybeSingle()
+                      lines.push(`\n[2] 既存 select:`)
+                      lines.push(`  data: ${JSON.stringify(existingRow)}`)
+                      lines.push(`  err: ${e1 ? `${e1.code} / ${e1.message}` : 'none'}`)
+                    } catch (e: any) {
+                      lines.push(`  EXCEPTION: ${e?.message ?? e}`)
+                    }
+
+                    // 3. upsert を実行
+                    try {
+                      const upsertRes: any = await supabase
+                        .from('tweet_reactions')
+                        .upsert(
+                          { tweet_id: targetTweetId, user_id: userId, reaction: 'heart' },
+                          { onConflict: 'tweet_id,user_id' },
+                        )
+                        .select()
+                      lines.push(`\n[3] upsert result:`)
+                      lines.push(`  status: ${upsertRes.status ?? '?'}`)
+                      lines.push(`  count: ${upsertRes.count ?? '?'}`)
+                      lines.push(`  data: ${JSON.stringify(upsertRes.data)}`)
+                      lines.push(`  err: ${upsertRes.error ? `${upsertRes.error.code ?? '?'} / ${upsertRes.error.message ?? '?'} / details=${upsertRes.error.details ?? '?'} / hint=${upsertRes.error.hint ?? '?'}` : 'none'}`)
+                    } catch (e: any) {
+                      lines.push(`  EXCEPTION: ${e?.message ?? e}`)
+                    }
+
+                    // 4. upsert 後の SELECT で確認
+                    try {
+                      const { data: afterRow, error: e2 } = await supabase
+                        .from('tweet_reactions')
+                        .select('*')
+                        .eq('tweet_id', targetTweetId)
+                        .eq('user_id', userId)
+                        .maybeSingle()
+                      lines.push(`\n[4] upsert 後 select:`)
+                      lines.push(`  data: ${JSON.stringify(afterRow)}`)
+                      lines.push(`  err: ${e2 ? `${e2.code} / ${e2.message}` : 'none'}`)
+                    } catch (e: any) {
+                      lines.push(`  EXCEPTION: ${e?.message ?? e}`)
+                    }
+
+                    // 5. 別経路で SELECT (.in tweet_id) し、JS で filter
+                    try {
+                      const { data: viaIn, error: e3 } = await supabase
+                        .from('tweet_reactions')
+                        .select('*')
+                        .in('tweet_id', [targetTweetId])
+                      lines.push(`\n[5] .in('tweet_id', [target]) で全 select:`)
+                      lines.push(`  data count: ${(viaIn ?? []).length}`)
+                      lines.push(`  rows: ${JSON.stringify(viaIn)}`)
+                      lines.push(`  err: ${e3 ? `${e3.code} / ${e3.message}` : 'none'}`)
+                    } catch (e: any) {
+                      lines.push(`  EXCEPTION: ${e?.message ?? e}`)
+                    }
+
+                    setDebugTestResult(lines.join('\n'))
+                  }}
+                  className="w-full py-2 rounded text-xs font-bold"
+                  style={{ background: '#7c3aed', color: 'white' }}
+                >
+                  ▶ TEST: tweet_reactions insert/select
+                </button>
+                <div style={{ marginTop: 8, fontSize: 10, whiteSpace: 'pre-wrap', wordBreak: 'break-all', background: 'rgba(0,0,0,0.4)', padding: 6, borderRadius: 4 }}>
+                  {debugTestResult}
+                </div>
               </div>
             </div>
 
