@@ -1038,7 +1038,13 @@ function TimelineFeedPane({
 
     const profileMap = new Map<string, any>(((profilesRes as any).data ?? []).map((p: any) => [p.id, p]))
     const reactionsByTweet = new Map<string, any[]>()
+    // RLS の OR ポリシーで同一 (tweet_id, user_id, reaction) 行が複数返却される
+    // ケースの defensive 対策。ハート数が水増し表示されるバグの予防。
+    const reactionSeen = new Set<string>()
     for (const r of ((reactionsRes as any).data ?? [])) {
+      const dedupKey = `${r.tweet_id}|${r.user_id}|${r.reaction}`
+      if (reactionSeen.has(dedupKey)) continue
+      reactionSeen.add(dedupKey)
       if (!reactionsByTweet.has(r.tweet_id)) reactionsByTweet.set(r.tweet_id, [])
       reactionsByTweet.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
     }

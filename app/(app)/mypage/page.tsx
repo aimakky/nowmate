@@ -513,7 +513,13 @@ export default function MyPage() {
         ])
         const myProf = (profEnrich as any).data ?? null
         const reactByT = new Map<string, any[]>()
+        // RLS の OR ポリシーで同一 (tweet_id, user_id, reaction) 行が複数返却される
+        // ケースの defensive 対策。ハート数が水増し表示されるバグの予防。
+        const reactSeen = new Set<string>()
         for (const r of ((reactEnrich as any).data ?? [])) {
+          const dedupKey = `${r.tweet_id}|${r.user_id}|${r.reaction}`
+          if (reactSeen.has(dedupKey)) continue
+          reactSeen.add(dedupKey)
           if (!reactByT.has(r.tweet_id)) reactByT.set(r.tweet_id, [])
           reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
         }
@@ -639,7 +645,13 @@ export default function MyPage() {
           const profMap = new Map<string, any>()
           for (const p of ((authProfRes as any).data ?? [])) profMap.set(p.id, p)
           const reactByT = new Map<string, any[]>()
+          // RLS の OR ポリシーで同一 (tweet_id, user_id, reaction) 行が複数返却される
+          // ケースの defensive 対策。ハート数が水増し表示されるバグの予防。
+          const reactSeen = new Set<string>()
           for (const r of ((ltReactRes as any).data ?? [])) {
+            const dedupKey = `${r.tweet_id}|${r.user_id}|${r.reaction}`
+            if (reactSeen.has(dedupKey)) continue
+            reactSeen.add(dedupKey)
             if (!reactByT.has(r.tweet_id)) reactByT.set(r.tweet_id, [])
             reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
           }
@@ -874,7 +886,13 @@ export default function MyPage() {
           const profMap = new Map<string, any>()
           for (const p of ((authProfRes as any).data ?? [])) profMap.set(p.id, p)
           const reactByT = new Map<string, any[]>()
+          // RLS の OR ポリシーで同一 (tweet_id, user_id, reaction) 行が複数返却される
+          // ケースの defensive 対策。ハート数が水増し表示されるバグの予防。
+          const reactSeen = new Set<string>()
           for (const r of ((ltReactRes as any).data ?? [])) {
+            const dedupKey = `${r.tweet_id}|${r.user_id}|${r.reaction}`
+            if (reactSeen.has(dedupKey)) continue
+            reactSeen.add(dedupKey)
             if (!reactByT.has(r.tweet_id)) reactByT.set(r.tweet_id, [])
             reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
           }
@@ -1058,7 +1076,13 @@ export default function MyPage() {
       ])
       const myProf = (profRes as any).data ?? null
       const reactByT = new Map<string, any[]>()
+      // RLS の OR ポリシーで同一 (tweet_id, user_id, reaction) 行が複数返却される
+      // ケースの defensive 対策。ハート数が水増し表示されるバグの予防。
+      const reactSeen = new Set<string>()
       for (const r of ((reactRes as any).data ?? [])) {
+        const dedupKey = `${r.tweet_id}|${r.user_id}|${r.reaction}`
+        if (reactSeen.has(dedupKey)) continue
+        reactSeen.add(dedupKey)
         if (!reactByT.has(r.tweet_id)) reactByT.set(r.tweet_id, [])
         reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
       }
