@@ -595,11 +595,11 @@ export default function MyPage() {
       for (const r of ((heartReactions ?? []) as any[])) {
         if (r.tweet_id && r.created_at) ltLikedAtMap.set(r.tweet_id, r.created_at)
       }
-      // 2026-05-10 (4 回目): スクショで判明した RLS の非対称挙動への対策。
-      // tweet_reactions WHERE user_id=me で取得すると 0 件、しかし
-      // .in('tweet_id', own_tweets) では self-like 行が見える、という状態。
-      // Fallback: 自分の tweets に対する全 reactions を取って、user_id=me で
-      // JS フィルタする別ルートで self-like を取得。
+      // 2026-05-10: tweet_reactions の RLS 非対称挙動への対策。
+      // `WHERE user_id=me` 単独では 0 件しか返らないが、
+      // `.in('tweet_id', own_tweets)` 経由なら self-like 行が見える。
+      // own tweets に対する全 reactions を取って、user_id=me で JS フィルタ
+      // する別ルートで self-like を取得。
       const ownTweetIdsForFallback = rawMyTweets.map((t: any) => t.id).filter(Boolean)
       if (ownTweetIdsForFallback.length > 0) {
         const { data: reactionsOnOwn } = await supabase
@@ -661,16 +661,9 @@ export default function MyPage() {
           setLikedTweets(ltRaw as TweetData[])
         }
       }
-      // 2026-05-10 マッキーさん指示「自分の投稿に自分でハートを押しても、
-      // マイページの『いいね』欄に表示されない」事象の防御策。
-      // 自分が反応した tweet_id (heartTweetIds) の中に、上記 .in() SELECT で
-      // 取得できなかった own tweet があれば、既取得済みの own tweets
-      // (rawMyTweets) から補完して likedTweets に追加する。
-      // 既に setLikedTweets が呼ばれていなくても (ltRaw が空でも) 動作する
-      // よう、heartTweetIds.length > 0 の外側で実行する。
-      // 2026-05-10 (2 回目): rawMyTweets の補完だけでは不足する場合があった
-      // ため、Supabase に own user_id 限定で「いいねした自分の tweet」を直接
-      // 再取得する明示的フォールバックを追加。
+      // 2026-05-10: 自分が反応した own tweet が上記 .in() SELECT で漏れた
+      // 場合の追加 fallback。own user_id 限定で直接再取得して likedTweets
+      // に補充する。
       if (heartTweetIds.length > 0) {
         const { data: ownLikedTweetsRows } = await supabase
           .from('tweets')
@@ -760,8 +753,8 @@ export default function MyPage() {
       // 取得できなかった own village_post があれば、既取得済みの own
       // village_posts (myUnifiedVillagePosts) から補完して likedVillagePosts
       // に追加する。
-      // 2026-05-10 (2 回目): 自分の村投稿が反応欄に出ない問題への防御。
-      // Supabase に own user_id 限定で「いいねした自分の村投稿」を直接再取得。
+      // 2026-05-10: 自分が反応した own village_post が漏れた場合の追加 fallback。
+      // own user_id 限定で直接再取得して likedVillagePosts に補充する。
       if (likedVillageIds.length > 0) {
         const { data: ownLikedVRows } = await supabase
           .from('village_posts')
@@ -809,18 +802,14 @@ export default function MyPage() {
   // 修正: いいねタブを開いた瞬間 (activeTab === 'likes' になった時) に
   // tweet_reactions / village_reactions を再取得して likedTweets /
   // likedVillagePosts を最新化する独立 useEffect を追加。
-  // 確認後、DEBUG ログは除去予定 (CLAUDE.md「最短ライフサイクル」)。
   useEffect(() => {
     if (activeTab !== 'likes' || !userId) return
     let cancelled = false
     async function reloadLikes() {
       const supabase = createClient()
-      // ── 2026-05-10 (6 回目) 完全書き直し ──
-      // RLS の非対称挙動 (`.eq('user_id', me)` が 0 を返すが
-      // `.in('tweet_id', [own_ids])` では取れる) が確定したため、
-      // 全ての self-like 取得を `.in('tweet_id', [...])` または
-      // `.in('post_id', [...])` パターンに統一。
-      // テストボタンの [5] で動作確認済の方法。
+      // 2026-05-10: tweet_reactions の RLS 非対称挙動 (`.eq('user_id', me)` が
+      // 0 を返すが `.in('tweet_id', [own_ids])` では取れる) を回避するため、
+      // self-like 取得は `.in('tweet_id', [...])` パターンを主軸にしている。
       const ltLikedAtMap = new Map<string, string>()
       let heartTweetIds: string[] = []
 
@@ -979,10 +968,8 @@ export default function MyPage() {
       } else {
         setLikedVillagePosts([])
       }
-      // 2026-05-10 マッキーさん指示「自分の村投稿に自分でハートを押しても、
-      // いいね欄に表示されない」事象の防御策 (reloadLikes 版)。
-      // 2026-05-10 (2 回目): villagePosts state は stale の可能性があるため、
-      // Supabase 直接フォールバックに変更。
+      // 2026-05-10: 自分が反応した own village_post が漏れた場合の追加
+      // fallback (reloadLikes 版)。own user_id 限定で直接再取得して補充。
       if (likedVillageIds.length > 0) {
         const { data: ownLikedVRows } = await supabase
           .from('village_posts')
@@ -1635,10 +1622,9 @@ export default function MyPage() {
         {activeTab === 'likes' && (
           <div className="px-4 pt-4 space-y-3">
 
-            {/* 2026-05-10 (7 回目): 空状態判定にも tweets state からの
-                self-liked 抽出を考慮。reloadLikes が動かないケースでも
+            {/* 空状態判定: tweets state の self-liked 抽出も考慮。
                 投稿タブで heart RED の自分のツイートがあれば「いいね」
-                タブにも表示されるべき。 */}
+                タブにも表示されるため、その場合は空ではない。 */}
             {likedTweets.length === 0 && likedVillagePosts.length === 0 &&
               !tweets.some(t => {
                 const reactions = (t as any).tweet_reactions as { user_id: string; reaction: string }[] | undefined
@@ -1661,13 +1647,12 @@ export default function MyPage() {
                 // CLAUDE.md「投稿者情報の混同防止」準拠: liked_at は「いいね押した日時」、
                 // 投稿の created_at は「元投稿者が投稿した日時」。両者を絶対に混同しない。
                 //
-                // 2026-05-10 (7 回目) 真因確定後の最終修正:
-                // tweet_reactions の RLS 非対称により reloadLikes の取得が
-                // 失敗するケースに対応するため、tweets state から直接
-                // self-liked own tweets を抽出する。tweets state は既に
-                // loadTweets で `.in('tweet_id', [own])` で reactions が
-                // enrich されているので確実に取れる (= 投稿タブで heart
-                // RED 表示が成立する仕組みと完全に同じ)。
+                // 2026-05-10: tweet_reactions の RLS 非対称挙動により
+                // reloadLikes の取得が失敗するケースに対応するため、tweets
+                // state から直接 self-liked own tweets を抽出する。
+                // tweets state は loadTweets で `.in('tweet_id', [own])` 経由
+                // で reactions が enrich されているので確実に取れる (= 投稿
+                // タブで heart RED 表示が成立する仕組みと同じ)。
                 const selfLikedFromTweetsState: TweetData[] = tweets.filter(t => {
                   const reactions = (t as any).tweet_reactions as { user_id: string; reaction: string }[] | undefined
                   return reactions?.some(r => r.user_id === userId && r.reaction === 'heart')
