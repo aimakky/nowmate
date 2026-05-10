@@ -153,7 +153,7 @@ export default function GrowthPortfolio(props: Props) {
           {/* カード本体（スクショ用） */}
           <div className="p-4">
             <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-2">
-              自由村 成長レポート
+              YVOICE 成長レポート
             </p>
             <div className="grid grid-cols-2 gap-2 mb-3">
               {GROWTH_TYPES.map(g => (
