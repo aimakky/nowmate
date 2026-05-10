@@ -353,18 +353,6 @@ export default function MyPage() {
   const [myReplies, setMyReplies] = useState<Array<{ id: string; tweet_id: string; content: string; created_at: string }>>([])
   const [likedTweets, setLikedTweets] = useState<TweetData[]>([])
   const [likedVillagePosts, setLikedVillagePosts] = useState<MyVillagePost[]>([])
-  // 2026-05-10 一時 DEBUG state: いいね欄に self-like 過去分が出ない事象の
-  // 真因切り分け用。tweet_reactions / village_reactions の生 id 配列を保持し、
-  // DEBUG パネルに表示する。確認後の次 commit で除去予定。
-  const [debugHeartTweetIds, setDebugHeartTweetIds] = useState<string[]>([])
-  const [debugLikedVillageIds, setDebugLikedVillageIds] = useState<string[]>([])
-  // 2026-05-10 (5 回目): tweet_reactions の insert が silent fail している
-  // 真因を完全特定するため、画面上テストボタンの結果を保持。
-  const [debugTestResult, setDebugTestResult] = useState<string>('(未実行)')
-  // 2026-05-10 (6 回目): reloadLikes を強制再実行するための counter。
-  // ボタンを押すと reloadCounter が inc し、useEffect の deps に含まれる
-  // ため reloadLikes が再実行される。
-  const [reloadCounter, setReloadCounter] = useState(0)
   // 返信 / いいねは初回ロード時に一括取得 (タブ切替で空白を避けるため)。
   // タブ未訪問でも UI 完全描画したいので、loaded フラグは持たない。
   const [tweetLoading,   setTweetLoading]   = useState(false)
@@ -629,7 +617,6 @@ export default function MyPage() {
           }
         }
       }
-      setDebugHeartTweetIds(heartTweetIds)
       if (heartTweetIds.length > 0) {
         const { data: ltRows } = await supabase
           .from('tweets')
@@ -691,11 +678,6 @@ export default function MyPage() {
           .eq('user_id', user.id)
           .in('id', heartTweetIds)
         const ownRows = (ownLikedTweetsRows ?? []) as any[]
-        console.log('[likes-debug:initial:tweets]', {
-          heartTweetIds,
-          ownLikedTweetsRowsCount: ownRows.length,
-          rawMyTweetsCount: rawMyTweets.length,
-        })
         if (ownRows.length > 0) {
           // 自分の投稿なので profile / trust は p / trustData (= 自分のもの)
           const myProf = p
@@ -722,7 +704,6 @@ export default function MyPage() {
         .select('post_id, created_at')
         .eq('user_id', user.id)
       const likedVillageIds = ((allMyVillageReacts ?? []) as any[]).map(r => r.post_id).filter(Boolean)
-      setDebugLikedVillageIds(likedVillageIds)
       const lvLikedAtMap = new Map<string, string>()
       for (const r of ((allMyVillageReacts ?? []) as any[])) {
         if (r.post_id && r.created_at) lvLikedAtMap.set(r.post_id, r.created_at)
@@ -788,11 +769,6 @@ export default function MyPage() {
           .eq('user_id', user.id)
           .in('id', likedVillageIds)
         const ownVRows = (ownLikedVRows ?? []) as any[]
-        console.log('[likes-debug:initial:village]', {
-          likedVillageIds,
-          ownLikedVRowsCount: ownVRows.length,
-          myUnifiedVillagePostsCount: myUnifiedVillagePosts.length,
-        })
         if (ownVRows.length > 0) {
           // 自分の村投稿なので author_profile / author_trust は自分
           const ownAuthorProfile = p
@@ -887,7 +863,6 @@ export default function MyPage() {
         }
       }
 
-      setDebugHeartTweetIds(heartTweetIds)
 
       // 4) heartTweetIds に対応する tweets 本体を fetch + enrich
       if (heartTweetIds.length > 0) {
@@ -946,7 +921,6 @@ export default function MyPage() {
         .from('village_reactions').select('post_id, created_at').eq('user_id', userId)
       if (cancelled) return
       const likedVillageIds = ((allMyVillageReacts ?? []) as any[]).map(r => r.post_id).filter(Boolean)
-      setDebugLikedVillageIds(likedVillageIds)
       // 2026-05-09: いいね欄ソート用 post_id → liked_at Map (reloadLikes 用)
       const lvLikedAtMap = new Map<string, string>()
       for (const r of ((allMyVillageReacts ?? []) as any[])) {
@@ -1017,11 +991,6 @@ export default function MyPage() {
           .in('id', likedVillageIds)
         if (cancelled) return
         const ownVRows = (ownLikedVRows ?? []) as any[]
-        console.log('[likes-debug:reload:village]', {
-          likedVillageIds,
-          ownLikedVRowsCount: ownVRows.length,
-          villagePostsStateCount: villagePosts.length,
-        })
         if (ownVRows.length > 0) {
           const ownAuthorProfile = profile
           const ownAuthorTrust = trust ? { tier: trust.tier ?? null } : null
@@ -1047,9 +1016,7 @@ export default function MyPage() {
     }
     reloadLikes()
     return () => { cancelled = true }
-    // 2026-05-10 (6 回目): reloadCounter を deps に追加。手動で再実行できる。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, userId, reloadCounter])
+  }, [activeTab, userId])
 
   // PR #31: ハート押下時に画面遷移せず、いいね処理だけ実行。
   // PR #46: async + await + error 検出 + onConflict 明示で silent failure 解消。
@@ -1667,152 +1634,6 @@ export default function MyPage() {
             自分がハートを押した tweets + village_posts を時系列降順で表示。 */}
         {activeTab === 'likes' && (
           <div className="px-4 pt-4 space-y-3">
-            {/* 2026-05-10 一時診断パネル: マッキーさん iPhone でスクショ可能。
-                PR #79 の修正後も「自分投稿が表示されない」報告継続のため、
-                画面上で何が起きているか判別できるよう可視化。
-                確認後に除去予定。 */}
-            <div className="rounded-2xl p-3 text-xs font-mono"
-              style={{ background: 'rgba(255,255,0,0.08)', border: '1px solid rgba(255,255,0,0.3)', color: 'rgba(255,255,255,0.85)' }}>
-              <div style={{ fontWeight: 'bold', marginBottom: 4 }}>🔧 一時 DEBUG 表示 (確認後に除去)</div>
-              <div>userId: {userId ? userId.slice(0, 8) + '...' : 'null'}</div>
-              <div style={{ marginTop: 4, color: '#fbbf24', fontWeight: 'bold' }}>★ tweet_reactions WHERE user_id=me の生件数:</div>
-              <div>debugHeartTweetIds count: <strong>{debugHeartTweetIds.length}</strong></div>
-              <div style={{ wordBreak: 'break-all', fontSize: 10 }}>
-                {debugHeartTweetIds.length === 0 ? '(空 = DB に行なし)' : debugHeartTweetIds.slice(0, 10).map(id => id.slice(0,8)).join(', ')}
-              </div>
-              <div style={{ marginTop: 4, color: '#fbbf24', fontWeight: 'bold' }}>★ village_reactions WHERE user_id=me の生件数:</div>
-              <div>debugLikedVillageIds count: <strong>{debugLikedVillageIds.length}</strong></div>
-              <div style={{ wordBreak: 'break-all', fontSize: 10 }}>
-                {debugLikedVillageIds.length === 0 ? '(空 = DB に行なし)' : debugLikedVillageIds.slice(0, 10).map(id => id.slice(0,8)).join(', ')}
-              </div>
-              <div style={{ marginTop: 4, borderTop: '1px solid rgba(255,255,0,0.3)', paddingTop: 4 }}>
-                <div>likedTweets count: {likedTweets.length} (= 表示される件数)</div>
-                <div>likedVillagePosts count: {likedVillagePosts.length}</div>
-                <div>tweets state (own) count: {tweets.length}</div>
-                <div>villagePosts state (own) count: {villagePosts.length}</div>
-              </div>
-              <div style={{ marginTop: 4 }}>likedTweets ids (author 付):</div>
-              <div style={{ wordBreak: 'break-all', fontSize: 10 }}>
-                {likedTweets.length === 0 ? '(空)' : likedTweets.map(t => `${t.id.slice(0,8)}(by:${(t as any).user_id?.slice(0,8) ?? '?'})`).join(', ')}
-              </div>
-              <div style={{ marginTop: 4 }}>tweets (own) ids:</div>
-              <div style={{ wordBreak: 'break-all', fontSize: 10 }}>
-                {tweets.length === 0 ? '(空)' : tweets.slice(0, 10).map(t => t.id.slice(0,8)).join(', ')}
-              </div>
-              {/* 2026-05-10 (5 回目): tweet_reactions の insert silent fail
-                  真因を完全特定するためのテストボタン。
-                  押すと自分の tweet 1 件に対して upsert を実行し、結果と
-                  直後の SELECT 確認結果を画面に表示。 */}
-              <div style={{ marginTop: 8, borderTop: '1px solid rgba(255,255,0,0.3)', paddingTop: 8 }}>
-                <button
-                  onClick={async () => {
-                    if (!userId || tweets.length === 0) {
-                      setDebugTestResult('userId または own tweet が空')
-                      return
-                    }
-                    const supabase = createClient()
-                    const targetTweetId = tweets[0].id
-                    const lines: string[] = []
-                    lines.push(`=== TEST: tweet_reactions insert ===`)
-                    lines.push(`target_tweet_id: ${targetTweetId.slice(0, 12)}...`)
-                    lines.push(`my_userId: ${userId.slice(0, 12)}...`)
-
-                    // 1. auth.getUser() で auth.uid を再確認
-                    try {
-                      const { data: authData, error: authErr } = await supabase.auth.getUser()
-                      lines.push(`\n[1] auth.getUser():`)
-                      lines.push(`  user.id: ${authData?.user?.id?.slice(0, 12) ?? 'null'}...`)
-                      lines.push(`  matches userId: ${authData?.user?.id === userId}`)
-                      lines.push(`  err: ${authErr ? authErr.message : 'none'}`)
-                    } catch (e: any) {
-                      lines.push(`  EXCEPTION: ${e?.message ?? e}`)
-                    }
-
-                    // 2. 既存行を SELECT
-                    try {
-                      const { data: existingRow, error: e1 } = await supabase
-                        .from('tweet_reactions')
-                        .select('*')
-                        .eq('tweet_id', targetTweetId)
-                        .eq('user_id', userId)
-                        .maybeSingle()
-                      lines.push(`\n[2] 既存 select:`)
-                      lines.push(`  data: ${JSON.stringify(existingRow)}`)
-                      lines.push(`  err: ${e1 ? `${e1.code} / ${e1.message}` : 'none'}`)
-                    } catch (e: any) {
-                      lines.push(`  EXCEPTION: ${e?.message ?? e}`)
-                    }
-
-                    // 3. upsert を実行
-                    try {
-                      const upsertRes: any = await supabase
-                        .from('tweet_reactions')
-                        .upsert(
-                          { tweet_id: targetTweetId, user_id: userId, reaction: 'heart' },
-                          { onConflict: 'tweet_id,user_id' },
-                        )
-                        .select()
-                      lines.push(`\n[3] upsert result:`)
-                      lines.push(`  status: ${upsertRes.status ?? '?'}`)
-                      lines.push(`  count: ${upsertRes.count ?? '?'}`)
-                      lines.push(`  data: ${JSON.stringify(upsertRes.data)}`)
-                      lines.push(`  err: ${upsertRes.error ? `${upsertRes.error.code ?? '?'} / ${upsertRes.error.message ?? '?'} / details=${upsertRes.error.details ?? '?'} / hint=${upsertRes.error.hint ?? '?'}` : 'none'}`)
-                    } catch (e: any) {
-                      lines.push(`  EXCEPTION: ${e?.message ?? e}`)
-                    }
-
-                    // 4. upsert 後の SELECT で確認
-                    try {
-                      const { data: afterRow, error: e2 } = await supabase
-                        .from('tweet_reactions')
-                        .select('*')
-                        .eq('tweet_id', targetTweetId)
-                        .eq('user_id', userId)
-                        .maybeSingle()
-                      lines.push(`\n[4] upsert 後 select:`)
-                      lines.push(`  data: ${JSON.stringify(afterRow)}`)
-                      lines.push(`  err: ${e2 ? `${e2.code} / ${e2.message}` : 'none'}`)
-                    } catch (e: any) {
-                      lines.push(`  EXCEPTION: ${e?.message ?? e}`)
-                    }
-
-                    // 5. 別経路で SELECT (.in tweet_id) し、JS で filter
-                    try {
-                      const { data: viaIn, error: e3 } = await supabase
-                        .from('tweet_reactions')
-                        .select('*')
-                        .in('tweet_id', [targetTweetId])
-                      lines.push(`\n[5] .in('tweet_id', [target]) で全 select:`)
-                      lines.push(`  data count: ${(viaIn ?? []).length}`)
-                      lines.push(`  rows: ${JSON.stringify(viaIn)}`)
-                      lines.push(`  err: ${e3 ? `${e3.code} / ${e3.message}` : 'none'}`)
-                    } catch (e: any) {
-                      lines.push(`  EXCEPTION: ${e?.message ?? e}`)
-                    }
-
-                    setDebugTestResult(lines.join('\n'))
-                  }}
-                  className="w-full py-2 rounded text-xs font-bold"
-                  style={{ background: '#7c3aed', color: 'white' }}
-                >
-                  ▶ TEST: tweet_reactions insert/select
-                </button>
-                <div style={{ marginTop: 8, fontSize: 10, whiteSpace: 'pre-wrap', wordBreak: 'break-all', background: 'rgba(0,0,0,0.4)', padding: 6, borderRadius: 4 }}>
-                  {debugTestResult}
-                </div>
-                {/* 2026-05-10 (6 回目): reloadLikes 強制再実行ボタン。
-                    DEBUG パネル上部の debugHeartTweetIds count が 0 のまま
-                    動かない事象に対し、ボタンで強制再実行して count が
-                    変わるかテストする。 */}
-                <button
-                  onClick={() => setReloadCounter(c => c + 1)}
-                  className="w-full mt-2 py-2 rounded text-xs font-bold"
-                  style={{ background: '#10b981', color: 'white' }}
-                >
-                  🔄 reloadLikes 強制再実行 (counter: {reloadCounter})
-                </button>
-              </div>
-            </div>
 
             {/* 2026-05-10 (7 回目): 空状態判定にも tweets state からの
                 self-liked 抽出を考慮。reloadLikes が動かないケースでも
