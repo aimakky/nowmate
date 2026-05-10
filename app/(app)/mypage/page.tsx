@@ -1620,6 +1620,33 @@ export default function MyPage() {
             自分がハートを押した tweets + village_posts を時系列降順で表示。 */}
         {activeTab === 'likes' && (
           <div className="px-4 pt-4 space-y-3">
+            {/* 2026-05-10 一時診断パネル: マッキーさん iPhone でスクショ可能。
+                PR #79 の修正後も「自分投稿が表示されない」報告継続のため、
+                画面上で何が起きているか判別できるよう可視化。
+                確認後に除去予定。 */}
+            <div className="rounded-2xl p-3 text-xs font-mono"
+              style={{ background: 'rgba(255,255,0,0.08)', border: '1px solid rgba(255,255,0,0.3)', color: 'rgba(255,255,255,0.85)' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: 4 }}>🔧 一時 DEBUG 表示 (確認後に除去)</div>
+              <div>userId: {userId ? userId.slice(0, 8) + '...' : 'null'}</div>
+              <div>likedTweets count: {likedTweets.length}</div>
+              <div>likedVillagePosts count: {likedVillagePosts.length}</div>
+              <div>likedIds Set size: {likedIds.size}</div>
+              <div>tweets state count: {tweets.length}</div>
+              <div>villagePosts state count: {villagePosts.length}</div>
+              <div style={{ marginTop: 4 }}>likedTweets ids:</div>
+              <div style={{ wordBreak: 'break-all' }}>
+                {likedTweets.length === 0 ? '(空)' : likedTweets.map(t => `${t.id.slice(0,8)}(by:${(t as any).user_id?.slice(0,8) ?? '?'})`).join(', ')}
+              </div>
+              <div style={{ marginTop: 4 }}>likedVillagePosts ids:</div>
+              <div style={{ wordBreak: 'break-all' }}>
+                {likedVillagePosts.length === 0 ? '(空)' : likedVillagePosts.map(v => v.id.slice(0,8)).join(', ')}
+              </div>
+              <div style={{ marginTop: 4 }}>tweets state ids (own):</div>
+              <div style={{ wordBreak: 'break-all' }}>
+                {tweets.length === 0 ? '(空)' : tweets.slice(0, 5).map(t => t.id.slice(0,8)).join(', ')}
+              </div>
+            </div>
+
             {likedTweets.length === 0 && likedVillagePosts.length === 0 ? (
               <div className="rounded-2xl p-8 text-center"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
