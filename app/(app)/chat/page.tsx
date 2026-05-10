@@ -31,12 +31,22 @@ interface OnlineUser {
   avatar_url: string | null
 }
 
+// 2026-05-09 マッキーさん指示「取得済みデータがあれば skeleton に戻さず前回表示を
+// 維持しながら裏で再取得」対応 (rule 8)。
+// AppLayout の `key={pathname}` で本コンポーネントは毎回 unmount/remount されるが、
+// この module-level 変数は React tree 外なので保持される。再訪問時は cached から
+// 即時復元 → loading=false で skeleton スキップ → 裏で fetch して最新化。
+let cachedDirects: DirectChat[] | null = null
+let cachedRequests: DirectChat[] | null = null
+let cachedOnlineUsers: OnlineUser[] | null = null
+
 export default function ChatListPage() {
   const router = useRouter()
-  const [directs,   setDirects]   = useState<DirectChat[]>([])
-  const [requests,  setRequests]  = useState<DirectChat[]>([])
-  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
-  const [loading,   setLoading]   = useState(true)
+  const [directs,   setDirects]   = useState<DirectChat[]>(cachedDirects ?? [])
+  const [requests,  setRequests]  = useState<DirectChat[]>(cachedRequests ?? [])
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>(cachedOnlineUsers ?? [])
+  // 初回訪問のみ skeleton 表示。再訪問は cached を即時表示しつつ裏で再 fetch。
+  const [loading,   setLoading]   = useState(cachedDirects === null)
   const [userId,    setUserId]    = useState<string | null>(null)
   const [tab,       setTab]       = useState<'chat' | 'request'>('chat')
 
@@ -57,6 +67,10 @@ export default function ChatListPage() {
 
         if (matchErr || !matchData || matchData.length === 0) {
           setLoading(false)
+          // 2026-05-09: 「マッチ 0 件」も有効な状態としてキャッシュ。再訪問時に skeleton をスキップ。
+          cachedDirects = []
+          cachedRequests = []
+          cachedOnlineUsers = []
           return
         }
 
@@ -119,6 +133,11 @@ export default function ChatListPage() {
           .filter((p: any) => p.is_online && otherIds.includes(p.id))
           .map((p: any) => ({ id: p.id, display_name: p.display_name, avatar_url: p.avatar_url }))
         setOnlineUsers(online)
+
+        // 2026-05-09: module-level cache を更新。次回訪問時に skeleton をスキップできる。
+        cachedDirects = normalChats
+        cachedRequests = requestChats
+        cachedOnlineUsers = online
 
       } catch (e) {
         console.error('chat load error:', e)
@@ -330,18 +349,40 @@ export default function ChatListPage() {
         {/* チャットリスト */}
         <div className="pt-2">
           {loading ? (
-            <div className="space-y-2 px-4 pt-4">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="flex items-center gap-3 p-3.5 rounded-2xl animate-pulse"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,79,216,0.08)' }}>
-                  <div className="w-12 h-12 rounded-full flex-shrink-0" style={{ background: 'rgba(255,79,216,0.1)' }} />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3.5 rounded w-1/4" style={{ background: 'rgba(255,79,216,0.1)' }} />
-                    <div className="h-3 rounded w-2/3" style={{ background: 'rgba(255,79,216,0.07)' }} />
-                  </div>
+            // 2026-05-09 マッキーさん指示「skeleton と本表示の高さを揃える」対応。
+            // 旧 skeleton: 6 行フラット (~360px)。本表示の「オンライン中フレンド」rail
+            // (~80px) が loaded 後に上から差し込まれてコンテンツが ~80px 下にジャンプ。
+            // 新 skeleton: オンライン中 rail の placeholder を上部に確保 (~80px) + 6 行 row。
+            // loaded 後にオンラインフレンドあり → placeholder と入替 (高さ同じ、ジャンプなし)
+            // loaded 後にオンラインフレンドなし → placeholder が消えて 80px 上に詰まるが、
+            //   従来の「下にジャンプ」よりは UX 的に自然。
+            <>
+              {/* オンライン中 rail placeholder (本表示の onlineUsers section と同位置・同高さ) */}
+              <div className="px-4 pt-4 pb-3">
+                <div className="h-2.5 w-24 rounded mb-3 animate-pulse" style={{ background: 'rgba(255,79,216,0.12)' }} />
+                <div className="flex gap-4 overflow-x-hidden pb-1">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                      <div className="w-14 h-14 rounded-full animate-pulse" style={{ background: 'rgba(255,79,216,0.1)', border: '2px solid rgba(255,79,216,0.18)' }} />
+                      <div className="h-2 w-10 rounded animate-pulse" style={{ background: 'rgba(255,79,216,0.08)' }} />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+              {/* チャット行 skeleton (本表示と同じ row 構造) */}
+              <div className="space-y-2 px-4 pt-4">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3.5 rounded-2xl animate-pulse"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,79,216,0.08)' }}>
+                    <div className="w-12 h-12 rounded-full flex-shrink-0" style={{ background: 'rgba(255,79,216,0.1)' }} />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3.5 rounded w-1/4" style={{ background: 'rgba(255,79,216,0.1)' }} />
+                      <div className="h-3 rounded w-2/3" style={{ background: 'rgba(255,79,216,0.07)' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : directs.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6" style={{ minHeight: 'calc(100vh - 200px)' }}>
               {/* Chat bubble icon with sparkles */}
