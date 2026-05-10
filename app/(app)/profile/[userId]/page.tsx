@@ -346,7 +346,13 @@ export default function UserProfilePage() {
           supabase.from('tweet_replies').select('id, tweet_id').in('tweet_id', tIds),
         ])
         const reactByT = new Map<string, any[]>()
+        // RLS の OR ポリシーで同一 (tweet_id, user_id, reaction) 行が複数返却される
+        // ケースの defensive 対策。ハート数が水増し表示されるバグの予防。
+        const reactSeen = new Set<string>()
         for (const r of ((reactEnrich as any).data ?? [])) {
+          const dedupKey = `${r.tweet_id}|${r.user_id}|${r.reaction}`
+          if (reactSeen.has(dedupKey)) continue
+          reactSeen.add(dedupKey)
           if (!reactByT.has(r.tweet_id)) reactByT.set(r.tweet_id, [])
           reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
         }

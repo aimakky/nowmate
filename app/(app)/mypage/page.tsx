@@ -507,15 +507,22 @@ export default function MyPage() {
           supabase.from('profiles')
             .select('id, display_name, nationality, avatar_url, age_verified, age_verification_status')
             .eq('id', user.id).maybeSingle(),
-          supabase.from('tweet_reactions').select('tweet_id, user_id, reaction').in('tweet_id', tIds),
+          supabase.from('tweet_reactions').select('tweet_id, user_id, reaction, created_at').in('tweet_id', tIds),
           supabase.from('tweet_replies').select('id, tweet_id').in('tweet_id', tIds),
           supabase.from('user_trust').select('tier').eq('user_id', user.id).maybeSingle(),
         ])
         const myProf = (profEnrich as any).data ?? null
         const reactByT = new Map<string, any[]>()
+        // RLS の OR ポリシーで同一 (tweet_id, user_id, reaction) 行が複数返却される
+        // ケースの defensive 対策。ハート数が水増し表示されるバグの予防。
+        // 2026-05-10: created_at も含めて enrich (いいね欄ソート用 liked_at 導出のため)
+        const reactSeen = new Set<string>()
         for (const r of ((reactEnrich as any).data ?? [])) {
+          const dedupKey = `${r.tweet_id}|${r.user_id}|${r.reaction}`
+          if (reactSeen.has(dedupKey)) continue
+          reactSeen.add(dedupKey)
           if (!reactByT.has(r.tweet_id)) reactByT.set(r.tweet_id, [])
-          reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
+          reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction, created_at: r.created_at })
         }
         const replyByT = new Map<string, any[]>()
         for (const r of ((replyEnrich as any).data ?? [])) {
@@ -639,7 +646,13 @@ export default function MyPage() {
           const profMap = new Map<string, any>()
           for (const p of ((authProfRes as any).data ?? [])) profMap.set(p.id, p)
           const reactByT = new Map<string, any[]>()
+          // RLS の OR ポリシーで同一 (tweet_id, user_id, reaction) 行が複数返却される
+          // ケースの defensive 対策。ハート数が水増し表示されるバグの予防。
+          const reactSeen = new Set<string>()
           for (const r of ((ltReactRes as any).data ?? [])) {
+            const dedupKey = `${r.tweet_id}|${r.user_id}|${r.reaction}`
+            if (reactSeen.has(dedupKey)) continue
+            reactSeen.add(dedupKey)
             if (!reactByT.has(r.tweet_id)) reactByT.set(r.tweet_id, [])
             reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
           }
@@ -874,7 +887,13 @@ export default function MyPage() {
           const profMap = new Map<string, any>()
           for (const p of ((authProfRes as any).data ?? [])) profMap.set(p.id, p)
           const reactByT = new Map<string, any[]>()
+          // RLS の OR ポリシーで同一 (tweet_id, user_id, reaction) 行が複数返却される
+          // ケースの defensive 対策。ハート数が水増し表示されるバグの予防。
+          const reactSeen = new Set<string>()
           for (const r of ((ltReactRes as any).data ?? [])) {
+            const dedupKey = `${r.tweet_id}|${r.user_id}|${r.reaction}`
+            if (reactSeen.has(dedupKey)) continue
+            reactSeen.add(dedupKey)
             if (!reactByT.has(r.tweet_id)) reactByT.set(r.tweet_id, [])
             reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
           }
@@ -1052,15 +1071,22 @@ export default function MyPage() {
         client.from('profiles')
           .select('id, display_name, nationality, avatar_url')
           .eq('id', uid).maybeSingle(),
-        client.from('tweet_reactions').select('tweet_id, user_id, reaction').in('tweet_id', tIds),
+        client.from('tweet_reactions').select('tweet_id, user_id, reaction, created_at').in('tweet_id', tIds),
         client.from('tweet_replies').select('id, tweet_id').in('tweet_id', tIds),
         client.from('user_trust').select('tier').eq('user_id', uid).maybeSingle(),
       ])
       const myProf = (profRes as any).data ?? null
       const reactByT = new Map<string, any[]>()
+      // RLS の OR ポリシーで同一 (tweet_id, user_id, reaction) 行が複数返却される
+      // ケースの defensive 対策。ハート数が水増し表示されるバグの予防。
+      // 2026-05-10: created_at も含めて enrich (いいね欄ソート用 liked_at 導出のため)
+      const reactSeen = new Set<string>()
       for (const r of ((reactRes as any).data ?? [])) {
+        const dedupKey = `${r.tweet_id}|${r.user_id}|${r.reaction}`
+        if (reactSeen.has(dedupKey)) continue
+        reactSeen.add(dedupKey)
         if (!reactByT.has(r.tweet_id)) reactByT.set(r.tweet_id, [])
-        reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
+        reactByT.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction, created_at: r.created_at })
       }
       const replyByT = new Map<string, any[]>()
       for (const r of ((replyRes as any).data ?? [])) {
@@ -1653,11 +1679,20 @@ export default function MyPage() {
                 // tweets state は loadTweets で `.in('tweet_id', [own])` 経由
                 // で reactions が enrich されているので確実に取れる (= 投稿
                 // タブで heart RED 表示が成立する仕組みと同じ)。
-                const selfLikedFromTweetsState: TweetData[] = tweets.filter(t => {
-                  const reactions = (t as any).tweet_reactions as { user_id: string; reaction: string }[] | undefined
-                  return reactions?.some(r => r.user_id === userId && r.reaction === 'heart')
+                //
+                // 2026-05-10 マッキーさん指示「いいね欄を likes.created_at DESC に」
+                // 対応: tweets state の reactions から自分の heart 行の created_at を
+                // 取り出し、それを liked_at として注入する。これで「古い投稿に新しく
+                // いいねしたら一番上」というソート要件が selfLikedFromTweetsState 経路
+                // でも満たされる。
+                const selfLikedFromTweetsState: TweetData[] = tweets.flatMap(t => {
+                  const reactions = (t as any).tweet_reactions as { user_id: string; reaction: string; created_at?: string }[] | undefined
+                  const myHeart = reactions?.find(r => r.user_id === userId && r.reaction === 'heart')
+                  if (!myHeart) return []
+                  return [{ ...t, liked_at: myHeart.created_at ?? (t as any).liked_at ?? null } as TweetData]
                 })
                 // likedTweets と selfLikedFromTweetsState を id 重複除去で merge
+                // (likedTweets が優先 = reloadLikes 経由で正規 liked_at を持つので)
                 const mergedTweetMap = new Map<string, TweetData>()
                 for (const t of likedTweets) mergedTweetMap.set(t.id, t)
                 for (const t of selfLikedFromTweetsState) {

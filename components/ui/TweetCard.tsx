@@ -171,8 +171,14 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
   }
 
   const flag = getNationalityFlag(tweet.profiles?.nationality || '')
-  // 全リアクション総数 (heart/haha/wow/support/sad/fire 全部を「いいね」として扱う)
-  const totalReactions = tweet.tweet_reactions.length
+  // ハート数 = ユニーク user 数 (= 実際にいいねしているユーザー数)。
+  // 2026-05-10 マッキーさん指示: ハート数が「2」と水増し表示される現象の防御。
+  // DB 制約は UNIQUE(tweet_id, user_id) なので本来 1 ユーザー 1 行のはずだが、
+  // RLS の OR ポリシーで同一 (tweet_id, user_id) 行が複数返却されるケースが
+  // あるため、`.length` ではなく Set でユニーク user 数を計算する。
+  // これにより万一 enrichment 段階で重複除去が漏れても、表示段階で
+  // 必ず正しい数 (= 実際にいいねした人数) になる。
+  const totalReactions = new Set(tweet.tweet_reactions.map(r => r.user_id)).size
   const liked = myReaction === 'heart'
 
   return (
