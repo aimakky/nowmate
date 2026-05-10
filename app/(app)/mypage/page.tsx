@@ -639,6 +639,26 @@ export default function MyPage() {
           setLikedTweets(ltRaw as TweetData[])
         }
       }
+      // 2026-05-10 マッキーさん指示「自分の投稿に自分でハートを押しても、
+      // マイページの『いいね』欄に表示されない」事象の防御策。
+      // 自分が反応した tweet_id (heartTweetIds) の中に、上記 .in() SELECT で
+      // 取得できなかった own tweet があれば、既取得済みの own tweets
+      // (rawMyTweets) から補完して likedTweets に追加する。
+      // 既に setLikedTweets が呼ばれていなくても (ltRaw が空でも) 動作する
+      // よう、heartTweetIds.length > 0 の外側で実行する。
+      if (heartTweetIds.length > 0 && rawMyTweets.length > 0) {
+        const heartIdSet = new Set(heartTweetIds)
+        const ownLikedFromState = rawMyTweets.filter((t: any) => heartIdSet.has(t.id))
+        if (ownLikedFromState.length > 0) {
+          setLikedTweets(prev => {
+            const existingIds = new Set(prev.map(t => t.id))
+            const toAdd = ownLikedFromState
+              .filter((t: any) => !existingIds.has(t.id))
+              .map((t: any) => ({ ...t, liked_at: ltLikedAtMap.get(t.id) ?? null }))
+            return [...prev, ...toAdd] as TweetData[]
+          })
+        }
+      }
 
       // いいねタブ用: 自分が反応した village_posts 全範囲版
       // PR #41: .limit(50) を撤廃 / PR #50: 元投稿者 profile を保持 / PR #52: liked_at で並び替え
@@ -696,6 +716,34 @@ export default function MyPage() {
           for (const id of likedVillageIds) n.add(id)
           return n
         })
+      }
+      // 2026-05-10 マッキーさん指示「自分の村投稿に自分でハートを押しても、
+      // いいね欄に表示されない」事象の防御策。
+      // 自分が反応した post_id (likedVillageIds) の中に、上記 .in() SELECT で
+      // 取得できなかった own village_post があれば、既取得済みの own
+      // village_posts (myUnifiedVillagePosts) から補完して likedVillagePosts
+      // に追加する。
+      if (likedVillageIds.length > 0 && myUnifiedVillagePosts.length > 0) {
+        const likedVIdSet = new Set(likedVillageIds)
+        const ownLikedVFromState = myUnifiedVillagePosts.filter(vp => likedVIdSet.has(vp.id))
+        if (ownLikedVFromState.length > 0) {
+          // 自分の村投稿なので author_profile / author_trust は自分のもの
+          // (この useEffect のスコープでは p = 自分の profile, trustData = 自分の trust)
+          const ownAuthorProfile = p
+          const ownAuthorTrust = trustData ? { tier: trustData.tier ?? null } : null
+          setLikedVillagePosts(prev => {
+            const existingIds = new Set(prev.map(vp => vp.id))
+            const toAdd = ownLikedVFromState
+              .filter(vp => !existingIds.has(vp.id))
+              .map(vp => ({
+                ...vp,
+                author_profile: ownAuthorProfile,
+                author_trust: ownAuthorTrust,
+                liked_at: lvLikedAtMap.get(vp.id) ?? null,
+              }))
+            return [...prev, ...toAdd]
+          })
+        }
       }
 
       setLoading(false)
@@ -776,6 +824,23 @@ export default function MyPage() {
       } else {
         setLikedTweets([])
       }
+      // 2026-05-10 マッキーさん指示「自分の投稿に自分でハートを押しても、
+      // いいね欄に表示されない」事象の防御策 (reloadLikes 版)。
+      // 上記 .in() SELECT で取得できなかった own tweet があれば、tweets state
+      // (= loadTweets で取得済みの own tweets) から補完する。
+      if (heartTweetIds.length > 0 && tweets.length > 0) {
+        const heartIdSet = new Set(heartTweetIds)
+        const ownLikedFromState = tweets.filter(t => heartIdSet.has(t.id))
+        if (ownLikedFromState.length > 0) {
+          setLikedTweets(prev => {
+            const existingIds = new Set(prev.map(t => t.id))
+            const toAdd = ownLikedFromState
+              .filter(t => !existingIds.has(t.id))
+              .map(t => ({ ...t, liked_at: ltLikedAtMap.get(t.id) ?? null }))
+            return [...prev, ...toAdd] as TweetData[]
+          })
+        }
+      }
       // village_reactions 全件
       const { data: allMyVillageReacts } = await supabase
         .from('village_reactions').select('post_id, created_at').eq('user_id', userId)
@@ -838,6 +903,31 @@ export default function MyPage() {
         })
       } else {
         setLikedVillagePosts([])
+      }
+      // 2026-05-10 マッキーさん指示「自分の村投稿に自分でハートを押しても、
+      // いいね欄に表示されない」事象の防御策 (reloadLikes 版)。
+      // 上記 .in() SELECT で取得できなかった own village_post があれば、
+      // villagePosts state から補完する。
+      if (likedVillageIds.length > 0 && villagePosts.length > 0) {
+        const likedVIdSet = new Set(likedVillageIds)
+        const ownLikedVFromState = villagePosts.filter(vp => likedVIdSet.has(vp.id))
+        if (ownLikedVFromState.length > 0) {
+          // 自分の村投稿なので author は自分の profile / trust
+          const ownAuthorProfile = profile
+          const ownAuthorTrust = trust ? { tier: trust.tier ?? null } : null
+          setLikedVillagePosts(prev => {
+            const existingIds = new Set(prev.map(vp => vp.id))
+            const toAdd = ownLikedVFromState
+              .filter(vp => !existingIds.has(vp.id))
+              .map(vp => ({
+                ...vp,
+                author_profile: ownAuthorProfile,
+                author_trust: ownAuthorTrust,
+                liked_at: lvLikedAtMap.get(vp.id) ?? null,
+              }))
+            return [...prev, ...toAdd]
+          })
+        }
       }
     }
     reloadLikes()
