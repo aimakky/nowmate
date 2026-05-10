@@ -595,12 +595,34 @@ export default function MyPage() {
         .from('tweet_reactions')
         .select('tweet_id, reaction, created_at')
         .eq('user_id', user.id)
-      const heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
-      setDebugHeartTweetIds(heartTweetIds)
+      let heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
       const ltLikedAtMap = new Map<string, string>()
       for (const r of ((heartReactions ?? []) as any[])) {
         if (r.tweet_id && r.created_at) ltLikedAtMap.set(r.tweet_id, r.created_at)
       }
+      // 2026-05-10 (4 回目): スクショで判明した RLS の非対称挙動への対策。
+      // tweet_reactions WHERE user_id=me で取得すると 0 件、しかし
+      // .in('tweet_id', own_tweets) では self-like 行が見える、という状態。
+      // Fallback: 自分の tweets に対する全 reactions を取って、user_id=me で
+      // JS フィルタする別ルートで self-like を取得。
+      const ownTweetIdsForFallback = rawMyTweets.map((t: any) => t.id).filter(Boolean)
+      if (ownTweetIdsForFallback.length > 0) {
+        const { data: reactionsOnOwn } = await supabase
+          .from('tweet_reactions')
+          .select('tweet_id, user_id, created_at')
+          .in('tweet_id', ownTweetIdsForFallback)
+        const fallbackSelfLikes = ((reactionsOnOwn ?? []) as any[])
+          .filter(r => r.user_id === user.id)
+        for (const r of fallbackSelfLikes) {
+          if (!ltLikedAtMap.has(r.tweet_id) && r.created_at) {
+            ltLikedAtMap.set(r.tweet_id, r.created_at)
+          }
+          if (!heartTweetIds.includes(r.tweet_id)) {
+            heartTweetIds.push(r.tweet_id)
+          }
+        }
+      }
+      setDebugHeartTweetIds(heartTweetIds)
       if (heartTweetIds.length > 0) {
         const { data: ltRows } = await supabase
           .from('tweets')
@@ -816,13 +838,39 @@ export default function MyPage() {
         .select('tweet_id, reaction, created_at')
         .eq('user_id', userId)
       if (cancelled) return
-      const heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
-      setDebugHeartTweetIds(heartTweetIds)
+      let heartTweetIds = ((heartReactions ?? []) as any[]).map(r => r.tweet_id).filter(Boolean)
       // PR #52: いいね欄ソート用 tweet_id → liked_at Map
       const ltLikedAtMap = new Map<string, string>()
       for (const r of ((heartReactions ?? []) as any[])) {
         if (r.tweet_id && r.created_at) ltLikedAtMap.set(r.tweet_id, r.created_at)
       }
+      // 2026-05-10 (4 回目): RLS の非対称挙動への fallback。
+      // self-like を tweet_reactions WHERE user_id=me で取れない場合がある
+      // (DEBUG パネルで count=0 だが投稿 tab では heart RED で表示) ため、
+      // own tweets を直接 fetch → その reactions を取って user_id=me で
+      // JS フィルタという別ルートで補完。
+      const { data: ownTweetsForReact } = await supabase
+        .from('tweets').select('id').eq('user_id', userId)
+      if (cancelled) return
+      const ownTweetIdsForFallback = ((ownTweetsForReact ?? []) as any[]).map(t => t.id).filter(Boolean)
+      if (ownTweetIdsForFallback.length > 0) {
+        const { data: reactionsOnOwn } = await supabase
+          .from('tweet_reactions')
+          .select('tweet_id, user_id, created_at')
+          .in('tweet_id', ownTweetIdsForFallback)
+        if (cancelled) return
+        const fallbackSelfLikes = ((reactionsOnOwn ?? []) as any[])
+          .filter(r => r.user_id === userId)
+        for (const r of fallbackSelfLikes) {
+          if (!ltLikedAtMap.has(r.tweet_id) && r.created_at) {
+            ltLikedAtMap.set(r.tweet_id, r.created_at)
+          }
+          if (!heartTweetIds.includes(r.tweet_id)) {
+            heartTweetIds.push(r.tweet_id)
+          }
+        }
+      }
+      setDebugHeartTweetIds(heartTweetIds)
       if (heartTweetIds.length > 0) {
         const { data: ltRows } = await supabase
           .from('tweets').select('*').in('id', heartTweetIds).order('created_at', { ascending: false })
