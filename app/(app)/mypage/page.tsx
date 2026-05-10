@@ -361,6 +361,10 @@ export default function MyPage() {
   // 2026-05-10 (5 回目): tweet_reactions の insert が silent fail している
   // 真因を完全特定するため、画面上テストボタンの結果を保持。
   const [debugTestResult, setDebugTestResult] = useState<string>('(未実行)')
+  // 2026-05-10 (6 回目): reloadLikes を強制再実行するための counter。
+  // ボタンを押すと reloadCounter が inc し、useEffect の deps に含まれる
+  // ため reloadLikes が再実行される。
+  const [reloadCounter, setReloadCounter] = useState(0)
   // 返信 / いいねは初回ロード時に一括取得 (タブ切替で空白を避けるため)。
   // タブ未訪問でも UI 完全描画したいので、loaded フラグは持たない。
   const [tweetLoading,   setTweetLoading]   = useState(false)
@@ -1062,7 +1066,9 @@ export default function MyPage() {
     }
     reloadLikes()
     return () => { cancelled = true }
-  }, [activeTab, userId])
+    // 2026-05-10 (6 回目): reloadCounter を deps に追加。手動で再実行できる。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, userId, reloadCounter])
 
   // PR #31: ハート押下時に画面遷移せず、いいね処理だけ実行。
   // PR #46: async + await + error 検出 + onConflict 明示で silent failure 解消。
@@ -1813,6 +1819,17 @@ export default function MyPage() {
                 <div style={{ marginTop: 8, fontSize: 10, whiteSpace: 'pre-wrap', wordBreak: 'break-all', background: 'rgba(0,0,0,0.4)', padding: 6, borderRadius: 4 }}>
                   {debugTestResult}
                 </div>
+                {/* 2026-05-10 (6 回目): reloadLikes 強制再実行ボタン。
+                    DEBUG パネル上部の debugHeartTweetIds count が 0 のまま
+                    動かない事象に対し、ボタンで強制再実行して count が
+                    変わるかテストする。 */}
+                <button
+                  onClick={() => setReloadCounter(c => c + 1)}
+                  className="w-full mt-2 py-2 rounded text-xs font-bold"
+                  style={{ background: '#10b981', color: 'white' }}
+                >
+                  🔄 reloadLikes 強制再実行 (counter: {reloadCounter})
+                </button>
               </div>
             </div>
 
