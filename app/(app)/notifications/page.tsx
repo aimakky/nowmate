@@ -33,10 +33,19 @@ const TYPE_CONFIG: Record<string, { emoji: string; label: string; section: 'reac
   bottle_found:       { emoji: '🍶', label: 'あなたの瓶を、誰かが大切に拾ってくれました', section: 'other'    },
 }
 
+// 2026-05-09 マッキーさん指示「取得済みデータがあれば skeleton に戻さず前回表示を
+// 維持しながら裏で再取得」対応 (rule 8)。
+// AppLayout の `key={pathname}` で本コンポーネントは毎回 unmount/remount されるが、
+// この module-level 変数は React tree 外なので保持される。再訪問時は cachedNotifs
+// から即時復元 → loading=false で skeleton スキップ → 裏で fetch して最新化。
+let cachedNotifs: Notif[] | null = null
+
 export default function NotificationsPage() {
   const router = useRouter()
-  const [notifs,  setNotifs]  = useState<Notif[]>([])
-  const [loading, setLoading] = useState(true)
+  const [notifs,  setNotifs]  = useState<Notif[]>(cachedNotifs ?? [])
+  // 初回訪問 (cachedNotifs === null) のみ loading=true で skeleton 表示。
+  // 再訪問は cached を即時表示しつつ裏で再 fetch (loading=false 維持)。
+  const [loading, setLoading] = useState(cachedNotifs === null)
 
   const load = useCallback(async () => {
     const supabase = createClient()
@@ -85,6 +94,8 @@ export default function NotificationsPage() {
 
     setNotifs(merged as Notif[])
     setLoading(false)
+    // 2026-05-09: module-level cache を更新。次回訪問時に skeleton をスキップできる。
+    cachedNotifs = merged as Notif[]
 
     // 既読化
     await supabase
@@ -175,17 +186,34 @@ export default function NotificationsPage() {
       />
 
       {loading ? (
-        <div className="px-4 pt-4 space-y-2">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="rounded-2xl p-4 flex gap-3 animate-pulse"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              <div className="w-10 h-10 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }} />
-              <div className="flex-1 space-y-2 py-1">
-                <div className="h-3 rounded w-3/4" style={{ background: 'rgba(255,255,255,0.1)' }} />
-                <div className="h-3 rounded w-1/3" style={{ background: 'rgba(255,255,255,0.06)' }} />
+        // 2026-05-09 マッキーさん指示「skeleton と本表示の高さを揃える」対応。
+        // 旧 skeleton (5 行フラット px-4 pt-4 space-y-2) は loaded 状態 (3 セクション
+        // ラベル + 容器) と構造が違い、loading→loaded で ~90px のジャンプが発生していた。
+        // 新 skeleton: 本表示と同じ構造 (pb-28 pt-2 wrapper + section ラベル + 容器内 row)
+        // で 1 セクション分を描画。本表示に切替った瞬間の高さ・余白が一致する。
+        <div className="pb-28 pt-2">
+          <div className="px-4 mb-4">
+            {/* セクションラベル placeholder (本表示の「返信・反応」と同位置) */}
+            <div className="flex items-center gap-2 py-3">
+              <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(255,201,40,0.4)' }} />
+              <div className="h-2.5 w-20 rounded animate-pulse" style={{ background: 'rgba(255,201,40,0.18)' }} />
+            </div>
+            {/* row 容器 (本表示と同じ rounded-2xl + border) */}
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,201,40,0.2)', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
+              <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex items-start gap-3 px-4 py-3.5 animate-pulse">
+                    <div className="w-10 h-10 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }} />
+                    <div className="flex-1 space-y-2 py-1">
+                      <div className="h-3 rounded w-3/4" style={{ background: 'rgba(255,255,255,0.1)' }} />
+                      <div className="h-3 rounded w-1/3" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+          </div>
         </div>
       ) : notifs.length === 0 ? (
         <div className="flex flex-col items-center justify-center px-6" style={{ minHeight: 'calc(100vh - 120px)' }}>
