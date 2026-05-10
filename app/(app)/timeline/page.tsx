@@ -92,8 +92,8 @@ const TAB_CONFIG: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: 'following', label: 'フォロー', icon: Users },
 ]
 
-// 2026-05-10 マッキーさん指示「X のようにタップ + 横スワイプで切り替え」対応。
-// useSwipeTabs に渡す順序は表示順 (= TAB_CONFIG と同じ)。
+// 2026-05-10 マッキーさん指示「X のように画面コンテンツ自体が横にスライド」対応。
+// SwipeableTabs に渡す順序は表示順 (= TAB_CONFIG と同じ)。
 // 左スワイプ = 次のタブ (all → following)、右スワイプ = 前のタブ (following → all)。
 const TAB_ORDER: readonly Tab[] = ['all', 'following'] as const
 
