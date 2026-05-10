@@ -119,6 +119,18 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
     }
     if (error) {
       console.error('[toggleReaction] supabase error:', error)
+      // 2026-05-10 一時 DEBUG: tweet_reactions が silent fail していた事象の
+      // 真因切り分けのため、ユーザーに直接 error 内容を表示。
+      // 確認後、原因特定 (RLS / schema) → 修正完了後に除去予定。
+      if (typeof window !== 'undefined') {
+        alert(
+          '【DEBUG: いいね失敗】\n' +
+          `message: ${error.message ?? 'no message'}\n` +
+          `code: ${error.code ?? 'no code'}\n` +
+          `details: ${error.details ?? 'no details'}\n` +
+          `hint: ${error.hint ?? 'no hint'}`
+        )
+      }
       return
     }
     onUpdate()
