@@ -1814,7 +1814,15 @@ export default function MyPage() {
               </div>
             </div>
 
-            {likedTweets.length === 0 && likedVillagePosts.length === 0 ? (
+            {/* 2026-05-10 (7 回目): 空状態判定にも tweets state からの
+                self-liked 抽出を考慮。reloadLikes が動かないケースでも
+                投稿タブで heart RED の自分のツイートがあれば「いいね」
+                タブにも表示されるべき。 */}
+            {likedTweets.length === 0 && likedVillagePosts.length === 0 &&
+              !tweets.some(t => {
+                const reactions = (t as any).tweet_reactions as { user_id: string; reaction: string }[] | undefined
+                return reactions?.some(r => r.user_id === userId && r.reaction === 'heart')
+              }) ? (
               <div className="rounded-2xl p-8 text-center"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
                 <p className="text-3xl mb-2">❤️</p>
@@ -1831,8 +1839,28 @@ export default function MyPage() {
                 // DB 列が無くて undefined の場合は 投稿の created_at に fallback (fail-open)。
                 // CLAUDE.md「投稿者情報の混同防止」準拠: liked_at は「いいね押した日時」、
                 // 投稿の created_at は「元投稿者が投稿した日時」。両者を絶対に混同しない。
+                //
+                // 2026-05-10 (7 回目) 真因確定後の最終修正:
+                // tweet_reactions の RLS 非対称により reloadLikes の取得が
+                // 失敗するケースに対応するため、tweets state から直接
+                // self-liked own tweets を抽出する。tweets state は既に
+                // loadTweets で `.in('tweet_id', [own])` で reactions が
+                // enrich されているので確実に取れる (= 投稿タブで heart
+                // RED 表示が成立する仕組みと完全に同じ)。
+                const selfLikedFromTweetsState: TweetData[] = tweets.filter(t => {
+                  const reactions = (t as any).tweet_reactions as { user_id: string; reaction: string }[] | undefined
+                  return reactions?.some(r => r.user_id === userId && r.reaction === 'heart')
+                })
+                // likedTweets と selfLikedFromTweetsState を id 重複除去で merge
+                const mergedTweetMap = new Map<string, TweetData>()
+                for (const t of likedTweets) mergedTweetMap.set(t.id, t)
+                for (const t of selfLikedFromTweetsState) {
+                  if (!mergedTweetMap.has(t.id)) mergedTweetMap.set(t.id, t)
+                }
+                const mergedTweets = Array.from(mergedTweetMap.values())
+
                 const items: LItem[] = [
-                  ...likedTweets.map(t => {
+                  ...mergedTweets.map(t => {
                     const likedAt = (t as any).liked_at as string | null | undefined
                     return { kind: 'tweet' as const, data: t, ts: new Date(likedAt ?? t.created_at).getTime() }
                   }),
