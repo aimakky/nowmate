@@ -15,7 +15,7 @@ import PostCardHeader from '@/components/ui/PostCardHeader'
 import { detectCrisisKeywords } from '@/lib/moderation'
 import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
 import { getUserDisplayName } from '@/lib/user-display'
-import { useSwipeTabs } from '@/hooks/useSwipeTabs'
+import { SwipeableTabs } from '@/components/ui/SwipeableTabs'
 
 // ── 型定義 ──────────────────────────────────────────────────────
 // 旧: 'myvillage' (ギルド) / 'all' (みんな) / 'following' (フォロー) の 3 タブ
@@ -92,8 +92,8 @@ const TAB_CONFIG: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: 'following', label: 'フォロー', icon: Users },
 ]
 
-// 2026-05-10 マッキーさん指示「X のようにタップ + 横スワイプで切り替え」対応。
-// useSwipeTabs に渡す順序は表示順 (= TAB_CONFIG と同じ)。
+// 2026-05-10 マッキーさん指示「X のように画面コンテンツ自体が横にスライド」対応。
+// SwipeableTabs に渡す順序は表示順 (= TAB_CONFIG と同じ)。
 // 左スワイプ = 次のタブ (all → following)、右スワイプ = 前のタブ (following → all)。
 const TAB_ORDER: readonly Tab[] = ['all', 'following'] as const
 
@@ -801,23 +801,434 @@ function ComposeModal({
   )
 }
 
+// ── タブ別フィード pane ──────────────────────────────────────
+//
+// 2026-05-10 マッキーさん指示「画面コンテンツ自体が横にスライドして切り替わる」対応。
+// SwipeableTabs で 'all' と 'following' の 2 pane を横並びに DOM 配置するため、
+// 各 pane が独立して fetch / state を持つ必要がある。従来は single-tab の state
+// だったが、両 pane を並列にレンダリングするには pane ごとに分離が必須。
+//
+// 設計:
+//   - shared state (userId / userTier / followingIds / myVillageIds / likedIds /
+//     voiceRooms / userProfile) は parent で持ち props で受け取る
+//   - per-tab state (posts / qaBottles / tweetFeed / loading / hasMore /
+//     loadingMore) は pane 内 useState で独立保持
+//   - parent からの「強制再取得」要求は refreshNonce (number) を inc して通知
+//   - 新規投稿の optimistic prepend は parent が optimisticPostRef.current に
+//     入れ、refreshNonce を inc。pane の useEffect で消費 (一度のみ)。
+//   - toggleLike は pane 内で setLikedIds (parent) と setPosts (local) を更新
+//
+interface FeedPaneProps {
+  tab: Tab
+  userId: string
+  userTier: string
+  followingIds: string[]
+  myVillageIds: string[]
+  likedIds: Set<string>
+  setLikedIds: React.Dispatch<React.SetStateAction<Set<string>>>
+  voiceRooms: VoiceRoom[]
+  canReply: boolean
+  refreshNonce: number
+  optimisticPostRef: React.MutableRefObject<TPost | null>
+}
+
+function TimelineFeedPane({
+  tab, userId, followingIds, myVillageIds, likedIds, setLikedIds,
+  voiceRooms, canReply, refreshNonce, optimisticPostRef,
+}: FeedPaneProps) {
+  const router = useRouter()
+
+  const [posts,        setPosts]        = useState<TPost[]>([])
+  const [qaBottles,    setQaBottles]    = useState<QABottle[]>([])
+  const [tweetFeed,    setTweetFeed]    = useState<TweetData[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [loadingMore,  setLoadingMore]  = useState(false)
+  const [hasMore,      setHasMore]      = useState(true)
+  const offsetRef = useRef(0)
+
+  // ── Q&A瓶フェッチ ────────────────────────────────────────────
+  const fetchQA = useCallback(async (uid: string, villageIds: string[]) => {
+    if (villageIds.length === 0) return
+    const supabase = createClient()
+    const { data: bottles } = await supabase
+      .from('drift_bottles')
+      .select('id, message, created_at, is_resolved, sender_user_id, recipient_village:recipient_village_id(id, name, icon)')
+      .eq('is_question', true)
+      .in('recipient_village_id', villageIds)
+      .in('status', ['delivered', 'replied'])
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (!bottles) return
+
+    const ids = bottles.map(b => b.id)
+    const { data: replyCounts } = ids.length
+      ? await supabase.from('drift_bottle_replies').select('bottle_id').in('bottle_id', ids)
+      : { data: [] }
+
+    const countMap: Record<string, number> = {}
+    for (const r of replyCounts ?? []) {
+      countMap[r.bottle_id] = (countMap[r.bottle_id] ?? 0) + 1
+    }
+
+    const { data: myReplies } = ids.length
+      ? await supabase.from('drift_bottle_replies').select('bottle_id').eq('user_id', uid).in('bottle_id', ids)
+      : { data: [] }
+    const myRepliedIds = new Set((myReplies ?? []).map((r: any) => r.bottle_id))
+
+    setQaBottles(
+      bottles
+        .filter(b => !myRepliedIds.has(b.id))
+        .map(b => ({
+          id:             b.id,
+          message:        b.message,
+          created_at:     b.created_at,
+          is_resolved:    b.is_resolved ?? false,
+          sender_user_id: b.sender_user_id,
+          reply_count:    countMap[b.id] ?? 0,
+          village:        Array.isArray(b.recipient_village)
+            ? (b.recipient_village[0] ?? null)
+            : (b.recipient_village as any ?? null),
+        }))
+    )
+  }, [])
+
+  // ── 投稿フェッチ ─────────────────────────────────────────────
+  const fetchPosts = useCallback(async (reset = false) => {
+    if (!userId) return
+    const supabase = createClient()
+    const from = reset ? 0 : offsetRef.current
+    if (reset) { setLoading(true); offsetRef.current = 0 }
+    else setLoadingMore(true)
+
+    try {
+      if (tab === 'following' && followingIds.length === 0) {
+        setPosts([]); setLoading(false); setHasMore(false); return
+      }
+
+      let q = supabase
+        .from('village_posts')
+        .select('id, content, category, created_at, village_id, user_id, reaction_count')
+        .order('created_at', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1)
+
+      if (tab === 'following') q = q.in('user_id', followingIds)
+
+      const { data, error: qErr } = await q
+      if (qErr) console.error('[timeline] fetchPosts query error:', qErr)
+      const rawPosts = (data ?? []) as any[]
+
+      const userIds = Array.from(new Set(rawPosts.map(p => p.user_id))).filter(
+        (id: any): id is string => typeof id === 'string' && id.length > 0
+      )
+      const villageIdSet = Array.from(new Set(rawPosts.map(p => p.village_id))).filter(
+        (id: any): id is string => typeof id === 'string' && id.length > 0
+      )
+
+      const [profilesRes, villagesRes, trustsRes] = await Promise.all([
+        userIds.length > 0
+          ? supabase.from('profiles').select('id, display_name, avatar_url').in('id', userIds)
+          : Promise.resolve({ data: [], error: null } as any),
+        villageIdSet.length > 0
+          ? supabase.from('villages').select('id, name, icon').in('id', villageIdSet)
+          : Promise.resolve({ data: [], error: null } as any),
+        userIds.length > 0
+          ? supabase.from('user_trust').select('user_id, tier').in('user_id', userIds)
+          : Promise.resolve({ data: [], error: null } as any),
+      ])
+      if ((profilesRes as any).error) console.error('[timeline] fetchPosts profiles error:', (profilesRes as any).error)
+      if ((villagesRes as any).error) console.error('[timeline] fetchPosts villages error:', (villagesRes as any).error)
+      if ((trustsRes as any).error) console.error('[timeline] fetchPosts user_trust error:', (trustsRes as any).error)
+
+      const profileMap = new Map<string, any>(
+        ((profilesRes as any).data ?? []).map((p: any) => [p.id, p])
+      )
+      const villageMap = new Map<string, any>(
+        ((villagesRes as any).data ?? []).map((v: any) => [v.id, v])
+      )
+      const trustMap = new Map<string, { tier: string | null }>()
+      for (const t of ((trustsRes as any).data ?? [])) {
+        trustMap.set(t.user_id, { tier: t.tier ?? null })
+      }
+
+      const seenPostIds = new Set<string>()
+      const dedupedRawPosts = rawPosts.filter(p => {
+        if (!p?.id || seenPostIds.has(p.id)) return false
+        seenPostIds.add(p.id)
+        return true
+      })
+
+      const filtered = dedupedRawPosts
+        .map((p: any) => {
+          const t = trustMap.get(p.user_id) ?? null
+          return {
+            ...p,
+            profiles:   profileMap.get(p.user_id) ?? null,
+            villages:   p.village_id ? (villageMap.get(p.village_id) ?? null) : null,
+            user_trust: t ? { tier: t.tier ?? '', is_shadow_banned: false } : null,
+          }
+        }) as TPost[]
+
+      if (reset) {
+        setPosts(prev => {
+          const optimistic = prev.filter(p => p.id.startsWith('temp-'))
+          const realContents = new Set(filtered.map(f => `${f.user_id}|${f.content}`))
+          const stillNeeded = optimistic.filter(o => !realContents.has(`${o.user_id}|${o.content}`))
+          return [...stillNeeded, ...filtered]
+        })
+      } else setPosts(prev => [...prev, ...filtered])
+
+      offsetRef.current = from + PAGE_SIZE
+      setHasMore(filtered.length === PAGE_SIZE)
+    } catch (e) {
+      console.error('fetchPosts error:', e)
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }, [userId, tab, followingIds])
+
+  // ── ツイートフェッチ (PostgREST embed 撤廃版) ──────────────
+  const fetchTweets = useCallback(async (userIds?: string[]) => {
+    if (userIds !== undefined && userIds.length === 0) {
+      setTweetFeed([])
+      return
+    }
+    const supabase = createClient()
+    let q = supabase
+      .from('tweets')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1000)
+    if (userIds !== undefined) q = q.in('user_id', userIds)
+    const { data, error } = await q
+    if (error) console.error('[timeline] fetchTweets query error:', error)
+
+    const rawRows = (data ?? []) as any[]
+    const seen = new Set<string>()
+    const rows = rawRows.filter(r => {
+      if (!r?.id || seen.has(r.id)) return false
+      seen.add(r.id)
+      return true
+    })
+
+    if (rows.length === 0) {
+      setTweetFeed([])
+      return
+    }
+
+    const tweetIds = Array.from(new Set(rows.map(t => t.id))).filter(Boolean)
+    const authorIds = Array.from(new Set(rows.map(t => t.user_id))).filter(Boolean)
+
+    const [profilesRes, reactionsRes, repliesRes, trustRes] = await Promise.all([
+      authorIds.length > 0
+        ? supabase.from('profiles').select('id, display_name, nationality, avatar_url, age_verified, age_verification_status').in('id', authorIds)
+        : Promise.resolve({ data: [], error: null } as any),
+      tweetIds.length > 0
+        ? supabase.from('tweet_reactions').select('tweet_id, user_id, reaction').in('tweet_id', tweetIds)
+        : Promise.resolve({ data: [], error: null } as any),
+      tweetIds.length > 0
+        ? supabase.from('tweet_replies').select('id, tweet_id').in('tweet_id', tweetIds)
+        : Promise.resolve({ data: [], error: null } as any),
+      authorIds.length > 0
+        ? supabase.from('user_trust').select('user_id, tier').in('user_id', authorIds)
+        : Promise.resolve({ data: [], error: null } as any),
+    ])
+    if ((profilesRes as any).error) console.error('[timeline] tweet profiles fetch error:', (profilesRes as any).error)
+
+    const profileMap = new Map<string, any>(((profilesRes as any).data ?? []).map((p: any) => [p.id, p]))
+    const reactionsByTweet = new Map<string, any[]>()
+    for (const r of ((reactionsRes as any).data ?? [])) {
+      if (!reactionsByTweet.has(r.tweet_id)) reactionsByTweet.set(r.tweet_id, [])
+      reactionsByTweet.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
+    }
+    const repliesByTweet = new Map<string, any[]>()
+    for (const r of ((repliesRes as any).data ?? [])) {
+      if (!repliesByTweet.has(r.tweet_id)) repliesByTweet.set(r.tweet_id, [])
+      repliesByTweet.get(r.tweet_id)!.push({ id: r.id })
+    }
+    const trustMap = new Map<string, string>(((trustRes as any).data ?? []).map((t: any) => [t.user_id, t.tier]))
+
+    for (const r of rows) {
+      r.profiles = profileMap.get(r.user_id) ?? null
+      r.tweet_reactions = reactionsByTweet.get(r.id) ?? []
+      r.tweet_replies = repliesByTweet.get(r.id) ?? []
+      const tier = trustMap.get(r.user_id)
+      r.user_trust = tier ? { tier } : null
+    }
+
+    setTweetFeed(rows as TweetData[])
+  }, [])
+
+  // ── 初回 / 更新トリガー ──────────────────────────────────────
+  // refreshNonce が inc した時 (新規投稿後 / Refresh ボタン押下) は両 pane が
+  // 再 fetch する。tab / userId / followingIds / myVillageIds 変化でも再 fetch。
+  useEffect(() => {
+    if (!userId) return
+    // optimistic prepend を pane の最初の useEffect で消費 (1 度だけ)
+    if (optimisticPostRef.current && tab === 'all') {
+      const op = optimisticPostRef.current
+      optimisticPostRef.current = null
+      setPosts(prev => prev.find(p => p.id === op.id) ? prev : [op, ...prev])
+    }
+    fetchPosts(true)
+    if (tab === 'all') fetchTweets()
+    else fetchTweets(followingIds)
+    if (tab === 'all' && myVillageIds.length > 0) fetchQA(userId, myVillageIds)
+  // optimisticPostRef は ref なので deps に入れない (ref は識別子)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, tab, followingIds, myVillageIds, refreshNonce, fetchPosts, fetchTweets, fetchQA])
+
+  // ── いいね ──────────────────────────────────────────────────
+  async function toggleLike(postId: string) {
+    if (!userId) return
+    const supabase = createClient()
+    if (likedIds.has(postId)) {
+      const r = await supabase.from('village_reactions').delete().eq('post_id', postId).eq('user_id', userId)
+      if (r.error) {
+        console.error('[toggleLike] delete error:', r.error)
+        return
+      }
+      setLikedIds(prev => { const n = new Set(prev); n.delete(postId); return n })
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, reaction_count: Math.max(0, p.reaction_count - 1) } : p))
+    } else {
+      const r = await supabase.from('village_reactions').upsert(
+        { post_id: postId, user_id: userId },
+        { onConflict: 'post_id,user_id' }
+      )
+      if (r.error) {
+        console.error('[toggleLike] upsert error:', r.error)
+        return
+      }
+      setLikedIds(prev => new Set([...prev, postId]))
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, reaction_count: p.reaction_count + 1 } : p))
+    }
+  }
+
+  function handleAnswered(bottleId: string) {
+    setQaBottles(prev => prev.filter(b => b.id !== bottleId))
+  }
+
+  // ── フィード合成 ─────────────────────────────────────────────
+  const feed: FeedItem[] = (() => {
+    if ((tab === 'all' || tab === 'following') && tweetFeed.length > 0) {
+      const combined: FeedItem[] = [
+        ...posts.map(p => ({ type: 'post' as const, data: p })),
+        ...tweetFeed.map(t => ({ type: 'tweet' as const, data: t })),
+      ]
+      combined.sort((a, b) =>
+        new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
+      )
+      const withVoice: FeedItem[] = []
+      let vi = 0
+      combined.forEach((item, i) => {
+        withVoice.push(item)
+        if ((i + 1) % 3 === 0 && vi < voiceRooms.length) {
+          withVoice.push({ type: 'voice', data: voiceRooms[vi++] })
+        }
+      })
+      while (vi < voiceRooms.length) withVoice.push({ type: 'voice', data: voiceRooms[vi++] })
+      return withVoice
+    }
+    return buildFeed(posts, qaBottles, voiceRooms)
+  })()
+
+  return (
+    <div className="px-4 pt-4 pb-28 space-y-3">
+      {/* フォロー0人 (following pane のみで表示) */}
+      {tab === 'following' && followingIds.length === 0 && !loading && (
+        <div className="rounded-2xl p-6 text-center"
+          style={{ background: 'rgba(57,255,136,0.04)', border: '1px solid rgba(57,255,136,0.2)' }}>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{ background: 'rgba(57,255,136,0.1)', border: '1px solid rgba(57,255,136,0.25)' }}>
+            <Users size={26} style={{ color: '#39FF88' }} />
+          </div>
+          <p className="text-sm font-extrabold mb-1" style={{ color: '#F0EEFF' }}>まだ誰もフォローしていません</p>
+          <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(240,238,255,0.35)' }}>ゲーム仲間をフォローすると、ここに投稿が流れます。</p>
+          <button onClick={() => router.push('/guilds')}
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold active:scale-95 transition-all"
+            style={{ background: 'linear-gradient(135deg,#39FF88 0%,#059669 100%)', boxShadow: '0 4px 20px rgba(57,255,136,0.4)', color: '#051a0e' }}>
+            ギルドを探す →
+          </button>
+        </div>
+      )}
+
+      {/* ローディング */}
+      {loading && <Skeleton />}
+
+      {/* フィード */}
+      {!loading && feed.map((item) =>
+        item.type === 'voice' ? (
+          <VoiceRoomCard
+            key={`voice-${item.data.id}`}
+            room={item.data}
+            currentUserId={userId}
+          />
+        ) : item.type === 'qa' ? (
+          <QACard
+            key={`qa-${item.data.id}`}
+            bottle={item.data}
+            userId={userId}
+            canReply={canReply}
+            onAnswered={handleAnswered}
+          />
+        ) : item.type === 'tweet' ? (
+          <PostCardShell key={`tweet-${item.data.id}`}>
+            <TweetCard
+              tweet={item.data}
+              myId={userId}
+              onUpdate={() => fetchTweets(tab === 'following' ? followingIds : undefined)}
+              showBorder={false}
+              canInteract={true}
+              avatarVariant="green"
+            />
+          </PostCardShell>
+        ) : (
+          <PostCard
+            key={`post-${item.data.id}`}
+            post={item.data}
+            userId={userId}
+            likedIds={likedIds}
+            onToggleLike={toggleLike}
+            showVillage={true}
+          />
+        )
+      )}
+
+      {/* 空状態 */}
+      {!loading && feed.length === 0 && (
+        (tab === 'all') ||
+        (tab === 'following' && followingIds.length > 0)
+      ) && (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' }}>
+            <GuildHeroGamepad size={40} />
+          </div>
+          <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.4)' }}>まだ投稿がありません</p>
+        </div>
+      )}
+
+      {/* もっと読む */}
+      {!loading && hasMore && posts.length > 0 && (
+        <button onClick={() => fetchPosts(false)} disabled={loadingMore}
+          className="w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
+          style={{ background: 'rgba(57,255,136,0.08)', border: '1px solid rgba(57,255,136,0.2)', color: 'rgba(57,255,136,0.8)' }}>
+          {loadingMore
+            ? <span className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgba(57,255,136,0.6)', borderTopColor: 'transparent' }} />
+            : '続きを読む'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ── メインページ ───────────────────────────────────────────────
 export default function TimelinePage() {
   const router = useRouter()
 
-  // 2026-05-10: 既存の setTab をそのまま使う (タップとスワイプで同じ state を共有)。
-  // 詳細は hooks/useSwipeTabs.ts を参照。
-
-  // 既定タブは 'all'（みんな）。'myvillage' を既定にすると、村未参加ユーザーや
-  // village_id=null で保存される通常タイムライン投稿が一切表示されないため。
+  // 既定タブは 'all'（みんな）
   const [tab,          setTab]          = useState<Tab>('all')
-  // 2026-05-10: 横スワイプでも tab を切り替え。タップ用 setTab と同じ setter を渡す。
-  const swipeHandlers = useSwipeTabs(TAB_ORDER, tab, setTab)
-  const [posts,        setPosts]        = useState<TPost[]>([])
-  const [qaBottles,    setQaBottles]    = useState<QABottle[]>([])
-  const [loading,      setLoading]      = useState(true)
-  const [loadingMore,  setLoadingMore]  = useState(false)
-  const [hasMore,      setHasMore]      = useState(true)
   const [userId,       setUserId]       = useState<string | null>(null)
   const [userTier,     setUserTier]     = useState<string>('visitor')
   const [myVillageIds, setMyVillageIds] = useState<string[]>([])
@@ -826,11 +1237,13 @@ export default function TimelinePage() {
   const [showCompose,    setShowCompose]    = useState(false)
   const [userProfile,    setUserProfile]    = useState<{ display_name: string; avatar_url: string | null } | null>(null)
   const [myVillages,     setMyVillages]     = useState<Village[]>([])
-  const [tweetFeed,      setTweetFeed]      = useState<TweetData[]>([])
-  const [tweetLoading,   setTweetLoading]   = useState(false)
   const [voiceRooms,     setVoiceRooms]     = useState<VoiceRoom[]>([])
 
-  const offsetRef   = useRef(0)
+  // 2026-05-10: 横スライド対応で 'all' / 'following' 両 pane を並列レンダリング
+  // するため、shared な refresh トリガーと optimistic post 受け渡し ref を用意。
+  const [refreshNonce, setRefreshNonce] = useState(0)
+  const optimisticPostRef = useRef<TPost | null>(null)
+
 const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
 
   // ── 初期化 ──────────────────────────────────────────────────
@@ -867,186 +1280,8 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
     init()
   }, [router])
 
-  // ── Q&A瓶フェッチ ────────────────────────────────────────────
-  const fetchQA = useCallback(async (uid: string, villageIds: string[]) => {
-    if (villageIds.length === 0) return
-    const supabase = createClient()
-
-    // 自分の参加村宛の未解決Q&A（自分が送ったもの以外）
-    const { data: bottles } = await supabase
-      .from('drift_bottles')
-      .select('id, message, created_at, is_resolved, sender_user_id, recipient_village:recipient_village_id(id, name, icon)')
-      .eq('is_question', true)
-      .in('recipient_village_id', villageIds)
-      .in('status', ['delivered', 'replied'])
-      .order('created_at', { ascending: false })
-      .limit(10)
-
-    if (!bottles) return
-
-    // 各瓶の回答数を取得
-    const ids = bottles.map(b => b.id)
-    const { data: replyCounts } = ids.length
-      ? await supabase
-          .from('drift_bottle_replies')
-          .select('bottle_id')
-          .in('bottle_id', ids)
-      : { data: [] }
-
-    const countMap: Record<string, number> = {}
-    for (const r of replyCounts ?? []) {
-      countMap[r.bottle_id] = (countMap[r.bottle_id] ?? 0) + 1
-    }
-
-    // 自分が既に回答済みの瓶IDを取得
-    const { data: myReplies } = ids.length
-      ? await supabase
-          .from('drift_bottle_replies')
-          .select('bottle_id')
-          .eq('user_id', uid)
-          .in('bottle_id', ids)
-      : { data: [] }
-    const myRepliedIds = new Set((myReplies ?? []).map((r: any) => r.bottle_id))
-
-    setQaBottles(
-      bottles
-        .filter(b => !myRepliedIds.has(b.id)) // 回答済みは非表示
-        .map(b => ({
-          id:             b.id,
-          message:        b.message,
-          created_at:     b.created_at,
-          is_resolved:    b.is_resolved ?? false,
-          sender_user_id: b.sender_user_id,
-          reply_count:    countMap[b.id] ?? 0,
-          village:        Array.isArray(b.recipient_village)
-            ? (b.recipient_village[0] ?? null)
-            : (b.recipient_village as any ?? null),
-        }))
-    )
-  }, [])
-
-  // ── 投稿フェッチ ─────────────────────────────────────────────
-  const fetchPosts = useCallback(async (reset = false) => {
-    if (!userId) return
-    const supabase = createClient()
-    const from = reset ? 0 : offsetRef.current
-    if (reset) { setLoading(true); offsetRef.current = 0 }
-    else setLoadingMore(true)
-
-    try {
-      if (tab === 'following' && followingIds.length === 0) {
-        setPosts([]); setLoading(false); setHasMore(false); return
-      }
-
-      // ── PostgREST embed 撤廃 ──────────────────────────────────
-      // 過去に user_trust の embed を撤廃したが、profiles(...) と villages(...)
-      // の embed が残っており、これが「プロフィールでは見える村投稿が TL では
-      // 0 件」の真因だった (= ミヤさんの村投稿 6 件が TL に出ない原因)。
-      //
-      // PostgREST の embed は LEFT JOIN 相当だが、参照先 (profiles / villages)
-      // の行が RLS で見えない場合、行解決失敗で親 (village_posts) の row 自体が
-      // 消える挙動が観察された。具体的には:
-      //   - profiles RLS で隠されている author → 親村投稿も消える
-      //   - villages RLS で隠されている村 (非公開・限定公開) → 親村投稿も消える
-      //
-      // profile 側は embed を一切使わず eq('user_id', miya) で純粋取得して
-      // いるため、村投稿 6 件全件が取れる。差分の正体はここ。
-      //
-      // 修正: fetchTweets と同じパターンで、profiles と villages を別 query
-      // で in-memory Map に取得し client-side で merge する。
-      // fail-open: profile / village 取得失敗しても村投稿の表示は止めない。
-      let q = supabase
-        .from('village_posts')
-        .select('id, content, category, created_at, village_id, user_id, reaction_count')
-        .order('created_at', { ascending: false })
-        .range(from, from + PAGE_SIZE - 1)
-
-      if (tab === 'following') q = q.in('user_id', followingIds)
-
-      const { data, error: qErr } = await q
-      if (qErr) {
-        console.error('[timeline] fetchPosts query error:', qErr)
-      }
-      const rawPosts = (data ?? []) as any[]
-
-      // user_id / village_id 集合をベースに profiles / villages / user_trust を
-      // 別 query で取得 (どれが失敗しても村投稿は表示する fail-open 設計)
-      const userIds = Array.from(new Set(rawPosts.map(p => p.user_id))).filter(
-        (id: any): id is string => typeof id === 'string' && id.length > 0
-      )
-      const villageIdSet = Array.from(new Set(rawPosts.map(p => p.village_id))).filter(
-        (id: any): id is string => typeof id === 'string' && id.length > 0
-      )
-
-      const [profilesRes, villagesRes, trustsRes] = await Promise.all([
-        userIds.length > 0
-          ? supabase.from('profiles').select('id, display_name, avatar_url').in('id', userIds)
-          : Promise.resolve({ data: [], error: null } as any),
-        villageIdSet.length > 0
-          ? supabase.from('villages').select('id, name, icon').in('id', villageIdSet)
-          : Promise.resolve({ data: [], error: null } as any),
-        userIds.length > 0
-          ? supabase.from('user_trust').select('user_id, tier').in('user_id', userIds)
-          : Promise.resolve({ data: [], error: null } as any),
-      ])
-      if ((profilesRes as any).error) console.error('[timeline] fetchPosts profiles error:', (profilesRes as any).error)
-      if ((villagesRes as any).error) console.error('[timeline] fetchPosts villages error:', (villagesRes as any).error)
-      if ((trustsRes as any).error) console.error('[timeline] fetchPosts user_trust error:', (trustsRes as any).error)
-
-      const profileMap = new Map<string, any>(
-        ((profilesRes as any).data ?? []).map((p: any) => [p.id, p])
-      )
-      const villageMap = new Map<string, any>(
-        ((villagesRes as any).data ?? []).map((v: any) => [v.id, v])
-      )
-      const trustMap = new Map<string, { tier: string | null }>()
-      for (const t of ((trustsRes as any).data ?? [])) {
-        trustMap.set(t.user_id, { tier: t.tier ?? null })
-      }
-
-      // 防御策: 同一 id の重複除去 (key 衝突で消える事故を防ぐ)
-      const seenPostIds = new Set<string>()
-      const dedupedRawPosts = rawPosts.filter(p => {
-        if (!p?.id || seenPostIds.has(p.id)) return false
-        seenPostIds.add(p.id)
-        return true
-      })
-
-      const filtered = dedupedRawPosts
-        .map((p: any) => {
-          const t = trustMap.get(p.user_id) ?? null
-          return {
-            ...p,
-            profiles:   profileMap.get(p.user_id) ?? null,
-            villages:   p.village_id ? (villageMap.get(p.village_id) ?? null) : null,
-            user_trust: t ? { tier: t.tier ?? '', is_shadow_banned: false } : null,
-          }
-        }) as TPost[]
-
-      if (reset) {
-        // 既存の optimistic 投稿（temp- プレフィックス）を残し、DB から取得した
-        // 本物のレコードと重複しないようマージする。RLS の SELECT が null-village
-        // 投稿を隠していても、投稿者本人には自分の投稿が見え続ける保険。
-        setPosts(prev => {
-          const optimistic = prev.filter(p => p.id.startsWith('temp-'))
-          // 既に DB 側に同じ content の本物がいたら optimistic を捨てる
-          const realContents = new Set(filtered.map(f => `${f.user_id}|${f.content}`))
-          const stillNeeded = optimistic.filter(o => !realContents.has(`${o.user_id}|${o.content}`))
-          return [...stillNeeded, ...filtered]
-        })
-      } else setPosts(prev => [...prev, ...filtered])
-
-      offsetRef.current = from + PAGE_SIZE
-      setHasMore(filtered.length === PAGE_SIZE)
-    } catch (e) {
-      console.error('fetchPosts error:', e)
-    } finally {
-      setLoading(false)
-      setLoadingMore(false)
-    }
-  }, [userId, tab, myVillageIds, followingIds])
-
   // ── 通話ルームフェッチ（直近3時間のLIVEルーム）────────────────
+  // voiceRooms は両 pane で共有されるため parent に残す。
   const fetchVoiceRooms = useCallback(async () => {
     const supabase = createClient()
     const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
@@ -1107,221 +1342,28 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
     setVoiceRooms(result)
   }, [])
 
-  // ── ツイートフェッチ ──────────────────────────────────────
-  // 過去の不具合:
-  //   1. `.is('reply_to_id', null)` で reply tweets を弾いていたため、
-  //      連投スレッドや返信形式の tweet がプロフィールでは見えるのに
-  //      TL では消えていた (例: ミヤの「稼働中なう」連投が profile では
-  //      見えるが TL では bivi二条なう だけになる症状)。
-  //      → プロフィール側の取得条件 (filter なし) と揃えるため除去。
-  //
-  //   2. 「フォロー中」タブで fetchTweets が呼ばれず、tweets 主体の
-  //      フォロー対象 (例: ミヤ) の投稿が一切表示されなかった。
-  //      → userIds 引数を受け取り、in() で絞り込めるように拡張。
-  //
-  // userIds:
-  //   - undefined: 全ユーザー (= 「みんな」タブ用)
-  //   - string[] (空でも可): フォロー中ユーザーで絞り込み (= 「フォロー中」)
-  //     空配列なら早期に空にしてセット (フォローしている人がいない)
-  // tweets を取得して TL に流す。
-  // 過去の不具合 (例: ミヤさんの「稼働中なう」連投が TL に出ない) は、
-  // 旧 select に含まれていた `profiles!tweets_user_id_fkey(...)` /
-  // `tweet_reactions!...` / `tweet_replies!...` の 3 つの embed FK ヒント
-  // のうちどれかが PostgREST で解決失敗すると、query 全体がエラーを返し
-  // tweetFeed が空になる構造的脆弱性が原因。
-  // → embed を全部外し、profiles / reactions / replies / user_trust を
-  //   それぞれ別 query で取得して in-memory Map で merge。1 つでも失敗
-  //   しても TL 本体の表示は止まらない (fail-open)。
-  const fetchTweets = useCallback(async (userIds?: string[]) => {
-    setTweetLoading(true)
-    if (userIds !== undefined && userIds.length === 0) {
-      // フォロー中タブで誰もフォローしていない場合は空に
-      setTweetFeed([])
-      setTweetLoading(false)
-      return
-    }
-    const supabase = createClient()
-    // 全投稿反映方針 (limit 500 → 1000)。
-    // Supabase 既定上限の 1000 件まで取得し、TL に「すべての投稿」を反映する。
-    // それを超えたコミュニティ規模になったら cursor pagination 方式へ移行する。
-    let q = supabase
-      .from('tweets')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(1000)
-    if (userIds !== undefined) {
-      q = q.in('user_id', userIds)
-    }
-    const { data, error } = await q
-    if (error) console.error('[timeline] fetchTweets query error:', error)
-
-    const rawRows = (data ?? []) as any[]
-
-    // 防御策: 同一 id の重複を除去 (RLS の OR ポリシー等で重複返却される可能性
-    // を排除)。同一 user_id 投稿が React の key 衝突で消えるバグを根絶する。
-    const seen = new Set<string>()
-    const rows = rawRows.filter(r => {
-      if (!r?.id || seen.has(r.id)) return false
-      seen.add(r.id)
-      return true
-    })
-
-    if (rows.length === 0) {
-      setTweetFeed([])
-      setTweetLoading(false)
-      return
-    }
-
-    // 関連データを並列で別 query 取得 (どれも失敗しても tweets は表示する)
-    const tweetIds = Array.from(new Set(rows.map(t => t.id))).filter(Boolean)
-    const authorIds = Array.from(new Set(rows.map(t => t.user_id))).filter(Boolean)
-
-    const [profilesRes, reactionsRes, repliesRes, trustRes] = await Promise.all([
-      authorIds.length > 0
-        ? supabase
-            .from('profiles')
-            .select('id, display_name, nationality, avatar_url, age_verified, age_verification_status')
-            .in('id', authorIds)
-        : Promise.resolve({ data: [], error: null } as any),
-      tweetIds.length > 0
-        ? supabase
-            .from('tweet_reactions')
-            .select('tweet_id, user_id, reaction')
-            .in('tweet_id', tweetIds)
-        : Promise.resolve({ data: [], error: null } as any),
-      tweetIds.length > 0
-        ? supabase
-            .from('tweet_replies')
-            .select('id, tweet_id')
-            .in('tweet_id', tweetIds)
-        : Promise.resolve({ data: [], error: null } as any),
-      authorIds.length > 0
-        ? supabase
-            .from('user_trust')
-            .select('user_id, tier')
-            .in('user_id', authorIds)
-        : Promise.resolve({ data: [], error: null } as any),
-    ])
-    if ((profilesRes as any).error) console.error('[timeline] tweet profiles fetch error:', (profilesRes as any).error)
-
-    const profileMap = new Map<string, any>(
-      ((profilesRes as any).data ?? []).map((p: any) => [p.id, p])
-    )
-    const reactionsByTweet = new Map<string, any[]>()
-    for (const r of ((reactionsRes as any).data ?? [])) {
-      if (!reactionsByTweet.has(r.tweet_id)) reactionsByTweet.set(r.tweet_id, [])
-      reactionsByTweet.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
-    }
-    const repliesByTweet = new Map<string, any[]>()
-    for (const r of ((repliesRes as any).data ?? [])) {
-      if (!repliesByTweet.has(r.tweet_id)) repliesByTweet.set(r.tweet_id, [])
-      repliesByTweet.get(r.tweet_id)!.push({ id: r.id })
-    }
-    const trustMap = new Map<string, string>(
-      ((trustRes as any).data ?? []).map((t: any) => [t.user_id, t.tier])
-    )
-
-    for (const r of rows) {
-      r.profiles = profileMap.get(r.user_id) ?? null
-      r.tweet_reactions = reactionsByTweet.get(r.id) ?? []
-      r.tweet_replies = repliesByTweet.get(r.id) ?? []
-      const tier = trustMap.get(r.user_id)
-      r.user_trust = tier ? { tier } : null
-    }
-
-    setTweetFeed(rows as TweetData[])
-    setTweetLoading(false)
-  }, [])
-
+  // 通話ルームは tab 非依存 (両 pane で同一の voiceRooms を使う)。
+  // userId 取得後に 1 度 + Refresh 押下時 (refreshNonce inc) に再取得する。
   useEffect(() => {
-    if (userId) {
-      fetchPosts(true)
-      fetchVoiceRooms()
-      // 'all' は全 tweets、'following' は自分のフォロー中ユーザーで絞り込んだ
-      // tweets を取得。tweets 主体のユーザー (= village_posts に投稿しないが
-      // つぶやきは投稿する人) もフォロー中タブで表示できるようになる。
-      if (tab === 'all') fetchTweets()
-      else if (tab === 'following') fetchTweets(followingIds)
-    }
-  }, [userId, tab, fetchPosts, fetchQA, fetchTweets, fetchVoiceRooms, myVillageIds, followingIds])
-
-  // ── いいね ──────────────────────────────────────────────────
-  // PR #46: async + await + error 検出 + onConflict 明示で silent failure を解消。
-  async function toggleLike(postId: string) {
-    if (!userId) return
-    const supabase = createClient()
-    if (likedIds.has(postId)) {
-      const r = await supabase.from('village_reactions').delete().eq('post_id', postId).eq('user_id', userId)
-      if (r.error) {
-        console.error('[toggleLike] delete error:', r.error)
-        return
-      }
-      setLikedIds(prev => { const n = new Set(prev); n.delete(postId); return n })
-      setPosts(prev => prev.map(p => p.id === postId ? { ...p, reaction_count: Math.max(0, p.reaction_count - 1) } : p))
-    } else {
-      const r = await supabase.from('village_reactions').upsert(
-        { post_id: postId, user_id: userId },
-        { onConflict: 'post_id,user_id' }
-      )
-      if (r.error) {
-        console.error('[toggleLike] upsert error:', r.error)
-        return
-      }
-      setLikedIds(prev => new Set([...prev, postId]))
-      setPosts(prev => prev.map(p => p.id === postId ? { ...p, reaction_count: p.reaction_count + 1 } : p))
-    }
-  }
-
-  // 回答後: その瓶をフィードから消す
-  function handleAnswered(bottleId: string) {
-    setQaBottles(prev => prev.filter(b => b.id !== bottleId))
-  }
-
-  // フィード合成（通話ルームは全タブで混在）
-  // 'all' / 'following' は tweets テーブルからも取得して posts と merge する。
-  // 旧仕様は 'all' のみ tweets を merge していたため、tweets だけ投稿する
-  // ユーザー (例: つぶやき主体のミヤ) がフォロー中タブで一切表示されなかった。
-  const feed: FeedItem[] = (() => {
-    if ((tab === 'all' || tab === 'following') && tweetFeed.length > 0) {
-      const combined: FeedItem[] = [
-        ...posts.map(p => ({ type: 'post' as const, data: p })),
-        ...tweetFeed.map(t => ({ type: 'tweet' as const, data: t })),
-      ]
-      combined.sort((a, b) =>
-        new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
-      )
-      // 通話ルームを先頭から3件ごとに挿入
-      const withVoice: FeedItem[] = []
-      let vi = 0
-      combined.forEach((item, i) => {
-        withVoice.push(item)
-        if ((i + 1) % 3 === 0 && vi < voiceRooms.length) {
-          withVoice.push({ type: 'voice', data: voiceRooms[vi++] })
-        }
-      })
-      while (vi < voiceRooms.length) withVoice.push({ type: 'voice', data: voiceRooms[vi++] })
-
-      return withVoice
-    }
-    return buildFeed(posts, qaBottles, voiceRooms)
-  })()
+    if (userId) fetchVoiceRooms()
+  }, [userId, refreshNonce, fetchVoiceRooms])
 
   // ── レンダリング ─────────────────────────────────────────────
-  // 2026-05-10: 外側 wrapper に touch handler を付与。タブ切替 (タップ) は
-  // 内側の <button onClick> がそのまま処理する (swipe 判定は dx>=50 + 短時間
-  // のみなので、tap (dx=0) と干渉しない)。
+  // 2026-05-10: SwipeableTabs で 'all' / 'following' を横並び pane として配置し、
+  // translateX で active を中央に表示。タップ + 横スワイプの両方で横スライド
+  // アニメーション切替が走る。FAB / ComposeModal は SwipeableTabs の外側に
+  // hoist (transform 内側に position: fixed を置くと viewport 基準が壊れる)。
   return (
     <div
       className="max-w-md mx-auto min-h-screen"
       style={{ background: '#080812' }}
-      onTouchStart={swipeHandlers.onTouchStart}
-      onTouchEnd={swipeHandlers.onTouchEnd}
     >
 
       {/* ヘッダー (2026-05-09: 共通 PageHeader に移行)
-          - 旧: 非 sticky / 緑グラデ / pt-12 pb-0 + 内部タブ
-          - 新: 共通 PageHeader (sticky top-0 z-10) + bottomTab で内部タブを渡す
-          - 緑アクセント (#39FF88) と Refresh ボタンは維持 */}
+          - 共通 PageHeader (sticky top-0 z-10) + bottomTab で内部タブを渡す
+          - 緑アクセント (#39FF88) と Refresh ボタンは維持
+          2026-05-10: タブバーは SwipeableTabs の外側に置く (sticky 維持)。
+          Refresh ボタンは refreshNonce を inc して両 pane に再取得を要求。 */}
       <PageHeader
         label="TIMELINE"
         title="タイムライン"
@@ -1330,7 +1372,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         accentColor="#39FF88"
         actions={
           <button
-            onClick={() => { fetchPosts(true); fetchVoiceRooms(); if (userId) fetchQA(userId, myVillageIds); if (tab === 'all') fetchTweets(); else if (tab === 'following') fetchTweets(followingIds) }}
+            onClick={() => setRefreshNonce(n => n + 1)}
             className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
             style={{ background: 'rgba(57,255,136,0.1)', border: '1px solid rgba(57,255,136,0.25)' }}
           >
@@ -1359,100 +1401,38 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         }
       />
 
-      {/* コンテンツ */}
-      <div className="px-4 pt-4 pb-28 space-y-3">
-
-        {/* ギルドタブ削除に伴い、Q&A バナーと「ギルド未参加」空状態 UI を撤去。
-            qaBottles state 自体は残しているので、将来別画面 (例: 通知や Q&A 専用
-            ページ) で再利用可能。 */}
-
-        {/* フォロー0人 */}
-        {tab === 'following' && followingIds.length === 0 && !loading && (
-          <div className="rounded-2xl p-6 text-center"
-            style={{ background: 'rgba(57,255,136,0.04)', border: '1px solid rgba(57,255,136,0.2)' }}>
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-              style={{ background: 'rgba(57,255,136,0.1)', border: '1px solid rgba(57,255,136,0.25)' }}>
-              <Users size={26} style={{ color: '#39FF88' }} />
-            </div>
-            <p className="text-sm font-extrabold mb-1" style={{ color: '#F0EEFF' }}>まだ誰もフォローしていません</p>
-            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(240,238,255,0.35)' }}>ゲーム仲間をフォローすると、ここに投稿が流れます。</p>
-            <button onClick={() => router.push('/guilds')}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold active:scale-95 transition-all"
-              style={{ background: 'linear-gradient(135deg,#39FF88 0%,#059669 100%)', boxShadow: '0 4px 20px rgba(57,255,136,0.4)', color: '#051a0e' }}>
-              ギルドを探す →
-            </button>
-          </div>
-        )}
-
-        {/* ローディング */}
-        {loading && <Skeleton />}
-
-        {/* フィード（投稿 + Q&A + ツイート + 通話ルーム混在） */}
-        {!loading && feed.map((item) =>
-          item.type === 'voice' ? (
-            <VoiceRoomCard
-              key={`voice-${item.data.id}`}
-              room={item.data}
-              currentUserId={userId}
-            />
-          ) : item.type === 'qa' ? (
-            <QACard
-              key={`qa-${item.data.id}`}
-              bottle={item.data}
+      {/* ── タブコンテンツ (横スライド) ──
+          'all' / 'following' を横並び pane として両方常時 mount。各 pane は
+          自分の tab に応じて独立して fetch / state を持つ。userId が未確定の
+          うちは pane は早期 return で skeleton のみ表示。 */}
+      {userId ? (
+        <SwipeableTabs tabs={TAB_ORDER} active={tab} onChange={setTab}>
+          {TAB_ORDER.map((t) => (
+            <TimelineFeedPane
+              key={t}
+              tab={t}
               userId={userId}
-              canReply={canReply}
-              onAnswered={handleAnswered}
-            />
-          ) : item.type === 'tweet' ? (
-            <PostCardShell key={`tweet-${item.data.id}`}>
-              <TweetCard
-                tweet={item.data}
-                myId={userId}
-                onUpdate={fetchTweets}
-                showBorder={false}
-                canInteract={true}
-                avatarVariant="green"
-              />
-            </PostCardShell>
-          ) : (
-            <PostCard
-              key={`post-${item.data.id}`}
-              post={item.data}
-              userId={userId}
+              userTier={userTier}
+              followingIds={followingIds}
+              myVillageIds={myVillageIds}
               likedIds={likedIds}
-              onToggleLike={toggleLike}
-              showVillage={true}
+              setLikedIds={setLikedIds}
+              voiceRooms={voiceRooms}
+              canReply={canReply}
+              refreshNonce={refreshNonce}
+              optimisticPostRef={optimisticPostRef}
             />
-          )
-        )}
+          ))}
+        </SwipeableTabs>
+      ) : (
+        <div className="px-4 pt-4 pb-28 space-y-3">
+          <Skeleton />
+        </div>
+      )}
 
-        {/* 空状態 */}
-        {!loading && feed.length === 0 && (
-          (tab === 'all') ||
-          (tab === 'following' && followingIds.length > 0)
-        ) && (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-              style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' }}>
-              <GuildHeroGamepad size={40} />
-            </div>
-            <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.4)' }}>まだ投稿がありません</p>
-          </div>
-        )}
-
-        {/* もっと読む */}
-        {!loading && hasMore && posts.length > 0 && (
-          <button onClick={() => fetchPosts(false)} disabled={loadingMore}
-            className="w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
-            style={{ background: 'rgba(57,255,136,0.08)', border: '1px solid rgba(57,255,136,0.2)', color: 'rgba(57,255,136,0.8)' }}>
-            {loadingMore
-              ? <span className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgba(57,255,136,0.6)', borderTopColor: 'transparent' }} />
-              : '続きを読む'}
-          </button>
-        )}
-      </div>
-
-      {/* ── FAB ── */}
+      {/* ── FAB ──
+          fixed 要素は SwipeableTabs (transform 内側) に置くと viewport 基準が
+          壊れるため、ここに hoist。 */}
       <button
         onClick={() => setShowCompose(true)}
         className="fixed bottom-24 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
@@ -1471,14 +1451,16 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
           onPosted={(newPost) => {
             setShowCompose(false)
             // Optimistic prepend — RLS の SELECT 設定がどうあれ、
-            // 投稿した本人の画面には必ずすぐに反映させる
+            // 投稿した本人の画面には必ずすぐに反映させる。
+            // optimisticPostRef に格納 → refreshNonce inc で 'all' pane の
+            // useEffect が消費 (1 度だけ) + 再 fetch する。
             if (newPost && userId) {
-              const optimistic: TPost = {
+              optimisticPostRef.current = {
                 id:             `temp-${Date.now()}`,
                 content:        newPost.content,
                 category:       newPost.category,
                 created_at:     new Date().toISOString(),
-                village_id:     '',  // null だが型上 string なので空文字
+                village_id:     '',
                 user_id:        userId,
                 reaction_count: 0,
                 profiles:       userProfile
@@ -1487,9 +1469,8 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
                 villages:       null,
                 user_trust:     { tier: userTier, is_shadow_banned: false },
               }
-              setPosts(prev => [optimistic, ...prev])
             }
-            fetchPosts(true)
+            setRefreshNonce(n => n + 1)
           }}
         />
       )}

@@ -32,13 +32,15 @@ import { type Village } from '@/components/ui/VillageCard'
 import GuildsContent from '@/components/features/GuildsContent'
 import GuildShieldIcon from '@/components/ui/icons/GuildShieldIcon'
 import { SIMPLE_COLORS } from '@/components/ui/SimpleCard'
-import { useSwipeTabs } from '@/hooks/useSwipeTabs'
+import { SwipeableTabs } from '@/components/ui/SwipeableTabs'
 
 const TOP_TAB_HEIGHT = 44
 
-// 2026-05-10 マッキーさん指示「X のようにタップ + 横スワイプで切り替え」対応。
-// 表示順 (= TOP_TABS と同じ): いますぐ村 → ギルド。
+// 2026-05-10 マッキーさん指示「X のように画面コンテンツ自体が横にスライドして
+// 切り替わる」対応。表示順: いますぐ村 → ギルド。
 // 左スワイプ = 次のタブ (instant → guild)、右スワイプ = 前のタブ (guild → instant)。
+// SwipeableTabs が両 pane を横並びに DOM 配置し、translateX で active を中央に
+// 表示するため、隣の画面が見えながら横スライドで切り替わる。
 type TopTab = 'instant' | 'guild'
 const TOP_TAB_ORDER: readonly TopTab[] = ['instant', 'guild'] as const
 
@@ -111,8 +113,6 @@ function SimpleVillageCard({
 export default function GuildPage() {
   const router = useRouter()
   const [topTab, setTopTab] = useState<TopTab>('instant')
-  // 2026-05-10: 横スワイプでも topTab を切り替え。タップ用 setTopTab と同じ setter を渡す。
-  const swipeHandlers = useSwipeTabs(TOP_TAB_ORDER, topTab, setTopTab)
 
   // URL ?tab=guild 互換 (旧 /guilds 互換 or 内部リンク)
   useEffect(() => {
@@ -190,26 +190,24 @@ export default function GuildPage() {
     return true
   })
 
-  // 2026-05-10: 外側 wrapper に touch handler を付与。タブ切替 (タップ) は
-  // 内側の <button onClick> がそのまま処理する。swipe は dx>=50 + 短時間のみ
-  // 発火するので tap (dx=0) と干渉しない。
+  // 2026-05-10: SwipeableTabs (新規) で「いますぐ村 / ギルド」を横並び pane として
+  // 配置し、translateX で active を中央に表示。タップ + 横スワイプの両方で
+  // 横スライドアニメーション切替が走る。FAB は position: fixed で transformed
+  // ancestor 内に置くと位置基準が壊れるため SwipeableTabs の外に hoist する。
   return (
     <div
       className="max-w-md mx-auto min-h-screen"
       style={{ background: SIMPLE_COLORS.pageBg }}
-      onTouchStart={swipeHandlers.onTouchStart}
-      onTouchEnd={swipeHandlers.onTouchEnd}
     >
 
       {/* ── 上部タブ：いますぐ村 / ギルド ──
           2026-05-09 マッキーさん指示「左右タブを完全に同一 DOM / CSS / 高さ /
           余白 / 下線位置に揃える」対応:
           - TOP_TABS 配列を map で展開し、左右の button を完全同一ロジックで出力
-          - 下線は left-1/4 right-1/4 (親幅依存の可変) → left-1/2 -translate-x-1/2
-            w-12 (中央固定 48px 幅) に変更し、文字数に依らず完全対称に
-          - active / inactive の差は color と下線表示のみ。height / padding /
-            font-size / line-height / margin は同一。
-          - button 全体は flex-1 で 50% / 50% 均等。 */}
+          - 下線は中央固定 48px 幅。active / inactive の差は color と下線表示のみ。
+          - button 全体は flex-1 で 50% / 50% 均等。
+          2026-05-10: タブバー自体は SwipeableTabs の外側に置く (sticky を維持し
+          つつ、active 切替時にタブバーが横に動かないようにするため)。 */}
       <div
         className="sticky top-0 z-30 flex"
         style={{
@@ -245,19 +243,16 @@ export default function GuildPage() {
         })}
       </div>
 
-      {/* ── ギルドタブ ── */}
-      {topTab === 'guild' && (
-        <GuildsContent embedded headerTopOffset={TOP_TAB_HEIGHT} />
-      )}
-
-      {/* ── いますぐ村タブ ── */}
-      {topTab === 'instant' && (
+      {/* ── タブコンテンツ (横スライド) ──
+          いますぐ村 / ギルド を横並びに DOM 配置。両 pane が常時 mount されるため
+          GuildsContent も初回から fetch を開始する。 */}
+      <SwipeableTabs tabs={TOP_TAB_ORDER} active={topTab} onChange={setTopTab}>
+        {/* pane 1: いますぐ村 */}
         <>
           {/* ── コンパクトヘッダー (検索 + サブフィルター) ──
-              旧 GAME ROOM 巨大ヒーロー / 「今すぐ一緒に遊ぶ人を探そう」
-              / 「通話ルームを開いて仲間を募集する場所」/ 多数のジャンル
-              チップは全削除。タブ直下にスッキリ検索 + 3 chip フィルタ
-              のみ。 */}
+              タブ直下にスッキリ検索 + ジャンル + サブフィルター。
+              sticky position は overflow-x: clip の SwipeableTabs 内でも
+              page scroll に追従する (clip は scroll container 化しない)。 */}
           <div className="sticky z-10 px-4 pt-3 pb-2.5"
             style={{
               top: TOP_TAB_HEIGHT,
@@ -341,11 +336,6 @@ export default function GuildPage() {
           </div>
 
           {/* ── ゲーム村一覧 (シンプル縦並び) ── */}
-          {/* 2026-05-09: BottomNav クリアランスを TL/通知/チャット と同じ pb-28 に統一
-              2026-05-09 マッキーさん指示「今夜あそぶ人を探すセクションを削除」対応で、
-              旧 162 行の紫カードブロック (L408-L569) と関連 state / handler / type / 定数 /
-              icon import (Moon/Mic/MicOff/Check) を完全削除。tonight_slots テーブル本体は
-              将来戻す可能性に備えて DB は触らずに残置。 */}
           <div className="px-4 pt-4 pb-28">
             {loading ? (
               <div className="space-y-2.5">
@@ -399,21 +389,28 @@ export default function GuildPage() {
               </div>
             )}
           </div>
-
-          {/* ── FAB (紫アクセント) ── */}
-          <button
-            onClick={() => router.push('/guild/create')}
-            className="fixed right-5 w-14 h-14 rounded-2xl flex items-center justify-center active:scale-90 transition-all z-30"
-            style={{
-              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
-              background: SIMPLE_COLORS.accent,
-              boxShadow: '0 8px 24px rgba(157,92,255,0.5), 0 0 20px rgba(157,92,255,0.3)',
-            }}
-            aria-label="ゲーム村を作る"
-          >
-            <Plus size={22} className="text-white" />
-          </button>
         </>
+
+        {/* pane 2: ギルド */}
+        <GuildsContent embedded headerTopOffset={TOP_TAB_HEIGHT} />
+      </SwipeableTabs>
+
+      {/* ── FAB (いますぐ村タブのみ) ──
+          fixed 要素は SwipeableTabs (transform 内側) に置くと viewport 基準が
+          壊れるため、ここに hoist して active タブが instant のときだけ表示する。 */}
+      {topTab === 'instant' && (
+        <button
+          onClick={() => router.push('/guild/create')}
+          className="fixed right-5 w-14 h-14 rounded-2xl flex items-center justify-center active:scale-90 transition-all z-30"
+          style={{
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+            background: SIMPLE_COLORS.accent,
+            boxShadow: '0 8px 24px rgba(157,92,255,0.5), 0 0 20px rgba(157,92,255,0.3)',
+          }}
+          aria-label="ゲーム村を作る"
+        >
+          <Plus size={22} className="text-white" />
+        </button>
       )}
     </div>
   )
