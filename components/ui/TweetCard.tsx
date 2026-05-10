@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag } from '@/lib/utils'
@@ -101,24 +101,75 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
   // 2026-05-08: B-1 方式 (Heart 1 種類リアクション) に統合。
   // tweet_reactions テーブルは既存スキーマ維持 (heart/haha/wow/support/sad/fire 全 6 種を
   // 引き続き保存可能) だが、UI からは Heart タップで 'heart' のみ upsert する。
-  const myReaction = tweet.tweet_reactions.find(r => r.user_id === myId)?.reaction
+  //
+  // 2026-05-10 マッキーさん指示「自分の投稿にいいねが押せない」恒久対策:
+  // optimistic local state を導入。クリック直後に liked / count を即時切替し、
+  // 親の onUpdate() refetch 完了を待たなくても画面が反応する。
+  // これにより village 投稿側の toggleLike (mypage:1028) と挙動を完全統一。
+  // RLS 非対称挙動で refetch が stale データを返しても、UI は optimistic 値で
+  // ユーザに即時 feedback を返す。DB エラー時のみ revert + alert 表示。
+  const dbReaction = tweet.tweet_reactions.find(r => r.user_id === myId)?.reaction
+  const dbLiked = dbReaction === 'heart'
+  const dbCount = new Set(tweet.tweet_reactions.map(r => r.user_id)).size
+  // optimistic override: null = optimistic state なし (DB 値を使用)
+  const [optimisticLiked, setOptimisticLiked] = useState<boolean | null>(null)
+  const [optimisticDelta, setOptimisticDelta] = useState<number>(0)
+  // 親 prop が更新されたら optimistic を解除 (refetch 完了 = DB が真実)
+  useEffect(() => {
+    setOptimisticLiked(null)
+    setOptimisticDelta(0)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tweet.tweet_reactions])
+
+  const myReaction = optimisticLiked === null ? dbReaction : (optimisticLiked ? 'heart' : undefined)
 
   async function toggleReaction(key: string) {
     if (!myId || !canInteract) return
     const supabase = createClient()
+    // optimistic 切替: クリック直後に liked / count を切替えて即時 feedback
+    const wasLiked = (optimisticLiked === null ? dbLiked : optimisticLiked)
+    const nextLiked = !wasLiked
+    // [TEMP DEBUG 2026-05-10] 自分の投稿いいね反映調査用 (本番確認後に除去)
+    console.log('[LikeButton clicked TEMP-DEBUG]', {
+      source: 'components/ui/TweetCard.tsx',
+      postId: tweet.id,
+      postAuthorId: tweet.user_id,
+      currentUserId: myId,
+      isOwnPost: tweet.user_id === myId,
+      beforeLiked: wasLiked,
+      nextLiked,
+    })
+    setOptimisticLiked(nextLiked)
+    setOptimisticDelta(nextLiked ? +1 : -1)
     let error: { message: string; code?: string; details?: string; hint?: string } | null = null
-    if (myReaction === key) {
+    if (wasLiked) {
       const r = await supabase.from('tweet_reactions').delete().eq('tweet_id', tweet.id).eq('user_id', myId)
       error = r.error as any
+      // [TEMP DEBUG 2026-05-10] DB delete 結果
+      console.log('[LikeButton db result TEMP-DEBUG]', {
+        action: 'delete', postId: tweet.id, currentUserId: myId,
+        error: r.error, status: (r as any).status,
+      })
     } else {
       const r = await supabase.from('tweet_reactions').upsert(
         { tweet_id: tweet.id, user_id: myId, reaction: key },
         { onConflict: 'tweet_id,user_id' }
       )
       error = r.error as any
+      // [TEMP DEBUG 2026-05-10] DB upsert 結果
+      console.log('[LikeButton db result TEMP-DEBUG]', {
+        action: 'upsert', postId: tweet.id, currentUserId: myId,
+        error: r.error, status: (r as any).status,
+      })
     }
     if (error) {
       console.error('[toggleReaction] supabase error:', error)
+      // RLS で reject された等の場合 UI を元に戻す + マッキーさんに見えるよう alert
+      setOptimisticLiked(wasLiked)
+      setOptimisticDelta(0)
+      if (typeof window !== 'undefined') {
+        alert(`いいね操作に失敗: ${error.message ?? 'unknown'}\nアクション: ${wasLiked ? 'delete' : 'upsert'}\nDB error code: ${error.code ?? 'なし'}`)
+      }
       return
     }
     onUpdate()
@@ -178,7 +229,9 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
   // あるため、`.length` ではなく Set でユニーク user 数を計算する。
   // これにより万一 enrichment 段階で重複除去が漏れても、表示段階で
   // 必ず正しい数 (= 実際にいいねした人数) になる。
-  const totalReactions = new Set(tweet.tweet_reactions.map(r => r.user_id)).size
+  // 2026-05-10 さらに optimistic update のため optimisticDelta を加算。
+  // (オプティミスティック中は max(0, dbCount + delta) で 0 未満にならないよう clamp)
+  const totalReactions = Math.max(0, dbCount + optimisticDelta)
   const liked = myReaction === 'heart'
 
   return (
