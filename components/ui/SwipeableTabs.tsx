@@ -57,6 +57,15 @@ interface Props<T extends string> {
   children: ReactNode
   /** snap 時の transition 時間 (ms)。デフォルト 320。 */
   durationMs?: number
+  /**
+   * 外側コンテナの min-height。
+   * 2026-05-10: ゲーム村ページで「カードが少ないと空白部分でスワイプが反応しない」
+   * 事象を解消するため追加。viewport から fixed 要素 (上部タブバー等) を引いた
+   * 値を渡すと、コンテンツが短くても画面下部の空白まで touch 検知領域になる。
+   * 例: `calc(100dvh - 44px)` (TOP_TAB_HEIGHT 44px を引く)
+   * 未指定時は従来通りコンテンツの自然高 (timeline は影響なし)。
+   */
+  minHeight?: string | number
 }
 
 export function SwipeableTabs<T extends string>({
@@ -65,6 +74,7 @@ export function SwipeableTabs<T extends string>({
   onChange,
   children,
   durationMs = 320,
+  minHeight,
 }: Props<T>) {
   const count = tabs.length
   const idx = Math.max(0, tabs.indexOf(active))
@@ -217,6 +227,9 @@ export function SwipeableTabs<T extends string>({
         width: '100%',
         // iOS edge swipe (左端からの戻るナビ) を抑制
         overscrollBehaviorX: 'contain',
+        // 2026-05-10: コンテンツが短い時に空白部分まで touch 検知領域にする
+        // (ゲーム村ページの空白スワイプが反応しなかった事象の対策)
+        ...(minHeight !== undefined ? { minHeight } : {}),
       }}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
