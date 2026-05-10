@@ -15,6 +15,7 @@ import PostCardHeader from '@/components/ui/PostCardHeader'
 import { detectCrisisKeywords } from '@/lib/moderation'
 import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
 import { getUserDisplayName } from '@/lib/user-display'
+import { useSwipeTabs } from '@/hooks/useSwipeTabs'
 
 // ── 型定義 ──────────────────────────────────────────────────────
 // 旧: 'myvillage' (ギルド) / 'all' (みんな) / 'following' (フォロー) の 3 タブ
@@ -90,6 +91,11 @@ const TAB_CONFIG: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: 'all',       label: 'みんな',   icon: Globe },
   { key: 'following', label: 'フォロー', icon: Users },
 ]
+
+// 2026-05-10 マッキーさん指示「X のようにタップ + 横スワイプで切り替え」対応。
+// useSwipeTabs に渡す順序は表示順 (= TAB_CONFIG と同じ)。
+// 左スワイプ = 次のタブ (all → following)、右スワイプ = 前のタブ (following → all)。
+const TAB_ORDER: readonly Tab[] = ['all', 'following'] as const
 
 // ── 通話ルームカード（Discordスタイル） ────────────────────────
 function VoiceRoomCard({ room, currentUserId }: { room: VoiceRoom; currentUserId: string | null }) {
@@ -799,9 +805,14 @@ function ComposeModal({
 export default function TimelinePage() {
   const router = useRouter()
 
+  // 2026-05-10: 既存の setTab をそのまま使う (タップとスワイプで同じ state を共有)。
+  // 詳細は hooks/useSwipeTabs.ts を参照。
+
   // 既定タブは 'all'（みんな）。'myvillage' を既定にすると、村未参加ユーザーや
   // village_id=null で保存される通常タイムライン投稿が一切表示されないため。
   const [tab,          setTab]          = useState<Tab>('all')
+  // 2026-05-10: 横スワイプでも tab を切り替え。タップ用 setTab と同じ setter を渡す。
+  const swipeHandlers = useSwipeTabs(TAB_ORDER, tab, setTab)
   const [posts,        setPosts]        = useState<TPost[]>([])
   const [qaBottles,    setQaBottles]    = useState<QABottle[]>([])
   const [loading,      setLoading]      = useState(true)
@@ -1296,8 +1307,16 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
   })()
 
   // ── レンダリング ─────────────────────────────────────────────
+  // 2026-05-10: 外側 wrapper に touch handler を付与。タブ切替 (タップ) は
+  // 内側の <button onClick> がそのまま処理する (swipe 判定は dx>=50 + 短時間
+  // のみなので、tap (dx=0) と干渉しない)。
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
+    <div
+      className="max-w-md mx-auto min-h-screen"
+      style={{ background: '#080812' }}
+      onTouchStart={swipeHandlers.onTouchStart}
+      onTouchEnd={swipeHandlers.onTouchEnd}
+    >
 
       {/* ヘッダー (2026-05-09: 共通 PageHeader に移行)
           - 旧: 非 sticky / 緑グラデ / pt-12 pb-0 + 内部タブ

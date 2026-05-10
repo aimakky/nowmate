@@ -32,8 +32,15 @@ import { type Village } from '@/components/ui/VillageCard'
 import GuildsContent from '@/components/features/GuildsContent'
 import GuildShieldIcon from '@/components/ui/icons/GuildShieldIcon'
 import { SIMPLE_COLORS } from '@/components/ui/SimpleCard'
+import { useSwipeTabs } from '@/hooks/useSwipeTabs'
 
 const TOP_TAB_HEIGHT = 44
+
+// 2026-05-10 マッキーさん指示「X のようにタップ + 横スワイプで切り替え」対応。
+// 表示順 (= TOP_TABS と同じ): いますぐ村 → ギルド。
+// 左スワイプ = 次のタブ (instant → guild)、右スワイプ = 前のタブ (guild → instant)。
+type TopTab = 'instant' | 'guild'
+const TOP_TAB_ORDER: readonly TopTab[] = ['instant', 'guild'] as const
 
 // 2026-05-09: 「今夜あそぶ人を探す」セクション削除に伴い、TonightSlot 型 / TIME_SLOTS /
 // SKILL_LEVELS は不要となり削除。tonight_slots テーブルは将来復活に備えて DB 側は残置。
@@ -103,7 +110,9 @@ function SimpleVillageCard({
 // ── メインページ ────────────────────────────────────────────
 export default function GuildPage() {
   const router = useRouter()
-  const [topTab, setTopTab] = useState<'instant' | 'guild'>('instant')
+  const [topTab, setTopTab] = useState<TopTab>('instant')
+  // 2026-05-10: 横スワイプでも topTab を切り替え。タップ用 setTopTab と同じ setter を渡す。
+  const swipeHandlers = useSwipeTabs(TOP_TAB_ORDER, topTab, setTopTab)
 
   // URL ?tab=guild 互換 (旧 /guilds 互換 or 内部リンク)
   useEffect(() => {
@@ -111,17 +120,6 @@ export default function GuildPage() {
     const params = new URLSearchParams(window.location.search)
     if (params.get('tab') === 'guild') setTopTab('guild')
   }, [])
-
-  // DEBUG (2026-05-09 マッキーさん指示「今夜あそぶ人を探すセクション削除」の
-  // 実描画ファイル証明)。確認後、次 commit で除去する
-  // (CLAUDE.md「一時 console.log の最短ライフサイクル」)。
-  // ブラウザコンソールで `[GUILD_TAB_DEBUG_2026-05-09]` を含むログが見えれば、
-  // app/(app)/guild/page.tsx が実描画ファイルだと証明される。
-  useEffect(() => {
-    console.log('[GUILD_TAB_DEBUG_2026-05-09] topTab=', topTab,
-      'file=app/(app)/guild/page.tsx',
-      'tonightSection=REMOVED (post-fix)')
-  }, [topTab])
 
   const [villages,  setVillages]  = useState<Village[]>([])
   const [loading,   setLoading]   = useState(true)
@@ -192,8 +190,16 @@ export default function GuildPage() {
     return true
   })
 
+  // 2026-05-10: 外側 wrapper に touch handler を付与。タブ切替 (タップ) は
+  // 内側の <button onClick> がそのまま処理する。swipe は dx>=50 + 短時間のみ
+  // 発火するので tap (dx=0) と干渉しない。
   return (
-    <div className="max-w-md mx-auto min-h-screen" style={{ background: SIMPLE_COLORS.pageBg }}>
+    <div
+      className="max-w-md mx-auto min-h-screen"
+      style={{ background: SIMPLE_COLORS.pageBg }}
+      onTouchStart={swipeHandlers.onTouchStart}
+      onTouchEnd={swipeHandlers.onTouchEnd}
+    >
 
       {/* ── 上部タブ：いますぐ村 / ギルド ──
           2026-05-09 マッキーさん指示「左右タブを完全に同一 DOM / CSS / 高さ /
