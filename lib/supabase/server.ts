@@ -10,11 +10,18 @@ import { SUPABASE_COOKIE_OPTIONS, applyCookieMaxAgeOverride } from '@/lib/supaba
 // setAll に渡ってくる options.maxAge は library 内部で強制上書きされている。
 // applyCookieMaxAgeOverride で 90 日に再上書きする hack を入れる。
 // maxAge=0 (cookie 削除) はそのまま保持されるので signOut 動作不変。
+// 2026-05-10 リリース前 Critical 修正: env 未設定で createServerClient が
+// throw するのを防ぐ。空文字フォールバック + console.error で原因追跡可能に。
 export function createClient() {
   const cookieStore = cookies()
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) {
+    console.error('[supabase/server] missing NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY')
+  }
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url ?? '',
+    key ?? '',
     {
       cookieOptions: SUPABASE_COOKIE_OPTIONS,
       cookies: {

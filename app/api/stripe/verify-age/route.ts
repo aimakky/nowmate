@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
+import { getBaseUrl } from '@/lib/env-guard'
 
 export async function POST(req: NextRequest) {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -18,6 +19,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ already_verified: true })
   }
 
+  // 2026-05-10 Critical: NEXT_PUBLIC_BASE_URL 未設定時に `${undefined}/verify-age/...`
+  // という壊れた return_url を Stripe Identity に渡す事故を防ぐ。
+  const baseUrl = getBaseUrl()
+
   const session = await stripe.identity.verificationSessions.create({
     type: 'document',
     options: {
@@ -28,7 +33,7 @@ export async function POST(req: NextRequest) {
       },
     },
     metadata: { user_id: user.id },
-    return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/verify-age/complete?session_id={VERIFICATION_SESSION_ID}`,
+    return_url: `${baseUrl}/verify-age/complete?session_id={VERIFICATION_SESSION_ID}`,
   })
 
   return NextResponse.json({ url: session.url, session_id: session.id })

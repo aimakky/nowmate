@@ -22,9 +22,20 @@ function applyNoStoreHeaders(res: NextResponse): NextResponse {
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
+  // 2026-05-10 リリース前 Critical 修正: env 未設定で全アプリ crash しないよう防御。
+  // NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY が無い場合は middleware を素通りさせる
+  // (= ログイン保護が効かなくなるが、500 連発よりはマシ)。Vercel 等で env 抜け
+  // デプロイした際の事故を防ぐ。
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('[middleware] missing Supabase env — skipping auth check')
+    return applyNoStoreHeaders(supabaseResponse)
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
       // 2026-05-08 (YVOICE4 PR4 + ログイン維持改善): iOS Safari ITP 対策と
       // 90 日ログイン維持のため cookieOptions を明示。
