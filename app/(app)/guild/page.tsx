@@ -245,8 +245,17 @@ export default function GuildPage() {
 
       {/* ── タブコンテンツ (横スライド) ──
           いますぐ村 / ギルド を横並びに DOM 配置。両 pane が常時 mount されるため
-          GuildsContent も初回から fetch を開始する。 */}
-      <SwipeableTabs tabs={TOP_TAB_ORDER} active={topTab} onChange={setTopTab}>
+          GuildsContent も初回から fetch を開始する。
+          2026-05-10: minHeight を viewport - 上部タブバー (44px) に設定。
+          村が少ない時に空白領域でも横スワイプが反応するようにするため。
+          BottomNav は fixed なので DOM 階層上は別ツリー → 影響なし。
+          AI ガイドボタン / FAB も fixed なので影響なし。 */}
+      <SwipeableTabs
+        tabs={TOP_TAB_ORDER}
+        active={topTab}
+        onChange={setTopTab}
+        minHeight={`calc(100dvh - ${TOP_TAB_HEIGHT}px)`}
+      >
         {/* pane 1: いますぐ村 */}
         <>
           {/* ── コンパクトヘッダー (検索 + サブフィルター) ──
