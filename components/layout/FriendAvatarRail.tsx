@@ -33,7 +33,14 @@ const ONLINE_WINDOW_MS = 5 * 60 * 1000
 // 特に empty 状態で `return null` していたためページ切替時に rail が急に
 // 0px に潰れてコンテンツが上にジャンプする現象を起こしていた。
 // 全 3 状態で同じ高さを minHeight で確保する。
-const RAIL_MIN_HEIGHT = 80 // px - paddingY 16 + avatar 48 + label 12 + gap 4
+//
+// 2026-05-10 (rev2): RAIL_MIN_HEIGHT を 80 → 100 に引き上げ。
+// 旧 80px は loaded 状態の自然高 (~95px = avatar 48 + gap 4 + name 12 + gap 4
+// + 最終ログイン 11 + py-2 16) を下回っており、
+// skeleton (76 → minHeight 80 が勝つ) → loaded (95) で 15px ジャンプが
+// 残っていた (= マッキーさん「まだずれます」報告の原因)。
+// 100 に引き上げることで loaded 95 < 100 となり、3 状態すべて 100px に揃う。
+const RAIL_MIN_HEIGHT = 100 // px - loaded 自然高 ~95 を上回る安全マージン
 
 function isOnline(lastSeen: string | null): boolean {
   if (!lastSeen) return false
@@ -42,17 +49,6 @@ function isOnline(lastSeen: string | null): boolean {
 
 export default function FriendAvatarRail() {
   const [friends, setFriends] = useState<Friend[] | null>(null)
-
-  // DEBUG (2026-05-09 マッキーさん指示「下部ナビ切替時の一瞬下にズレる現象修正」の実描画ファイル証明)
-  // 確認後、次 commit で除去予定 (CLAUDE.md「最短ライフサイクル」)。
-  // ブラウザコンソールで `[FRIEND_RAIL_DEBUG_2026-05-09]` を含むログが見えれば、
-  // components/layout/FriendAvatarRail.tsx が実描画ファイルだと証明される。
-  useEffect(() => {
-    const state = friends === null ? 'loading' : friends.length === 0 ? 'empty' : `loaded(n=${friends.length})`
-    console.log('[FRIEND_RAIL_DEBUG_2026-05-09] state=', state,
-      'minHeight=80px (post-fix)',
-      'file=components/layout/FriendAvatarRail.tsx')
-  }, [friends])
 
   useEffect(() => {
     let cancelled = false
@@ -140,10 +136,15 @@ export default function FriendAvatarRail() {
           minHeight: RAIL_MIN_HEIGHT,
         }}
       >
+        {/* 2026-05-10: skeleton item を 2 段 placeholder に変更。
+            旧: avatar + 1 段 (h-2)。loaded item (avatar + name 12 + status 11) との
+                高さ差 ~16px が skeleton→loaded ジャンプの原因。
+            新: avatar + name placeholder + status placeholder。loaded と同じ縦構造。 */}
         {[...Array(6)].map((_, i) => (
           <div key={i} className="flex flex-col items-center gap-1 flex-shrink-0">
             <div className="w-12 h-12 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }} />
-            <div className="w-10 h-2 rounded" style={{ background: 'rgba(255,255,255,0.05)' }} />
+            <div className="w-10 h-3 rounded" style={{ background: 'rgba(255,255,255,0.05)' }} />
+            <div className="w-8 h-2.5 rounded" style={{ background: 'rgba(255,255,255,0.04)' }} />
           </div>
         ))}
       </div>
