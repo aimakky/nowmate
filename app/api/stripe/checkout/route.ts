@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
+import { getBaseUrl } from '@/lib/env-guard'
 
 export async function POST(req: NextRequest) {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -22,12 +23,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Price not configured' }, { status: 503 })
   }
 
+  // 2026-05-10 Critical: NEXT_PUBLIC_BASE_URL 未設定時に `${undefined}/upgrade/success`
+  // という壊れた URL を Stripe に渡してしまう事故を防ぐ。getBaseUrl() は
+  // NEXT_PUBLIC_BASE_URL → NEXT_PUBLIC_SITE_URL → 旧ドメインの順で fallback。
+  const baseUrl = getBaseUrl()
+
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     payment_method_types: ['card'],
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/upgrade/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/upgrade`,
+    success_url: `${baseUrl}/upgrade/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${baseUrl}/upgrade`,
     metadata: { user_id: user.id },
     subscription_data: { metadata: { user_id: user.id } },
   })

@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     ttl:      60 * 60, // 1h
   })
   at.addGrant({
-    room:           `samee-voice-${roomId}`,
+    room:           `yvoice-voice-${roomId}`,
     roomJoin:       true,
     canPublish:     true,   // listener でも mic enable は client 側で制御するため一律 true
     canSubscribe:   true,
@@ -142,6 +142,6 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     token,
     url:      lkUrl,
-    roomName: `samee-voice-${roomId}`,
+    roomName: `yvoice-voice-${roomId}`,
   })
 }
