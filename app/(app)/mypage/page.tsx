@@ -26,6 +26,7 @@ import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import PostCardShell from '@/components/ui/PostCardShell'
 import PostCardHeader from '@/components/ui/PostCardHeader'
 import DMPrivacySettings from '@/components/features/DMPrivacySettings'
+import GuildShieldIcon from '@/components/ui/icons/GuildShieldIcon'
 // GuideTab / FeaturesTab はマイページのタブから移動した。
 // 現在は app/(app)/safety と app/(app)/guide のスタンドアロンページに配置し、
 // 設定画面 (/settings) からリンクで到達する。
@@ -1410,7 +1411,11 @@ export default function MyPage() {
                 return (
                   <div className="rounded-2xl p-8 text-center"
                     style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
-                    <p className="text-3xl mb-2">🛡️</p>
+                    {/* 2026-05-10: 旧 🛡️ 絵文字 (iOS で赤系に見える) を青ベース
+                        の GuildShieldIcon SVG に統一 (profile/[userId] と同じ)。 */}
+                    <div className="flex justify-center mb-2">
+                      <GuildShieldIcon size={36} active />
+                    </div>
                     <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ参加中のギルドはありません</p>
                     <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>気になるギルドに参加してみよう</p>
                     <Link
