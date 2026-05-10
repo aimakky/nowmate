@@ -646,15 +646,35 @@ export default function MyPage() {
       // (rawMyTweets) から補完して likedTweets に追加する。
       // 既に setLikedTweets が呼ばれていなくても (ltRaw が空でも) 動作する
       // よう、heartTweetIds.length > 0 の外側で実行する。
-      if (heartTweetIds.length > 0 && rawMyTweets.length > 0) {
-        const heartIdSet = new Set(heartTweetIds)
-        const ownLikedFromState = rawMyTweets.filter((t: any) => heartIdSet.has(t.id))
-        if (ownLikedFromState.length > 0) {
+      // 2026-05-10 (2 回目): rawMyTweets の補完だけでは不足する場合があった
+      // ため、Supabase に own user_id 限定で「いいねした自分の tweet」を直接
+      // 再取得する明示的フォールバックを追加。
+      if (heartTweetIds.length > 0) {
+        const { data: ownLikedTweetsRows } = await supabase
+          .from('tweets')
+          .select('*')
+          .eq('user_id', user.id)
+          .in('id', heartTweetIds)
+        const ownRows = (ownLikedTweetsRows ?? []) as any[]
+        console.log('[likes-debug:initial:tweets]', {
+          heartTweetIds,
+          ownLikedTweetsRowsCount: ownRows.length,
+          rawMyTweetsCount: rawMyTweets.length,
+        })
+        if (ownRows.length > 0) {
+          // 自分の投稿なので profile / trust は p / trustData (= 自分のもの)
+          const myProf = p
+          const myTrust = trustData ? { tier: trustData.tier ?? null } : null
+          for (const t of ownRows) {
+            t.profiles = myProf
+            t.tweet_reactions = []  // 自分のいいねが含まれている前提だが空でも liked=true は別管理
+            t.tweet_replies = []
+            t.user_trust = myTrust
+            t.liked_at = ltLikedAtMap.get(t.id) ?? null
+          }
           setLikedTweets(prev => {
             const existingIds = new Set(prev.map(t => t.id))
-            const toAdd = ownLikedFromState
-              .filter((t: any) => !existingIds.has(t.id))
-              .map((t: any) => ({ ...t, liked_at: ltLikedAtMap.get(t.id) ?? null }))
+            const toAdd = ownRows.filter((t: any) => !existingIds.has(t.id))
             return [...prev, ...toAdd] as TweetData[]
           })
         }
@@ -723,20 +743,37 @@ export default function MyPage() {
       // 取得できなかった own village_post があれば、既取得済みの own
       // village_posts (myUnifiedVillagePosts) から補完して likedVillagePosts
       // に追加する。
-      if (likedVillageIds.length > 0 && myUnifiedVillagePosts.length > 0) {
-        const likedVIdSet = new Set(likedVillageIds)
-        const ownLikedVFromState = myUnifiedVillagePosts.filter(vp => likedVIdSet.has(vp.id))
-        if (ownLikedVFromState.length > 0) {
-          // 自分の村投稿なので author_profile / author_trust は自分のもの
-          // (この useEffect のスコープでは p = 自分の profile, trustData = 自分の trust)
+      // 2026-05-10 (2 回目): 自分の村投稿が反応欄に出ない問題への防御。
+      // Supabase に own user_id 限定で「いいねした自分の村投稿」を直接再取得。
+      if (likedVillageIds.length > 0) {
+        const { data: ownLikedVRows } = await supabase
+          .from('village_posts')
+          .select('id, content, category, created_at, village_id, reaction_count, user_id')
+          .eq('user_id', user.id)
+          .in('id', likedVillageIds)
+        const ownVRows = (ownLikedVRows ?? []) as any[]
+        console.log('[likes-debug:initial:village]', {
+          likedVillageIds,
+          ownLikedVRowsCount: ownVRows.length,
+          myUnifiedVillagePostsCount: myUnifiedVillagePosts.length,
+        })
+        if (ownVRows.length > 0) {
+          // 自分の村投稿なので author_profile / author_trust は自分
           const ownAuthorProfile = p
           const ownAuthorTrust = trustData ? { tier: trustData.tier ?? null } : null
+          // village 情報も既取得 lvVMap から取れるはず (上の通常 SELECT で
+          // 取得していれば)。取得失敗時は null にする
           setLikedVillagePosts(prev => {
             const existingIds = new Set(prev.map(vp => vp.id))
-            const toAdd = ownLikedVFromState
+            const toAdd = ownVRows
               .filter(vp => !existingIds.has(vp.id))
-              .map(vp => ({
-                ...vp,
+              .map((vp: any) => ({
+                id: vp.id,
+                content: vp.content,
+                created_at: vp.created_at,
+                village_id: vp.village_id ?? null,
+                reaction_count: vp.reaction_count ?? 0,
+                village: null,  // village 情報は省略 (lvVMap が undefined の可能性)
                 author_profile: ownAuthorProfile,
                 author_trust: ownAuthorTrust,
                 liked_at: lvLikedAtMap.get(vp.id) ?? null,
@@ -826,17 +863,36 @@ export default function MyPage() {
       }
       // 2026-05-10 マッキーさん指示「自分の投稿に自分でハートを押しても、
       // いいね欄に表示されない」事象の防御策 (reloadLikes 版)。
-      // 上記 .in() SELECT で取得できなかった own tweet があれば、tweets state
-      // (= loadTweets で取得済みの own tweets) から補完する。
-      if (heartTweetIds.length > 0 && tweets.length > 0) {
-        const heartIdSet = new Set(heartTweetIds)
-        const ownLikedFromState = tweets.filter(t => heartIdSet.has(t.id))
-        if (ownLikedFromState.length > 0) {
+      // 2026-05-10 (2 回目): tweets state は reloadLikes の closure で stale な
+      // 可能性があるため、Supabase に own user_id 限定で直接再取得する明示的
+      // フォールバックに変更。
+      if (heartTweetIds.length > 0) {
+        const { data: ownLikedTweetsRows } = await supabase
+          .from('tweets')
+          .select('*')
+          .eq('user_id', userId)
+          .in('id', heartTweetIds)
+        if (cancelled) return
+        const ownRows = (ownLikedTweetsRows ?? []) as any[]
+        console.log('[likes-debug:reload:tweets]', {
+          heartTweetIds,
+          ownLikedTweetsRowsCount: ownRows.length,
+          tweetsStateCount: tweets.length,
+        })
+        if (ownRows.length > 0) {
+          // 自分の投稿なので profile / trust は profile / trust state (= 自分のもの)
+          const myProf = profile
+          const myTrust = trust ? { tier: trust.tier ?? null } : null
+          for (const t of ownRows) {
+            t.profiles = myProf
+            t.tweet_reactions = []
+            t.tweet_replies = []
+            t.user_trust = myTrust
+            t.liked_at = ltLikedAtMap.get(t.id) ?? null
+          }
           setLikedTweets(prev => {
             const existingIds = new Set(prev.map(t => t.id))
-            const toAdd = ownLikedFromState
-              .filter(t => !existingIds.has(t.id))
-              .map(t => ({ ...t, liked_at: ltLikedAtMap.get(t.id) ?? null }))
+            const toAdd = ownRows.filter((t: any) => !existingIds.has(t.id))
             return [...prev, ...toAdd] as TweetData[]
           })
         }
@@ -906,21 +962,35 @@ export default function MyPage() {
       }
       // 2026-05-10 マッキーさん指示「自分の村投稿に自分でハートを押しても、
       // いいね欄に表示されない」事象の防御策 (reloadLikes 版)。
-      // 上記 .in() SELECT で取得できなかった own village_post があれば、
-      // villagePosts state から補完する。
-      if (likedVillageIds.length > 0 && villagePosts.length > 0) {
-        const likedVIdSet = new Set(likedVillageIds)
-        const ownLikedVFromState = villagePosts.filter(vp => likedVIdSet.has(vp.id))
-        if (ownLikedVFromState.length > 0) {
-          // 自分の村投稿なので author は自分の profile / trust
+      // 2026-05-10 (2 回目): villagePosts state は stale の可能性があるため、
+      // Supabase 直接フォールバックに変更。
+      if (likedVillageIds.length > 0) {
+        const { data: ownLikedVRows } = await supabase
+          .from('village_posts')
+          .select('id, content, category, created_at, village_id, reaction_count, user_id')
+          .eq('user_id', userId)
+          .in('id', likedVillageIds)
+        if (cancelled) return
+        const ownVRows = (ownLikedVRows ?? []) as any[]
+        console.log('[likes-debug:reload:village]', {
+          likedVillageIds,
+          ownLikedVRowsCount: ownVRows.length,
+          villagePostsStateCount: villagePosts.length,
+        })
+        if (ownVRows.length > 0) {
           const ownAuthorProfile = profile
           const ownAuthorTrust = trust ? { tier: trust.tier ?? null } : null
           setLikedVillagePosts(prev => {
             const existingIds = new Set(prev.map(vp => vp.id))
-            const toAdd = ownLikedVFromState
+            const toAdd = ownVRows
               .filter(vp => !existingIds.has(vp.id))
-              .map(vp => ({
-                ...vp,
+              .map((vp: any) => ({
+                id: vp.id,
+                content: vp.content,
+                created_at: vp.created_at,
+                village_id: vp.village_id ?? null,
+                reaction_count: vp.reaction_count ?? 0,
+                village: null,
                 author_profile: ownAuthorProfile,
                 author_trust: ownAuthorTrust,
                 liked_at: lvLikedAtMap.get(vp.id) ?? null,
