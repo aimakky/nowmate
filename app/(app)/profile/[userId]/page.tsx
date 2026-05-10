@@ -23,6 +23,7 @@ import PostActions from '@/components/ui/PostActions'
 import PostCardShell from '@/components/ui/PostCardShell'
 import PostCardHeader from '@/components/ui/PostCardHeader'
 import { getUserDisplayName } from '@/lib/user-display'
+import GuildShieldIcon from '@/components/ui/icons/GuildShieldIcon'
 
 // 村投稿 (village_posts) を投稿タブで TweetCard 同等のリッチ UI で描画する型。
 // 2026-05-07: マッキーさん指示「投稿一覧は全て通常投稿UIで統一」を受け、
@@ -839,7 +840,12 @@ if (loading) return (
             {theirGuilds.length === 0 ? (
               <div className="rounded-2xl p-8 text-center"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
-                <p className="text-3xl mb-2">🛡️</p>
+                {/* 2026-05-10: 旧 🛡️ 絵文字 (iOS で赤系に見える) を青ベース
+                    の GuildShieldIcon SVG に統一 (BottomNav やゲーム村の参加中
+                    フィルタと同じアイコン)。 */}
+                <div className="flex justify-center mb-2">
+                  <GuildShieldIcon size={36} active />
+                </div>
                 <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ参加中のギルドはありません</p>
                 <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>このユーザーがギルドに参加するとここに表示されます</p>
               </div>
