@@ -1157,6 +1157,127 @@ console.log('[AUTHOR_CHECK] displayed author:', {
 
 ---
 
+## Skeleton ↔ Loaded 切替ズレの鉄則 — 寸法を実測してから minHeight を決める
+
+(2026-05-10 マッキーさん指示「下部ナビ切替時にページがズレる」を 4 PR
+(#66 → #67 → #68 → #69) で解消した経験を恒久ルール化。
+同じ種類の "若干ずれる" 案件で同じ過ちを繰り返さないため。)
+
+### 今回の事故サマリー
+
+PR #66 で `RAIL_MIN_HEIGHT = 80` を設定したが、loaded 状態の自然高 ~95px を
+下回っていたため、skeleton (80) → loaded (95) で 15px ジャンプが残存。
+PR #67/#68 で skeleton 構造一致 + cache + delayed skeleton を入れても、
+**根本の数値ミスマッチ** が直っていないため「若干ずれる」が解消しなかった。
+PR #69 で minHeight を 100 に引き上げて初めて完全解決。
+
+→ 最初に **loaded 自然高を物理測定** していれば PR #66 だけで終わっていた。
+4 PR を消費した根本原因は **推測ベースで minHeight を決めた** こと。
+
+### 必須プロセス: minHeight を決める前に loaded 自然高を実測
+
+skeleton ↔ loaded のズレを直す時は、必ず以下を **コードを書く前に** やる:
+
+1. **loaded 状態の inner content 高さを実測する**
+   - 各子要素の height (h-12 = 48px、h-3 = 12px 等)
+   - flex gap (gap-1 = 4px、gap-2 = 8px 等)
+   - line-height (text-[10px] leading-tight = ~12.5px、text-[9px] = ~11.25px)
+   - 子要素の合計 = inner content 高
+2. **container padding を加算**
+   - py-2 = 16px (top 8 + bottom 8)
+   - py-3 = 24px、py-3.5 = 28px 等
+   - inner + padding = container 自然高
+3. **minHeight は loaded 自然高 + 安全マージン (3〜5px) を採用**
+   - loaded 95px なら minHeight 100px
+   - skeleton/empty が短い場合は minHeight が勝って 100px に揃う
+   - loaded が成長しても minHeight 100 を超えるだけで揃う
+4. **skeleton item の placeholder 数を loaded と一致**
+   - loaded が 「avatar + 名前 + 状態」3 段なら skeleton も 3 段 (avatar + bar + bar)
+   - placeholder の縦構造が一致すれば minHeight に頼らずとも自然高で揃う
+
+### 「特定ページだけズレない」は構造差分の強い手がかり
+
+「マイページ以外の全ページ」のように **特定ページが除外される** 報告を受けたら:
+
+- ズレないページ = 何かを **経由していない** か **既に安定状態** で来ている
+- ズレるページ = ズレないページにはない **共通要素** を持つ
+
+今回のケース:
+- マイページ訪問時点で friend rail が既に loaded (95px) で安定
+- 他ページは AppLayout の `key={pathname}` で rail が毎回 remount → null→loaded
+  経由 → ジャンプ表面化
+- → 「マイページだけズレない」= rail の null→loaded 遷移を経由しない、が真因の手がかり
+
+このパターンを見たら、ズレるページ群とズレないページ群の **構造差分** を必ず比較する:
+- AppLayout の hideAvatar / showFriendRail 等の条件分岐
+- ページ自体の cache 状態
+- key={pathname} で remount される子コンポーネント
+- どのコンポーネントが「null → loaded」遷移を経由するか
+
+### key={pathname} で remount される component は毎回 null→loaded 経由
+
+AppLayout の `<div key={pathname}>` で囲まれた領域は **ページ遷移ごとに完全 remount**
+される。その配下の component で `useState(null)` してから fetch するパターンは、
+毎回 null → loaded を経由するため、その間に発生する高さ変化が毎回ジャンプとして
+見える。
+
+対処の選択肢:
+1. **両端の高さを揃える** (今回採用、PR #69) — minHeight を loaded 自然高に合わせる
+   - 破壊的変更が小さく副作用が少ない。最初の選択肢。
+2. **module-level cache で null をスキップ** (PR #67 採用) — 再訪問時のみ有効
+   - `let cached: T | null = null` パターン。React tree 外なので remount しても残る。
+3. **delayed skeleton で速い読込時は skeleton を出さない** (PR #68 採用)
+   - 200ms 未満で読込完了したら skeleton 自体を表示しない (`useDelayedSkeleton`)
+4. **構造変更で remount 自体を回避** — sticky bar を `key={pathname}` の外に出す
+   - AppLayout の sticky 領域を keyed wrapper の外に移動。
+   - 副作用が大きいので最終手段。
+
+迷ったら 1 を最初にやる。それでも残ったら 2 → 3 → 4 の順で重ねる。
+
+### 段階的修正で PR を量産しないチェックリスト
+
+skeleton ↔ loaded ズレを直す前に必ず以下を確認:
+
+- [ ] loaded 状態の inner content 高さを実測したか (px 単位)
+- [ ] container padding を加算した自然高を出したか
+- [ ] minHeight は自然高 + 安全マージンか (下回っていないか)
+- [ ] skeleton item の縦構造 (placeholder 数) は loaded と一致するか
+- [ ] empty 状態の自然高も同じか確認したか
+- [ ] 「特定ページだけズレない」報告なら構造差分を比較したか
+- [ ] key={pathname} 配下で null → loaded 遷移を経由する component を特定したか
+
+このチェックを最初にやれば、推測ベースで PR を量産する事故を防げる。
+
+### 報告フォーマット (skeleton ↔ loaded ズレ修正時)
+
+修正時は必ず以下を含めて報告する:
+
+```
+- 対象 component / file path:
+- loaded 自然高 (実測値):
+  - 子要素 heights:
+  - flex gap:
+  - container padding:
+  - 合計:
+- 旧 minHeight:
+- 新 minHeight (= loaded 自然高 + 安全マージン):
+- skeleton item placeholder 数 (旧 → 新):
+- empty 状態の高さ:
+- ズレるページ群 / ズレないページ群:
+- 構造差分:
+- 確認手順 (実機 + ナビ往復):
+- lint / build:
+```
+
+### 一行サマリー
+
+**skeleton ↔ loaded ズレは「minHeight が loaded 自然高を下回っている」のが
+ほぼ常に root cause。コードを書く前に必ず loaded 自然高を実測 (子要素 height +
+flex gap + line-height + container padding) してから minHeight を
+loaded 自然高 + 3〜5px 安全マージンで設定する。**
+
+---
+
 ## このファイルの更新ルール
 
 - 既存の項目を削除しない（追記方式）
@@ -1166,6 +1287,34 @@ console.log('[AUTHOR_CHECK] displayed author:', {
 ---
 
 ## 更新履歴
+
+### 2026-05-10 — Skeleton ↔ Loaded 切替ズレの鉄則を追加 (4 PR 消費した推測修正の反省)
+
+- 本日「下部ナビ切替時にページがズレる」修正を 4 PR (#66 → #67 → #68 → #69) で
+  ようやく解消した経験を踏まえ、同種の事故を恒久防止するルールを新設
+- 真因: PR #66 で `RAIL_MIN_HEIGHT = 80` を設定したが、loaded 状態の自然高 ~95px を
+  下回っていた → skeleton (80) → loaded (95) で 15px ジャンプが残存
+- PR #67/#68 で skeleton 構造一致 + cache + delayed skeleton を入れても、
+  根本の数値ミスマッチが直っていないため「若干ずれる」が解消しなかった
+- PR #69 で minHeight を 100 (loaded 自然高 + 5px 安全マージン) に引き上げて完全解決
+- → 最初に loaded 自然高を物理測定 (子要素 height + flex gap + line-height + padding)
+  していれば PR #66 だけで終わっていた。4 PR 消費の根本原因は推測ベースで minHeight を
+  決めたこと
+- 必須プロセスを 4 ステップで明文化: ①loaded inner 実測 ②padding 加算 ③minHeight =
+  自然高 + 3〜5px ④skeleton placeholder 数を loaded と一致
+- 「特定ページだけズレない」報告 (今回は「マイページ以外」) は構造差分の強い手がかりと
+  位置付け。ズレないページ群とズレるページ群の hideAvatar / showFriendRail / cache 状態 /
+  remount 経路を必ず比較する原則を追加
+- `key={pathname}` 配下の component が `useState(null)` → fetch パターンだと毎回
+  null → loaded を経由するため、その間に発生する高さ変化が毎回ジャンプとして見える
+  ことを明示。対処の選択肢を 4 つに整理 (minHeight 揃え / module-level cache /
+  delayed skeleton / sticky bar の構造変更)
+- 段階的修正の前に確認すべき 7 項目チェックリストを規定 (実測 / padding / minHeight /
+  placeholder 数 / empty 状態 / 構造差分 / remount 経路)
+- skeleton ↔ loaded ズレ修正時の専用報告フォーマット (12 項目) を新設
+- 一行サマリー: **「minHeight が loaded 自然高を下回っている」のがほぼ常に root cause。
+  コードを書く前に必ず loaded 自然高を実測してから minHeight を loaded 自然高 +
+  3〜5px 安全マージンで設定する。**
 
 ### 2026-05-09 — 投稿者情報の混同防止ルールを追加 (currentUser / 操作者 / 元投稿者の区別)
 
