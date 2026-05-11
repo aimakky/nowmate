@@ -1,15 +1,15 @@
 'use client'
 
-import { Heart, MessageCircle, Share2 } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Repeat2 } from 'lucide-react'
 
 // 2026-05-08 マッキーさん指示: 投稿カード下部のアクション行を全画面で完全統一する
 // ための共通コンポーネント。timeline / mypage / profile (他人マイページ) のすべての
 // 投稿カードでこの 1 ファイルを使うことで、今後アクション行のデザイン変更は
 // 必ずここ 1 箇所だけ修正すれば全画面に伝播する。
 //
-// 配置: Heart (左) / MessageCircle / Share2 (右 ml-auto)
+// 配置: Heart (左) / MessageCircle / Repeat2 / Share2 (右 ml-auto)
 // 区切り: borderTop = 緑半透明
-// サイズ: Heart=15 / MessageCircle=15 / Share2=14 (timeline PostCard 由来)
+// サイズ: Heart=15 / MessageCircle=15 / Repeat2=15 / Share2=14
 //
 // 呼び出し側が決めるべき動作:
 // - liked          : ハートが「自分が押した」状態か
@@ -20,6 +20,9 @@ import { Heart, MessageCircle, Share2 } from 'lucide-react'
 // - onCountClick   : ハート横の数字タップ動作 (= いいねしたユーザー一覧を開く等、optional)
 // - onComment      : Comment タップ動作 (詳細遷移など)
 // - onShare        : Share タップ動作 (X 共有起動など)
+// - onRepost       : Repost タップ動作 (optional, 設定された場合のみ Repost icon を描画)
+// - reposted       : ユーザーがこの投稿を既にリポストしたか (Repost icon の色切替用)
+// - repostCount    : Repost icon 横に出す総数 (0 でも常に表示)
 //
 // 2026-05-10 マッキーさん指示「いいね数を 0 でも必ず表示」: 全投稿カードで
 // 数字 (0 / 1 / 2 …) を常に表示する仕様に統一。条件分岐 (> 0) は撤去。
@@ -29,6 +32,10 @@ import { Heart, MessageCircle, Share2 } from 'lucide-react'
 // タップで「いいねしたユーザー一覧」を開けるようにする。
 // onCountClick が未指定 (= 既存のシンプルな表示) なら count は heart button
 // 内の表示テキストとして従来通り描画 (1 つのタップ領域)。
+//
+// 2026-05-10 マッキーさん指示「リポスト機能を実装」:
+// onRepost が渡された場合のみ Repost icon (Repeat2) を描画。
+// tweet 用カード (TweetCard) からだけ渡す。村投稿カードは Repost 非対応。
 
 interface Props {
   liked: boolean
@@ -39,6 +46,9 @@ interface Props {
   onCountClick?: () => void
   onComment: () => void
   onShare: () => void
+  onRepost?: () => void
+  reposted?: boolean
+  repostCount?: number
 }
 
 export default function PostActions({
@@ -50,6 +60,9 @@ export default function PostActions({
   onCountClick,
   onComment,
   onShare,
+  onRepost,
+  reposted = false,
+  repostCount = 0,
 }: Props) {
   return (
     <div
@@ -129,6 +142,28 @@ export default function PostActions({
         <MessageCircle size={15} strokeWidth={1.8} />
         <span className="text-xs font-semibold tabular-nums">{Math.max(0, Number(replyCount ?? 0))}</span>
       </button>
+
+      {/* 2026-05-10: Repost ボタン (onRepost が渡された場合のみ描画)。
+          tweet 用 (TweetCard) からだけ渡され、村投稿は対象外。
+          リポスト済みの場合は色を変えて見分けがつくようにする。 */}
+      {onRepost && (
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (canInteract) onRepost()
+          }}
+          disabled={!canInteract}
+          className="flex items-center gap-1.5 active:scale-90 transition-all disabled:opacity-50"
+          style={{ color: reposted ? '#39FF88' : 'rgba(240,238,255,0.35)' }}
+          aria-label="リポスト"
+        >
+          <Repeat2 size={15} strokeWidth={1.8} />
+          <span className="text-xs font-semibold tabular-nums">{Math.max(0, repostCount)}</span>
+        </button>
+      )}
 
       <button
         type="button"
