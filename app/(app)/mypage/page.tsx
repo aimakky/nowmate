@@ -20,6 +20,7 @@ import { getNationalityFlag, timeAgo } from '@/lib/utils'
 import { getUserDisplayName, getAvatarInitial } from '@/lib/user-display'
 import Avatar from '@/components/ui/Avatar'
 import { isVerifiedByExistingSchema } from '@/lib/identity-types'
+import { getSelfLikes } from '@/lib/self-likes'
 // VILLAGE_TYPE_STYLES は旧 参加中タブで使用していたが、タブ削除に伴い未使用化
 import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
@@ -620,9 +621,8 @@ export default function MyPage() {
       }
       // 2026-05-10: tweet_reactions の RLS 非対称挙動への対策。
       // `WHERE user_id=me` 単独では 0 件しか返らないが、
-      // `.in('tweet_id', own_tweets)` 経由なら self-like 行が見える。
-      // own tweets に対する全 reactions を取って、user_id=me で JS フィルタ
-      // する別ルートで self-like を取得。
+      // `.in('tweet_id', own_tweets)` 経由なら self-like 行が見える (見えない
+      // ケースもあるため localStorage merge も併用)。
       const ownTweetIdsForFallback = rawMyTweets.map((t: any) => t.id).filter(Boolean)
       if (ownTweetIdsForFallback.length > 0) {
         const { data: reactionsOnOwn } = await supabase
@@ -638,6 +638,16 @@ export default function MyPage() {
           if (!heartTweetIds.includes(r.tweet_id)) {
             heartTweetIds.push(r.tweet_id)
           }
+        }
+      }
+      // 2026-05-10: localStorage の self-like を merge (RLS が完全に隠した分の補完)
+      const lsSelfLikesInit = getSelfLikes(user.id, 'tweet')
+      for (const [tweetId, likedAt] of lsSelfLikesInit) {
+        if (!heartTweetIds.includes(tweetId)) {
+          heartTweetIds.push(tweetId)
+        }
+        if (!ltLikedAtMap.has(tweetId)) {
+          ltLikedAtMap.set(tweetId, likedAt)
         }
       }
       if (heartTweetIds.length > 0) {
@@ -881,6 +891,22 @@ export default function MyPage() {
         }
       }
 
+      // 4) localStorage の self-like を merge (RLS で隠れた行を補完)。
+      //    上記 (2) で取れているケースも多いが、defensive に重複追加を防ぎながら
+      //    localStorage に記録されているが DB から取れていない tweet も含める。
+      // userId は useEffect 冒頭の guard で null チェック済みだが closure に narrow が
+      // 伝わらないため明示的に再 narrow する。
+      if (!userId) return
+      const lsSelfLikes = getSelfLikes(userId, 'tweet')
+      for (const [tweetId, likedAt] of lsSelfLikes) {
+        if (!heartTweetIds.includes(tweetId)) {
+          heartTweetIds.push(tweetId)
+        }
+        if (!ltLikedAtMap.has(tweetId)) {
+          ltLikedAtMap.set(tweetId, likedAt)
+        }
+      }
+
 
       // 4) heartTweetIds に対応する tweets 本体を fetch + enrich
       if (heartTweetIds.length > 0) {
@@ -1115,9 +1141,27 @@ export default function MyPage() {
         replyByT.get(r.tweet_id)!.push({ id: r.id })
       }
       const tier = (trustRes as any).data?.tier as string | undefined
+      // 2026-05-10: tweet_reactions RLS が self-like を SELECT で隠す事象への
+      // 恒久対策。localStorage に永続化された self-like を tweet_reactions に
+      // inject して、画面上の dbLiked / dbCount に反映する。
+      const selfLikedMap = getSelfLikes(uid, 'tweet')
       for (const r of rows) {
         r.profiles = myProf
         r.tweet_reactions = reactByT.get(r.id) ?? []
+        // own tweet で localStorage に self-like 記録があるが reactions に含まれて
+        // いない (= RLS hidden) 場合、heart 行を inject
+        if (r.user_id === uid && selfLikedMap.has(r.id)) {
+          const alreadyHas = (r.tweet_reactions as any[]).some(
+            (x: any) => x.user_id === uid && x.reaction === 'heart'
+          )
+          if (!alreadyHas) {
+            r.tweet_reactions.push({
+              user_id: uid,
+              reaction: 'heart',
+              created_at: selfLikedMap.get(r.id),
+            })
+          }
+        }
         r.tweet_replies = replyByT.get(r.id) ?? []
         r.user_trust = tier ? { tier } : null
       }
