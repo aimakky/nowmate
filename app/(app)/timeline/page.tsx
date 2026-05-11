@@ -16,6 +16,7 @@ import { detectCrisisKeywords } from '@/lib/moderation'
 import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
 import { getUserDisplayName } from '@/lib/user-display'
 import { addSelfLike } from '@/lib/self-likes'
+import LikedUsersSheet from '@/components/features/LikedUsersSheet'
 import { SwipeableTabs } from '@/components/ui/SwipeableTabs'
 
 // ── 型定義 ──────────────────────────────────────────────────────
@@ -377,6 +378,8 @@ function PostCard({
   showVillage?: boolean
 }) {
   const liked = likedIds.has(post.id)
+  // 2026-05-10: いいねしたユーザー一覧シートの表示制御
+  const [showLikedUsers, setShowLikedUsers] = useState(false)
   // Trust Tier の表示は共通 PostCardHeader が trustTier prop からラベルを引く。
   // visitor フォールバックも PostCardHeader 側 (getTierById) で吸収済み。
 
@@ -429,8 +432,18 @@ function PostCard({
            隠れても、自分が反応している以上 count は 1 以上が正しい)。 */
         reactionCount={liked ? Math.max(1, post.reaction_count) : post.reaction_count}
         onHeart={() => onToggleLike(post.id)}
+        onCountClick={() => setShowLikedUsers(true)}
         onComment={() => {}}
         onShare={shareToX}
+      />
+
+      {/* 2026-05-10: いいねしたユーザー一覧シート (ハート数タップで開く) */}
+      <LikedUsersSheet
+        open={showLikedUsers}
+        onClose={() => setShowLikedUsers(false)}
+        postId={post.id}
+        postType="village"
+        currentUserId={userId}
       />
     </PostCardShell>
   )
