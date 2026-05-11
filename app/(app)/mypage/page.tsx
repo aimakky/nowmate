@@ -20,7 +20,7 @@ import { getNationalityFlag, timeAgo } from '@/lib/utils'
 import { getUserDisplayName, getAvatarInitial } from '@/lib/user-display'
 import Avatar from '@/components/ui/Avatar'
 import { isVerifiedByExistingSchema } from '@/lib/identity-types'
-import { getSelfLikes } from '@/lib/self-likes'
+import { getSelfLikes, backfillSelfLikes } from '@/lib/self-likes'
 // VILLAGE_TYPE_STYLES は旧 参加中タブで使用していたが、タブ削除に伴い未使用化
 import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
@@ -619,6 +619,14 @@ export default function MyPage() {
       for (const r of ((heartReactions ?? []) as any[])) {
         if (r.tweet_id && r.created_at) ltLikedAtMap.set(r.tweet_id, r.created_at)
       }
+      // 2026-05-10 マッキーさん指示「いいねついてるのに 0 表示」恒久対策:
+      // DB に存在する自分の like 一覧を localStorage に backfill。
+      // 過去 (PR #97 デプロイ前) の他人 tweet への like も含めて全部 LS に乗せる。
+      // これで TweetCard の selfLikedInLs 判定が常に正しくなり、画面間で
+      // count / liked 状態が一致する。
+      backfillSelfLikes(user.id, 'tweet', ((heartReactions ?? []) as any[]).map(r => ({
+        postId: r.tweet_id, createdAt: r.created_at ?? null,
+      })))
       // 2026-05-10: tweet_reactions の RLS 非対称挙動への対策。
       // `WHERE user_id=me` 単独では 0 件しか返らないが、
       // `.in('tweet_id', own_tweets)` 経由なら self-like 行が見える (見えない
@@ -906,6 +914,14 @@ export default function MyPage() {
           heartTweetIds.push(r.tweet_id)
           if (r.created_at) ltLikedAtMap.set(r.tweet_id, r.created_at)
         }
+      }
+      // 2026-05-10: DB から取れた自分 like を localStorage に backfill。
+      // いいねタブを開いた瞬間に最新 DB 状態を LS に反映するので、
+      // 別端末で押したいいねもこの端末で表示できる (次回 mypage 訪問時)。
+      if (userId) {
+        backfillSelfLikes(userId, 'tweet', ((heartReactions ?? []) as any[]).map(r => ({
+          postId: r.tweet_id, createdAt: r.created_at ?? null,
+        })))
       }
 
       // 4) localStorage の self-like を merge (RLS で隠れた行を補完)。
