@@ -1897,7 +1897,12 @@ export default function MyPage() {
                        無ければ自分 profile fallback (自分の村投稿に自分でいいねした場合の保険) */
                     profile={item.data.author_profile ?? profile}
                     trust={item.data.author_trust ?? trust}
-                    liked={likedIds.has(item.data.id)}
+                    /* 2026-05-10 マッキーさん指示「pink heart + count=0」恒久対策:
+                       いいねタブに表示されている村投稿は「自分がいいねした」ことが
+                       表示の前提条件 (likedVillagePosts から来ている)。だから
+                       liked は強制的に true で渡す。likedIds.has() は `.eq('user_id', me)` の
+                       RLS 隠蔽で空のままになるケースがあり信頼できない。 */
+                    liked={true}
                     onToggleLike={toggleLike}
                     currentUserId={userId}
                   />
