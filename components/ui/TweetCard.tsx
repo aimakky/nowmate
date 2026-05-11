@@ -273,7 +273,16 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
   // 必ず正しい数 (= 実際にいいねした人数) になる。
   // 2026-05-10 さらに optimistic update のため optimisticDelta を加算。
   // (オプティミスティック中は max(0, dbCount + delta) で 0 未満にならないよう clamp)
-  const totalReactions = Math.max(0, dbCount + optimisticDelta)
+  //
+  // 2026-05-10 (チラつき対策): optimistic と DB が一致した瞬間 (= localStorage
+  // merge で揃った瞬間) に optimisticDelta を加算すると dbCount + delta で
+  // 二重カウントになりカウントが一瞬「2」と表示されるチラつきが発生する。
+  // optimisticLiked が dbLiked と一致している場合は DB が既に追いついているので
+  // delta は不要 (dbCount alone が正しい)。
+  const effectiveDelta = (optimisticLiked === null || optimisticLiked === dbLiked)
+    ? 0
+    : optimisticDelta
+  const totalReactions = Math.max(0, dbCount + effectiveDelta)
   const liked = myReaction === 'heart'
 
   return (

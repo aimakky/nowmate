@@ -689,9 +689,24 @@ export default function MyPage() {
           }
           const trustMap = new Map<string, string>()
           for (const t of ((authTrustRes as any).data ?? [])) trustMap.set(t.user_id, t.tier)
+          // 2026-05-10: loadTweets / reloadLikes と完全同一の整形にするため
+          // localStorage の self-like を tweet_reactions に inject (own tweet 限定)。
+          const lsSelfMapInit = getSelfLikes(user.id, 'tweet')
           for (const t of ltRaw) {
             t.profiles = profMap.get(t.user_id) ?? null
             t.tweet_reactions = reactByT.get(t.id) ?? []
+            if (t.user_id === user.id && lsSelfMapInit.has(t.id)) {
+              const alreadyHas = (t.tweet_reactions as any[]).some(
+                (x: any) => x.user_id === user.id && x.reaction === 'heart'
+              )
+              if (!alreadyHas) {
+                t.tweet_reactions.push({
+                  user_id: user.id,
+                  reaction: 'heart',
+                  created_at: lsSelfMapInit.get(t.id),
+                })
+              }
+            }
             t.tweet_replies = replyByT.get(t.id) ?? []
             t.user_trust = trustMap.has(t.user_id) ? { tier: trustMap.get(t.user_id) } : null
             // 2026-05-09: いいね欄ソート用に liked_at を merge
@@ -946,11 +961,27 @@ export default function MyPage() {
           }
           const trustMap = new Map<string, string>()
           for (const t of ((authTrustRes as any).data ?? [])) trustMap.set(t.user_id, t.tier)
+          // 2026-05-10: loadTweets と完全同一の整形にするため localStorage の
+          // self-like を tweet_reactions に inject。これにより 投稿タブと
+          // いいねタブで like_count / liked 判定が一致する。
+          const lsSelfMap = userId ? getSelfLikes(userId, 'tweet') : new Map<string, string>()
           for (const t of ltRaw) {
             // own tweet の場合は self の profile / trust を使う
             const isOwn = t.user_id === userId
             t.profiles = isOwn ? profile : (profMap.get(t.user_id) ?? null)
             t.tweet_reactions = reactByT.get(t.id) ?? []
+            if (isOwn && userId && lsSelfMap.has(t.id)) {
+              const alreadyHas = (t.tweet_reactions as any[]).some(
+                (x: any) => x.user_id === userId && x.reaction === 'heart'
+              )
+              if (!alreadyHas) {
+                t.tweet_reactions.push({
+                  user_id: userId,
+                  reaction: 'heart',
+                  created_at: lsSelfMap.get(t.id),
+                })
+              }
+            }
             t.tweet_replies = replyByT.get(t.id) ?? []
             t.user_trust = isOwn
               ? (trust ? { tier: trust.tier ?? null } : null)
@@ -1796,11 +1827,17 @@ export default function MyPage() {
                   if (!myHeart) return []
                   return [{ ...t, liked_at: myHeart.created_at ?? (t as any).liked_at ?? null } as TweetData]
                 })
-                // likedTweets と selfLikedFromTweetsState を id 重複除去で merge
-                // (likedTweets が優先 = reloadLikes 経由で正規 liked_at を持つので)
+                // 2026-05-10: 優先順位を逆転。selfLikedFromTweetsState (tweets
+                // state 由来) を優先する。tweets state は loadTweets で
+                // localStorage inject 済みのため tweet_reactions が正規化されて
+                // いる (= 投稿タブと完全同一の like_count / liked 判定になる)。
+                // likedTweets (reloadLikes 由来) は own tweet 以外を補完する役割。
+                // 同 id は確実に 1 件のみ表示される。
                 const mergedTweetMap = new Map<string, TweetData>()
-                for (const t of likedTweets) mergedTweetMap.set(t.id, t)
-                for (const t of selfLikedFromTweetsState) {
+                // 1. 投稿タブと同形のデータを最優先
+                for (const t of selfLikedFromTweetsState) mergedTweetMap.set(t.id, t)
+                // 2. 他人の投稿への like など、tweets state に無いものを補完
+                for (const t of likedTweets) {
                   if (!mergedTweetMap.has(t.id)) mergedTweetMap.set(t.id, t)
                 }
                 const mergedTweets = Array.from(mergedTweetMap.values())
