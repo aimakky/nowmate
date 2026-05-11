@@ -11,6 +11,7 @@ import ReportModal from '@/components/features/ReportModal'
 import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 import { getUserDisplayName } from '@/lib/user-display'
 import { addSelfLike, removeSelfLike, isSelfLiked } from '@/lib/self-likes'
+import { addSelfRepost, removeSelfRepost, isSelfReposted } from '@/lib/self-reposts'
 import LikedUsersSheet from '@/components/features/LikedUsersSheet'
 
 export const REACTIONS = [
@@ -94,6 +95,18 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
   const [blocking,    setBlocking]    = useState(false)
   // 2026-05-10: いいねしたユーザー一覧シートの表示制御
   const [showLikedUsers, setShowLikedUsers] = useState(false)
+
+  // 2026-05-10: リポスト状態 (localStorage で永続化)。
+  // 自分が既にこの tweet をリポスト済みかどうか。
+  const selfRepostedInLs = myId ? isSelfReposted(myId, tweet.id) : false
+  // optimistic override: null = 切替前の DB / LS 値を使用
+  const [optimisticReposted, setOptimisticReposted] = useState<boolean | null>(null)
+  const [optimisticRepostDelta, setOptimisticRepostDelta] = useState<number>(0)
+  const dbReposted = selfRepostedInLs
+  const reposted = optimisticReposted === null ? dbReposted : optimisticReposted
+  const rawRepostCount = Math.max(0, (tweet.repost_count ?? 0) + optimisticRepostDelta)
+  // liked と同じパターン: 自分が repost している以上 count は最低 1
+  const repostCount = reposted ? Math.max(1, rawRepostCount) : rawRepostCount
 
   const isOwn = myId === tweet.user_id
   // 投稿者プロフィール遷移先: 自分なら黒背景マイページ、他人なら他ユーザー
@@ -189,6 +202,52 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
       if (nextLiked) addSelfLike(myId, 'tweet', tweet.id)
       else removeSelfLike(myId, 'tweet', tweet.id)
     }
+    onUpdate()
+  }
+
+  // ── repost ──────────────────────────────────────────────────
+  // 2026-05-10 マッキーさん指示「リポスト機能を実装」:
+  // tweets テーブルに repost_of (FK) を持たせる設計で、リポスト = 自分が
+  // INSERT した新 tweet 行 (repost_of=<元 tweet id>) として表現。
+  // 解除 = 該当 row を DELETE。
+  async function toggleRepost() {
+    if (!myId || !canInteract) return
+    // リポスト元 (= 自分が以前リポストして連鎖した場合) は元 tweet を指す
+    const targetTweetId = tweet.repost_of ?? tweet.id
+    const supabase = createClient()
+    const wasReposted = optimisticReposted === null ? dbReposted : optimisticReposted
+    const nextReposted = !wasReposted
+    // optimistic
+    setOptimisticReposted(nextReposted)
+    setOptimisticRepostDelta(nextReposted ? +1 : -1)
+    let error: any = null
+    if (wasReposted) {
+      // 解除: 自分の repost row を DELETE
+      const r = await supabase
+        .from('tweets')
+        .delete()
+        .eq('user_id', myId)
+        .eq('repost_of', targetTweetId)
+      error = r.error
+    } else {
+      // INSERT: 元 tweet の内容をコピーして repost_of に元 id を入れる
+      const r = await supabase.from('tweets').insert({
+        user_id: myId,
+        content: tweet.content,
+        repost_of: targetTweetId,
+      })
+      error = r.error
+    }
+    if (error) {
+      console.error('[toggleRepost] supabase error:', error)
+      // revert
+      setOptimisticReposted(wasReposted)
+      setOptimisticRepostDelta(0)
+      return
+    }
+    // LS に永続化
+    if (nextReposted) addSelfRepost(myId, targetTweetId)
+    else removeSelfRepost(myId, targetTweetId)
     onUpdate()
   }
 
@@ -316,6 +375,9 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
         onCountClick={() => setShowLikedUsers(true)}
         onComment={() => router.push(`/tweet/${tweet.id}`)}
         onShare={shareToX}
+        onRepost={() => toggleRepost()}
+        reposted={reposted}
+        repostCount={repostCount}
       />
 
       {/* 2026-05-10: いいねしたユーザー一覧シート (ハート数タップで開く) */}
