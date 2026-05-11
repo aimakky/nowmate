@@ -98,7 +98,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
 
   // 2026-05-10: リポスト状態 (localStorage で永続化)。
   // 自分が既にこの tweet をリポスト済みかどうか。
-  const selfRepostedInLs = myId ? isSelfReposted(myId, tweet.id) : false
+  const selfRepostedInLs = myId ? isSelfReposted(myId, 'tweet', tweet.id) : false
   // optimistic override: null = 切替前の DB / LS 値を使用
   const [optimisticReposted, setOptimisticReposted] = useState<boolean | null>(null)
   const [optimisticRepostDelta, setOptimisticRepostDelta] = useState<number>(0)
@@ -246,8 +246,8 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
       return
     }
     // LS に永続化
-    if (nextReposted) addSelfRepost(myId, targetTweetId)
-    else removeSelfRepost(myId, targetTweetId)
+    if (nextReposted) addSelfRepost(myId, 'tweet', targetTweetId)
+    else removeSelfRepost(myId, 'tweet', targetTweetId)
     onUpdate()
   }
 
