@@ -10,6 +10,7 @@ import FeedbackModal from '@/components/features/FeedbackModal'
 import OnboardingRulesModal from '@/components/rules/OnboardingRulesModal'
 import { createClient } from '@/lib/supabase/client'
 import { getAgreementStatus } from '@/lib/rules'
+import { backfillSelfLikes } from '@/lib/self-likes'
 
 // FriendAvatarRail を表示する主要ページの whitelist。/chat/[matchId] や
 // /voice/[roomId] などの詳細画面・通話中画面では邪魔になるので非表示。
@@ -56,6 +57,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           .eq('id', user.id)
           .single()
         if (data?.avatar_url) setAvatarUrl(data.avatar_url)
+
+        // 2026-05-10 マッキーさん指示「いいね数が画面で 0 表示される」恒久対策:
+        // どのページでも TweetCard が selfLikedInLs を正しく判定できるよう、
+        // AppLayout 起動時に DB の自分の like 一覧を localStorage に backfill。
+        // これで TL / mypage / 他人プロフィール / tweet 詳細 のすべてで
+        // pink heart + count >= 1 が正しく表示される。
+        // .eq('user_id', me) は RLS で 0 件返すケースもあるが取れる分は取る。
+        try {
+          const { data: myLikes } = await supabase
+            .from('tweet_reactions')
+            .select('tweet_id, created_at')
+            .eq('user_id', user.id)
+          if (myLikes) {
+            backfillSelfLikes(user.id, 'tweet', (myLikes as any[]).map(r => ({
+              postId: r.tweet_id, createdAt: r.created_at ?? null,
+            })))
+          }
+        } catch {
+          // silent — backfill 失敗しても TweetCard は LS なしで動く (count=0 になるだけ)
+        }
 
         // 安心ガイド同意チェック（version 変わってたら再同意）
         const status = await getAgreementStatus(user.id)
