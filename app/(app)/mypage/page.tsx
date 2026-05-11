@@ -1051,9 +1051,14 @@ export default function MyPage() {
     }
   }
 
-  async function loadTweets(uid: string, supabaseClient?: any) {
-    const client = supabaseClient ?? createClient()
-    setTweetLoading(true)
+  // 2026-05-10 マッキーさん指示: ハート押下時 (onUpdate refetch) で skeleton に
+  // 切り替わると viewport が下にジャンプして「別画面に遷移した」と見える事象の
+  // 真因対策。silent=true で skeleton 表示を完全スキップする refetch 経路を追加。
+  // 初回マウント (silent 省略 = false) のみ skeleton を出し、heart 押下の
+  // refetch では silent=true で投稿リストの高さを変えない。
+  async function loadTweets(uid: string, silent: boolean = false) {
+    const client = createClient()
+    if (!silent) setTweetLoading(true)
     // PostgREST embed を撤廃 (embed 解決失敗で親 row が消える脆弱性回避)。
     // profiles / tweet_reactions / tweet_replies / user_trust は別 query 並列取得。
     const { data, error } = await client
@@ -1102,7 +1107,7 @@ export default function MyPage() {
       }
     }
     setTweets(rows as TweetData[])
-    setTweetLoading(false)
+    if (!silent) setTweetLoading(false)
   }
 
   // フォロー中 / フォロワーの一覧を遅延取得。
@@ -1524,7 +1529,7 @@ export default function MyPage() {
                       <TweetCard
                         tweet={item.data}
                         myId={userId}
-                        onUpdate={() => userId && loadTweets(userId)}
+                        onUpdate={() => userId && loadTweets(userId, true)}
                         showBorder={false}
                         canInteract={true}
                         avatarVariant="green"
@@ -1715,7 +1720,7 @@ export default function MyPage() {
                     <TweetCard
                       tweet={item.data}
                       myId={userId}
-                      onUpdate={() => userId && loadTweets(userId)}
+                      onUpdate={() => userId && loadTweets(userId, true)}
                       showBorder={false}
                       canInteract={true}
                       avatarVariant="green"
@@ -2073,7 +2078,7 @@ export default function MyPage() {
           displayName={profile.display_name}
           onClose={() => setShowCompose(false)}
           onPosted={async () => {
-            if (userId) await loadTweets(userId)
+            if (userId) await loadTweets(userId, true)
             setActiveTab('tweets')
           }}
         />
