@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
 // ─── Types ────────────────────────────────────────────────────
@@ -283,6 +284,23 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+
+        {/* サブページ導線 */}
+        <Link
+          href="/admin/profiles"
+          className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl px-4 py-3 hover:bg-white/10 transition active:scale-[0.99]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="text-2xl">👥</div>
+            <div>
+              <div className="text-sm font-bold text-white">ユーザー一覧</div>
+              <div className="text-[10px] text-white/40 mt-0.5">
+                public.profiles をブラウズ（is_active = true のみ）
+              </div>
+            </div>
+          </div>
+          <div className="text-white/40 text-lg">→</div>
+        </Link>
 
         {/* タブ */}
         <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
