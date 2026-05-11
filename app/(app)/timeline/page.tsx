@@ -16,6 +16,7 @@ import { detectCrisisKeywords } from '@/lib/moderation'
 import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
 import { getUserDisplayName } from '@/lib/user-display'
 import { addSelfLike } from '@/lib/self-likes'
+import { addSelfRepost, removeSelfRepost, isSelfReposted } from '@/lib/self-reposts'
 import LikedUsersSheet from '@/components/features/LikedUsersSheet'
 import { SwipeableTabs } from '@/components/ui/SwipeableTabs'
 
@@ -380,8 +381,52 @@ function PostCard({
   const liked = likedIds.has(post.id)
   // 2026-05-10: いいねしたユーザー一覧シートの表示制御
   const [showLikedUsers, setShowLikedUsers] = useState(false)
+  // 2026-05-10: 村投稿のリポスト状態 (localStorage で永続化、tweet と同じパターン)
+  const selfRepostedInLs = userId ? isSelfReposted(userId, 'village', post.id) : false
+  const [optimisticReposted, setOptimisticReposted] = useState<boolean | null>(null)
+  const [optimisticRepostDelta, setOptimisticRepostDelta] = useState<number>(0)
+  const reposted = optimisticReposted === null ? selfRepostedInLs : optimisticReposted
+  const rawRepostCount = Math.max(0, ((post as any).repost_count ?? 0) + optimisticRepostDelta)
+  const repostCount = reposted ? Math.max(1, rawRepostCount) : rawRepostCount
   // Trust Tier の表示は共通 PostCardHeader が trustTier prop からラベルを引く。
   // visitor フォールバックも PostCardHeader 側 (getTierById) で吸収済み。
+
+  // 2026-05-10: 村投稿リポストの toggle (tweet 側と同じ INSERT/DELETE パターン)。
+  // 元 post の content / village_id をコピーして repost_of に元 id を入れる。
+  async function toggleRepost() {
+    if (!userId) return
+    const targetPostId = (post as any).repost_of ?? post.id
+    const supabase = createClient()
+    const wasReposted = optimisticReposted === null ? selfRepostedInLs : optimisticReposted
+    const nextReposted = !wasReposted
+    setOptimisticReposted(nextReposted)
+    setOptimisticRepostDelta(nextReposted ? +1 : -1)
+    let error: any = null
+    if (wasReposted) {
+      const r = await supabase
+        .from('village_posts')
+        .delete()
+        .eq('user_id', userId)
+        .eq('repost_of', targetPostId)
+      error = r.error
+    } else {
+      const r = await supabase.from('village_posts').insert({
+        user_id: userId,
+        content: post.content,
+        village_id: post.village_id ?? null,
+        repost_of: targetPostId,
+      })
+      error = r.error
+    }
+    if (error) {
+      console.error('[PostCard.toggleRepost] supabase error:', error)
+      setOptimisticReposted(wasReposted)
+      setOptimisticRepostDelta(0)
+      return
+    }
+    if (nextReposted) addSelfRepost(userId, 'village', targetPostId)
+    else removeSelfRepost(userId, 'village', targetPostId)
+  }
 
   function shareToX() {
     const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'YVOICE'
@@ -435,6 +480,9 @@ function PostCard({
         onCountClick={() => setShowLikedUsers(true)}
         onComment={() => {}}
         onShare={shareToX}
+        onRepost={() => toggleRepost()}
+        reposted={reposted}
+        repostCount={repostCount}
       />
 
       {/* 2026-05-10: いいねしたユーザー一覧シート (ハート数タップで開く) */}

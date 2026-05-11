@@ -21,6 +21,7 @@ import { getUserDisplayName, getAvatarInitial } from '@/lib/user-display'
 import Avatar from '@/components/ui/Avatar'
 import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 import { getSelfLikes, backfillSelfLikes } from '@/lib/self-likes'
+import { addSelfRepost, removeSelfRepost, isSelfReposted } from '@/lib/self-reposts'
 import LikedUsersSheet from '@/components/features/LikedUsersSheet'
 // VILLAGE_TYPE_STYLES は旧 参加中タブで使用していたが、タブ削除に伴い未使用化
 import { INDUSTRIES } from '@/lib/guild'
@@ -234,6 +235,49 @@ function MyVillagePostInline({
   const villageHref = post.village_id ? `/villages/${post.village_id}` : '/timeline'
   // 2026-05-10: いいねしたユーザー一覧シートの表示制御
   const [showLikedUsers, setShowLikedUsers] = useState(false)
+  // 2026-05-10: 村投稿のリポスト状態 (localStorage で永続化、tweet と同じパターン)
+  const selfRepostedInLs = currentUserId ? isSelfReposted(currentUserId, 'village', post.id) : false
+  const [optimisticReposted, setOptimisticReposted] = useState<boolean | null>(null)
+  const [optimisticRepostDelta, setOptimisticRepostDelta] = useState<number>(0)
+  const reposted = optimisticReposted === null ? selfRepostedInLs : optimisticReposted
+  const rawRepostCount = Math.max(0, ((post as any).repost_count ?? 0) + optimisticRepostDelta)
+  const repostCount = reposted ? Math.max(1, rawRepostCount) : rawRepostCount
+
+  // 2026-05-10: 村投稿リポストの toggle (TL の PostCard と同じパターン)
+  async function toggleRepost() {
+    if (!currentUserId) return
+    const targetPostId = (post as any).repost_of ?? post.id
+    const supabase = createClient()
+    const wasReposted = optimisticReposted === null ? selfRepostedInLs : optimisticReposted
+    const nextReposted = !wasReposted
+    setOptimisticReposted(nextReposted)
+    setOptimisticRepostDelta(nextReposted ? +1 : -1)
+    let error: any = null
+    if (wasReposted) {
+      const r = await supabase
+        .from('village_posts')
+        .delete()
+        .eq('user_id', currentUserId)
+        .eq('repost_of', targetPostId)
+      error = r.error
+    } else {
+      const r = await supabase.from('village_posts').insert({
+        user_id: currentUserId,
+        content: post.content,
+        village_id: post.village_id ?? null,
+        repost_of: targetPostId,
+      })
+      error = r.error
+    }
+    if (error) {
+      console.error('[MyVillagePostInline.toggleRepost] supabase error:', error)
+      setOptimisticReposted(wasReposted)
+      setOptimisticRepostDelta(0)
+      return
+    }
+    if (nextReposted) addSelfRepost(currentUserId, 'village', targetPostId)
+    else removeSelfRepost(currentUserId, 'village', targetPostId)
+  }
   // 2026-05-09 マッキーさん指示「いいね欄のプロフィール押してもその人のマイページに飛ばない」
   // 真因対応。MyVillagePostInline はマイページの投稿タブ (= 必ず自分の投稿) と
   // いいねタブ (= 他人の投稿もあり) の両方で使われるため、profileHref を動的に算出する。
@@ -306,6 +350,9 @@ function MyVillagePostInline({
         onCountClick={() => setShowLikedUsers(true)}
         onComment={() => router.push(villageHref)}
         onShare={shareToX}
+        onRepost={() => toggleRepost()}
+        reposted={reposted}
+        repostCount={repostCount}
       />
 
       {/* 2026-05-10: いいねしたユーザー一覧シート (ハート数タップで開く) */}

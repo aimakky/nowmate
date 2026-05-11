@@ -21,6 +21,7 @@ import { startDM } from '@/lib/dm'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import PostActions from '@/components/ui/PostActions'
 import LikedUsersSheet from '@/components/features/LikedUsersSheet'
+import { addSelfRepost, removeSelfRepost, isSelfReposted } from '@/lib/self-reposts'
 import PostCardShell from '@/components/ui/PostCardShell'
 import PostCardHeader from '@/components/ui/PostCardHeader'
 import { getUserDisplayName } from '@/lib/user-display'
@@ -71,8 +72,51 @@ function ProfileVillagePostInline({
   const flag = getNationalityFlag(profile?.nationality || '')
   // 2026-05-10: いいねしたユーザー一覧シートの表示制御
   const [showLikedUsers, setShowLikedUsers] = useState(false)
+  // 2026-05-10: 村投稿のリポスト状態 (localStorage で永続化、tweet と同じパターン)
+  const selfRepostedInLs = currentUserId ? isSelfReposted(currentUserId, 'village', post.id) : false
+  const [optimisticReposted, setOptimisticReposted] = useState<boolean | null>(null)
+  const [optimisticRepostDelta, setOptimisticRepostDelta] = useState<number>(0)
+  const reposted = optimisticReposted === null ? selfRepostedInLs : optimisticReposted
+  const rawRepostCount = Math.max(0, ((post as any).repost_count ?? 0) + optimisticRepostDelta)
+  const repostCount = reposted ? Math.max(1, rawRepostCount) : rawRepostCount
   const villageHref = post.village_id ? `/villages/${post.village_id}` : '/timeline'
   const profileHref = `/profile/${profileUserId}`
+
+  // 2026-05-10: 村投稿リポストの toggle (TL の PostCard / mypage と同じパターン)
+  async function toggleRepost() {
+    if (!currentUserId) return
+    const targetPostId = (post as any).repost_of ?? post.id
+    const supabase = createClient()
+    const wasReposted = optimisticReposted === null ? selfRepostedInLs : optimisticReposted
+    const nextReposted = !wasReposted
+    setOptimisticReposted(nextReposted)
+    setOptimisticRepostDelta(nextReposted ? +1 : -1)
+    let error: any = null
+    if (wasReposted) {
+      const r = await supabase
+        .from('village_posts')
+        .delete()
+        .eq('user_id', currentUserId)
+        .eq('repost_of', targetPostId)
+      error = r.error
+    } else {
+      const r = await supabase.from('village_posts').insert({
+        user_id: currentUserId,
+        content: post.content,
+        village_id: post.village_id ?? null,
+        repost_of: targetPostId,
+      })
+      error = r.error
+    }
+    if (error) {
+      console.error('[ProfileVillagePostInline.toggleRepost] supabase error:', error)
+      setOptimisticReposted(wasReposted)
+      setOptimisticRepostDelta(0)
+      return
+    }
+    if (nextReposted) addSelfRepost(currentUserId, 'village', targetPostId)
+    else removeSelfRepost(currentUserId, 'village', targetPostId)
+  }
 
   function shareToX() {
     const village = post.village ? `${post.village.icon}${post.village.name}` : 'YVOICE'
@@ -125,6 +169,9 @@ function ProfileVillagePostInline({
         onCountClick={() => setShowLikedUsers(true)}
         onComment={() => router.push(villageHref)}
         onShare={shareToX}
+        onRepost={() => toggleRepost()}
+        reposted={reposted}
+        repostCount={repostCount}
       />
 
       {/* 2026-05-10: いいねしたユーザー一覧シート (ハート数タップで開く) */}
