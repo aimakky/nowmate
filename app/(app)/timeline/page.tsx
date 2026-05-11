@@ -15,6 +15,7 @@ import PostCardHeader from '@/components/ui/PostCardHeader'
 import { detectCrisisKeywords } from '@/lib/moderation'
 import GuildHeroGamepad from '@/components/ui/icons/GuildHeroGamepad'
 import { getUserDisplayName } from '@/lib/user-display'
+import { addSelfLike } from '@/lib/self-likes'
 import { SwipeableTabs } from '@/components/ui/SwipeableTabs'
 
 // ── 型定義 ──────────────────────────────────────────────────────
@@ -999,6 +1000,25 @@ function TimelineFeedPane({
             p.reaction_count = counted
           }
         }
+        // 2026-05-10 (追加): likedIds の rebuild も同じデータから。
+        // 旧 likedIds は `.eq('user_id', me)` 経由で取得していたが、もし RLS で
+        // hidden になっている場合 likedIds が空になり heart が灰色になっていた。
+        // `.in('post_id', visible).eq nothing` 経由で得た reactorsByPost から
+        // 自分の id を見つけて likedIds に追加することで、画面に出ている投稿に
+        // 限って my-like 状態を確実に復元する。
+        if (userId) {
+          const additionalLiked = new Set<string>()
+          for (const [postId, reactors] of reactorsByPost) {
+            if (reactors.has(userId)) additionalLiked.add(postId)
+          }
+          if (additionalLiked.size > 0) {
+            setLikedIds(prev => {
+              const next = new Set(prev)
+              for (const id of additionalLiked) next.add(id)
+              return next
+            })
+          }
+        }
       }
 
       if (reset) {
@@ -1079,6 +1099,14 @@ function TimelineFeedPane({
       reactionSeen.add(dedupKey)
       if (!reactionsByTweet.has(r.tweet_id)) reactionsByTweet.set(r.tweet_id, [])
       reactionsByTweet.get(r.tweet_id)!.push({ user_id: r.user_id, reaction: r.reaction })
+      // 2026-05-10 マッキーさん指示「pink heart なのに count 0」恒久対策:
+      // tweet_reactions の `.in('tweet_id', visible_ids)` 経由なら my-reaction は
+      // 確実に取れるはず (CLAUDE.md ノート)。それを localStorage に同期しておけば、
+      // 次回 TweetCard 描画時に selfLikedInLs=true で count >= 1 になる。
+      // AppLayout の `.eq('user_id', me)` backfill が RLS で 0 件返すケースの保険。
+      if (userId && r.user_id === userId && r.reaction === 'heart') {
+        addSelfLike(userId, 'tweet', r.tweet_id)
+      }
     }
     const repliesByTweet = new Map<string, any[]>()
     for (const r of ((repliesRes as any).data ?? [])) {
