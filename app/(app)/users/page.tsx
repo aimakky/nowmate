@@ -17,6 +17,7 @@ import { startDM } from '@/lib/dm'
 import VerifiedBadge from '@/components/ui/VerifiedBadge'
 import { lastSeenLabelJP } from '@/lib/utils'
 import { getUserDisplayName } from '@/lib/user-display'
+import UserActionButtons from '@/components/features/UserActionButtons'
 
 // フレンド一覧用 (FriendRail の「もっと見る」遷移先)。/users は元々ユーザー
 // 検索画面なので、検索結果の上に「あなたのフレンド」セクションを追加して
@@ -428,44 +429,17 @@ export default function UsersPage() {
                             : (lastLabel ? `最終ログイン ${lastLabel}` : '最終ログイン不明')}
                         </p>
                       </div>
-                      {/* 通話招待 (グループ通話画面へ) と DM (既存 startDM) を 2 ボタン並列 */}
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <Link
-                          href="/group"
-                          onClick={e => e.stopPropagation()}
-                          className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all"
-                          style={{
-                            background: 'rgba(39,223,255,0.15)',
-                            border: '1px solid rgba(39,223,255,0.35)',
-                          }}
-                          aria-label="グループ通話に誘う"
-                          title="グループ通話に誘う"
-                        >
-                          <Headphones size={13} style={{ color: '#27DFFF' }} />
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={async (e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            if (!me) return
-                            const result = await startDM(me, f.id)
-                            if (result.status === 'ok' || result.status === 'exists') {
-                              router.push(`/chat/${result.matchId}`)
-                            } else if (result.status === 'request' && 'matchId' in result) {
-                              router.push(`/chat/${result.matchId}`)
-                            }
-                          }}
-                          className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all"
-                          style={{
-                            background: 'rgba(255,77,144,0.15)',
-                            border: '1px solid rgba(255,77,144,0.35)',
-                          }}
-                          aria-label="DMを送る"
-                          title="DMを送る"
-                        >
-                          <Mail size={12} style={{ color: '#FF4D90' }} />
-                        </button>
+                      {/* 2026-05-10: 旧 小型アイコン 2 つ (グループ通話 + DM) を、
+                          UserActionButtons (話す + 誘う 2 ボタン) に置き換え。
+                          「話す」 = startDM → /chat/[matchId]
+                          「誘う」 = FriendInviteSheet ボトムシート (通話 / 村 / チャット) */}
+                      <div onClick={e => e.stopPropagation()} className="flex-shrink-0">
+                        <UserActionButtons
+                          targetUserId={f.id}
+                          myId={me}
+                          targetDisplayName={getUserDisplayName(f)}
+                          size="sm"
+                        />
                       </div>
                     </div>
                   </Link>

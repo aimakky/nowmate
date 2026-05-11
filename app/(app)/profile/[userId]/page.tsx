@@ -26,6 +26,7 @@ import PostCardShell from '@/components/ui/PostCardShell'
 import PostCardHeader from '@/components/ui/PostCardHeader'
 import { getUserDisplayName } from '@/lib/user-display'
 import GuildShieldIcon from '@/components/ui/icons/GuildShieldIcon'
+import UserActionButtons from '@/components/features/UserActionButtons'
 
 // 村投稿 (village_posts) を投稿タブで TweetCard 同等のリッチ UI で描画する型。
 // 2026-05-07: マッキーさん指示「投稿一覧は全て通常投稿UIで統一」を受け、
@@ -753,6 +754,21 @@ if (loading) return (
                 : <><MessageSquare size={14} /> DM</>
               }
             </button>
+          </div>
+        )}
+        {/* 2026-05-10 マッキーさん指示「フレンドに話す / 誘う」初回実装:
+            既存の [フォロー] [DM] 行はそのまま残し、その下に [話す] [誘う] を
+            追加して、誘う機能 (通話 / ゲーム村 / いますぐ村) への導線を作る。
+            「話す」は内部的に startDM するので機能上は既存 DM と重複するが、
+            並び順での見つけやすさを優先 (CLAUDE.md「既存 UI を大きく崩さない」)。 */}
+        {!isMe && myId && (
+          <div className="mt-2.5 flex justify-center">
+            <UserActionButtons
+              targetUserId={userId as string}
+              myId={myId}
+              targetDisplayName={profile?.display_name ?? ''}
+              size="md"
+            />
           </div>
         )}
         {isMe && (
