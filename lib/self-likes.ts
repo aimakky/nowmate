@@ -86,3 +86,31 @@ export function isSelfLiked(userId: string, table: SelfLikeTable, postId: string
 export function getSelfLikes(userId: string, table: SelfLikeTable): Map<string, string> {
   return readMap(userId, table)
 }
+
+/** DB 由来の自己 like 一括 backfill (本人の過去 like を localStorage に同期)。
+ *  2026-05-10 マッキーさん指示「いいねついてるのに 0 表示」恒久対策:
+ *  PR #97 デプロイ前にいいねを押した投稿は localStorage に記録が無く、
+ *  かつ RLS が SELECT を隠すため tweet_reactions enrich 経路でも取れない結果、
+ *  ハート pink + count=0 という視覚不一致が発生していた。
+ *  マイページ起動時に DB の `.eq('user_id', me)` で取れた tweet_id を
+ *  すべて localStorage に push しておくことで、過去 like も新 like も同じ
+ *  扱いになる。
+ *  - 既存エントリは上書きしない (createdAt 優先順は最初に書き込んだもの)
+ *  - DB から消えた tweet_id は LS に残るが害は無い (insert 時 dedup される) */
+export function backfillSelfLikes(
+  userId: string,
+  table: SelfLikeTable,
+  entries: { postId: string; createdAt?: string | null }[]
+): void {
+  if (!userId || entries.length === 0) return
+  const map = readMap(userId, table)
+  let mutated = false
+  for (const e of entries) {
+    if (!e.postId) continue
+    if (!map.has(e.postId)) {
+      map.set(e.postId, e.createdAt ?? new Date().toISOString())
+      mutated = true
+    }
+  }
+  if (mutated) writeMap(userId, table, map)
+}
