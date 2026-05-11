@@ -695,7 +695,9 @@ export default function MyPage() {
           for (const t of ltRaw) {
             t.profiles = profMap.get(t.user_id) ?? null
             t.tweet_reactions = reactByT.get(t.id) ?? []
-            if (t.user_id === user.id && lsSelfMapInit.has(t.id)) {
+            // 2026-05-10: own / 他人問わず localStorage に my-like 記録があれば
+            // tweet_reactions に inject (画面間で count / liked 状態が一致するため)
+            if (lsSelfMapInit.has(t.id)) {
               const alreadyHas = (t.tweet_reactions as any[]).some(
                 (x: any) => x.user_id === user.id && x.reaction === 'heart'
               )
@@ -970,7 +972,9 @@ export default function MyPage() {
             const isOwn = t.user_id === userId
             t.profiles = isOwn ? profile : (profMap.get(t.user_id) ?? null)
             t.tweet_reactions = reactByT.get(t.id) ?? []
-            if (isOwn && userId && lsSelfMap.has(t.id)) {
+            // 2026-05-10: own / 他人問わず localStorage に my-like 記録があれば
+            // tweet_reactions に inject (画面間で count / liked 状態が一致するため)
+            if (userId && lsSelfMap.has(t.id)) {
               const alreadyHas = (t.tweet_reactions as any[]).some(
                 (x: any) => x.user_id === userId && x.reaction === 'heart'
               )
@@ -1181,7 +1185,10 @@ export default function MyPage() {
         r.tweet_reactions = reactByT.get(r.id) ?? []
         // own tweet で localStorage に self-like 記録があるが reactions に含まれて
         // いない (= RLS hidden) 場合、heart 行を inject
-        if (r.user_id === uid && selfLikedMap.has(r.id)) {
+        // 2026-05-10: own / 他人問わず localStorage に my-like 記録があれば inject。
+        // loadTweets は own tweet 限定で fetch しているが、念のため id チェックは
+        // 汎用化しておく (将来 loadTweets が他人 tweet も含むケースに備えて)。
+        if (selfLikedMap.has(r.id)) {
           const alreadyHas = (r.tweet_reactions as any[]).some(
             (x: any) => x.user_id === uid && x.reaction === 'heart'
           )

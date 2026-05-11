@@ -13,12 +13,15 @@ import { Heart, MessageCircle, Share2 } from 'lucide-react'
 //
 // 呼び出し側が決めるべき動作:
 // - liked          : ハートが「自分が押した」状態か
-// - reactionCount  : ハート横に出す総数 (0 のとき非表示)
-// - replyCount     : コメント横に出す数 (省略可、0 のとき非表示)
+// - reactionCount  : ハート横に出す総数 (0 でも常に表示する仕様)
+// - replyCount     : コメント横に出す数 (0 でも常に表示する仕様)
 // - canInteract    : 操作不可なら disabled 表示。Share だけは常に押せる
 // - onHeart        : Heart タップ動作 (DB upsert / 村遷移など呼出側裁量)
 // - onComment      : Comment タップ動作 (詳細遷移など)
 // - onShare        : Share タップ動作 (X 共有起動など)
+//
+// 2026-05-10 マッキーさん指示「いいね数を 0 でも必ず表示」: 全投稿カードで
+// 数字 (0 / 1 / 2 …) を常に表示する仕様に統一。条件分岐 (> 0) は撤去。
 
 interface Props {
   liked: boolean
@@ -73,9 +76,7 @@ export default function PostActions({
           fill={liked ? '#FF4D90' : 'none'}
           strokeWidth={liked ? 0 : 1.8}
         />
-        {reactionCount > 0 && (
-          <span className="text-xs font-semibold">{reactionCount}</span>
-        )}
+        <span className="text-xs font-semibold tabular-nums">{Math.max(0, reactionCount)}</span>
       </button>
 
       <button
@@ -92,9 +93,7 @@ export default function PostActions({
         aria-label="コメント"
       >
         <MessageCircle size={15} strokeWidth={1.8} />
-        {(replyCount ?? 0) > 0 && (
-          <span className="text-xs font-semibold">{replyCount}</span>
-        )}
+        <span className="text-xs font-semibold tabular-nums">{Math.max(0, Number(replyCount ?? 0))}</span>
       </button>
 
       <button
