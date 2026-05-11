@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { getAdminUser } from '@/lib/admin'
 
 export async function POST(req: Request) {
-  const { adminKey, messages } = await req.json()
-
-  if (adminKey !== process.env.ADMIN_SECRET) {
+  // 共有パスワード (旧 ADMIN_SECRET) は廃止。
+  // Supabase Auth セッション + .env の ADMIN_USER_IDS allowlist で server side 検証する。
+  const admin = await getAdminUser()
+  if (!admin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const { messages } = await req.json()
 
   if (!messages?.length) {
     return NextResponse.json({ error: 'No feedback to analyze' }, { status: 400 })
@@ -19,7 +23,7 @@ export async function POST(req: Request) {
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
-    system: 'You are a product manager analyzing user feedback for "自由村" — a Japan survival kit app for foreign residents in Japan. Return only valid JSON, no markdown.',
+    system: 'You are a product manager analyzing user feedback for "YVOICE" — a Japan survival kit app for foreign residents in Japan. Return only valid JSON, no markdown.',
     messages: [{
       role: 'user',
       content: `Analyze these ${messages.length} user feedback messages and return a JSON object with this exact structure:

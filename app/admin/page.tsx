@@ -110,9 +110,10 @@ function BanBadge({ isBanned, until }: { isBanned: boolean; until: string | null
 }
 
 // ─── メインページ ──────────────────────────────────────────────
+// 認証は app/admin/layout.tsx の Server Component で完結している
+// (ログイン済み かつ user.id ∈ ADMIN_USER_IDS のみここに辿り着く)。
+// クライアント側のパスワードゲートは廃止した。
 export default function AdminPage() {
-  const [authed,       setAuthed]       = useState(false)
-  const [adminSecret,  setAdminSecret]  = useState('')
   const [tab,          setTab]          = useState<Tab>('reports')
 
   // Feedback
@@ -166,12 +167,11 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => {
-    if (!authed) return
     fetchReports()
     fetchReportedUsers()
     fetchFlagged()
     fetchFeedbacks()
-  }, [authed, fetchReports, fetchReportedUsers, fetchFlagged, fetchFeedbacks])
+  }, [fetchReports, fetchReportedUsers, fetchFlagged, fetchFeedbacks])
 
   // ── アクション ───────────────────────────────────────────────
   async function banUser(userId: string, days: number) {
@@ -205,46 +205,17 @@ export default function AdminPage() {
     const pending = feedbacks.filter(r => r.status === 'pending').map(r => r.message)
     if (!pending.length) { setAnalyzeError('Pending feedbackがありません'); setAnalyzing(false); return }
     try {
+      // 認証は /api/analyze-feedback 内で Supabase Auth セッション + ADMIN_USER_IDS で server side 検証する。
+      // クライアントから秘密パスワードは送らない。
       const res  = await fetch('/api/analyze-feedback', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminKey: adminSecret, messages: pending }),
+        body: JSON.stringify({ messages: pending }),
       })
       const json = await res.json()
       if (json.error) { setAnalyzeError(json.error); setAnalyzing(false); return }
       setAnalysis(typeof json.analysis === 'string' ? JSON.parse(json.analysis) : json.analysis)
     } catch { setAnalyzeError('Analysis failed') }
     setAnalyzing(false)
-  }
-
-  // ── ログイン画面 ─────────────────────────────────────────────
-  if (!authed) {
-    return (
-      <div className="min-h-screen bg-[#0f0f1a] flex items-center justify-center px-4">
-        <div className="w-full max-w-sm bg-white/5 backdrop-blur border border-white/10 rounded-3xl p-6 shadow-2xl">
-          <div className="text-center mb-6">
-            <div className="text-4xl mb-2">🛡️</div>
-            <div className="font-extrabold text-white text-xl">自由村 運営管理</div>
-            <div className="text-xs text-white/40 mt-1">Moderation Dashboard</div>
-          </div>
-          <input
-            type="password"
-            value={adminSecret}
-            onChange={e => setAdminSecret(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && adminSecret && setAuthed(true)}
-            placeholder="管理者パスワード"
-            autoFocus
-            className="w-full px-4 py-3 rounded-2xl bg-white/10 text-white placeholder-white/30 border border-white/20 text-sm focus:outline-none focus:border-brand-400 mb-3"
-          />
-          <button
-            onClick={() => adminSecret && setAuthed(true)}
-            className="w-full py-3 rounded-2xl font-bold text-sm text-white transition-all active:scale-95"
-            style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)' }}
-          >
-            ログイン →
-          </button>
-        </div>
-      </div>
-    )
   }
 
   const reportCount = reports.length
