@@ -291,10 +291,15 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
   const effectiveDelta = (optimisticLiked === null || optimisticLiked === dbLiked)
     ? 0
     : optimisticDelta
-  const totalReactions = Math.max(0, dbCount + effectiveDelta)
   // liked 判定: optimistic 中はそれを優先、それ以外は dbLiked (= dbReaction === 'heart' || selfLikedInLs)
   // を使う。selfLikedInLs を含むので RLS で DB 行が隠れても heart 状態が維持される。
   const liked = (optimisticLiked === null) ? dbLiked : optimisticLiked
+  // 2026-05-10 マッキーさん指示「pink heart + count=0」最終的恒久対策:
+  // liked=true (pink heart 表示) なのに count=0 になる視覚不一致を強制的に防ぐ。
+  // 自分が反応している以上、count は最低 1 が必ず正しい。
+  // DB / RLS / LS の経路がいかなる組み合わせで失敗しても、視覚整合は維持される。
+  const rawCount = Math.max(0, dbCount + effectiveDelta)
+  const totalReactions = liked ? Math.max(1, rawCount) : rawCount
 
   return (
     <>
