@@ -423,7 +423,10 @@ function PostCard({
           だけにした。 */}
       <PostActions
         liked={liked}
-        reactionCount={post.reaction_count}
+        /* 2026-05-10 「pink heart なのに count 0」恒久対策:
+           liked=true なら最低 1 を保証 (DB カラムが stale + RLS で他人 reaction が
+           隠れても、自分が反応している以上 count は 1 以上が正しい)。 */
+        reactionCount={liked ? Math.max(1, post.reaction_count) : post.reaction_count}
         onHeart={() => onToggleLike(post.id)}
         onComment={() => {}}
         onShare={shareToX}
@@ -968,6 +971,35 @@ function TimelineFeedPane({
             user_trust: t ? { tier: t.tier ?? '', is_shadow_banned: false } : null,
           }
         }) as TPost[]
+
+      // 2026-05-10 マッキーさん指示「pink heart なのに count 0」恒久対策:
+      // village_posts.reaction_count カラムは DB トリガー未設定で stale。
+      // クライアント側で village_reactions を `.in('post_id', visible)` で取得し、
+      // unique user_id 数を計算して reaction_count を上書きする。
+      // 同じ user が複数 reaction しても 1 とカウント (Set ベース)。
+      // RLS が他人の reaction を隠す場合でも、少なくとも自分の reaction は
+      // 確実に取れるため 1 件以上は保証される。
+      const visiblePostIds = filtered.map(p => p.id).filter(Boolean)
+      if (visiblePostIds.length > 0) {
+        const { data: allReactions } = await supabase
+          .from('village_reactions')
+          .select('post_id, user_id')
+          .in('post_id', visiblePostIds)
+        const reactorsByPost = new Map<string, Set<string>>()
+        for (const r of ((allReactions ?? []) as any[])) {
+          if (!r.post_id) continue
+          if (!reactorsByPost.has(r.post_id)) reactorsByPost.set(r.post_id, new Set())
+          reactorsByPost.get(r.post_id)!.add(r.user_id)
+        }
+        for (const p of filtered) {
+          const counted = reactorsByPost.get(p.id)?.size ?? 0
+          // クライアント計算値が DB カラム値より大きい場合のみ上書き
+          // (DB がたまたま正しいケースで余計な書き換えをしない)
+          if (counted > p.reaction_count) {
+            p.reaction_count = counted
+          }
+        }
+      }
 
       if (reset) {
         setPosts(prev => {
