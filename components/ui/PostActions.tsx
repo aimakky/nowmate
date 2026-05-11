@@ -50,7 +50,14 @@ export default function PostActions({
           将来 PostCardShell や header が <Link> wrap される変更が入っても、
           ハート / コメント / 共有 タップで親 Link が誤発火しないよう防御的に
           書いておく。 */}
+      {/* 2026-05-10 マッキーさん指示: ハート押下時に親要素 (Link / form submit /
+          card onClick) が誤発火しないよう type="button" を明示。HTML 既定値の
+          type="submit" だと、上位に form があった場合に submit 発火する。
+          onPointerDown でも stopPropagation を入れて、scroll handler や touch
+          gesture が捕捉する経路も塞ぐ。 */}
       <button
+        type="button"
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.preventDefault()
           e.stopPropagation()
@@ -72,6 +79,8 @@ export default function PostActions({
       </button>
 
       <button
+        type="button"
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.preventDefault()
           e.stopPropagation()
@@ -89,6 +98,8 @@ export default function PostActions({
       </button>
 
       <button
+        type="button"
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.preventDefault()
           e.stopPropagation()
