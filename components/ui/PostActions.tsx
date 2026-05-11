@@ -17,11 +17,18 @@ import { Heart, MessageCircle, Share2 } from 'lucide-react'
 // - replyCount     : コメント横に出す数 (0 でも常に表示する仕様)
 // - canInteract    : 操作不可なら disabled 表示。Share だけは常に押せる
 // - onHeart        : Heart タップ動作 (DB upsert / 村遷移など呼出側裁量)
+// - onCountClick   : ハート横の数字タップ動作 (= いいねしたユーザー一覧を開く等、optional)
 // - onComment      : Comment タップ動作 (詳細遷移など)
 // - onShare        : Share タップ動作 (X 共有起動など)
 //
 // 2026-05-10 マッキーさん指示「いいね数を 0 でも必ず表示」: 全投稿カードで
 // 数字 (0 / 1 / 2 …) を常に表示する仕様に統一。条件分岐 (> 0) は撤去。
+//
+// 2026-05-10 マッキーさん指示「いいねを押した人が見れる仕組み」:
+// onCountClick が渡された場合は count 部分を独立 button にして separate な
+// タップで「いいねしたユーザー一覧」を開けるようにする。
+// onCountClick が未指定 (= 既存のシンプルな表示) なら count は heart button
+// 内の表示テキストとして従来通り描画 (1 つのタップ領域)。
 
 interface Props {
   liked: boolean
@@ -29,6 +36,7 @@ interface Props {
   replyCount?: number
   canInteract?: boolean
   onHeart: () => void
+  onCountClick?: () => void
   onComment: () => void
   onShare: () => void
 }
@@ -39,6 +47,7 @@ export default function PostActions({
   replyCount,
   canInteract = true,
   onHeart,
+  onCountClick,
   onComment,
   onShare,
 }: Props) {
@@ -58,26 +67,51 @@ export default function PostActions({
           type="submit" だと、上位に form があった場合に submit 発火する。
           onPointerDown でも stopPropagation を入れて、scroll handler や touch
           gesture が捕捉する経路も塞ぐ。 */}
-      <button
-        type="button"
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          if (canInteract) onHeart()
-        }}
-        disabled={!canInteract}
-        className="flex items-center gap-1.5 active:scale-90 transition-all disabled:opacity-50"
+      {/* 2026-05-10: heart icon と count を別 button に分ける (onCountClick が
+          渡された場合のみ)。これで「ハート押下 = like 切替」「数字押下 =
+          いいねしたユーザー一覧」の 2 つのアクションを 1 つの行で両立できる。 */}
+      <div
+        className="flex items-center gap-1.5"
         style={{ color: liked ? '#FF4D90' : 'rgba(240,238,255,0.35)' }}
-        aria-label="ハート"
       >
-        <Heart
-          size={15}
-          fill={liked ? '#FF4D90' : 'none'}
-          strokeWidth={liked ? 0 : 1.8}
-        />
-        <span className="text-xs font-semibold tabular-nums">{Math.max(0, reactionCount)}</span>
-      </button>
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (canInteract) onHeart()
+          }}
+          disabled={!canInteract}
+          className="flex items-center active:scale-90 transition-all disabled:opacity-50"
+          style={{ color: 'inherit' }}
+          aria-label="ハート"
+        >
+          <Heart
+            size={15}
+            fill={liked ? '#FF4D90' : 'none'}
+            strokeWidth={liked ? 0 : 1.8}
+          />
+        </button>
+        {onCountClick ? (
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onCountClick()
+            }}
+            className="active:scale-90 transition-all"
+            style={{ color: 'inherit' }}
+            aria-label="いいねしたユーザーを表示"
+          >
+            <span className="text-xs font-semibold tabular-nums">{Math.max(0, reactionCount)}</span>
+          </button>
+        ) : (
+          <span className="text-xs font-semibold tabular-nums">{Math.max(0, reactionCount)}</span>
+        )}
+      </div>
 
       <button
         type="button"

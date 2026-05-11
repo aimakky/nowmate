@@ -11,6 +11,7 @@ import ReportModal from '@/components/features/ReportModal'
 import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 import { getUserDisplayName } from '@/lib/user-display'
 import { addSelfLike, removeSelfLike, isSelfLiked } from '@/lib/self-likes'
+import LikedUsersSheet from '@/components/features/LikedUsersSheet'
 
 export const REACTIONS = [
   { key: 'heart',   emoji: '❤️', label: 'Love' },
@@ -91,6 +92,8 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
   const [showReport,  setShowReport]  = useState(false)
   const [blockDone,   setBlockDone]   = useState(false)
   const [blocking,    setBlocking]    = useState(false)
+  // 2026-05-10: いいねしたユーザー一覧シートの表示制御
+  const [showLikedUsers, setShowLikedUsers] = useState(false)
 
   const isOwn = myId === tweet.user_id
   // 投稿者プロフィール遷移先: 自分なら黒背景マイページ、他人なら他ユーザー
@@ -310,8 +313,18 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
         replyCount={tweet.reply_count ?? tweet.tweet_replies?.length ?? 0}
         canInteract={canInteract}
         onHeart={() => toggleReaction('heart')}
+        onCountClick={() => setShowLikedUsers(true)}
         onComment={() => router.push(`/tweet/${tweet.id}`)}
         onShare={shareToX}
+      />
+
+      {/* 2026-05-10: いいねしたユーザー一覧シート (ハート数タップで開く) */}
+      <LikedUsersSheet
+        open={showLikedUsers}
+        onClose={() => setShowLikedUsers(false)}
+        postId={tweet.id}
+        postType="tweet"
+        currentUserId={myId}
       />
 
       {/* ── アクションシート ── */}

@@ -21,6 +21,7 @@ import { getUserDisplayName, getAvatarInitial } from '@/lib/user-display'
 import Avatar from '@/components/ui/Avatar'
 import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 import { getSelfLikes, backfillSelfLikes } from '@/lib/self-likes'
+import LikedUsersSheet from '@/components/features/LikedUsersSheet'
 // VILLAGE_TYPE_STYLES は旧 参加中タブで使用していたが、タブ削除に伴い未使用化
 import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
@@ -231,6 +232,8 @@ function MyVillagePostInline({
   const isVerified = isVerifiedByExistingSchema(profile)
   const flag = getNationalityFlag(profile?.nationality || '')
   const villageHref = post.village_id ? `/villages/${post.village_id}` : '/timeline'
+  // 2026-05-10: いいねしたユーザー一覧シートの表示制御
+  const [showLikedUsers, setShowLikedUsers] = useState(false)
   // 2026-05-09 マッキーさん指示「いいね欄のプロフィール押してもその人のマイページに飛ばない」
   // 真因対応。MyVillagePostInline はマイページの投稿タブ (= 必ず自分の投稿) と
   // いいねタブ (= 他人の投稿もあり) の両方で使われるため、profileHref を動的に算出する。
@@ -300,8 +303,18 @@ function MyVillagePostInline({
            liked=true なら count は必ず 1 以上 (自分が反応している以上、それが正しい)。 */
         reactionCount={liked ? Math.max(1, post.reaction_count) : post.reaction_count}
         onHeart={() => onToggleLike(post.id)}
+        onCountClick={() => setShowLikedUsers(true)}
         onComment={() => router.push(villageHref)}
         onShare={shareToX}
+      />
+
+      {/* 2026-05-10: いいねしたユーザー一覧シート (ハート数タップで開く) */}
+      <LikedUsersSheet
+        open={showLikedUsers}
+        onClose={() => setShowLikedUsers(false)}
+        postId={post.id}
+        postType="village"
+        currentUserId={currentUserId ?? null}
       />
 
         {/* 村リンク (どの村への投稿かが分かるように小さく表示) */}

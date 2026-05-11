@@ -20,6 +20,7 @@ import { getGenreTitles, getIndustry } from '@/lib/guild'
 import { startDM } from '@/lib/dm'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import PostActions from '@/components/ui/PostActions'
+import LikedUsersSheet from '@/components/features/LikedUsersSheet'
 import PostCardShell from '@/components/ui/PostCardShell'
 import PostCardHeader from '@/components/ui/PostCardHeader'
 import { getUserDisplayName } from '@/lib/user-display'
@@ -52,7 +53,7 @@ type ProfileVillagePost = {
 // 乗せる) は profile 固有のため維持。村投稿は schema が tweets と異なり
 // tweet_reactions / tweet_replies の DB 操作はしない。
 function ProfileVillagePostInline({
-  post, profile, trustTier, profileUserId, liked, onToggleLike,
+  post, profile, trustTier, profileUserId, liked, onToggleLike, currentUserId,
 }: {
   post: ProfileVillagePost
   profile: any
@@ -62,10 +63,14 @@ function ProfileVillagePostInline({
   liked: boolean
   /** ハートボタン押下時に呼ぶ村投稿 like トグル関数 (画面遷移しない) */
   onToggleLike: (postId: string) => void
+  /** 閲覧者 (= ログインユーザー) の ID。LikedUsersSheet の自分判定に使用 */
+  currentUserId?: string | null
 }) {
   const router = useRouter()
   const isVerified = isVerifiedByExistingSchema(profile)
   const flag = getNationalityFlag(profile?.nationality || '')
+  // 2026-05-10: いいねしたユーザー一覧シートの表示制御
+  const [showLikedUsers, setShowLikedUsers] = useState(false)
   const villageHref = post.village_id ? `/villages/${post.village_id}` : '/timeline'
   const profileHref = `/profile/${profileUserId}`
 
@@ -117,8 +122,18 @@ function ProfileVillagePostInline({
            TL の PostCard / mypage MyVillagePostInline と同じ Math.max(1) 安全網。 */
         reactionCount={liked ? Math.max(1, post.reaction_count) : post.reaction_count}
         onHeart={() => onToggleLike(post.id)}
+        onCountClick={() => setShowLikedUsers(true)}
         onComment={() => router.push(villageHref)}
         onShare={shareToX}
+      />
+
+      {/* 2026-05-10: いいねしたユーザー一覧シート (ハート数タップで開く) */}
+      <LikedUsersSheet
+        open={showLikedUsers}
+        onClose={() => setShowLikedUsers(false)}
+        postId={post.id}
+        postType="village"
+        currentUserId={currentUserId ?? null}
       />
 
         {/* 村リンク (どの村への投稿かが分かるように小さく表示) */}
@@ -801,6 +816,7 @@ if (loading) return (
                     profileUserId={userId as string}
                     liked={likedIds.has(item.data.id)}
                     onToggleLike={toggleLike}
+                    currentUserId={myId}
                   />
                 ))
               })()
