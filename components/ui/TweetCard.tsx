@@ -110,13 +110,15 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
   // RLS 非対称挙動で refetch が stale データを返しても、UI は optimistic 値で
   // ユーザに即時 feedback を返す。DB エラー時のみ revert + alert 表示。
   //
-  // 2026-05-10 (追加修正): tweet_reactions RLS で self-like が SELECT から
-  // 隠れる事象により、ページ移動 → 戻りで heart 状態がグレーに戻るバグを
-  // localStorage 永続化で恒久対策。dbLiked 判定に localStorage 値を OR 合成。
-  const selfLikedInLs = isOwn && myId ? isSelfLiked(myId, 'tweet', tweet.id) : false
+  // 2026-05-10 (追加修正): tweet_reactions RLS で my-like が SELECT から
+  // 隠れる事象により、ハート状態とカウントが画面によって不安定になるバグを
+  // localStorage 永続化で恒久対策。
+  // - 旧: isOwn 限定で localStorage を見ていた → 他人 tweet で count=0 になっていた
+  // - 新: 全 tweet で localStorage を確認 (myId が like したかどうかは投稿者と無関係)
+  const selfLikedInLs = myId ? isSelfLiked(myId, 'tweet', tweet.id) : false
   const dbReaction = tweet.tweet_reactions.find(r => r.user_id === myId)?.reaction
   const dbLiked = dbReaction === 'heart' || selfLikedInLs
-  // dbCount: DB から見える reactor 数 + self-like が DB に見えないなら +1
+  // dbCount: DB から見える reactor 数 + my-like が DB に見えないなら +1 (重複防止)
   const dbReactorSet = new Set(tweet.tweet_reactions.map(r => r.user_id))
   if (selfLikedInLs && myId && !dbReactorSet.has(myId)) dbReactorSet.add(myId)
   const dbCount = dbReactorSet.size
@@ -143,6 +145,12 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tweet.tweet_reactions, dbLiked, optimisticLiked])
 
+  // 2026-05-10 チラつき完全除去:
+  // 旧 myReaction は dbReaction (= tweet_reactions の中身のみ) を見ていたので、
+  // RLS で my-like 行が SELECT から消えた瞬間 dbReaction=undefined となり
+  // optimistic clear 直後にハートが一瞬グレーに見えるバグがあった。
+  // 新運用: liked 判定は selfLikedInLs を含む dbLiked を使う (下記 line で定義)。
+  // myReaction 自体は (絵文字ピッカー等の) 将来用に残す。
   const myReaction = optimisticLiked === null ? dbReaction : (optimisticLiked ? 'heart' : undefined)
 
   async function toggleReaction(key: string) {
@@ -208,9 +216,10 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
       }
       return
     }
-    // 2026-05-10: 自分の投稿への self-like は RLS で SELECT から隠れるため、
-    // localStorage に永続化してページ再表示時にも heart 状態を維持する。
-    if (isOwn && myId) {
+    // 2026-05-10: my-like が RLS で SELECT から隠れる/不安定なケースがあるため、
+    // 全 tweet (own / 他人問わず) で localStorage に永続化してハート状態と
+    // カウントを画面間で一致させる。
+    if (myId) {
       if (nextLiked) addSelfLike(myId, 'tweet', tweet.id)
       else removeSelfLike(myId, 'tweet', tweet.id)
     }
@@ -283,7 +292,9 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
     ? 0
     : optimisticDelta
   const totalReactions = Math.max(0, dbCount + effectiveDelta)
-  const liked = myReaction === 'heart'
+  // liked 判定: optimistic 中はそれを優先、それ以外は dbLiked (= dbReaction === 'heart' || selfLikedInLs)
+  // を使う。selfLikedInLs を含むので RLS で DB 行が隠れても heart 状態が維持される。
+  const liked = (optimisticLiked === null) ? dbLiked : optimisticLiked
 
   return (
     <>
