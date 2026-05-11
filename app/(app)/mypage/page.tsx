@@ -363,10 +363,6 @@ export default function MyPage() {
   const [userId,         setUserId]         = useState<string | null>(null)
   const [activeTab,      setActiveTab]      = useState<ProfileTab>('tweets')
   const [loading,        setLoading]        = useState(true)
-  // 2026-05-10 [TEMP DEBUG] iPhone で見える画面上 DEBUG パネル用 state。
-  // TweetCard.toggleReaction が window.__yvoiceDebug に書き込んで
-  // yvoice-debug CustomEvent を dispatch する。本番動作確認後に除去。
-  const [debugInfo, setDebugInfo] = useState<{ lastClick?: any; lastDb?: any } | null>(null)
   // 電話認証モーダルの状態は TrustVerificationCard が内部で持つため不要
   const [showCompose,    setShowCompose]    = useState(false)
   const [idCopied,       setIdCopied]       = useState(false)
@@ -386,18 +382,6 @@ export default function MyPage() {
   const [followingList,  setFollowingList]  = useState<FollowUser[] | null>(null)
   const [followersList,  setFollowersList]  = useState<FollowUser[] | null>(null)
   const [followListLoading, setFollowListLoading] = useState(false)
-
-  // 2026-05-10 [TEMP DEBUG] window.__yvoiceDebug を listen して画面上に表示。
-  // 本番動作確認後の次 commit で除去。
-  useEffect(() => {
-    function handler() {
-      const w = window as any
-      setDebugInfo(w.__yvoiceDebug ?? null)
-    }
-    window.addEventListener('yvoice-debug', handler)
-    handler()
-    return () => window.removeEventListener('yvoice-debug', handler)
-  }, [])
 
   // 上部固定バーは createPortal で document.body 直下に描画する
   // (mypage wrapper の overflow-x-hidden / AppLayout sticky の
@@ -1331,46 +1315,6 @@ export default function MyPage() {
 
   return (
     <div className="max-w-md mx-auto min-h-screen relative overflow-x-hidden" style={{ background: '#0d0b1f' }}>
-
-      {/* 2026-05-10 [TEMP DEBUG] iPhone で見える画面上診断パネル。
-          自分の投稿いいねバグの真因切り分け用。
-          ・「BUILD: 1fc34b7+2」が表示されていれば新しいコードが動作中
-          ・ハート押下時に lastClick / lastDb が更新される
-          本番動作確認後に次 commit で除去。 */}
-      <div
-        className="fixed left-2 right-2 top-2 z-[100] rounded-lg p-2 text-[10px] font-mono"
-        style={{
-          background: 'rgba(0,0,0,0.85)',
-          border: '1px solid #FF4D90',
-          color: '#FFE6F0',
-          maxHeight: '40vh',
-          overflow: 'auto',
-          pointerEvents: 'none',
-        }}
-      >
-        <div style={{ color: '#FF4D90', fontWeight: 'bold' }}>BUILD: 1fc34b7+2 [DEBUG]</div>
-        <div>tweetLoading: {String(tweetLoading)} / activeTab: {activeTab}</div>
-        {debugInfo?.lastClick ? (
-          <div style={{ marginTop: 4 }}>
-            <div style={{ color: '#7CFF82' }}>lastClick @ {debugInfo.lastClick.time}</div>
-            <div>postId: {debugInfo.lastClick.postId} / author: {debugInfo.lastClick.postAuthorId}</div>
-            <div>me: {debugInfo.lastClick.currentUserId} / isOwn: {String(debugInfo.lastClick.isOwnPost)}</div>
-            <div>was: {String(debugInfo.lastClick.beforeLiked)} → next: {String(debugInfo.lastClick.nextLiked)}</div>
-          </div>
-        ) : (
-          <div style={{ color: 'rgba(255,255,255,0.5)' }}>lastClick: なし (ハート押下待ち)</div>
-        )}
-        {debugInfo?.lastDb && (
-          <div style={{ marginTop: 4 }}>
-            <div style={{ color: debugInfo.lastDb.error ? '#FF7D7D' : '#7CFF82' }}>
-              lastDb @ {debugInfo.lastDb.time} ({debugInfo.lastDb.action})
-            </div>
-            <div>status: {String(debugInfo.lastDb.status)}</div>
-            <div>error: {debugInfo.lastDb.error ?? 'none'}</div>
-            <div>code: {debugInfo.lastDb.code ?? 'none'}</div>
-          </div>
-        )}
-      </div>
 
       {/* X 風スクロール時固定バー: 「N 件の投稿」を表示。
           /profile/[userId] と同じ表示にする。
