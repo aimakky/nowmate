@@ -114,12 +114,25 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
   // optimistic override: null = optimistic state なし (DB 値を使用)
   const [optimisticLiked, setOptimisticLiked] = useState<boolean | null>(null)
   const [optimisticDelta, setOptimisticDelta] = useState<number>(0)
-  // 親 prop が更新されたら optimistic を解除 (refetch 完了 = DB が真実)
+  // 2026-05-10 真因確定: tweet_reactions の RLS 非対称挙動により、自分の
+  // 投稿に対する自分の heart 行は INSERT は成功するが SELECT で隠れる。
+  // 旧コードは「親 prop が更新されたら optimistic を即解除」していたため、
+  // refetch 結果に self-heart が含まれずグレーに戻ってしまうバグがあった。
+  //
+  // 新運用: dbLiked が optimisticLiked と一致した時だけ optimistic を解除する。
+  // 一致しない場合 (= RLS で DB 状態が隠れている) は optimistic を維持して
+  // ユーザの操作意図を尊重する。delete の場合は dbLiked=false と一致する
+  // ので 1 回の refetch で自然に解除される。
   useEffect(() => {
-    setOptimisticLiked(null)
-    setOptimisticDelta(0)
+    if (optimisticLiked === null) return  // 既に解除済み
+    if (dbLiked === optimisticLiked) {
+      // DB 状態が optimistic と一致 → optimistic を解除して DB 値に委譲
+      setOptimisticLiked(null)
+      setOptimisticDelta(0)
+    }
+    // 一致しない場合は RLS hidden 状態と推定 → optimistic を維持
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tweet.tweet_reactions])
+  }, [tweet.tweet_reactions, dbLiked, optimisticLiked])
 
   const myReaction = optimisticLiked === null ? dbReaction : (optimisticLiked ? 'heart' : undefined)
 
