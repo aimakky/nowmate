@@ -12,7 +12,7 @@ import { useDelayedSkeleton } from '@/hooks/useDelayedSkeleton'
 
 type Notif = {
   id: string
-  type: 'like' | 'reply' | 'follow' | 'comment' | 'bottle_reply' | 'new_member_post' | 'voice_room_started'
+  type: 'like' | 'reply' | 'follow' | 'comment' | 'bottle_reply' | 'new_member_post' | 'voice_room_started' | 'call_invite' | 'guild_invite' | 'now_village_invite'
   actor_id: string | null
   target_id: string | null
   target_type: string | null
@@ -32,6 +32,10 @@ const TYPE_CONFIG: Record<string, { emoji: string; label: string; section: 'reac
   bottle_reply:       { emoji: '🍶', label: '波の向こうから、返事が来ました',              section: 'other'    },
   tier_up:            { emoji: '🌿', label: '村のみんなが、あなたを信頼し始めています',    section: 'other'    },
   bottle_found:       { emoji: '🍶', label: 'あなたの瓶を、誰かが大切に拾ってくれました', section: 'other'    },
+  // 2026-05-10: フレンド「誘う」機能で発生する新 type 群 (FriendInviteSheet 経由)
+  call_invite:        { emoji: '📞', label: 'あなたを通話に誘いました',                   section: 'voice'    },
+  guild_invite:       { emoji: '🎮', label: 'あなたをゲーム村に誘いました',               section: 'voice'    },
+  now_village_invite: { emoji: '⏱️', label: 'あなたをいますぐ村に誘いました',             section: 'voice'    },
 }
 
 // 2026-05-09 マッキーさん指示「取得済みデータがあれば skeleton に戻さず前回表示を
@@ -125,6 +129,11 @@ export default function NotificationsPage() {
       router.push(`/voice/${n.target_id}`)
     } else if (n.type === 'bottle_reply') {
       router.push('/mypage')
+    }
+    // 2026-05-10: フレンド「誘う」由来の通知 tap 時、誘った相手のプロフィールへ遷移
+    // (= 「誰が誘ってくれたのか」確認できる + 安全な既存ルートのみ使用)
+    else if ((n.type === 'call_invite' || n.type === 'guild_invite' || n.type === 'now_village_invite') && n.actor_id) {
+      router.push(`/profile/${n.actor_id}`)
     }
   }
 
