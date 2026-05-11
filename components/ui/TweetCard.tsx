@@ -10,6 +10,7 @@ import PostCardHeader from '@/components/ui/PostCardHeader'
 import ReportModal from '@/components/features/ReportModal'
 import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 import { getUserDisplayName } from '@/lib/user-display'
+import { addSelfLike, removeSelfLike, isSelfLiked } from '@/lib/self-likes'
 
 export const REACTIONS = [
   { key: 'heart',   emoji: '❤️', label: 'Love' },
@@ -108,9 +109,17 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
   // これにより village 投稿側の toggleLike (mypage:1028) と挙動を完全統一。
   // RLS 非対称挙動で refetch が stale データを返しても、UI は optimistic 値で
   // ユーザに即時 feedback を返す。DB エラー時のみ revert + alert 表示。
+  //
+  // 2026-05-10 (追加修正): tweet_reactions RLS で self-like が SELECT から
+  // 隠れる事象により、ページ移動 → 戻りで heart 状態がグレーに戻るバグを
+  // localStorage 永続化で恒久対策。dbLiked 判定に localStorage 値を OR 合成。
+  const selfLikedInLs = isOwn && myId ? isSelfLiked(myId, 'tweet', tweet.id) : false
   const dbReaction = tweet.tweet_reactions.find(r => r.user_id === myId)?.reaction
-  const dbLiked = dbReaction === 'heart'
-  const dbCount = new Set(tweet.tweet_reactions.map(r => r.user_id)).size
+  const dbLiked = dbReaction === 'heart' || selfLikedInLs
+  // dbCount: DB から見える reactor 数 + self-like が DB に見えないなら +1
+  const dbReactorSet = new Set(tweet.tweet_reactions.map(r => r.user_id))
+  if (selfLikedInLs && myId && !dbReactorSet.has(myId)) dbReactorSet.add(myId)
+  const dbCount = dbReactorSet.size
   // optimistic override: null = optimistic state なし (DB 値を使用)
   const [optimisticLiked, setOptimisticLiked] = useState<boolean | null>(null)
   const [optimisticDelta, setOptimisticDelta] = useState<number>(0)
@@ -198,6 +207,12 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
         alert(`いいね操作に失敗: ${error.message ?? 'unknown'}\nアクション: ${wasLiked ? 'delete' : 'upsert'}\nDB error code: ${error.code ?? 'なし'}`)
       }
       return
+    }
+    // 2026-05-10: 自分の投稿への self-like は RLS で SELECT から隠れるため、
+    // localStorage に永続化してページ再表示時にも heart 状態を維持する。
+    if (isOwn && myId) {
+      if (nextLiked) addSelfLike(myId, 'tweet', tweet.id)
+      else removeSelfLike(myId, 'tweet', tweet.id)
     }
     onUpdate()
   }
