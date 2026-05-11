@@ -159,61 +159,24 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
     // optimistic 切替: クリック直後に liked / count を切替えて即時 feedback
     const wasLiked = (optimisticLiked === null ? dbLiked : optimisticLiked)
     const nextLiked = !wasLiked
-    // [TEMP DEBUG 2026-05-10] 自分の投稿いいね反映調査用 (本番確認後に除去)
-    // iPhone Safari で console / alert が見えないため、window 経由で
-    // mypage の DEBUG パネルに転送する。
-    const debugClick = {
-      build: '1fc34b7+2',
-      time: new Date().toISOString().slice(11, 19),
-      source: 'TweetCard.toggleReaction',
-      postId: tweet.id.slice(0, 8),
-      postAuthorId: tweet.user_id.slice(0, 8),
-      currentUserId: (myId ?? '').slice(0, 8),
-      isOwnPost: tweet.user_id === myId,
-      beforeLiked: wasLiked,
-      nextLiked,
-    }
-    console.log('[LikeButton clicked TEMP-DEBUG]', debugClick)
-    if (typeof window !== 'undefined') {
-      (window as any).__yvoiceDebug = { ...(window as any).__yvoiceDebug, lastClick: debugClick }
-      window.dispatchEvent(new CustomEvent('yvoice-debug'))
-    }
     setOptimisticLiked(nextLiked)
     setOptimisticDelta(nextLiked ? +1 : -1)
     let error: { message: string; code?: string; details?: string; hint?: string } | null = null
     if (wasLiked) {
       const r = await supabase.from('tweet_reactions').delete().eq('tweet_id', tweet.id).eq('user_id', myId)
       error = r.error as any
-      const debugDb = { action: 'delete', postId: tweet.id.slice(0, 8), error: r.error?.message ?? null, code: r.error?.code ?? null, status: (r as any).status ?? null, time: new Date().toISOString().slice(11, 19) }
-      console.log('[LikeButton db result TEMP-DEBUG]', debugDb)
-      if (typeof window !== 'undefined') {
-        (window as any).__yvoiceDebug = { ...(window as any).__yvoiceDebug, lastDb: debugDb }
-        window.dispatchEvent(new CustomEvent('yvoice-debug'))
-      }
     } else {
       const r = await supabase.from('tweet_reactions').upsert(
         { tweet_id: tweet.id, user_id: myId, reaction: key },
         { onConflict: 'tweet_id,user_id' }
       )
       error = r.error as any
-      const debugDb = { action: 'upsert', postId: tweet.id.slice(0, 8), error: r.error?.message ?? null, code: r.error?.code ?? null, status: (r as any).status ?? null, time: new Date().toISOString().slice(11, 19) }
-      console.log('[LikeButton db result TEMP-DEBUG]', debugDb)
-      if (typeof window !== 'undefined') {
-        (window as any).__yvoiceDebug = { ...(window as any).__yvoiceDebug, lastDb: debugDb }
-        window.dispatchEvent(new CustomEvent('yvoice-debug'))
-      }
     }
     if (error) {
       console.error('[toggleReaction] supabase error:', error)
-      // RLS で reject された等の場合 UI を元に戻す + マッキーさんに見えるよう alert
+      // RLS で reject された等の場合 UI を元に戻す
       setOptimisticLiked(wasLiked)
       setOptimisticDelta(0)
-      // 2026-05-10: alert は iOS Safari でブロックされるケースがあるため、
-      // 画面上 DEBUG パネル (window.__yvoiceDebug.lastDb) で確認する。
-      // alert は念のため残す (出る環境では出る)。
-      if (typeof window !== 'undefined') {
-        alert(`いいね操作に失敗: ${error.message ?? 'unknown'}\nアクション: ${wasLiked ? 'delete' : 'upsert'}\nDB error code: ${error.code ?? 'なし'}`)
-      }
       return
     }
     // 2026-05-10: my-like が RLS で SELECT から隠れる/不安定なケースがあるため、
