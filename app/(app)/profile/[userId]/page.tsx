@@ -113,7 +113,9 @@ function ProfileVillagePostInline({
           Share は X 共有起動 (画面遷移なし)。 */}
       <PostActions
         liked={liked}
-        reactionCount={post.reaction_count}
+        /* 2026-05-10 「pink heart + count=0」恒久対策:
+           TL の PostCard / mypage MyVillagePostInline と同じ Math.max(1) 安全網。 */
+        reactionCount={liked ? Math.max(1, post.reaction_count) : post.reaction_count}
         onHeart={() => onToggleLike(post.id)}
         onComment={() => router.push(villageHref)}
         onShare={shareToX}

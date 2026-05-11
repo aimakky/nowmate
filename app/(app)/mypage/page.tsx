@@ -295,7 +295,10 @@ function MyVillagePostInline({
           Share は X 共有起動 (画面遷移なし)。 */}
       <PostActions
         liked={liked}
-        reactionCount={post.reaction_count}
+        /* 2026-05-10 マッキーさん指示「pink heart + count=0」最終的恒久対策:
+           TL の PostCard (PR #100) / TweetCard (PR #102) と同等の安全網を入れる。
+           liked=true なら count は必ず 1 以上 (自分が反応している以上、それが正しい)。 */
+        reactionCount={liked ? Math.max(1, post.reaction_count) : post.reaction_count}
         onHeart={() => onToggleLike(post.id)}
         onComment={() => router.push(villageHref)}
         onShare={shareToX}
