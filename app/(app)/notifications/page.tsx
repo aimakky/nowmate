@@ -12,7 +12,7 @@ import { useDelayedSkeleton } from '@/hooks/useDelayedSkeleton'
 
 type Notif = {
   id: string
-  type: 'like' | 'reply' | 'follow' | 'comment' | 'bottle_reply' | 'new_member_post' | 'voice_room_started' | 'call_invite' | 'guild_invite' | 'now_village_invite'
+  type: 'like' | 'reply' | 'follow' | 'comment' | 'bottle_reply' | 'new_member_post' | 'voice_room_started' | 'call_invite' | 'guild_invite' | 'now_village_invite' | 'guild_specific_invite'
   actor_id: string | null
   target_id: string | null
   target_type: string | null
@@ -36,6 +36,28 @@ const TYPE_CONFIG: Record<string, { emoji: string; label: string; section: 'reac
   call_invite:        { emoji: '📞', label: 'あなたを通話に誘いました',                   section: 'voice'    },
   guild_invite:       { emoji: '🎮', label: 'あなたをゲーム村に誘いました',               section: 'voice'    },
   now_village_invite: { emoji: '⏱️', label: 'あなたをいますぐ村に誘いました',             section: 'voice'    },
+  // 2026-05-10 Phase A: ギルド招待 (specific guild)
+  guild_specific_invite: { emoji: '🛡️', label: 'あなたをギルドに誘いました',              section: 'voice'    },
+}
+
+// 2026-05-10 Phase A: 招待 type の集合定義 (招待カード化判定 / ボタン文言切替に使用)
+const INVITE_TYPES = new Set(['call_invite', 'guild_invite', 'now_village_invite', 'guild_specific_invite'])
+
+// 招待 type ごとに「参加する」「見る」「開く」のいずれの label を出すか + 遷移先 path
+function inviteAction(type: string, targetId: string | null): { label: string; href: string } {
+  switch (type) {
+    case 'call_invite':
+      return { label: '参加する', href: '/group' }
+    case 'guild_invite':
+      // ゲーム村 (= /guild ページ全体)
+      return { label: '参加する', href: '/guild' }
+    case 'now_village_invite':
+      return { label: '参加する', href: '/guild' }
+    case 'guild_specific_invite':
+      return { label: '見る', href: targetId ? `/guilds/${targetId}` : '/guild' }
+    default:
+      return { label: '参加する', href: '/guild' }
+  }
 }
 
 // 2026-05-09 マッキーさん指示「取得済みデータがあれば skeleton に戻さず前回表示を
@@ -132,8 +154,36 @@ export default function NotificationsPage() {
     }
     // 2026-05-10: フレンド「誘う」由来の通知 tap 時、誘った相手のプロフィールへ遷移
     // (= 「誰が誘ってくれたのか」確認できる + 安全な既存ルートのみ使用)
-    else if ((n.type === 'call_invite' || n.type === 'guild_invite' || n.type === 'now_village_invite') && n.actor_id) {
+    else if ((n.type === 'call_invite' || n.type === 'guild_invite' || n.type === 'now_village_invite' || n.type === 'guild_specific_invite') && n.actor_id) {
       router.push(`/profile/${n.actor_id}`)
+    }
+  }
+
+  // 2026-05-10 Phase A: 招待 type の「参加する / 見る」ボタンタップ動作
+  // 関連ルートへ遷移 + 既読化を裏で実行 (失敗しても画面は壊さない)
+  async function handleInviteJoin(n: Notif) {
+    const { href } = inviteAction(n.type, n.target_id)
+    try {
+      const supabase = createClient()
+      await supabase.from('notifications').update({ is_read: true }).eq('id', n.id)
+    } catch {
+      // silent
+    }
+    router.push(href)
+  }
+
+  // 2026-05-10 Phase A: 招待 type の「あとで」ボタンタップ動作
+  // 既読化のみ実行、画面遷移なし。ローカル state も更新して UI を即時反映。
+  async function handleInviteLater(n: Notif) {
+    setNotifs(prev => prev.map(item => item.id === n.id ? { ...item, is_read: true } : item))
+    cachedNotifs = cachedNotifs
+      ? cachedNotifs.map(item => item.id === n.id ? { ...item, is_read: true } : item)
+      : null
+    try {
+      const supabase = createClient()
+      await supabase.from('notifications').update({ is_read: true }).eq('id', n.id)
+    } catch {
+      // silent
     }
   }
 
@@ -146,31 +196,76 @@ export default function NotificationsPage() {
     const cfg   = TYPE_CONFIG[n.type] ?? { emoji: '🔔', label: '通知', section: 'other' as const }
     const actor = n.actor as any
     const unread = !n.is_read
+    const isInvite = INVITE_TYPES.has(n.type)
+    // 2026-05-10 Phase A: 招待通知は「カード形式」で [参加する/見る] [あとで]
+    // 2 ボタンを下部に追加。本体タップ (handleTap) は actor プロフィールへ遷移
+    // するので、ボタンタップ時は stopPropagation で本体クリックを止める必要あり。
     return (
-      <button
-        onClick={() => handleTap(n)}
-        className="w-full flex items-start gap-3 px-4 py-3.5 text-left transition-all active:scale-[0.99]"
+      <div
+        className="w-full text-left transition-all"
         style={unread ? {
           background: glowColor ? `${glowColor}10` : 'rgba(255,201,40,0.08)',
         } : {}}
       >
-        <div className="relative flex-shrink-0">
-          <Avatar src={actor?.avatar_url} name={getUserDisplayName(actor, '?')} size="sm" />
-          <span className="absolute -bottom-1 -right-1 text-sm leading-none">{cfg.emoji}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.9)' }}>
-            <span className="font-bold">{getUserDisplayName(actor, '誰か')}</span>
-            {' '}
-            <span style={{ color: 'rgba(255,255,255,0.5)' }}>{cfg.label}</span>
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>{timeAgo(n.created_at)}</p>
-        </div>
-        {unread && (
-          <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
-            style={{ background: glowColor ?? '#FFC928', boxShadow: `0 0 6px ${glowColor ?? '#FFC928'}` }} />
+        <button
+          onClick={() => handleTap(n)}
+          className="w-full flex items-start gap-3 px-4 py-3.5 text-left transition-all active:scale-[0.99]"
+        >
+          <div className="relative flex-shrink-0">
+            <Avatar src={actor?.avatar_url} name={getUserDisplayName(actor, '?')} size="sm" />
+            <span className="absolute -bottom-1 -right-1 text-sm leading-none">{cfg.emoji}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.9)' }}>
+              <span className="font-bold">{getUserDisplayName(actor, '誰か')}</span>
+              {' '}
+              <span style={{ color: 'rgba(255,255,255,0.5)' }}>{cfg.label}</span>
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>{timeAgo(n.created_at)}</p>
+          </div>
+          {unread && (
+            <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
+              style={{ background: glowColor ?? '#FFC928', boxShadow: `0 0 6px ${glowColor ?? '#FFC928'}` }} />
+          )}
+        </button>
+        {/* 2026-05-10 Phase A: 招待通知の場合だけ [参加する/見る] [あとで] を追加 */}
+        {isInvite && (
+          <div className="flex gap-2 px-4 pb-3" onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleInviteJoin(n)
+              }}
+              className="flex-1 py-2 rounded-full text-xs font-bold active:scale-[0.98] transition-all"
+              style={{
+                background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)',
+                color: '#fff',
+                boxShadow: '0 2px 8px rgba(157,92,255,0.25)',
+              }}
+            >
+              {inviteAction(n.type, n.target_id).label}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleInviteLater(n)
+              }}
+              className="flex-1 py-2 rounded-full text-xs font-bold active:scale-[0.98] transition-all"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: 'rgba(255,255,255,0.7)',
+              }}
+            >
+              あとで
+            </button>
+          </div>
         )}
-      </button>
+      </div>
     )
   }
 
