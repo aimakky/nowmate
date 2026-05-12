@@ -6,6 +6,7 @@
 // 残したまま「何か問題が起きた → 再試行」の体験になる。
 
 import { useEffect } from 'react'
+import * as Sentry from '@sentry/nextjs'
 
 export default function GlobalError({
   error,
@@ -15,8 +16,8 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
-    // Sentry 等の監視サービスを後で導入する場合はここで送信。
-    // 既存実装では console.error がブラウザ DevTools で確認できる。
+    // Sentry に送信。DSN 未設定 (dev / E2E スモーク) なら no-op で何も起きない。
+    Sentry.captureException(error)
     console.error('[app/error] uncaught render error:', error)
   }, [error])
 

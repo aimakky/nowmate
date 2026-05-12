@@ -53,4 +53,21 @@ const nextConfig = {
   },
 }
 
-module.exports = nextConfig
+// ── Sentry 統合 ─────────────────────────────────────────────
+// withSentryConfig は build 時に source map upload を行う wrapper。
+// SENTRY_AUTH_TOKEN / SENTRY_ORG / SENTRY_PROJECT が未設定の環境
+// (ローカル / Playwright CI 等) では upload を skip するだけで build は通る。
+// 本番反映時は Vercel 側 env 設定で有効化する。
+const { withSentryConfig } = require('@sentry/nextjs')
+
+module.exports = withSentryConfig(nextConfig, {
+  // Sentry org / project は env から拾う。値の直書きはしない。
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // CLI 出力を build ログから抑える (Vercel ログを汚さない)。
+  silent: true,
+  // tunneling や source map upload に必要な auth token は env から。
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // App Router の client コードを含むよう map upload 範囲を広げる。
+  widenClientFileUpload: true,
+})

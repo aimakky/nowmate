@@ -41,3 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# Sentry (auth token / build plugin の secret 漏れ予防)
+.sentryclirc
+.env.sentry-build-plugin

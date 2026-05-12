@@ -5,6 +5,7 @@
 // app/error.tsx で吸収されない致命的エラーがここに落ちてくる。
 
 import { useEffect } from 'react'
+import * as Sentry from '@sentry/nextjs'
 
 export default function GlobalError({
   error,
@@ -14,6 +15,8 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
+    // Sentry に致命エラーとして送信。DSN 未設定なら no-op。
+    Sentry.captureException(error)
     console.error('[global-error] fatal error:', error)
   }, [error])
 
