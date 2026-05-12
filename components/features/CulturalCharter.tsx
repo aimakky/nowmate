@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-// 自由村の5つの約束 — 民度設計の中核
+// YVOICE の5つの約束 — 民度設計の中核
 // 投稿前初回 + 週1リマインダーとして表示
 const RULES = [
   {
