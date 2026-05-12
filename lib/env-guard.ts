@@ -16,6 +16,8 @@
 //   - エラーログは「どの env が欠けているか」だけ出して秘密情報は出さない
 //
 
+import { SITE_URL } from './site'
+
 const REQUIRED_ENVS = [
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
@@ -49,15 +51,14 @@ export function hasSupabaseEnv(): boolean {
 
 /**
  * Site の base URL を取得 (Stripe redirect 等で使う)。
- * NEXT_PUBLIC_BASE_URL 未設定時は NEXT_PUBLIC_SITE_URL → 旧ドメインの順で fallback。
- * 全ての fallback が無い場合は空文字を返す (呼び出し側で 503 推奨)。
+ * Stripe 専用の上書き NEXT_PUBLIC_BASE_URL が最優先、未設定時は lib/site の
+ * SITE_URL に委譲する。SITE_URL は NEXT_PUBLIC_SITE_URL → 旧ドメインの順で
+ * fallback 済みなので、ここでは旧ドメインを直書きしない（lib/site.ts に一元化）。
  */
 export function getBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_BASE_URL?.trim() ||
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    'https://nowmatejapan.com'
-  ).replace(/\/$/, '')
+  const override = process.env.NEXT_PUBLIC_BASE_URL?.trim()
+  if (override) return override.replace(/\/$/, '')
+  return SITE_URL
 }
 
 /** UUID v1-v5 簡易検証 (auth user_id の form check 用) */

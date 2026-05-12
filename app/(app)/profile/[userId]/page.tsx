@@ -27,6 +27,7 @@ import PostCardHeader from '@/components/ui/PostCardHeader'
 import { getUserDisplayName } from '@/lib/user-display'
 import GuildShieldIcon from '@/components/ui/icons/GuildShieldIcon'
 import UserActionButtons from '@/components/features/UserActionButtons'
+import { SITE_HOST } from '@/lib/site'
 
 // 村投稿 (village_posts) を投稿タブで TweetCard 同等のリッチ UI で描画する型。
 // 2026-05-07: マッキーさん指示「投稿一覧は全て通常投稿UIで統一」を受け、
@@ -121,7 +122,7 @@ function ProfileVillagePostInline({
 
   function shareToX() {
     const village = post.village ? `${post.village.icon}${post.village.name}` : 'YVOICE'
-    const host = (typeof window !== 'undefined' ? window.location.host : '') || 'nowmatejapan.com'
+    const host = (typeof window !== 'undefined' ? window.location.host : '') || SITE_HOST
     const text = `${post.content}\n\n— ${village}より\n#YVOICE #ゲームコミュニティ\n${host}`
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }

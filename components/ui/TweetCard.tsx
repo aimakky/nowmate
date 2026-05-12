@@ -13,6 +13,7 @@ import { getUserDisplayName } from '@/lib/user-display'
 import { addSelfLike, removeSelfLike, isSelfLiked } from '@/lib/self-likes'
 import { addSelfRepost, removeSelfRepost, isSelfReposted } from '@/lib/self-reposts'
 import LikedUsersSheet from '@/components/features/LikedUsersSheet'
+import { SITE_HOST } from '@/lib/site'
 
 export const REACTIONS = [
   { key: 'heart',   emoji: '❤️', label: 'Love' },
@@ -292,7 +293,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBord
   // 2026-05-08 マッキーさん指示: 投稿カード下部アクションを timeline PostCard と
   // 完全統一 (Heart / Comment / Share)。Share2 タップで X 共有を起動。
   function shareToX() {
-    const host = (typeof window !== 'undefined' ? window.location.host : '') || 'nowmatejapan.com'
+    const host = (typeof window !== 'undefined' ? window.location.host : '') || SITE_HOST
     const text = `${tweet.content}\n\n— YVOICE より\n#YVOICE #ゲームコミュニティ\n${host}`
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }

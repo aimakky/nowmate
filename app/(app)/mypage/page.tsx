@@ -23,6 +23,7 @@ import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 import { getSelfLikes, backfillSelfLikes } from '@/lib/self-likes'
 import { addSelfRepost, removeSelfRepost, isSelfReposted } from '@/lib/self-reposts'
 import LikedUsersSheet from '@/components/features/LikedUsersSheet'
+import { SITE_HOST } from '@/lib/site'
 // VILLAGE_TYPE_STYLES は旧 参加中タブで使用していたが、タブ削除に伴い未使用化
 import { INDUSTRIES } from '@/lib/guild'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
@@ -300,7 +301,7 @@ function MyVillagePostInline({
   // 動作面 (Heart / Comment クリック → 村詳細) は mypage 固有のため維持。
   function shareToX() {
     const village = post.village ? `${post.village.icon}${post.village.name}` : 'YVOICE'
-    const host = (typeof window !== 'undefined' ? window.location.host : '') || 'nowmatejapan.com'
+    const host = (typeof window !== 'undefined' ? window.location.host : '') || SITE_HOST
     const text = `${post.content}\n\n— ${village}より\n#YVOICE #ゲームコミュニティ\n${host}`
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
