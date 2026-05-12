@@ -1,9 +1,9 @@
 import { MetadataRoute } from 'next'
 import { SITE_URL } from '@/lib/site'
 
-// /guides と /for-business は YVOICE のサービス内容と無関係なレガシーページ。
-// disallow に追加し Google に新規クロールさせない。既に index されている分は
-// app/guides/layout.tsx の noindex で削除を促す。
+// /for-business は YVOICE のサービス内容と無関係なレガシーページ。
+// disallow に追加し Google に新規クロールさせない。
+// (/guides 配下は物理削除済みのため Google には 404 → 自然 deindex される)
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
@@ -11,7 +11,7 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: [
         '/home', '/chat', '/matches', '/mypage', '/settings', '/onboarding',
-        '/guides', '/for-business',
+        '/for-business',
       ],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
