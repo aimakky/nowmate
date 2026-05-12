@@ -7,10 +7,11 @@
 # 設計方針:
 #   1. このフェーズでは「軽いスモークテストのみ」。
 #      認証突破 / DB 書き込み / Stripe / Twilio / LiveKit には一切触らない。
-#   2. Supabase env は実在しないダミードメインを inject する。
-#      middleware は env がダミーでも空文字 fallback で起動し、auth.getUser() が
-#      null を返すので保護ルートは /login へ redirect される。
-#      → 本番 / staging Supabase に絶対に接続しない。
+#   2. Supabase env は localhost (127.0.0.1:54321) を指す。同ポートで
+#      tests/e2e/mock-supabase-server.js を起動し、すべての Supabase fetch に
+#      対して即 401 を返す。これで supabase-js が undici 内部 retry に巻き込まれず、
+#      server-side query が ms オーダーで「未認証」状態を取得できる。
+#      → 本番 / staging Supabase に絶対に接続しない (localhost で完結)。
 #   3. Chromium のみ。WebKit / Firefox は初期段階では入れない (CI 負荷削減)。
 #   4. CI 環境では playwright.config.ts が `npm run start` (production server) を
 #      起動するため、先に `npm run build` を実行する必要がある。
@@ -37,15 +38,12 @@ jobs:
 
     env:
       # ⚠ 本番 / staging Supabase には絶対に向けない。
-      # http://127.0.0.1:54321 は Supabase local dev のデフォルトポートだが、
-      # CI runner では誰も listen していないため fetch() は即 ECONNREFUSED で
-      # 失敗する (fail-fast)。
-      # 過去に https://playwright-test.invalid (RFC 6761 reserved) を使ったが、
-      # GitHub Actions runner の DNS resolver が .invalid を sinkhole IP に
-      # 解決して接続タイムアウト (数十秒) するため、login ページの
-      # auth.getUser() が hang し、客側の input 待機テストが軒並み timeout した。
-      # 127.0.0.1 を使えば TCP RST が即返るのでクライアント側で fetch error が
-      # 直ちに発火し、login form が即描画される。
+      # 127.0.0.1:54321 は localhost に閉じる。Playwright が webServer 経由で
+      # tests/e2e/mock-supabase-server.js を起動し、すべての Supabase fetch に
+      # 対して即 401 を返す (ローカル検証で server-side query が 7s → 30ms に短縮)。
+      # 過去には dummy URL に .invalid TLD や到達不能ホストを使ったが、
+      # supabase-js / undici の内部リトライで各ページ応答が 7s 待たされ、
+      # 56 件のスモークが連鎖タイムアウトしていた。
       NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
       NEXT_PUBLIC_SUPABASE_ANON_KEY: playwright-test-fake-anon-key
       # Next.js / Playwright の CI フラグ
@@ -71,6 +69,32 @@ jobs:
 
       - name: Build (Next.js production)
         run: npm run build
+
+      - name: Sanity check mock Supabase server
+        # mock-supabase-server.js が起動できる / 401 を返すことを確認する。
+        # 本番の test:e2e でも Playwright が webServer 経由で起動するので
+        # ここは smoke 確認のみ (起動して即 kill)。
+        run: |
+          set -e
+          node tests/e2e/mock-supabase-server.js &
+          MOCK_PID=$!
+          # listen 待ち (最大 5 秒)
+          for i in 1 2 3 4 5; do
+            if curl -sf -o /dev/null -w '%{http_code}' http://127.0.0.1:54321/ | grep -q '^401$'; then
+              echo "✓ mock-supabase-server returned 401 as expected"
+              break
+            fi
+            sleep 1
+          done
+          # 念のため最終確認
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:54321/auth/v1/user || echo '000')
+          echo "Final status check: $STATUS"
+          kill $MOCK_PID 2>/dev/null || true
+          wait 2>/dev/null || true
+          if [ "$STATUS" != "401" ]; then
+            echo "❌ mock-supabase-server did not return 401 (got $STATUS)"
+            exit 1
+          fi
 
       - name: Run Playwright smoke tests
         run: npm run test:e2e

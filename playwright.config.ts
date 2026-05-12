@@ -59,12 +59,17 @@ export default defineConfig({
     // mock Supabase server を Next.js より先に起動する。
     // 何でも 401 を返すだけの最小実装。ms オーダーで応答するため
     // supabase-js が ECONNREFUSED で undici retry に巻き込まれない。
+    //
+    // ⚠ webServer は url ではなく port で readiness を判定する。
+    //   url 方式だと Playwright の許可ステータスコード判定が version
+    //   によって異なる場合があり、401 を ready とみなさないと無限待ちになる。
+    //   port 方式なら TCP listen が確認できた時点で進む。
     {
       command: 'node tests/e2e/mock-supabase-server.js',
-      url: 'http://127.0.0.1:54321/',
+      port: 54321,
       reuseExistingServer: !process.env.CI,
       timeout: 15_000,
-      stdout: 'ignore',
+      stdout: 'pipe',
       stderr: 'pipe',
     },
     // Next.js 本体。CI ではビルド済み production server (`npm run start`)、
