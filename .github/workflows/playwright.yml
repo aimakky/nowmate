@@ -99,6 +99,43 @@ jobs:
       - name: Run Playwright smoke tests
         run: npm run test:e2e
 
+      - name: Dump Playwright failure context (on failure)
+        # CI ログだけで失敗原因が分かるよう、test-results 配下の error-context.md /
+        # stderr.txt / stdout.txt を全部 stdout に流す。artifact ダウンロードが
+        # 必要にならないよう、ここで完結させる。
+        if: failure()
+        run: |
+          set +e
+          echo "===================================================================="
+          echo "  TEST-RESULTS TREE"
+          echo "===================================================================="
+          if [ -d test-results ]; then
+            find test-results -maxdepth 3 -type f | sort
+          else
+            echo "(test-results directory not found)"
+          fi
+          echo ""
+          for ctx in $(find test-results -name 'error-context.md' 2>/dev/null | sort); do
+            echo "===================================================================="
+            echo "  $ctx"
+            echo "===================================================================="
+            cat "$ctx" || true
+            echo ""
+          done
+          for log in $(find test-results -name 'stderr.txt' -o -name 'stdout.txt' 2>/dev/null | sort); do
+            echo "===================================================================="
+            echo "  $log"
+            echo "===================================================================="
+            head -200 "$log" || true
+            echo ""
+          done
+          echo "===================================================================="
+          echo "  PLAYWRIGHT REPORT SUMMARY"
+          echo "===================================================================="
+          if [ -f playwright-report/index.html ]; then
+            echo "(playwright-report/index.html exists, $(wc -c < playwright-report/index.html) bytes)"
+          fi
+
       - name: Upload Playwright HTML report (on failure)
         if: failure()
         uses: actions/upload-artifact@v4

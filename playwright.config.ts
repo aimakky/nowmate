@@ -20,7 +20,10 @@ import { defineConfig, devices } from '@playwright/test'
 //   5. iPhone 13 viewport を 1 project として常時実行 (YVOICE はスマホ前提)。
 
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3000)
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${PORT}`
+// Node 18+ では `localhost` が ::1 (IPv6) と 127.0.0.1 (IPv4) のどちらにも
+// 解決される可能性があり、Next.js が IPv4 にしか bind していないと CI で
+// 接続失敗が起きる。127.0.0.1 を明示することで両系統での挙動を一致させる。
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`
 
 export default defineConfig({
   testDir: './tests/e2e',
