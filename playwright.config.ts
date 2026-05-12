@@ -53,8 +53,13 @@ export default defineConfig({
     },
     {
       // YVOICE はスマホ前提なので必ず 1 project は iPhone 相当を回す。
+      // ⚠ devices['iPhone 13'] は defaultBrowserType: 'webkit' を含むため、
+      //   そのまま使うと WebKit を起動しようとして CI で失敗する
+      //   (workflow は --with-deps chromium しか install していない)。
+      //   viewport / UA / isMobile / hasTouch は維持しつつ、エンジンだけ
+      //   Chromium に上書きする。Phase 2 以降で WebKit を追加するなら別 PR。
       name: 'mobile-chrome-iphone13',
-      use: { ...devices['iPhone 13'] },
+      use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium', browserName: 'chromium' },
     },
   ],
 
