@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp, Share2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { SITE_URL } from '@/lib/site'
 
 // ─── Mood classification ──────────────────────────────────────
 const MOOD_EMOJIS = ['😊', '😄', '🥰', '😎', '🎉', '😌', '🤔', '😔', '😢', '😤', '😴', '🥱']
@@ -107,7 +108,7 @@ export default function MoodWeather({ villageId, villageName, userId, style, isM
   function handleShare() {
     const wInfo = WEATHER_MAP[classifyWeather(moodCounts)]
     const text  = `今日の${villageName}は${wInfo.icon}${wInfo.label}！ ${wInfo.desc} #YVOICE`
-    const url   = `https://nowmatejapan.com/villages/${villageId}`
+    const url   = `${SITE_URL}/villages/${villageId}`
     if (navigator.share) {
       navigator.share({ text, url }).catch(() => {})
     } else {

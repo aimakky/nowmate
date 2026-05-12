@@ -25,7 +25,7 @@ export default function InvitePage() {
   // 旧/新ドメインどちらでも自然に動くように。
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : SITE_URL
   const shareUrl = 自由村Id ? `${baseUrl}/signup?ref=${自由村Id}` : `${baseUrl}/signup`
-  const tweetText = `Surviving Japan alone is hard 🗾 I use 自由村 — step-by-step setup guides + connect with expats who've been there. Join free 👇`
+  const tweetText = `🎮 ゲーム仲間と声でつながる YVOICE 招待リンク！\n20歳以上限定・電話番号認証で安心。\nあなたも私もプレミアム7日無料 👇`
 
   function copy(text: string) {
     navigator.clipboard.writeText(text)
@@ -40,7 +40,7 @@ export default function InvitePage() {
           <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center shadow-sm">
             <span className="text-white font-black text-sm">N</span>
           </div>
-          <span className="font-extrabold text-gray-900 text-lg tracking-tight">自由村</span>
+          <span className="font-extrabold text-gray-900 text-lg tracking-tight">YVOICE</span>
         </Link>
       </header>
 
@@ -114,7 +114,7 @@ export default function InvitePage() {
 
       {自由村Id && (
         <section className="px-5 pb-6">
-          <p className="text-xs text-center text-gray-400">Your 自由村 ID: <span className="font-mono font-bold text-gray-600">#{自由村Id}</span></p>
+          <p className="text-xs text-center text-gray-400">Your YVOICE ID: <span className="font-mono font-bold text-gray-600">#{自由村Id}</span></p>
         </section>
       )}
 

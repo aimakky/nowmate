@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { SITE_HOST } from '@/lib/site'
 
 type Props = {
   postCount:      number
@@ -77,7 +78,7 @@ export default function GrowthPortfolio(props: Props) {
       lines.join('  '),
       `総合成長度 ${overallPct}%`,
       `「使うたびに、何かが増える」`,
-      `#YVOICE #ワイボ nowmatejapan.com`,
+      `#YVOICE #ワイボ ${SITE_HOST}`,
     ].join('\n')
   }
 
@@ -168,7 +169,7 @@ export default function GrowthPortfolio(props: Props) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-white/50 text-[10px]">「使うたびに、何かが増える」</p>
-                <p className="text-white/30 text-[9px]">nowmatejapan.com</p>
+                <p className="text-white/30 text-[9px]">{SITE_HOST}</p>
               </div>
               <div className="text-right">
                 <p className="text-white font-extrabold text-2xl leading-none">{overallPct}%</p>

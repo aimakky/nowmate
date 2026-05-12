@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import React from 'react'
 import { Send, X, ChevronDown, ChevronUp, Share2, Flag, CheckCircle, Star, HelpCircle, MessageCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { SITE_URL } from '@/lib/site'
 import { timeAgo } from '@/lib/utils'
 import {
   detectNgWords,
@@ -151,7 +152,7 @@ function BottleOpeningTheater({
 
   function handleShare() {
     const shareText = `🍶 villiaで誰かの言葉が届きました\n\n📍 ${sv ? `${sv.icon}${sv.name}` : 'どこかの村'} → ${villageName}\n⏱ ${days}日間の旅\n\n#villia #漂流瓶`
-    const url = `https://nowmatejapan.com/villages/${villageId}`
+    const url = `${SITE_URL}/villages/${villageId}`
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText + '\n' + url)}`, '_blank', 'noopener,noreferrer')
   }
 

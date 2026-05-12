@@ -47,7 +47,7 @@ export const PURPOSES: { value: Purpose; label: string; icon: string; color: str
   { value: 'Sightseeing',       label: 'Sightseeing',      icon: '🗺️', color: 'bg-teal-100 text-teal-700' },
   { value: 'Culture',           label: 'Culture',          icon: '🎌', color: 'bg-red-100 text-red-700' },
   { value: 'Chat',              label: 'Chat',             icon: '💬', color: 'bg-green-100 text-green-700' },
-  { value: 'Language Exchange', label: 'Lang Exchange',    icon: '🗣️', color: 'bg-purple-100 text-purple-700' },
+  { value: 'Language Exchange', label: '言語交流',         icon: '🗣️', color: 'bg-purple-100 text-purple-700' },
   { value: 'Dating',            label: 'Dating',           icon: '❤️', color: 'bg-rose-100 text-rose-700' },
 ]
 

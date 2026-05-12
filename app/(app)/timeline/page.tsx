@@ -22,6 +22,7 @@ import { SwipeableTabs } from '@/components/ui/SwipeableTabs'
 import RecruitmentCard from '@/components/features/RecruitmentCard'
 import RecruitmentCreateSheet from '@/components/features/RecruitmentCreateSheet'
 import { fetchRecruitments, type RecruitmentPost } from '@/lib/recruitment'
+import { SITE_HOST } from '@/lib/site'
 
 // ── 型定義 ──────────────────────────────────────────────────────
 // 旧: 'myvillage' (ギルド) / 'all' (みんな) / 'following' (フォロー) の 3 タブ
@@ -434,8 +435,9 @@ function PostCard({
   function shareToX() {
     const village = post.villages ? `${post.villages.icon}${post.villages.name}` : 'YVOICE'
     // SITE_HOST は lib/site.ts の export。NEXT_PUBLIC_SITE_URL の host 部分。
-    // 旧ドメイン → 新ドメイン移行時に追従するためベタ書き禁止。
-    const host = (typeof window !== 'undefined' ? window.location.host : '') || 'nowmatejapan.com'
+    // クライアントでは現在の host を優先。SSR fallback は SITE_HOST に統一して
+    // YVOICE 正式ドメインへ追従するようにする。
+    const host = (typeof window !== 'undefined' ? window.location.host : '') || SITE_HOST
     const text = `${post.content}\n\n— ${village}より\n#YVOICE #ゲームコミュニティ\n${host}`
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
