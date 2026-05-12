@@ -27,6 +27,8 @@ import PostCardHeader from '@/components/ui/PostCardHeader'
 import { getUserDisplayName } from '@/lib/user-display'
 import GuildShieldIcon from '@/components/ui/icons/GuildShieldIcon'
 import UserActionButtons from '@/components/features/UserActionButtons'
+import RecruitmentCard from '@/components/features/RecruitmentCard'
+import { fetchRecruitments, type RecruitmentPost } from '@/lib/recruitment'
 
 // 村投稿 (village_posts) を投稿タブで TweetCard 同等のリッチ UI で描画する型。
 // 2026-05-07: マッキーさん指示「投稿一覧は全て通常投稿UIで統一」を受け、
@@ -247,6 +249,10 @@ export default function UserProfilePage() {
   const [genreTitles, setGenreTitles] = useState<{ genre: string; awarded_at: string }[]>([])
   const [dmLoading, setDmLoading] = useState(false)
   const [dmToast, setDmToast] = useState<string | null>(null)
+  // 2026-05-12 RC-2: このプロフィールユーザーが作成した募集中カード。
+  // profile owner = post.user_id で絞り込み、recruitment_status='open' のみ表示。
+  // SQL 未実行や 0 件時は空配列で、セクション自体を非表示にする。
+  const [recruitments, setRecruitments] = useState<RecruitmentPost[]>([])
   // 「下方向にスクロール中だけ N 件の投稿バーを表示」(2026-05-07 仕様変更):
   //   - 下スクロール → showPostCount = true
   //   - 上スクロール → 即 false
@@ -497,6 +503,42 @@ export default function UserProfilePage() {
     }
     load()
   }, [userId])
+
+  // 2026-05-12 RC-2: プロフィールユーザーの募集中カードを取得する。
+  // - byUserId = userId (= 表示中プロフィールユーザー)。currentUser の募集を誤って
+  //   表示しないよう post.user_id ベースで絞り込み。
+  // - onlyOpen = true で active な募集のみ。終了済みは表示しない。
+  // - currentUserId は joined_by_me 判定用 (myId)。RecruitmentCard で「参加中 ✓」表示に使う。
+  // - SQL 未実行 / 0 件 / エラー時は空配列を返す (RecruitmentCard セクションを描画しない)。
+  useEffect(() => {
+    if (!userId) return
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const list = await fetchRecruitments(supabase, {
+        currentUserId: myId,
+        byUserId: userId as string,
+        onlyOpen: true,
+        limit: 20,
+      })
+      if (!cancelled) setRecruitments(list)
+    })()
+    return () => { cancelled = true }
+  }, [userId, myId])
+
+  // 参加 / 解除 / 終了が成功した時に募集一覧を再取得する handler。
+  // RecruitmentCard の onChange prop から呼ばれる。
+  async function refetchRecruitments() {
+    if (!userId) return
+    const supabase = createClient()
+    const list = await fetchRecruitments(supabase, {
+      currentUserId: myId,
+      byUserId: userId as string,
+      onlyOpen: true,
+      limit: 20,
+    })
+    setRecruitments(list)
+  }
 
   // PR #31: ハート押下時に画面遷移せず、いいね処理だけ実行。
   // PR #46: async + await + error 検出 + onConflict 明示で silent failure 解消。
@@ -785,6 +827,37 @@ if (loading) return (
           </button>
         )}
       </div>
+
+      {/* ── 募集中セクション (RC-2 / 2026-05-12) ──
+          プロフィールユーザーが作成した active な募集カードを一覧表示。
+          目的: 他人プロフィールを訪れた時に「この人が今何を募集しているか」
+          (= 一緒に遊べる導線) が一目で見える。
+          - 0 件のときはセクション自体を非表示 (画面が重くならないように控えめ)
+          - RecruitmentCard を再利用 (新カードは作らない、CLAUDE.md「全画面 UI 統一」準拠)
+          - 参加 / 解除 / 終了は RC-1 で確認済の既存ロジック (joinRecruitment /
+            leaveRecruitment / closeRecruitment) をそのまま使う。新規実装ゼロ。
+          - 表示位置: プロフィールカード閉じ後、タブ (sticky top-[57px]) より上。
+            タブと一緒には sticky させない (募集はプロフィールの「静的情報」扱い)。 */}
+      {recruitments.length > 0 && (
+        <div className="px-4 pt-4 pb-1 space-y-3">
+          <div className="flex items-center gap-2 px-1">
+            <span className="text-[11px] font-extrabold tracking-wider" style={{ color: '#9CFFC7' }}>
+              🎮 募集中
+            </span>
+            <span className="text-[10px] font-bold" style={{ color: 'rgba(240,238,255,0.35)' }}>
+              {recruitments.length} 件
+            </span>
+          </div>
+          {recruitments.map(r => (
+            <RecruitmentCard
+              key={`profile-recruitment-${r.id}`}
+              post={r}
+              currentUserId={myId}
+              onChange={refetchRecruitments}
+            />
+          ))}
+        </div>
+      )}
 
       {/* ── タブ (投稿 / 返信 / 写真 / 動画 / ギルド) ──
           2026-05-08 YVOICE5: 5 タブ化。スマホ画面で flex-1 等分だと窮屈なため、

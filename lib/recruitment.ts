@@ -101,6 +101,7 @@ export async function fetchRecruitments(
   opts: {
     currentUserId: string | null
     villageIds?: string[]    // 指定があれば in('village_id', ids)
+    byUserId?: string        // 2026-05-12 RC-2: 募集主 user_id で絞り込み (= 「この人の募集」)
     onlyOpen?: boolean       // true なら recruitment_status='open' のみ
     limit?: number
   },
@@ -125,6 +126,11 @@ export async function fetchRecruitments(
     if (opts.onlyOpen) q = q.eq('recruitment_status', 'open')
     if (opts.villageIds && opts.villageIds.length > 0) {
       q = q.in('village_id', opts.villageIds)
+    }
+    // 2026-05-12 RC-2: byUserId が指定された時はその user の募集だけに絞る。
+    // 他人プロフィール上で「この人の募集中」セクションを出す用途。
+    if (opts.byUserId) {
+      q = q.eq('user_id', opts.byUserId)
     }
 
     const { data, error } = await q
