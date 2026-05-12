@@ -5,7 +5,9 @@ import { defineConfig, devices } from '@playwright/test'
 // 設計方針:
 //   1. テストはすべて公開ページ + middleware の auth-redirect 動作のみを対象。
 //      Supabase Auth 突破 / DB シード / 投稿系 / 通話系は本フェーズでは行わない。
-//   2. webServer は `npm run dev` を起動。既存の dev server があれば再利用。
+//   2. webServer は CI 環境ではビルド済み production server (`npm run start`)、
+//      ローカルでは hot reload 付き dev server (`npm run dev`) を起動。
+//      ローカルで既存 dev server があれば再利用 (reuseExistingServer)。
 //   3. baseURL は http://localhost:3000 固定。本番 URL は絶対に向けない。
 //   4. env 未設定でも middleware が空文字 fallback で起動する作りなので、
 //      Playwright 用にダミー env を inject して redirect 系テストを安定化させる。
@@ -50,7 +52,9 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'npm run dev',
+    // CI ではビルド済み production server を使う (workflow 側で先に npm run build を実行)。
+    // ローカルでは hot reload のために dev server を使う。
+    command: process.env.CI ? 'npm run start' : 'npm run dev',
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     // Next.js cold start は 30-60s かかるため余裕を持たせる
