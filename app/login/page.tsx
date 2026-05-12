@@ -46,8 +46,8 @@ export default function LoginPage() {
     setError('')
     const { error: err } = await createClient().auth.signInWithPassword({ email, password })
     if (err) { setError('メールアドレスまたはパスワードが正しくありません'); setLoading(false); return }
-    // 旧: '/villages'（旧 nowmate の「村を探す」一覧。samee の世界観と無関係）。
-    // → 現在のメイン入口である /timeline へ統一。BottomNav の TL がここで active になる。
+    // ログイン後は YVOICE のメイン入口である /timeline へ統一。
+    // BottomNav の TL がここで active になる。
     router.push('/timeline')
     router.refresh()
   }

@@ -148,7 +148,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'otp_save_failed' }, { status: 500 })
     }
 
-    // SMS送信（旧ブランド「自由村」→ samee → YVOICE）
+    // SMS送信（YVOICE ブランド名でユーザーに届く）
     await sendSms(sid, token, from, phone, `【YVOICE】認証コード: ${otp}\n有効期限10分。他人に教えないでください。`)
 
     return NextResponse.json({ success: true })

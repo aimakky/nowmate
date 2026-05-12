@@ -12,7 +12,7 @@ interface Props {
 // ─── 電話番号エラーの種類（ログ・分岐・UX用） ────────────────────
 //  format         : クライアント側バリデーション NG（送信前）
 //  not_configured : サーバ側 Twilio env 未設定（503）
-//  send_failed    : Twilio 経由の SMS 送信失敗（500/400 系・samee 内側）
+//  send_failed    : Twilio 経由の SMS 送信失敗（500/400 系・YVOICE サーバー側）
 //  provider_error : Twilio 自身が返したエラー（番号 BAN など）
 //  rate_limited   : 短時間に複数回叩いた（429）
 //  unauthenticated: ログイン切れ（401）

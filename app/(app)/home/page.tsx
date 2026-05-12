@@ -1,7 +1,6 @@
-// 旧 nowmate 時代の「ホーム」ページ。職業村への入口だったが samee 移行後は不要。
-// 内部から /villages や /home が複数呼ばれていたため、ページ自体を redirect で
-// 殺すのが最も安全。BottomNav には /home エントリは存在しないので、ここに
-// 到達するのは旧 redirect 残骸のみ。
+// /home はレガシー URL。BottomNav に /home エントリは存在せず、
+// 到達経路は旧リンク・ブックマーク経由のみ。
+// 安全側に倒し YVOICE のメイン動線 /timeline へ統一。
 import { redirect } from 'next/navigation'
 
 export default function HomePage() {

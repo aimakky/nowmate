@@ -1,9 +1,8 @@
 import { ImageResponse } from 'next/og'
 import { SITE_HOST } from '@/lib/site'
 
-// ルートの OGP 画像。SNS シェア・Google 検索結果サムネイルに表示される
-// ため YVOICE ブランディングに統一。旧コンテンツ (自由村 + 英語 expat
-// コピー) は完全に削除済み。
+// ルートの OGP 画像。SNS シェア・Google 検索結果サムネイルに表示される。
+// YVOICE ブランディング（Your Voice Online）に統一。
 export const runtime = 'edge'
 export const alt = 'YVOICE — Your Voice Online｜大人のゲーム通話コミュニティ'
 export const size = { width: 1200, height: 630 }

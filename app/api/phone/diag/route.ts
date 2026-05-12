@@ -1,14 +1,14 @@
 // 診断専用エンドポイント（**TEMPORARY** — 原因特定後に削除）
 //
 // 何を返すか:
-//  1. samee のサーバーから見て Twilio 関連の env が存在するか（boolean のみ・値は出さない）
+//  1. YVOICE のサーバーから見て Twilio 関連の env が存在するか（boolean のみ・値は出さない）
 //  2. Twilio Account API に SID/Token で認証通るか（HTTP status のみ）
 //  3. 設定された From 番号が Twilio account に存在するか
 //
 // 認証: Supabase の logged-in user のみアクセス可。未ログインだと 401。
 //
 // 使い方（user 自身のセッションで）:
-//   1. nowmatejapan.com にログイン
+//   1. YVOICE 本番にログイン
 //   2. ブラウザの DevTools → Console で:
 //        fetch('/api/phone/diag').then(r => r.json()).then(console.log)
 //   3. 返ってきた JSON を見て原因特定

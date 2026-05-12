@@ -4,8 +4,8 @@ import GoogleAnalytics from '@/components/analytics/GoogleAnalytics'
 import { SITE_URL } from '@/lib/site'
 
 // metadataBase / openGraph URL は lib/site.ts の SITE_URL を参照する。
-// 環境変数 NEXT_PUBLIC_SITE_URL が未設定なら旧ドメイン (nowmatejapan.com)
-// にフォールバックし、設定時に新ドメイン (yvoiceonline.com) に切替わる。
+// 環境変数 NEXT_PUBLIC_SITE_URL が未設定の場合は旧ドメインにフォールバックし、
+// 設定時に YVOICE 正式ドメイン (yvoiceonline.com) に切替わる。
 export const metadata: Metadata = {
   title:    { default: 'YVOICE — Your Voice Online｜大人のゲーム通話コミュニティ', template: '%s | YVOICE' },
   description:

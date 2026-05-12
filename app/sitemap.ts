@@ -2,13 +2,11 @@ import { MetadataRoute } from 'next'
 import { SITE_URL } from '@/lib/site'
 
 // base URL は lib/site.ts の SITE_URL から取得。
-// 環境変数 NEXT_PUBLIC_SITE_URL 未設定なら nowmatejapan.com (旧)、
-// 設定時は yvoiceonline.com (新) に追従。
+// NEXT_PUBLIC_SITE_URL 設定時は YVOICE 正式ドメイン (yvoiceonline.com) に追従。
 //
-// /guides/* と /for-business は旧 nowmate (海外移住者向け) の遺産で
-// 現在の YVOICE (20 歳以上の日本人ゲーマー向け通話コミュニティ) と
-// 完全無関係。app/guides/layout.tsx と app/for-business/page.tsx 側で
-// noindex 済み、sitemap からも除外。
+// /guides/* と /for-business は YVOICE のサービス内容と無関係なレガシーページ。
+// app/guides/layout.tsx と app/for-business/page.tsx 側で noindex 済み、
+// sitemap からも除外。
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = SITE_URL
   const now = new Date()

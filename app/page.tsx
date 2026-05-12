@@ -62,8 +62,7 @@ export default async function TopPage() {
   const userCount = Math.max(count ?? 0, 1)
 
   // Google Knowledge Graph 等にブランド名 (YVOICE / Your Voice Online) と
-  // 公式 URL を伝える structured data。旧名 (Samee / 自由村) からの遷移を
-  // 検索エンジン側で早めに認識させるため、ルート LP にだけ埋める。
+  // 公式 URL を伝える structured data。ルート LP にだけ埋める。
   const orgJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
