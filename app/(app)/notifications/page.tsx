@@ -9,10 +9,11 @@ import { Bell } from 'lucide-react'
 import { getUserDisplayName } from '@/lib/user-display'
 import PageHeader from '@/components/layout/PageHeader'
 import { useDelayedSkeleton } from '@/hooks/useDelayedSkeleton'
+import RecruitmentParticipantsSheet from '@/components/features/RecruitmentParticipantsSheet'
 
 type Notif = {
   id: string
-  type: 'like' | 'reply' | 'follow' | 'comment' | 'bottle_reply' | 'new_member_post' | 'voice_room_started' | 'call_invite' | 'guild_invite' | 'now_village_invite' | 'guild_specific_invite'
+  type: 'like' | 'reply' | 'follow' | 'comment' | 'bottle_reply' | 'new_member_post' | 'voice_room_started' | 'call_invite' | 'guild_invite' | 'now_village_invite' | 'guild_specific_invite' | 'recruitment_joined'
   actor_id: string | null
   target_id: string | null
   target_type: string | null
@@ -38,10 +39,17 @@ const TYPE_CONFIG: Record<string, { emoji: string; label: string; section: 'reac
   now_village_invite: { emoji: '⏱️', label: 'あなたをいますぐ村に誘いました',             section: 'voice'    },
   // 2026-05-10 Phase A: ギルド招待 (specific guild)
   guild_specific_invite: { emoji: '🛡️', label: 'あなたをギルドに誘いました',              section: 'voice'    },
+  // 2026-05-12 Phase B PR-B2: 募集カードに参加された (募集主への通知)
+  recruitment_joined: { emoji: '🎮', label: 'あなたの募集に参加してくれました',           section: 'voice'    },
 }
 
 // 2026-05-10 Phase A: 招待 type の集合定義 (招待カード化判定 / ボタン文言切替に使用)
 const INVITE_TYPES = new Set(['call_invite', 'guild_invite', 'now_village_invite', 'guild_specific_invite'])
+
+// 2026-05-12 Phase B PR-B2: 「参加者を見る」「あとで」の 2 ボタンカードを出す型。
+// invite 系と UI 構造は同じだが、Primary ボタンが route 遷移ではなく
+// RecruitmentParticipantsSheet の開閉になるため、別集合として扱う。
+const RECRUITMENT_CARD_TYPES = new Set(['recruitment_joined'])
 
 // 招待 type ごとに「参加する」「見る」「開く」のいずれの label を出すか + 遷移先 path
 function inviteAction(type: string, targetId: string | null): { label: string; href: string } {
@@ -77,11 +85,16 @@ export default function NotificationsPage() {
   // 遅い読込のみ skeleton を出すことで、skeleton↔loaded の切替に伴うわずかな
   // ズレが見えなくなる。
   const showSkeleton = useDelayedSkeleton(loading)
+  // 2026-05-12 Phase B PR-B2: 募集参加通知 ("参加者を見る" タップ) で開く参加者シート。
+  // target_id (= village_posts.id) を保持。null なら閉じている状態。
+  const [participantsPostId, setParticipantsPostId] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
+    setCurrentUserId(user.id)
 
     // priority は text の 'high' / 'normal'。文字列の昇順だと 'high' < 'normal' になるので、
     // ascending: true が「重要が上」になる。旧実装は ascending: false で 'normal' が上に来ていた。
@@ -157,6 +170,31 @@ export default function NotificationsPage() {
     else if ((n.type === 'call_invite' || n.type === 'guild_invite' || n.type === 'now_village_invite' || n.type === 'guild_specific_invite') && n.actor_id) {
       router.push(`/profile/${n.actor_id}`)
     }
+    // 2026-05-12 Phase B PR-B2: 募集参加通知 tap 時、参加した人のプロフィールへ遷移。
+    // 「誰が参加してくれたのか」確認できる安全な既存ルート。
+    // 「参加者を見る」ボタン (専用カード下部) はシート開閉に分岐する (handleViewParticipants)。
+    else if (n.type === 'recruitment_joined' && n.actor_id) {
+      router.push(`/profile/${n.actor_id}`)
+    }
+  }
+
+  // 2026-05-12 Phase B PR-B2: 募集参加通知の「参加者を見る」ボタン動作。
+  // target_id (= village_posts.id) を使って参加者シートを開く。
+  // 既読化も裏で実行 (失敗しても画面は壊さない)。
+  async function handleViewParticipants(n: Notif) {
+    if (!n.target_id) return
+    setParticipantsPostId(n.target_id)
+    try {
+      const supabase = createClient()
+      await supabase.from('notifications').update({ is_read: true }).eq('id', n.id)
+      // local state も is_read=true に更新 (UI 即時反映)
+      setNotifs(prev => prev.map(item => item.id === n.id ? { ...item, is_read: true } : item))
+      cachedNotifs = cachedNotifs
+        ? cachedNotifs.map(item => item.id === n.id ? { ...item, is_read: true } : item)
+        : null
+    } catch {
+      // silent
+    }
   }
 
   // 2026-05-10 Phase A: 招待 type の「参加する / 見る」ボタンタップ動作
@@ -197,6 +235,9 @@ export default function NotificationsPage() {
     const actor = n.actor as any
     const unread = !n.is_read
     const isInvite = INVITE_TYPES.has(n.type)
+    // 2026-05-12 Phase B PR-B2: 募集参加通知も「カード形式」の 2 ボタン UI を使う。
+    // ただし Primary は route 遷移ではなくシート開閉 (handleViewParticipants)。
+    const isRecruitmentCard = RECRUITMENT_CARD_TYPES.has(n.type)
     // 2026-05-10 Phase A: 招待通知は「カード形式」で [参加する/見る] [あとで]
     // 2 ボタンを下部に追加。本体タップ (handleTap) は actor プロフィールへ遷移
     // するので、ボタンタップ時は stopPropagation で本体クリックを止める必要あり。
@@ -247,6 +288,47 @@ export default function NotificationsPage() {
             >
               {inviteAction(n.type, n.target_id).label}
             </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleInviteLater(n)
+              }}
+              className="flex-1 py-2 rounded-full text-xs font-bold active:scale-[0.98] transition-all"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: 'rgba(255,255,255,0.7)',
+              }}
+            >
+              あとで
+            </button>
+          </div>
+        )}
+        {/* 2026-05-12 Phase B PR-B2: 募集参加通知の場合だけ [参加者を見る] [あとで] を追加。
+            Primary は緑グラデで募集 FAB と色を揃える (誤って招待と混同しないように)。
+            target_id (= village_posts.id) が無い場合は Primary を出さず [あとで] のみ。 */}
+        {isRecruitmentCard && (
+          <div className="flex gap-2 px-4 pb-3" onClick={e => e.stopPropagation()}>
+            {n.target_id && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleViewParticipants(n)
+                }}
+                className="flex-1 py-2 rounded-full text-xs font-bold active:scale-[0.98] transition-all"
+                style={{
+                  background: 'linear-gradient(135deg, #39FF88 0%, #2dd96a 100%)',
+                  color: '#0a1a0f',
+                  boxShadow: '0 2px 8px rgba(57,255,136,0.3)',
+                }}
+              >
+                参加者を見る
+              </button>
+            )}
             <button
               type="button"
               onClick={(e) => {
@@ -417,6 +499,18 @@ export default function NotificationsPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* 2026-05-12 Phase B PR-B2: 募集参加者一覧シート (recruitment_joined 通知の
+          「参加者を見る」ボタンで開く)。target_id が null の通知では Primary が
+          そもそも描画されないので、ここでの postId は常に有効値が入る。 */}
+      {participantsPostId && (
+        <RecruitmentParticipantsSheet
+          open={!!participantsPostId}
+          onClose={() => setParticipantsPostId(null)}
+          postId={participantsPostId}
+          currentUserId={currentUserId}
+        />
       )}
     </div>
   )
