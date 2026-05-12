@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
 import { detectNgWords } from '@/lib/moderation'
-import { Heart, RefreshCw, Users, Globe, Home, Share2, HelpCircle, Send, CheckCircle, X, Plus, Waves, Mic, MessageCircle, Layers } from 'lucide-react'
+import { Heart, RefreshCw, Users, Globe, Home, Share2, HelpCircle, Send, CheckCircle, X, Plus, Waves, Mic, MessageCircle, Layers, Gamepad2 } from 'lucide-react'
 import TweetCard, { type TweetData } from '@/components/ui/TweetCard'
 import PostActions from '@/components/ui/PostActions'
 import PostCardShell from '@/components/ui/PostCardShell'
@@ -19,6 +19,9 @@ import { addSelfLike } from '@/lib/self-likes'
 import { addSelfRepost, removeSelfRepost, isSelfReposted } from '@/lib/self-reposts'
 import LikedUsersSheet from '@/components/features/LikedUsersSheet'
 import { SwipeableTabs } from '@/components/ui/SwipeableTabs'
+import RecruitmentCard from '@/components/features/RecruitmentCard'
+import RecruitmentCreateSheet from '@/components/features/RecruitmentCreateSheet'
+import { fetchRecruitments, type RecruitmentPost } from '@/lib/recruitment'
 
 // ── 型定義 ──────────────────────────────────────────────────────
 // 旧: 'myvillage' (ギルド) / 'all' (みんな) / 'following' (フォロー) の 3 タブ
@@ -894,22 +897,46 @@ interface FeedPaneProps {
   voiceRooms: VoiceRoom[]
   canReply: boolean
   refreshNonce: number
+  recruitmentNonce: number
   optimisticPostRef: React.MutableRefObject<TPost | null>
 }
 
 function TimelineFeedPane({
   tab, userId, followingIds, myVillageIds, likedIds, setLikedIds,
-  voiceRooms, canReply, refreshNonce, optimisticPostRef,
+  voiceRooms, canReply, refreshNonce, recruitmentNonce, optimisticPostRef,
 }: FeedPaneProps) {
   const router = useRouter()
 
   const [posts,        setPosts]        = useState<TPost[]>([])
   const [qaBottles,    setQaBottles]    = useState<QABottle[]>([])
   const [tweetFeed,    setTweetFeed]    = useState<TweetData[]>([])
+  const [recruitments, setRecruitments] = useState<RecruitmentPost[]>([])
   const [loading,      setLoading]      = useState(true)
   const [loadingMore,  setLoadingMore]  = useState(false)
   const [hasMore,      setHasMore]      = useState(true)
   const offsetRef = useRef(0)
+
+  // ── 募集カードフェッチ (Phase B PR-B2) ─────────────────────────
+  // SQL 未実行環境では fetchRecruitments が空配列を返すので画面は壊れない。
+  // following pane では followingIds + 自分の村に紐付く募集だけ表示。
+  const fetchRecruitmentList = useCallback(async () => {
+    if (!userId) return
+    const supabase = createClient()
+    const list = await fetchRecruitments(supabase, {
+      currentUserId: userId,
+      onlyOpen: true,
+      limit: 20,
+      // following pane では「自分のフォロー先」が出した募集のみに絞ると
+      // 期待ハズレで空になる可能性が高いため、現状は両 tab 共通で全件出し、
+      // following pane でも目立つよう敢えて広く表示する。
+      // 将来 join 数や近接度でランキングする際に再検討。
+    })
+    setRecruitments(list)
+  }, [userId])
+
+  useEffect(() => {
+    fetchRecruitmentList()
+  }, [fetchRecruitmentList, refreshNonce, recruitmentNonce])
 
   // ── Q&A瓶フェッチ ────────────────────────────────────────────
   const fetchQA = useCallback(async (uid: string, villageIds: string[]) => {
@@ -1283,6 +1310,31 @@ function TimelineFeedPane({
       {/* ローディング */}
       {loading && <Skeleton />}
 
+      {/* ── 募集カード一覧 (Phase B PR-B2) ──
+          loading 中は描画しない (feed と同タイミングで出す)。
+          recruitments が空なら何も描画しない (SQL 未実行環境 / 募集ゼロ件 のどちらでも自然)。
+          通常の post / tweet / qa / voice より上に常に表示。 */}
+      {!loading && recruitments.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 px-1 pb-1">
+            <span className="text-[11px] font-extrabold tracking-wider" style={{ color: '#9CFFC7' }}>
+              🎮 募集中
+            </span>
+            <span className="text-[10px] font-bold" style={{ color: 'rgba(240,238,255,0.35)' }}>
+              {recruitments.length} 件
+            </span>
+          </div>
+          {recruitments.map(r => (
+            <RecruitmentCard
+              key={`recruitment-${r.id}`}
+              post={r}
+              currentUserId={userId}
+              onChange={() => fetchRecruitmentList()}
+            />
+          ))}
+        </div>
+      )}
+
       {/* フィード */}
       {!loading && feed.map((item) =>
         item.type === 'voice' ? (
@@ -1362,6 +1414,7 @@ export default function TimelinePage() {
   const [followingIds, setFollowingIds] = useState<string[]>([])
   const [likedIds,     setLikedIds]     = useState<Set<string>>(new Set())
   const [showCompose,    setShowCompose]    = useState(false)
+  const [showRecruitmentCreate, setShowRecruitmentCreate] = useState(false)
   const [userProfile,    setUserProfile]    = useState<{ display_name: string; avatar_url: string | null } | null>(null)
   const [myVillages,     setMyVillages]     = useState<Village[]>([])
   const [voiceRooms,     setVoiceRooms]     = useState<VoiceRoom[]>([])
@@ -1369,6 +1422,8 @@ export default function TimelinePage() {
   // 2026-05-10: 横スライド対応で 'all' / 'following' 両 pane を並列レンダリング
   // するため、shared な refresh トリガーと optimistic post 受け渡し ref を用意。
   const [refreshNonce, setRefreshNonce] = useState(0)
+  // Phase B PR-B2: 募集カードの再取得トリガー (作成直後に inc する)
+  const [recruitmentNonce, setRecruitmentNonce] = useState(0)
   const optimisticPostRef = useRef<TPost | null>(null)
 
 const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
@@ -1547,6 +1602,7 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
               voiceRooms={voiceRooms}
               canReply={canReply}
               refreshNonce={refreshNonce}
+              recruitmentNonce={recruitmentNonce}
               optimisticPostRef={optimisticPostRef}
             />
           ))}
@@ -1564,9 +1620,35 @@ const canReply = ['regular', 'trusted', 'pillar'].includes(userTier)
         onClick={() => setShowCompose(true)}
         className="fixed bottom-24 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
         style={{ background: 'linear-gradient(135deg,#39FF88 0%,#059669 100%)', boxShadow: '0 8px 28px rgba(57,255,136,0.5)' }}
+        aria-label="投稿する"
       >
         <Plus size={24} strokeWidth={2.5} style={{ color: '#051a0e' }} />
       </button>
+
+      {/* ── 募集 FAB (Phase B PR-B2) ──
+          + ボタンの真上に小型 FAB を配置。タップで RecruitmentCreateSheet を開く。
+          紫グラデで通常 FAB と色相を分けて誤タップ防止。 */}
+      <button
+        onClick={() => setShowRecruitmentCreate(true)}
+        className="fixed bottom-44 right-5 w-12 h-12 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all z-30"
+        style={{
+          background: 'linear-gradient(135deg,#9D5CFF 0%,#7C3AED 100%)',
+          boxShadow: '0 6px 22px rgba(157,92,255,0.5)',
+        }}
+        aria-label="募集を作る"
+      >
+        <Gamepad2 size={20} strokeWidth={2.4} style={{ color: '#fff' }} />
+      </button>
+
+      {/* ── 募集作成シート ── */}
+      {showRecruitmentCreate && userId && (
+        <RecruitmentCreateSheet
+          open={showRecruitmentCreate}
+          onClose={() => setShowRecruitmentCreate(false)}
+          userId={userId}
+          onCreated={() => setRecruitmentNonce(n => n + 1)}
+        />
+      )}
 
       {/* ── 村投稿モーダル ── */}
       {showCompose && userId && (
