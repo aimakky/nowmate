@@ -36,6 +36,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    # PR コメント経由で失敗詳細を漏らせるよう pull-requests: write を付与。
+    # contents: read は checkout 用。それ以外は触らない。
+    permissions:
+      contents: read
+      pull-requests: write
+
     env:
       # ⚠ 本番 / staging Supabase には絶対に向けない。
       # 127.0.0.1:54321 は localhost に閉じる。Playwright が webServer 経由で
@@ -98,6 +104,48 @@ jobs:
 
       - name: Run Playwright smoke tests
         run: npm run test:e2e
+
+      - name: Post failure summary as PR comment (on failure)
+        # Claude Code が PR コメント経由で失敗内容を読めるよう、最小限の
+        # 失敗サマリ (error-context.md の冒頭 100 行 + test-results tree) を
+        # PR コメントとして投稿する。
+        # GITHUB_TOKEN は actions/checkout に渡る既定 token で、
+        # pull-requests: write 権限が job 直下で付与されている。
+        # PR ではない push (main 等) では skip。
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+        run: |
+          set +e
+          BODY_FILE=$(mktemp)
+          {
+            echo "## Playwright CI failure (run \`${RUN_ID}\`)"
+            echo ""
+            echo "[Workflow run](https://github.com/${REPO}/actions/runs/${RUN_ID})"
+            echo ""
+            echo "### test-results tree"
+            echo '```'
+            find test-results -maxdepth 3 -type f 2>/dev/null | sort | head -50
+            echo '```'
+            echo ""
+            COUNT=0
+            for ctx in $(find test-results -name 'error-context.md' 2>/dev/null | sort); do
+              COUNT=$((COUNT+1))
+              if [ "$COUNT" -gt 5 ]; then break; fi
+              echo "### \`$ctx\`"
+              echo '```'
+              head -80 "$ctx"
+              echo '```'
+              echo ""
+            done
+            if [ "$COUNT" -eq 0 ]; then
+              echo "_(no error-context.md files found)_"
+            fi
+          } > "$BODY_FILE"
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE"
 
       - name: Dump Playwright failure context (on failure)
         # CI ログだけで失敗原因が分かるよう、test-results 配下の error-context.md /
