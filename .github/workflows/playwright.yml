@@ -37,9 +37,16 @@ jobs:
 
     env:
       # ⚠ 本番 / staging Supabase には絶対に向けない。
-      # playwright-test.invalid は予約 TLD で、ネットワーク層で名前解決が失敗する。
-      # middleware が空文字 fallback で起動し、保護ルートは /login へ redirect される設計。
-      NEXT_PUBLIC_SUPABASE_URL: https://playwright-test.invalid
+      # http://127.0.0.1:54321 は Supabase local dev のデフォルトポートだが、
+      # CI runner では誰も listen していないため fetch() は即 ECONNREFUSED で
+      # 失敗する (fail-fast)。
+      # 過去に https://playwright-test.invalid (RFC 6761 reserved) を使ったが、
+      # GitHub Actions runner の DNS resolver が .invalid を sinkhole IP に
+      # 解決して接続タイムアウト (数十秒) するため、login ページの
+      # auth.getUser() が hang し、客側の input 待機テストが軒並み timeout した。
+      # 127.0.0.1 を使えば TCP RST が即返るのでクライアント側で fetch error が
+      # 直ちに発火し、login form が即描画される。
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
       NEXT_PUBLIC_SUPABASE_ANON_KEY: playwright-test-fake-anon-key
       # Next.js / Playwright の CI フラグ
       CI: true

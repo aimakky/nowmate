@@ -10,9 +10,13 @@ import { defineConfig, devices } from '@playwright/test'
 //      ローカルで既存 dev server があれば再利用 (reuseExistingServer)。
 //   3. baseURL は http://localhost:3000 固定。本番 URL は絶対に向けない。
 //   4. env 未設定でも middleware が空文字 fallback で起動する作りなので、
-//      Playwright 用にダミー env を inject して redirect 系テストを安定化させる。
-//      ダミー値は実在しないドメインなので Supabase API には接続できず、
-//      auth.getUser() は null を返し、middleware が /login へ redirect する。
+//      Playwright 用にダミー env (http://127.0.0.1:54321) を inject。
+//      さらに同じポートで mock-supabase-server.js を起動し、すべての
+//      Supabase fetch に対して即 401 を返す。これで:
+//        - auth.getUser() / from().select() などの server-side query が
+//          undici の internal retry に巻き込まれて 7 秒待たされる問題を回避
+//        - client-side hydration の fetch も即 401 で完了し loading 状態が解消
+//      本番 / staging Supabase には絶対に到達しない (localhost で完結)。
 //   5. iPhone 13 viewport を 1 project として常時実行 (YVOICE はスマホ前提)。
 
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3000)
@@ -51,26 +55,37 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    // CI ではビルド済み production server を使う (workflow 側で先に npm run build を実行)。
-    // ローカルでは hot reload のために dev server を使う。
-    command: process.env.CI ? 'npm run start' : 'npm run dev',
-    url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
-    // Next.js cold start は 30-60s かかるため余裕を持たせる
-    timeout: 120_000,
-    stdout: 'ignore',
-    stderr: 'pipe',
-    env: {
-      // 既存 .env.local があればそちらが優先される (Next.js が読む)。
-      // 何もない環境でも middleware が空文字 fallback 経由で redirect を
-      // 出すための最低限のダミー env を inject。
-      // ⚠ 実在しないドメインを意図して指定。Supabase API には到達しないため
-      //    本番 DB / staging DB のいずれにも一切影響しない。
-      NEXT_PUBLIC_SUPABASE_URL:
-        process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://playwright-test.invalid',
-      NEXT_PUBLIC_SUPABASE_ANON_KEY:
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'playwright-test-fake-anon-key',
+  webServer: [
+    // mock Supabase server を Next.js より先に起動する。
+    // 何でも 401 を返すだけの最小実装。ms オーダーで応答するため
+    // supabase-js が ECONNREFUSED で undici retry に巻き込まれない。
+    {
+      command: 'node tests/e2e/mock-supabase-server.js',
+      url: 'http://127.0.0.1:54321/',
+      reuseExistingServer: !process.env.CI,
+      timeout: 15_000,
+      stdout: 'ignore',
+      stderr: 'pipe',
     },
-  },
+    // Next.js 本体。CI ではビルド済み production server (`npm run start`)、
+    // ローカルでは hot reload 付き dev server (`npm run dev`) を起動。
+    {
+      command: process.env.CI ? 'npm run start' : 'npm run dev',
+      url: BASE_URL,
+      reuseExistingServer: !process.env.CI,
+      // Next.js cold start は 30-60s かかるため余裕を持たせる
+      timeout: 120_000,
+      stdout: 'ignore',
+      stderr: 'pipe',
+      env: {
+        // 既存 .env.local があればそちらが優先される (Next.js が読む)。
+        // dummy env は localhost の mock Supabase server を指す。
+        // 本番 / staging Supabase には絶対に到達しない。
+        NEXT_PUBLIC_SUPABASE_URL:
+          process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321',
+        NEXT_PUBLIC_SUPABASE_ANON_KEY:
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'playwright-test-fake-anon-key',
+      },
+    },
+  ],
 })
