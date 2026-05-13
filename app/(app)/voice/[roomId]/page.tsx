@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag } from '@/lib/utils'
-import { ArrowLeft, Mic, MicOff, Radio, LogOut, Send, ChevronUp, ChevronDown, ShieldCheck, Lock, Settings, Volume2, X } from 'lucide-react'
+import { ArrowLeft, Mic, MicOff, Radio, LogOut, Send, ChevronUp, ChevronDown, ShieldCheck, Lock, Settings, Volume2, X, Headphones } from 'lucide-react'
 import { awardPoints, getTierById } from '@/lib/trust'
 import { canSpeakInVoiceRoom, type AgeVerificationStatus } from '@/lib/permissions'
 import { isVerificationBypassEnabled } from '@/lib/test-mode'
@@ -1029,7 +1029,10 @@ export default function VoiceRoomPage() {
           </div>
         )}
 
-        {/* ── ステージ（登壇者）── */}
+        {/* ── ステージ（登壇者）──
+            2026-05-13: joined=true のみ表示。入室前は参考イラスト準拠のクリーンな
+            入室前確認画面を出すため、入室前にステージは見せない。 */}
+        {joined && (
         <div className="mb-4 rounded-3xl overflow-hidden"
           style={{ background: 'linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%)', border: '1px solid rgba(100,140,255,0.2)' }}>
           <div className="px-4 pt-3 pb-1 flex items-center gap-2">
@@ -1090,6 +1093,7 @@ export default function VoiceRoomPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* ── ホスト: 挙手者リスト ── */}
         {isHost && participants.filter(p => p.raised_hand).length > 0 && (
@@ -1117,8 +1121,10 @@ export default function VoiceRoomPage() {
           </div>
         )}
 
-        {/* ── 観客席 ── */}
-        {listeners.length > 0 && (
+        {/* ── 観客席 ──
+            2026-05-13: joined=true のみ表示 (入室前は参考イラスト下部 3 カラムに
+            「0人 参加中」として集約表示)。 */}
+        {joined && listeners.length > 0 && (
           <div className="mb-4">
             <p className="text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5"
               style={{ color: 'rgba(240,238,255,0.4)' }}>
@@ -1143,44 +1149,141 @@ export default function VoiceRoomPage() {
           </div>
         )}
 
-        {/* ── 参加前 UI ── */}
+        {/* ── 参加前 UI (2026-05-13 PR voice-entry-redesign 参考イラスト準拠) ──
+            目的: 「いきなり声が出るのでは」という入室前の不安を消す。
+            最優先 CTA = 「聞くだけで参加する」(紫プライマリ)。マイクON はセカンダリ。
+            既存ロジック (joinRoom / visitorBlocked / ageBlocked / MAX_SPEAKERS /
+            joining / showAgeGate) は完全に維持。表示形式のみ刷新。 */}
         {!joined && (
-          <div className="rounded-3xl p-5 mt-2"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
-            <p className="text-center text-2xl mb-3">🎙️</p>
-            <p className="font-bold text-sm text-center mb-0.5" style={{ color: '#F0EEFF' }}>
-              {participants.length}人が参加中
-            </p>
-            <p className="text-xs text-center mb-1" style={{ color: 'rgba(240,238,255,0.4)' }}>広場トーク</p>
-            <p className="text-xs text-center mb-5" style={{ color: 'rgba(240,238,255,0.4)' }}>どのモードで入りますか？</p>
+          <div className="mt-2">
+            {/* 中央: 村アイコン + タイトル + 状態 */}
+            <div className="text-center mb-6">
+              <div
+                className="mx-auto w-24 h-24 rounded-3xl flex items-center justify-center text-5xl mb-4"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(157,92,255,0.28), rgba(124,58,237,0.18))',
+                  border: '1.5px solid rgba(157,92,255,0.5)',
+                  boxShadow: '0 0 32px rgba(157,92,255,0.45), 0 4px 18px rgba(0,0,0,0.4)',
+                }}
+              >
+                {CAT_EMOJI[room?.category ?? ''] ?? '🎯'}
+              </div>
+              <h2 className="text-2xl font-extrabold mb-2" style={{ color: '#F0EEFF' }}>
+                {room?.title ?? 'ルーム'} <span className="font-bold" style={{ color: 'rgba(240,238,255,0.7)' }}>の通話ルーム</span>
+              </h2>
+              <div className="flex items-center justify-center gap-1.5">
+                <span className="w-2 h-2 rounded-full" style={{ background: '#7CFF82', boxShadow: '0 0 6px rgba(124,255,130,0.7)' }} />
+                <span className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.75)' }}>
+                  {participants.length === 0 ? '今は誰もいません' : `${participants.length}人が参加中`}
+                </span>
+              </div>
+            </div>
 
-            {/* 見習いはスピーカー不可 (テスト期間中バイパス時は非表示) */}
-            {visitorBlocked && (
-              <div className="rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2"
-                style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)' }}>
-                <span className="text-base flex-shrink-0">🪴</span>
-                <div>
-                  <p className="text-[11px] font-bold" style={{ color: '#a5b4fc' }}>見習いは聴くだけ参加できます</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: 'rgba(165,180,252,0.6)' }}>
-                    電話認証 + 初投稿で「村人」に昇格すると話せるようになります
-                  </p>
+            {/* 安心説明 3 行カード (最重要メッセージ) */}
+            <div
+              className="rounded-3xl p-4 mb-5"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(157,92,255,0.2)',
+                boxShadow: '0 4px 18px rgba(0,0,0,0.3)',
+              }}
+            >
+              <div className="flex items-start gap-3 py-2.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{ background: 'rgba(157,92,255,0.18)', border: '1px solid rgba(157,92,255,0.3)' }}>
+                  <Headphones size={18} style={{ color: '#c4b5fd' }} />
+                </div>
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <p className="text-sm font-extrabold" style={{ color: '#F0EEFF' }}>まずは聞くだけでもOK</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: 'rgba(240,238,255,0.55)' }}>気軽に雰囲気をのぞいてみよう</p>
                 </div>
               </div>
-            )}
+              <div className="flex items-start gap-3 py-2.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{ background: 'rgba(157,92,255,0.18)', border: '1px solid rgba(157,92,255,0.3)' }}>
+                  <Mic size={18} style={{ color: '#c4b5fd' }} />
+                </div>
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <p className="text-sm font-extrabold" style={{ color: '#F0EEFF' }}>マイクはあとからONにできます</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: 'rgba(240,238,255,0.55)' }}>タイミングは自分で決められます</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 py-2.5">
+                <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{ background: 'rgba(157,92,255,0.18)', border: '1px solid rgba(157,92,255,0.3)' }}>
+                  <MicOff size={18} style={{ color: '#c4b5fd' }} />
+                </div>
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <p className="text-sm font-extrabold" style={{ color: '#F0EEFF' }}>入室してもすぐ声は出ません</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: 'rgba(240,238,255,0.55)' }}>安心して参加できます</p>
+                </div>
+              </div>
+            </div>
 
-            {/* 年齢確認バナー（未確認） */}
-            {!myAgeVerified && (
-              <div className="rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2"
+            {/* 参加ボタン群 (joining 中はオーバーレイで一目で分かる) */}
+            <div className="relative space-y-3 mb-3">
+              {joining && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl"
+                  style={{ background: 'rgba(8,8,18,0.7)', backdropFilter: 'blur(2px)' }}>
+                  <div className="flex flex-col items-center gap-2 px-5 py-4 rounded-2xl"
+                    style={{ background: 'rgba(157,92,255,0.12)', border: '1px solid rgba(157,92,255,0.45)' }}>
+                    <span className="w-6 h-6 border-[3px] border-t-transparent rounded-full animate-spin"
+                      style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }} />
+                    <p className="text-xs font-extrabold" style={{ color: '#F0EEFF' }}>
+                      {connState === 'connecting' ? '通話に接続中…' : connState === 'connected' ? 'もう少しで完了…' : '準備中…'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 第1ボタン: 聞くだけで参加する (最重要・紫プライマリ大ボタン)
+                  内部: joinRoom('listener') / role: 'listener' / is_listener: true */}
+              <button
+                onClick={() => joinRoom('listener')}
+                disabled={joining}
+                className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl active:scale-[0.98] transition-all disabled:opacity-50"
+                style={{
+                  background: 'linear-gradient(135deg, #9D5CFF, #7C3AED)',
+                  boxShadow: '0 6px 24px rgba(157,92,255,0.55)',
+                }}
+              >
+                <Headphones size={20} className="text-white" />
+                <span className="text-base font-extrabold text-white">聞くだけで参加する</span>
+              </button>
+
+              {/* 第2ボタン: マイクONで参加する (セカンダリ・紫縁取り)
+                  内部: joinRoom('speaker') / role: 'speaker'。
+                  visitorBlocked / ageBlocked / 上限到達時は disabled + 補足文言。 */}
+              <button
+                onClick={() => joinRoom('speaker')}
+                disabled={joining || speakers.length >= MAX_SPEAKERS || visitorBlocked || ageBlocked}
+                className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl active:scale-[0.98] transition-all disabled:opacity-50"
+                style={{
+                  background: 'rgba(157,92,255,0.08)',
+                  border: '1.5px solid rgba(157,92,255,0.55)',
+                }}
+              >
+                <Mic size={20} style={{ color: '#c4b5fd' }} />
+                <span className="text-base font-extrabold" style={{ color: '#c4b5fd' }}>マイクONで参加する</span>
+              </button>
+            </div>
+
+            {/* 補足: いつでも退室できます */}
+            <p className="text-center text-xs mb-5" style={{ color: 'rgba(240,238,255,0.5)' }}>
+              👋 いつでも退室できます
+            </p>
+
+            {/* マイクON参加がブロックされている場合の補足 (年齢確認 / 見習い / 上限) */}
+            {ageBlocked && (
+              <div className="rounded-2xl px-3 py-2.5 mb-3 flex items-start gap-2"
                 style={{ background: 'rgba(157,92,255,0.1)', border: '1px solid rgba(157,92,255,0.25)' }}>
                 <ShieldCheck size={16} style={{ color: '#9D5CFF', flexShrink: 0, marginTop: 2 }} />
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] font-bold" style={{ color: '#c084fc' }}>
-                    {myAgeStatus === 'pending' ? '⏳ 年齢確認処理中…' : '年齢確認で話せるようになります'}
+                    {myAgeStatus === 'pending' ? '⏳ 年齢確認処理中…' : 'マイクON で参加するには年齢確認が必要です'}
                   </p>
                   <p className="text-[10px] mt-0.5" style={{ color: 'rgba(192,132,252,0.65)' }}>
-                    {myAgeStatus === 'pending'
-                      ? '確認完了後に登壇できます'
-                      : '免許証・パスポートで確認できます（聴くだけなら今すぐOK）'}
+                    {myAgeStatus === 'pending' ? '確認完了後に登壇できます' : '聞くだけ参加なら今すぐOK'}
                   </p>
                 </div>
                 {myAgeStatus !== 'pending' && (
@@ -1193,101 +1296,67 @@ export default function VoiceRoomPage() {
                 )}
               </div>
             )}
-
-            {/* スピーカー上限 */}
+            {visitorBlocked && !ageBlocked && (
+              <div className="rounded-2xl px-3 py-2.5 mb-3 flex items-start gap-2"
+                style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)' }}>
+                <span className="text-base flex-shrink-0">🪴</span>
+                <div>
+                  <p className="text-[11px] font-bold" style={{ color: '#a5b4fc' }}>マイクON は村人以上で解放</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'rgba(165,180,252,0.6)' }}>
+                    聞くだけ参加 → 電話認証 + 初投稿で「村人」に昇格
+                  </p>
+                </div>
+              </div>
+            )}
             {speakers.length >= MAX_SPEAKERS && (
-              <div className="rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2"
+              <div className="rounded-2xl px-3 py-2.5 mb-3 flex items-start gap-2"
                 style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
                 <span className="text-base flex-shrink-0">🔒</span>
                 <p className="text-[11px] leading-relaxed" style={{ color: '#FCD34D' }}>
-                  話す人が{MAX_SPEAKERS}人に達しました（上限）。「聞いている」モードで参加できます。
+                  話す人が{MAX_SPEAKERS}人に達しました（上限）。聞くだけ参加でどうぞ。
                 </p>
               </div>
             )}
 
-            {/* 2026-05-08 YVOICE5 A-1: 接続中オーバーレイ。joinRoom 実行中は
-                既存の右端小さなスピナー (各ボタン内) に加えて、3 ボタン全体を覆う
-                オーバーレイで「いま接続している」が一目で分かるようにする。
-                既存の disabled 制御 / joinRoom 関数 / mode 引数は不変。 */}
-            <div className="relative space-y-2.5">
-              {joining && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl"
-                  style={{ background: 'rgba(8,8,18,0.7)', backdropFilter: 'blur(2px)' }}>
-                  <div className="flex flex-col items-center gap-2 px-5 py-4 rounded-2xl"
-                    style={{ background: 'rgba(157,92,255,0.12)', border: '1px solid rgba(157,92,255,0.45)' }}>
-                    <span className="w-6 h-6 border-[3px] border-t-transparent rounded-full animate-spin"
-                      style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }} />
-                    <p className="text-xs font-extrabold" style={{ color: '#F0EEFF' }}>
-                      {connState === 'connecting' ? '通話に接続中…' : connState === 'connected' ? 'もう少しで完了…' : '準備中…'}
-                    </p>
-                    <p className="text-[10px]" style={{ color: 'rgba(240,238,255,0.55)' }}>
-                      しばらくお待ちください
-                    </p>
-                  </div>
-                </div>
-              )}
-              {/* マイクONで参加 (内部 role: speaker、内部 mode 名は不変)
-                  2026-05-08 YVOICE5 PR-A 文言整理: 表示文言のみ「登壇する」→
-                  「マイクONで参加」に変更。joinRoom('speaker') / role: 'speaker' /
-                  join_mode: 'speaker' などの内部値は不変。 */}
-              <button
-                onClick={() => joinRoom('speaker')}
-                disabled={joining || speakers.length >= MAX_SPEAKERS || visitorBlocked}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.98] transition-all text-left disabled:opacity-40"
-                style={ageBlocked || speakers.length >= MAX_SPEAKERS || visitorBlocked
-                  ? { background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.1)' }
-                  : { background: 'rgba(99,102,241,0.12)', border: '1.5px solid rgba(99,102,241,0.4)' }}>
-                <span className="text-2xl flex-shrink-0">
-                  {ageBlocked ? '🔒' : '🎙️'}
-                </span>
-                <div>
-                  <p className="font-extrabold text-sm"
-                    style={{ color: ageBlocked || speakers.length >= MAX_SPEAKERS || visitorBlocked
-                      ? 'rgba(240,238,255,0.35)'
-                      : '#a5b4fc' }}>
-                    {ageBlocked
-                      ? 'マイクONで参加（年齢確認が必要）'
-                      : visitorBlocked
-                        ? 'マイクONで参加（村人以上で解放）'
-                        : speakers.length >= MAX_SPEAKERS
-                          ? `マイクONで参加（上限${MAX_SPEAKERS}名）`
-                          : `マイクONで参加（残り${MAX_SPEAKERS - speakers.length}枠）`}
-                  </p>
-                  <p className="text-[10px]" style={{ color: 'rgba(240,238,255,0.3)' }}>
-                    {ageBlocked ? '年齢確認済みユーザーのみ話せます' : 'マイクをONにしてステージへ'}
-                  </p>
-                </div>
-                {joining && <span className="ml-auto w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
-                  style={{ borderColor: '#6366f1', borderTopColor: 'transparent' }} />}
-              </button>
-
-              {/* 聞くだけで参加 (内部 role: listener、内部 mode 名は不変)
-                  2026-05-08 YVOICE5 PR-A 文言整理: 表示文言のみ「観客として参加」→
-                  「聞くだけで参加」に変更。joinRoom('listener') / role: 'listener' /
-                  is_listener: true / join_mode: 'listener' などの内部値は不変。
-                  参加直後はマイク OFF (LiveKit publish しない既存仕様) で入室、
-                  下部のマイクボタンから後で ON に切替可能 (既存 promotion フロー)。 */}
-              <button onClick={() => joinRoom('listener')} disabled={joining}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.98] transition-all text-left"
-                style={{ background: 'rgba(124,255,130,0.08)', border: '1.5px solid rgba(124,255,130,0.3)' }}>
-                <span className="text-2xl flex-shrink-0">👂</span>
-                <div>
-                  <p className="font-extrabold text-sm" style={{ color: '#7CFF82' }}>聞くだけで参加</p>
-                  <p className="text-[10px]" style={{ color: 'rgba(124,255,130,0.55)' }}>マイクOFFで入室・後で手を挙げて登壇可能</p>
-                </div>
-              </button>
-
-              {/* こっそり */}
-              <button onClick={() => joinRoom('silent')} disabled={joining}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.98] transition-all text-left"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1.5px solid rgba(255,255,255,0.1)' }}>
-                <span className="text-2xl flex-shrink-0">🫥</span>
-                <div>
-                  <p className="font-extrabold text-sm" style={{ color: 'rgba(240,238,255,0.7)' }}>こっそり聞く</p>
-                  <p className="text-[10px]" style={{ color: 'rgba(240,238,255,0.35)' }}>名前は「こっそり」と表示される</p>
-                </div>
-              </button>
+            {/* 下部 3 カラム情報 (参加中 / 参加スタイル / 安心度) */}
+            <div
+              className="rounded-2xl flex items-stretch mt-3"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(157,92,255,0.18)',
+              }}
+            >
+              <div className="flex-1 text-center py-3 px-2">
+                <p className="text-sm font-extrabold inline-flex items-center gap-1" style={{ color: '#F0EEFF' }}>
+                  👤 {participants.length}人
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: 'rgba(240,238,255,0.5)' }}>参加中</p>
+              </div>
+              <div className="w-px self-stretch my-2" style={{ background: 'rgba(157,92,255,0.18)' }} />
+              <div className="flex-1 text-center py-3 px-2">
+                <p className="text-sm font-extrabold inline-flex items-center gap-1" style={{ color: '#a5b4fc' }}>
+                  📡 聞くだけOK
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: 'rgba(240,238,255,0.5)' }}>参加スタイル</p>
+              </div>
+              <div className="w-px self-stretch my-2" style={{ background: 'rgba(157,92,255,0.18)' }} />
+              <div className="flex-1 text-center py-3 px-2">
+                <p className="text-sm font-extrabold" style={{ color: '#fcd34d' }}>
+                  ★★★★★
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: 'rgba(240,238,255,0.5)' }}>安心度</p>
+              </div>
             </div>
+
+            {/* こっそり聞く (補助オプション、控えめに) */}
+            <button
+              onClick={() => joinRoom('silent')}
+              disabled={joining}
+              className="w-full mt-3 py-2.5 rounded-2xl text-xs font-bold active:scale-95 transition-all"
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(240,238,255,0.55)' }}
+            >
+              🫥 こっそり聞く (名前を伏せる)
+            </button>
           </div>
         )}
 
