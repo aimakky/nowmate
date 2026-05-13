@@ -38,7 +38,7 @@ npm run test:e2e:report
 | ファイル | 内容 |
 |---|---|
 | `home.spec.ts` | LP (`/`) が表示され、ブランド名 + ログイン導線が出ること |
-| `public-pages.spec.ts` | `/login`, `/signup`, `/safety`, `/terms`, `/privacy`, `/for-business`, `/contact` が 4xx/5xx を返さない |
+| `public-pages.spec.ts` | `/login`, `/signup`, `/safety`, `/terms`, `/privacy`, `/contact` が 4xx/5xx を返さない |
 | `auth-redirect.spec.ts` | 保護ルート 8 本 (`/timeline`, `/mypage`, `/notifications`, `/chat`, `/guilds`, `/villages`, `/voice`, `/settings`) が `/login` へ redirect されること |
 | `mobile-smoke.spec.ts` | iPhone 13 viewport で LP に横スクロールが出ない / CTA が見える / `/login` フォームが描画される |
 

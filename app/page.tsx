@@ -681,7 +681,6 @@ export default async function TopPage() {
           <Link href="/privacy"      className="hover:text-white transition">プライバシー</Link>
           <Link href="/safety"       className="hover:text-white transition">Safety Center</Link>
           <Link href="/contact"      className="hover:text-white transition">お問い合わせ</Link>
-          <Link href="/for-business" className="hover:text-white transition">企業向け</Link>
         </div>
         <p className="text-xs mt-4" style={{ color: '#475569' }}>© 2026 YVOICE</p>
       </footer>

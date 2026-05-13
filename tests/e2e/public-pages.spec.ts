@@ -9,7 +9,6 @@ const PUBLIC_PATHS = [
   '/safety',
   '/terms',
   '/privacy',
-  '/for-business',
   '/contact',
 ] as const
 
