@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createHash, randomInt } from 'crypto'
+import * as Sentry from '@sentry/nextjs'
 
 // ── Supabaseクライアント（ユーザーJWT付き） ─────────────────────────────
 function makeSupabaseClient(accessToken?: string) {
@@ -153,6 +154,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true })
   } catch (e: any) {
+    // Sentry 送信失敗が route 本体を落とさないよう、capture 自体も try/catch で包む。
+    // Next.js 14.2.29 では instrumentation.onRequestError が未対応のため、
+    // 重要 route には明示的に Sentry.captureException を呼ぶ必要がある。
+    try { Sentry.captureException(e) } catch {}
     console.error('[phone/send-otp] error:', e)
     // 内部メッセージはクライアントに渡さない（汎用コードのみ）
     return NextResponse.json({ error: 'sms_send_failed' }, { status: 500 })

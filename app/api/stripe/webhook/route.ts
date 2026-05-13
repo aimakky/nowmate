@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/env-guard'
+import * as Sentry from '@sentry/nextjs'
 
 //
 // Stripe webhook
@@ -58,6 +59,11 @@ export async function POST(req: NextRequest) {
 
   const supabase = createClient()
 
+  // 署名検証後の event 処理は try/catch で包む。
+  // Stripe API 呼び出しや Supabase upsert が throw した場合に silent に
+  // premium / 年齢認証が反映されない事故を Sentry に通知する。
+  // 500 を返すことで Stripe は exponential backoff でリトライしてくれる。
+  try {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
     const userId = session.metadata?.user_id
@@ -131,4 +137,10 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true })
+  } catch (e: any) {
+    try { Sentry.captureException(e, { tags: { stripe_event_type: event.type } }) } catch {}
+    console.error('[stripe/webhook] event handling error:', event.type, e)
+    // Stripe にリトライしてもらうため 500 を返す（exponential backoff で再送される）
+    return NextResponse.json({ error: 'internal' }, { status: 500 })
+  }
 }

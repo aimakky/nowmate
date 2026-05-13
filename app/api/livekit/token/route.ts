@@ -19,6 +19,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { AccessToken } from 'livekit-server-sdk'
+import * as Sentry from '@sentry/nextjs'
 
 export const runtime = 'nodejs'
 
@@ -48,6 +49,7 @@ function rateLimit(userId: string): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  try {
   // 1) 環境変数チェック — 未設定は 503（一時的に使えない、再試行可能）として扱う
   const apiKey    = process.env.LIVEKIT_API_KEY
   const apiSecret = process.env.LIVEKIT_API_SECRET
@@ -100,6 +102,8 @@ export async function POST(request: NextRequest) {
     .maybeSingle()
   if (roomErr) {
     console.error('[livekit/token] db error', roomErr)
+    // DB エラーは silent fail で「通話開始できない」原因になるため Sentry に送る
+    try { Sentry.captureException(roomErr, { tags: { route: 'livekit/token', stage: 'db_lookup' } }) } catch {}
     return NextResponse.json({ error: 'internal' }, { status: 500 })
   }
   if (!room) {
@@ -144,4 +148,12 @@ export async function POST(request: NextRequest) {
     url:      lkUrl,
     roomName: `yvoice-voice-${roomId}`,
   })
+  } catch (e: any) {
+    // Next.js 14.2.29 では instrumentation.onRequestError が未対応のため、
+    // 明示的に Sentry に送る。token 発行の予期しない失敗（at.toJwt の crypto
+    // 失敗等）が silent fail すると通話開始ボトルネックになるため重要度高。
+    try { Sentry.captureException(e, { tags: { route: 'livekit/token' } }) } catch {}
+    console.error('[livekit/token] error:', e)
+    return NextResponse.json({ error: 'internal' }, { status: 500 })
+  }
 }

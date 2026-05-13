@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createHash } from 'crypto'
+import * as Sentry from '@sentry/nextjs'
 
 function makeSupabaseClient(accessToken?: string) {
   const cookieStore = cookies()
@@ -67,12 +68,19 @@ export async function POST(req: Request) {
       // 既知のエラーコードはそのまま、それ以外はサーバーログのみ
       const known = ['invalid_otp', 'expired_otp', 'invalid_phone']
       const code = known.includes(result.error) ? result.error : 'verify_failed'
-      if (code === 'verify_failed') console.error('[phone/verify-otp] unknown rpc error:', result.error)
+      if (code === 'verify_failed') {
+        console.error('[phone/verify-otp] unknown rpc error:', result.error)
+        // unknown rpc error は silent failure になりがちなので Sentry に送る
+        try { Sentry.captureMessage(`phone/verify-otp unknown rpc error: ${result.error}`, 'error') } catch {}
+      }
       return NextResponse.json({ error: code }, { status: 400 })
     }
 
     return NextResponse.json({ success: true })
   } catch (e: any) {
+    // Next.js 14.2.29 では instrumentation.onRequestError が未対応のため、
+    // 明示的に Sentry に送る。capture 失敗が route を落とさないよう包む。
+    try { Sentry.captureException(e) } catch {}
     console.error('[phone/verify-otp] error:', e)
     return NextResponse.json({ error: 'verify_failed' }, { status: 500 })
   }
