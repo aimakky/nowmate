@@ -13,9 +13,9 @@
 ### 手順
 
 1. https://vercel.com にログイン
-2. プロジェクト `nowmate` (org: `totonavi`) を開く
+2. プロジェクト `yvoice` (org: `totonavi`) を開く
 3. **Settings → Git** に移動
-4. "Connected Git Repository" が `aimakky/nowmate` になっていることを確認
+4. "Connected Git Repository" が `aimakky/yvoice` になっていることを確認
    - もし接続が切れていれば再接続
 5. **Production Branch** が `main` であることを確認
 6. **Auto Deploy** が有効であることを確認

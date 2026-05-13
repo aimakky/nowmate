@@ -157,7 +157,7 @@ curl -sL  "https://www.nowmatejapan.com/login" | grep -oE 'dpl_[a-zA-Z0-9]+' | s
 
 ### Step 3: GitHub Actions の状況
 ```
-https://github.com/aimakky/nowmate/actions
+https://github.com/aimakky/yvoice/actions
 ```
 最近の workflow が **failure** なら自動デプロイは動いていない。手動で `npx vercel --prod` を実行。
 
