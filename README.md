@@ -86,6 +86,9 @@ types/           — 型定義
 - サービス名: **YVOICE**（読み：ワイボイス、略：ワイボ）
 - 正式名: Your Voice Online
 - 対象: 20歳以上のゲーマー
-- ドメイン: yvoiceonline.com（環境変数未設定時は旧ドメイン nowmatejapan.com にフォールバック）
+- 正式 URL (canonical): `https://www.yvoiceonline.com`
+- apex (`yvoiceonline.com`) は Vercel Domains で 308 redirect → `www.yvoiceonline.com` に集約
+- 旧ドメイン: `nowmatejapan.com` / `www.nowmatejapan.com`（既存 SNS シェアや過去リンクの受け口として温存、Vercel Domains で `www.yvoiceonline.com` へ 307/308 redirect 中、**絶対に削除しない**）
+- `NEXT_PUBLIC_SITE_URL` 未設定時のフォールバックは `https://www.yvoiceonline.com`（2026-05-13 apex → www に再揃え）。Vercel に同名 env を明示設定するのが推奨。
 
 リポジトリ root のフォルダ名・GitHub repo 名・Vercel project 名・Supabase project 名・旧ドメインは、サービス停止リスク回避のため別フェーズで段階移行します。ユーザー可視テキストは YVOICE に統一済み。

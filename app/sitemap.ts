@@ -2,7 +2,8 @@ import { MetadataRoute } from 'next'
 import { SITE_URL } from '@/lib/site'
 
 // base URL は lib/site.ts の SITE_URL から取得。
-// NEXT_PUBLIC_SITE_URL 設定時は YVOICE 正式ドメイン (yvoiceonline.com) に追従。
+// NEXT_PUBLIC_SITE_URL の値 (推奨: https://www.yvoiceonline.com)、
+// 未設定時は fallback で同 URL に追従する。
 //
 // 旧 /for-business / /guides 配下は物理削除済み、sitemap には元から含めていない。
 export default function sitemap(): MetadataRoute.Sitemap {
