@@ -230,7 +230,7 @@ export default function OnboardingPage() {
                 <div className="text-5xl mb-4">🚫</div>
                 <h3 className="font-extrabold text-white text-lg mb-2">ご利用いただけません</h3>
                 <p className="text-white/60 text-xs leading-relaxed">
-                  sameeは<span className="text-red-300 font-bold">20歳以上</span>の方のみご利用いただけます。<br />
+                  YVOICEは<span className="text-red-300 font-bold">20歳以上</span>の方のみご利用いただけます。<br />
                   ご理解ください。
                 </p>
                 <button
@@ -245,7 +245,7 @@ export default function OnboardingPage() {
                   <div className="text-5xl mb-4">🎮</div>
                   <h3 className="font-extrabold text-white text-lg mb-2">大人のゲームコミュニティ</h3>
                   <p className="text-white/60 text-xs leading-relaxed">
-                    sameeは<span className="text-purple-300 font-bold">20歳以上限定</span>の民度重視コミュニティです。<br />
+                    YVOICEは<span className="text-purple-300 font-bold">20歳以上限定</span>の民度重視コミュニティです。<br />
                     年齢確認のため、生まれた年を入力してください。
                   </p>
                 </div>
@@ -277,7 +277,7 @@ export default function OnboardingPage() {
 
                 {/* 2つの場所の説明 */}
                 <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest px-1">sameeの2つの場所</p>
+                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest px-1">YVOICEの2つの場所</p>
                   {/* 村 */}
                   <div className="bg-white border border-stone-100 rounded-2xl p-4">
                     <div className="flex items-center gap-2 mb-2">
@@ -357,7 +357,8 @@ export default function OnboardingPage() {
                 placeholder="例：たろう、ゆきこ、さくら"
                 maxLength={20}
                 autoFocus
-                className="w-full px-4 py-3.5 rounded-2xl border-2 border-stone-200 text-sm focus:outline-none focus:border-indigo-400 bg-white"
+                className="w-full px-4 py-3.5 rounded-2xl border-2 border-stone-200 text-sm focus:outline-none focus:border-indigo-400"
+                style={{ background: '#ffffff', color: '#1c1917', WebkitTextFillColor: '#1c1917', caretColor: '#4f46e5' }}
               />
               <p className="text-[10px] text-stone-400 mt-1">2〜20文字。後から変更できます。</p>
             </div>
@@ -369,9 +370,10 @@ export default function OnboardingPage() {
               <textarea
                 value={bio}
                 onChange={e => setBio(e.target.value.slice(0, 150))}
-                placeholder="好きなことや趣味、一言で自己紹介してみましょう"
+                placeholder="例：一緒に遊べる仲間を探しています / 気軽に話せる仲間募集中"
                 rows={3}
-                className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 bg-white leading-relaxed"
+                className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 leading-relaxed"
+                style={{ background: '#ffffff', color: '#1c1917', WebkitTextFillColor: '#1c1917', caretColor: '#4f46e5' }}
               />
               <p className="text-right text-[10px] text-stone-400 mt-1">{bio.length}/150</p>
             </div>
@@ -411,7 +413,7 @@ export default function OnboardingPage() {
             {/* 次へ後に文化カードが出ることを予告 */}
             <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
               <p className="text-xs text-amber-700 leading-relaxed">
-                📖 次のステップで「sameeのルール」を5枚のカードで紹介します（1分以内）
+                📖 次のステップで「YVOICEのルール」を5枚のカードで紹介します（1分以内）
               </p>
             </div>
           </div>
@@ -502,7 +504,8 @@ export default function OnboardingPage() {
                   : '村のみんなへ、はじめまして！'}
                 rows={4}
                 autoFocus
-                className="w-full px-4 py-3.5 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 bg-white leading-relaxed"
+                className="w-full px-4 py-3.5 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 leading-relaxed"
+                style={{ background: '#ffffff', color: '#1c1917', WebkitTextFillColor: '#1c1917', caretColor: '#4f46e5' }}
               />
               <div className="flex items-center justify-between mt-1 px-1">
                 <p className="text-[10px] text-stone-400">村の中だけで見えます</p>
@@ -520,8 +523,14 @@ export default function OnboardingPage() {
         )}
       </div>
 
-      {/* Bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-stone-100 px-5 py-4 max-w-md mx-auto">
+      {/* Bottom CTA — z-50 で他の fixed 要素より前面、safe-area-inset-bottom で iOS ホームインジケータを回避 */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-stone-100 px-5 pt-4 max-w-md mx-auto"
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}
+      >
+        {step === 0 && birthYear && currentAge < 20 && (
+          <p className="text-xs text-red-500 mb-2 text-center font-bold">20歳以上の方のみ利用できます</p>
+        )}
         {error && <p className="text-xs text-red-500 mb-3 text-center">{error}</p>}
         <button
           onClick={handleNext}

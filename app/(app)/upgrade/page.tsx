@@ -31,9 +31,9 @@ export default function UpgradePage() {
           <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-200">
             <Zap size={36} className="text-white" />
           </div>
-          <h1 className="text-2xl font-black text-stone-900 mb-2">samee プレミアム</h1>
+          <h1 className="text-2xl font-black text-stone-900 mb-2">YVOICE プレミアム</h1>
           <p className="text-stone-500 text-sm leading-relaxed">
-            sameeをもっと使いこなす。<br />ギルドを制限なしで楽しもう。
+            YVOICEをもっと使いこなす。<br />ギルドを制限なしで楽しもう。
           </p>
         </div>
 

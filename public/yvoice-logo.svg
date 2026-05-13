@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 380" width="800" height="950">
+  <!-- Y マーク v3 (シンプル 3 ストローク、中央配置で 5 倍にスケール) -->
+  <g transform="translate(0 20) scale(5)" stroke="#9D5CFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="32" y1="30" x2="32" y2="52"/>
+    <line x1="32" y1="30" x2="16" y2="14"/>
+    <line x1="32" y1="30" x2="48" y2="14"/>
+  </g>
+  <!-- YVOICE 文字 (Y は紫 #9D5CFF、VOICE は白 #F0EEFF) — 確定版を完全維持 -->
+  <text x="160" y="355" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-weight="900" font-size="56" letter-spacing="3"
+        fill="#F0EEFF">
+    <tspan fill="#9D5CFF">Y</tspan>VOICE
+  </text>
+</svg>

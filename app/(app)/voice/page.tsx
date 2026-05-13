@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Mic, Users, Radio, ShieldCheck, Lock } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import { canCreateVoiceRoom } from '@/lib/permissions'
+import VoiceRulesModal from '@/components/rules/VoiceRulesModal'
+import { fetchRulesBundle, hasVoiceRulesAck } from '@/lib/rules'
 
 const CATEGORIES = ['雑談', '夜話', '相談', '悩み', '笑い', '趣味']
 
@@ -39,6 +41,40 @@ export default function VoicePage() {
   const [newIsOpen,     setNewIsOpen]     = useState(true)
   const [newAgenda,     setNewAgenda]     = useState('')
   const [creating,      setCreating]      = useState(false)
+  const [pendingRoomId, setPendingRoomId] = useState<string | null>(null)
+  // 2026-05-08 YVOICE5 A-1: タップ直後のフィードバック用。
+  // 「カードをタップしたけど何も起きない」体感を防ぐため、attemptEnterRoom
+  // 開始時にこの state を設定し、対象カードに「接続中...」オーバーレイを出す。
+  // 既存のルームカード本体クリックハンドラ / モーダル / 遷移は不変。
+  const [enteringRoomId, setEnteringRoomId] = useState<string | null>(null)
+
+  // バックボタン等で戻ってきた時にオーバーレイが残らないよう、6秒後に自動解除。
+  // router.push 後の遷移先 (/voice/[roomId]) からの戻りでこのページが再マウント
+  // されるとは限らないため、タイマーで安全側に倒す。
+  useEffect(() => {
+    if (!enteringRoomId) return
+    const t = setTimeout(() => setEnteringRoomId(null), 6000)
+    return () => clearTimeout(t)
+  }, [enteringRoomId])
+
+  // ルーム入室前ガイドゲート（fail-closed: 取得失敗時もモーダルを表示し、ユーザーが意識して同意してから入室）
+  async function attemptEnterRoom(roomId: string) {
+    // すでに別カードで参加処理中なら無視 (誤連打防止)
+    if (enteringRoomId && enteringRoomId !== roomId) return
+    setEnteringRoomId(roomId)
+    try {
+      const bundle = await fetchRulesBundle()
+      if (hasVoiceRulesAck(bundle.bundleVersion)) {
+        router.push(`/voice/${roomId}`)
+        return
+      }
+    } catch {
+      // フォールスルーしてモーダル表示
+    }
+    setPendingRoomId(roomId)
+    // モーダル表示時は overlay を解除 (モーダル側で進行表示するため)
+    setEnteringRoomId(null)
+  }
   const [myAgeVerified, setMyAgeVerified] = useState(false)
   const [myAgeStatus,   setMyAgeStatus]   = useState<string>('unverified')
   const [showAgeGate,   setShowAgeGate]   = useState(false)
@@ -86,11 +122,22 @@ export default function VoicePage() {
 
   useEffect(() => {
     const supabase = createClient()
+    // postgres_changes はテーブル全体への broadcast のため、参加者の
+    // 入退室が頻発するピーク時には N ユーザー × M イベントの fan-out
+    // で fetchRooms が叩かれる。900ms デバウンスでまとめて 1 回に集約。
+    let pending: ReturnType<typeof setTimeout> | null = null
+    const debouncedFetch = () => {
+      if (pending) clearTimeout(pending)
+      pending = setTimeout(() => { pending = null; fetchRooms() }, 900)
+    }
     const channel = supabase.channel('voice_rooms_updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'voice_participants' }, fetchRooms)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'voice_rooms' }, fetchRooms)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'voice_participants' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'voice_rooms' }, debouncedFetch)
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      if (pending) clearTimeout(pending)
+      supabase.removeChannel(channel)
+    }
   }, [fetchRooms])
 
   async function handleCreate() {
@@ -125,7 +172,7 @@ export default function VoicePage() {
       setShowCreate(false)
       setNewTitle('')
       setNewAgenda('')
-      router.push(`/voice/${data.id}`)
+      attemptEnterRoom(data.id)
     }
     setCreating(false)
   }
@@ -195,11 +242,35 @@ export default function VoicePage() {
             }
             const gradient = CAT_GRADIENT[room.category] ?? 'linear-gradient(135deg,#9D5CFF 0%,#FF4D90 100%)'
 
+            const isEntering = enteringRoomId === room.id
             return (
               <div key={room.id}
-                onClick={() => router.push(`/voice/${room.id}`)}
-                className="rounded-2xl overflow-hidden cursor-pointer active:scale-[0.99] transition-all"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.2)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+                onClick={() => attemptEnterRoom(room.id)}
+                aria-busy={isEntering || undefined}
+                className="relative rounded-2xl overflow-hidden cursor-pointer active:scale-[0.99] transition-all"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: isEntering ? '1px solid rgba(157,92,255,0.6)' : '1px solid rgba(157,92,255,0.2)',
+                  boxShadow: isEntering ? '0 0 24px rgba(157,92,255,0.4), 0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.3)',
+                }}>
+
+                {/* 2026-05-08 YVOICE5 A-1: タップ直後フィードバック用オーバーレイ。
+                    タップ後、router.push が完了するまでの間、対象カードに紫グローと
+                    「接続中...」を表示することで「タップしたのに反応がない感」を解消する。
+                    pointer-events-none で下のカードクリックは妨げない。 */}
+                {isEntering && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"
+                    style={{ background: 'rgba(8,8,18,0.55)', backdropFilter: 'blur(2px)' }}>
+                    <div className="flex items-center gap-2 px-3.5 py-2 rounded-full"
+                      style={{ background: 'rgba(157,92,255,0.18)', border: '1px solid rgba(157,92,255,0.5)' }}>
+                      <span className="w-3 h-3 border-2 border-t-transparent rounded-full animate-spin"
+                        style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }} />
+                      <span className="text-[11px] font-extrabold" style={{ color: '#F0EEFF' }}>
+                        接続中…
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* カラーバナー */}
                 <div className="relative h-24 flex items-end px-4 pb-3" style={{ background: gradient }}>
@@ -296,7 +367,7 @@ export default function VoicePage() {
               </div>
               <h3 className="font-extrabold text-lg mb-1.5" style={{ color: '#F0EEFF' }}>通話機能は年齢確認が必要です</h3>
               <p className="text-sm leading-relaxed" style={{ color: 'rgba(240,238,255,0.55)' }}>
-                sameeの通話ルーム作成・参加は、<br />
+                YVOICEの通話ルーム作成・参加は、<br />
                 <span className="font-bold" style={{ color: '#F0EEFF' }}>20歳以上</span>であることの確認が必要です。
               </p>
             </div>
@@ -396,6 +467,18 @@ export default function VoicePage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* 通話ルーム入室前の安心ガイド */}
+      {pendingRoomId && (
+        <VoiceRulesModal
+          onAcknowledged={() => {
+            const id = pendingRoomId
+            setPendingRoomId(null)
+            router.push(`/voice/${id}`)
+          }}
+          onClose={() => setPendingRoomId(null)}
+        />
       )}
     </div>
   )

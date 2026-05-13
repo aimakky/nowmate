@@ -5,11 +5,15 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
 import Avatar from '@/components/ui/Avatar'
-import { User } from 'lucide-react'
+import { Bell } from 'lucide-react'
+import { getUserDisplayName } from '@/lib/user-display'
+import PageHeader from '@/components/layout/PageHeader'
+import { useDelayedSkeleton } from '@/hooks/useDelayedSkeleton'
+import RecruitmentParticipantsSheet from '@/components/features/RecruitmentParticipantsSheet'
 
 type Notif = {
   id: string
-  type: 'like' | 'reply' | 'follow' | 'comment' | 'bottle_reply' | 'new_member_post' | 'voice_room_started'
+  type: 'like' | 'reply' | 'follow' | 'comment' | 'bottle_reply' | 'new_member_post' | 'voice_room_started' | 'call_invite' | 'guild_invite' | 'now_village_invite' | 'guild_specific_invite' | 'recruitment_joined'
   actor_id: string | null
   target_id: string | null
   target_type: string | null
@@ -29,28 +33,113 @@ const TYPE_CONFIG: Record<string, { emoji: string; label: string; section: 'reac
   bottle_reply:       { emoji: '🍶', label: '波の向こうから、返事が来ました',              section: 'other'    },
   tier_up:            { emoji: '🌿', label: '村のみんなが、あなたを信頼し始めています',    section: 'other'    },
   bottle_found:       { emoji: '🍶', label: 'あなたの瓶を、誰かが大切に拾ってくれました', section: 'other'    },
+  // 2026-05-10: フレンド「誘う」機能で発生する新 type 群 (FriendInviteSheet 経由)
+  call_invite:        { emoji: '📞', label: 'あなたを通話に誘いました',                   section: 'voice'    },
+  guild_invite:       { emoji: '🎮', label: 'あなたをゲーム村に誘いました',               section: 'voice'    },
+  now_village_invite: { emoji: '⏱️', label: 'あなたをいますぐ村に誘いました',             section: 'voice'    },
+  // 2026-05-10 Phase A: ギルド招待 (specific guild)
+  guild_specific_invite: { emoji: '🛡️', label: 'あなたをギルドに誘いました',              section: 'voice'    },
+  // 2026-05-12 Phase B PR-B2: 募集カードに参加された (募集主への通知)
+  recruitment_joined: { emoji: '🎮', label: 'あなたの募集に参加してくれました',           section: 'voice'    },
 }
+
+// 2026-05-10 Phase A: 招待 type の集合定義 (招待カード化判定 / ボタン文言切替に使用)
+const INVITE_TYPES = new Set(['call_invite', 'guild_invite', 'now_village_invite', 'guild_specific_invite'])
+
+// 2026-05-12 Phase B PR-B2: 「参加者を見る」「あとで」の 2 ボタンカードを出す型。
+// invite 系と UI 構造は同じだが、Primary ボタンが route 遷移ではなく
+// RecruitmentParticipantsSheet の開閉になるため、別集合として扱う。
+const RECRUITMENT_CARD_TYPES = new Set(['recruitment_joined'])
+
+// 招待 type ごとに「参加する」「見る」「開く」のいずれの label を出すか + 遷移先 path
+function inviteAction(type: string, targetId: string | null): { label: string; href: string } {
+  switch (type) {
+    case 'call_invite':
+      return { label: '参加する', href: '/group' }
+    case 'guild_invite':
+      // ゲーム村 (= /guild ページ全体)
+      return { label: '参加する', href: '/guild' }
+    case 'now_village_invite':
+      return { label: '参加する', href: '/guild' }
+    case 'guild_specific_invite':
+      return { label: '見る', href: targetId ? `/guilds/${targetId}` : '/guild' }
+    default:
+      return { label: '参加する', href: '/guild' }
+  }
+}
+
+// 2026-05-09 マッキーさん指示「取得済みデータがあれば skeleton に戻さず前回表示を
+// 維持しながら裏で再取得」対応 (rule 8)。
+// AppLayout の `key={pathname}` で本コンポーネントは毎回 unmount/remount されるが、
+// この module-level 変数は React tree 外なので保持される。再訪問時は cachedNotifs
+// から即時復元 → loading=false で skeleton スキップ → 裏で fetch して最新化。
+let cachedNotifs: Notif[] | null = null
 
 export default function NotificationsPage() {
   const router = useRouter()
-  const [notifs,  setNotifs]  = useState<Notif[]>([])
-  const [loading, setLoading] = useState(true)
+  const [notifs,  setNotifs]  = useState<Notif[]>(cachedNotifs ?? [])
+  // 初回訪問 (cachedNotifs === null) のみ loading=true で skeleton 表示。
+  // 再訪問は cached を即時表示しつつ裏で再 fetch (loading=false 維持)。
+  const [loading, setLoading] = useState(cachedNotifs === null)
+  // 2026-05-09: 速い読込 (<200ms) では skeleton を表示しない。
+  // 遅い読込のみ skeleton を出すことで、skeleton↔loaded の切替に伴うわずかな
+  // ズレが見えなくなる。
+  const showSkeleton = useDelayedSkeleton(loading)
+  // 2026-05-12 Phase B PR-B2: 募集参加通知 ("参加者を見る" タップ) で開く参加者シート。
+  // target_id (= village_posts.id) を保持。null なら閉じている状態。
+  const [participantsPostId, setParticipantsPostId] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
+    setCurrentUserId(user.id)
 
-    const { data } = await supabase
+    // priority は text の 'high' / 'normal'。文字列の昇順だと 'high' < 'normal' になるので、
+    // ascending: true が「重要が上」になる。旧実装は ascending: false で 'normal' が上に来ていた。
+    //
+    // PostgREST embed (actor:actor_id(...)) を撤廃。embed 解決失敗で親 row が
+    // 消える脆弱性 (= ミヤさん投稿が TL に出ない問題と同じ構造) を回避するため、
+    // actor profile は別 query で in() 取得し client-side で merge する。
+    // docs/development-checklist.md の「禁止事項 1: PostgREST embed 禁止」遵守。
+    const { data: rawNotifs, error } = await supabase
       .from('notifications')
-      .select('*, actor:actor_id(display_name, avatar_url)')
+      .select('*')
       .eq('user_id', user.id)
-      .order('priority', { ascending: false })
+      .order('priority',   { ascending: true  })
       .order('created_at', { ascending: false })
       .limit(80)
+    if (error) console.error('[notifications] fetch error:', error)
 
-    setNotifs((data || []) as Notif[])
+    const rows = (rawNotifs ?? []) as any[]
+
+    // actor_id 集合を作って profiles を別 query で取得 (fail-open)
+    const actorIds = Array.from(new Set(
+      rows.map(n => n.actor_id).filter((id: any): id is string => typeof id === 'string' && id.length > 0)
+    ))
+    const actorMap = new Map<string, { display_name: string; avatar_url: string | null }>()
+    if (actorIds.length > 0) {
+      const { data: actors, error: aErr } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url')
+        .in('id', actorIds)
+      if (aErr) console.error('[notifications] actor profiles error:', aErr)
+      for (const p of (actors ?? []) as any[]) {
+        actorMap.set(p.id, { display_name: p.display_name ?? '', avatar_url: p.avatar_url ?? null })
+      }
+    }
+
+    // 各 notification に actor を merge
+    const merged = rows.map(n => ({
+      ...n,
+      actor: n.actor_id ? actorMap.get(n.actor_id) ?? null : null,
+    }))
+
+    setNotifs(merged as Notif[])
     setLoading(false)
+    // 2026-05-09: module-level cache を更新。次回訪問時に skeleton をスキップできる。
+    cachedNotifs = merged as Notif[]
 
     // 既読化
     await supabase
@@ -76,6 +165,64 @@ export default function NotificationsPage() {
     } else if (n.type === 'bottle_reply') {
       router.push('/mypage')
     }
+    // 2026-05-10: フレンド「誘う」由来の通知 tap 時、誘った相手のプロフィールへ遷移
+    // (= 「誰が誘ってくれたのか」確認できる + 安全な既存ルートのみ使用)
+    else if ((n.type === 'call_invite' || n.type === 'guild_invite' || n.type === 'now_village_invite' || n.type === 'guild_specific_invite') && n.actor_id) {
+      router.push(`/profile/${n.actor_id}`)
+    }
+    // 2026-05-12 Phase B PR-B2: 募集参加通知 tap 時、参加した人のプロフィールへ遷移。
+    // 「誰が参加してくれたのか」確認できる安全な既存ルート。
+    // 「参加者を見る」ボタン (専用カード下部) はシート開閉に分岐する (handleViewParticipants)。
+    else if (n.type === 'recruitment_joined' && n.actor_id) {
+      router.push(`/profile/${n.actor_id}`)
+    }
+  }
+
+  // 2026-05-12 Phase B PR-B2: 募集参加通知の「参加者を見る」ボタン動作。
+  // target_id (= village_posts.id) を使って参加者シートを開く。
+  // 既読化も裏で実行 (失敗しても画面は壊さない)。
+  async function handleViewParticipants(n: Notif) {
+    if (!n.target_id) return
+    setParticipantsPostId(n.target_id)
+    try {
+      const supabase = createClient()
+      await supabase.from('notifications').update({ is_read: true }).eq('id', n.id)
+      // local state も is_read=true に更新 (UI 即時反映)
+      setNotifs(prev => prev.map(item => item.id === n.id ? { ...item, is_read: true } : item))
+      cachedNotifs = cachedNotifs
+        ? cachedNotifs.map(item => item.id === n.id ? { ...item, is_read: true } : item)
+        : null
+    } catch {
+      // silent
+    }
+  }
+
+  // 2026-05-10 Phase A: 招待 type の「参加する / 見る」ボタンタップ動作
+  // 関連ルートへ遷移 + 既読化を裏で実行 (失敗しても画面は壊さない)
+  async function handleInviteJoin(n: Notif) {
+    const { href } = inviteAction(n.type, n.target_id)
+    try {
+      const supabase = createClient()
+      await supabase.from('notifications').update({ is_read: true }).eq('id', n.id)
+    } catch {
+      // silent
+    }
+    router.push(href)
+  }
+
+  // 2026-05-10 Phase A: 招待 type の「あとで」ボタンタップ動作
+  // 既読化のみ実行、画面遷移なし。ローカル state も更新して UI を即時反映。
+  async function handleInviteLater(n: Notif) {
+    setNotifs(prev => prev.map(item => item.id === n.id ? { ...item, is_read: true } : item))
+    cachedNotifs = cachedNotifs
+      ? cachedNotifs.map(item => item.id === n.id ? { ...item, is_read: true } : item)
+      : null
+    try {
+      const supabase = createClient()
+      await supabase.from('notifications').update({ is_read: true }).eq('id', n.id)
+    } catch {
+      // silent
+    }
   }
 
   const reactionNotifs = notifs.filter(n => TYPE_CONFIG[n.type]?.section === 'reaction')
@@ -87,73 +234,183 @@ export default function NotificationsPage() {
     const cfg   = TYPE_CONFIG[n.type] ?? { emoji: '🔔', label: '通知', section: 'other' as const }
     const actor = n.actor as any
     const unread = !n.is_read
+    const isInvite = INVITE_TYPES.has(n.type)
+    // 2026-05-12 Phase B PR-B2: 募集参加通知も「カード形式」の 2 ボタン UI を使う。
+    // ただし Primary は route 遷移ではなくシート開閉 (handleViewParticipants)。
+    const isRecruitmentCard = RECRUITMENT_CARD_TYPES.has(n.type)
+    // 2026-05-10 Phase A: 招待通知は「カード形式」で [参加する/見る] [あとで]
+    // 2 ボタンを下部に追加。本体タップ (handleTap) は actor プロフィールへ遷移
+    // するので、ボタンタップ時は stopPropagation で本体クリックを止める必要あり。
     return (
-      <button
-        onClick={() => handleTap(n)}
-        className="w-full flex items-start gap-3 px-4 py-3.5 text-left transition-all active:scale-[0.99]"
+      <div
+        className="w-full text-left transition-all"
         style={unread ? {
           background: glowColor ? `${glowColor}10` : 'rgba(255,201,40,0.08)',
         } : {}}
       >
-        <div className="relative flex-shrink-0">
-          <Avatar src={actor?.avatar_url} name={actor?.display_name ?? '?'} size="sm" />
-          <span className="absolute -bottom-1 -right-1 text-sm leading-none">{cfg.emoji}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.9)' }}>
-            <span className="font-bold">{actor?.display_name ?? '誰か'}</span>
-            {' '}
-            <span style={{ color: 'rgba(255,255,255,0.5)' }}>{cfg.label}</span>
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>{timeAgo(n.created_at)}</p>
-        </div>
-        {unread && (
-          <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
-            style={{ background: glowColor ?? '#FFC928', boxShadow: `0 0 6px ${glowColor ?? '#FFC928'}` }} />
+        <button
+          onClick={() => handleTap(n)}
+          className="w-full flex items-start gap-3 px-4 py-3.5 text-left transition-all active:scale-[0.99]"
+        >
+          <div className="relative flex-shrink-0">
+            <Avatar src={actor?.avatar_url} name={getUserDisplayName(actor, '?')} size="sm" />
+            <span className="absolute -bottom-1 -right-1 text-sm leading-none">{cfg.emoji}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.9)' }}>
+              <span className="font-bold">{getUserDisplayName(actor, '誰か')}</span>
+              {' '}
+              <span style={{ color: 'rgba(255,255,255,0.5)' }}>{cfg.label}</span>
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>{timeAgo(n.created_at)}</p>
+          </div>
+          {unread && (
+            <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
+              style={{ background: glowColor ?? '#FFC928', boxShadow: `0 0 6px ${glowColor ?? '#FFC928'}` }} />
+          )}
+        </button>
+        {/* 2026-05-10 Phase A: 招待通知の場合だけ [参加する/見る] [あとで] を追加 */}
+        {isInvite && (
+          <div className="flex gap-2 px-4 pb-3" onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleInviteJoin(n)
+              }}
+              className="flex-1 py-2 rounded-full text-xs font-bold active:scale-[0.98] transition-all"
+              style={{
+                background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)',
+                color: '#fff',
+                boxShadow: '0 2px 8px rgba(157,92,255,0.25)',
+              }}
+            >
+              {inviteAction(n.type, n.target_id).label}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleInviteLater(n)
+              }}
+              className="flex-1 py-2 rounded-full text-xs font-bold active:scale-[0.98] transition-all"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: 'rgba(255,255,255,0.7)',
+              }}
+            >
+              あとで
+            </button>
+          </div>
         )}
-      </button>
+        {/* 2026-05-12 Phase B PR-B2: 募集参加通知の場合だけ [参加者を見る] [あとで] を追加。
+            Primary は緑グラデで募集 FAB と色を揃える (誤って招待と混同しないように)。
+            target_id (= village_posts.id) が無い場合は Primary を出さず [あとで] のみ。 */}
+        {isRecruitmentCard && (
+          <div className="flex gap-2 px-4 pb-3" onClick={e => e.stopPropagation()}>
+            {n.target_id && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleViewParticipants(n)
+                }}
+                className="flex-1 py-2 rounded-full text-xs font-bold active:scale-[0.98] transition-all"
+                style={{
+                  background: 'linear-gradient(135deg, #39FF88 0%, #2dd96a 100%)',
+                  color: '#0a1a0f',
+                  boxShadow: '0 2px 8px rgba(57,255,136,0.3)',
+                }}
+              >
+                参加者を見る
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleInviteLater(n)
+              }}
+              className="flex-1 py-2 rounded-full text-xs font-bold active:scale-[0.98] transition-all"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: 'rgba(255,255,255,0.7)',
+              }}
+            >
+              あとで
+            </button>
+          </div>
+        )}
+      </div>
     )
   }
 
   return (
     <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
 
-      {/* ── ヘッダー ── */}
-      <div className="sticky top-0 z-10 px-4 pt-12 pb-3 backdrop-blur-md"
-        style={{ background: 'rgba(8,8,18,0.92)', borderBottom: '1px solid rgba(255,201,40,0.2)' }}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ border: '2px solid rgba(255,201,40,0.6)', background: 'rgba(255,201,40,0.1)' }}>
-              <User size={16} style={{ color: '#FFC928' }} />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#FFC928' }}>NOTIFICATIONS</p>
-              <h1 className="font-extrabold text-2xl leading-tight" style={{ color: '#F0EEFF' }}>通知</h1>
-            </div>
-          </div>
-          {unreadCount > 0 && (
-            <span className="flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-full"
-              style={{ background: 'rgba(255,201,40,0.15)', color: '#FFC928', border: '1px solid rgba(255,201,40,0.35)' }}>
+      {/* ── ヘッダー (2026-05-09: 共通 PageHeader に移行) ──
+          - 旧: sticky top-0 / pt-12 pb-3 / 黄アクセント / 未読バッジ右上
+          - 新: 共通 PageHeader / pt-12 pb-3 / 黄アクセント (#FFC928)
+          - 未読バッジは actions prop で右側に維持 */}
+      <PageHeader
+        label="NOTIFICATIONS"
+        title="通知"
+        icon={Bell}
+        accentColor="#FFC928"
+        actions={
+          unreadCount > 0 ? (
+            <span
+              className="flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-full"
+              style={{ background: 'rgba(255,201,40,0.15)', color: '#FFC928', border: '1px solid rgba(255,201,40,0.35)' }}
+            >
               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#FFC928' }} />
               {unreadCount}件未読
             </span>
-          )}
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
 
-      {loading ? (
-        <div className="px-4 pt-4 space-y-2">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="rounded-2xl p-4 flex gap-3 animate-pulse"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              <div className="w-10 h-10 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }} />
-              <div className="flex-1 space-y-2 py-1">
-                <div className="h-3 rounded w-3/4" style={{ background: 'rgba(255,255,255,0.1)' }} />
-                <div className="h-3 rounded w-1/3" style={{ background: 'rgba(255,255,255,0.06)' }} />
+      {loading && !showSkeleton ? (
+        // 2026-05-09: 速い読込 (<200ms) は skeleton を出さず空のまま。
+        // PageHeader は表示済みなので、ユーザーには「ヘッダーだけ見える」状態が一瞬。
+        // 多くの読込は <200ms で完了するため、結果的にこの分岐がほとんどのケースになる。
+        <div style={{ minHeight: '50vh' }} aria-busy="true" />
+      ) : loading ? (
+        // 2026-05-09 マッキーさん指示「skeleton と本表示の高さを揃える」対応。
+        // 旧 skeleton (5 行フラット px-4 pt-4 space-y-2) は loaded 状態 (3 セクション
+        // ラベル + 容器) と構造が違い、loading→loaded で ~90px のジャンプが発生していた。
+        // 新 skeleton: 本表示と同じ構造 (pb-28 pt-2 wrapper + section ラベル + 容器内 row)
+        // で 1 セクション分を描画。本表示に切替った瞬間の高さ・余白が一致する。
+        // この分岐は「読込が 200ms 以上かかった場合のみ」発火する (useDelayedSkeleton)。
+        <div className="pb-28 pt-2">
+          <div className="px-4 mb-4">
+            {/* セクションラベル placeholder (本表示の「返信・反応」と同位置) */}
+            <div className="flex items-center gap-2 py-3">
+              <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(255,201,40,0.4)' }} />
+              <div className="h-2.5 w-20 rounded animate-pulse" style={{ background: 'rgba(255,201,40,0.18)' }} />
+            </div>
+            {/* row 容器 (本表示と同じ rounded-2xl + border) */}
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,201,40,0.2)', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}>
+              <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex items-start gap-3 px-4 py-3.5 animate-pulse">
+                    <div className="w-10 h-10 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }} />
+                    <div className="flex-1 space-y-2 py-1">
+                      <div className="h-3 rounded w-3/4" style={{ background: 'rgba(255,255,255,0.1)' }} />
+                      <div className="h-3 rounded w-1/3" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+          </div>
         </div>
       ) : notifs.length === 0 ? (
         <div className="flex flex-col items-center justify-center px-6" style={{ minHeight: 'calc(100vh - 120px)' }}>
@@ -242,6 +499,18 @@ export default function NotificationsPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* 2026-05-12 Phase B PR-B2: 募集参加者一覧シート (recruitment_joined 通知の
+          「参加者を見る」ボタンで開く)。target_id が null の通知では Primary が
+          そもそも描画されないので、ここでの postId は常に有効値が入る。 */}
+      {participantsPostId && (
+        <RecruitmentParticipantsSheet
+          open={!!participantsPostId}
+          onClose={() => setParticipantsPostId(null)}
+          postId={participantsPostId}
+          currentUserId={currentUserId}
+        />
       )}
     </div>
   )

@@ -3,7 +3,7 @@
   "autoPort": true,
   "configurations": [
     {
-      "name": "nowjp",
+      "name": "yvoice",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000

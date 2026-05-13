@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createHash } from 'crypto'
+import * as Sentry from '@sentry/nextjs'
 
 function makeSupabaseClient(accessToken?: string) {
   const cookieStore = cookies()
@@ -30,12 +31,12 @@ export async function POST(req: Request) {
 
     const { data: { user }, error: authErr } = await supabase.auth.getUser()
     if (authErr || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+      return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
     }
 
     const { phone, otp } = await req.json()
     if (!phone || !otp) {
-      return NextResponse.json({ error: 'パラメータが不足しています' }, { status: 400 })
+      return NextResponse.json({ error: 'invalid_params' }, { status: 400 })
     }
 
     // 同じハッシュ化ロジックで比較
@@ -48,22 +49,39 @@ export async function POST(req: Request) {
     })
 
     if (error) {
-      console.error('verify RPC error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('[phone/verify-otp] RPC error:', error)
+      // RPC の生メッセージはクライアントに渡さない
+      return NextResponse.json({ error: 'verify_failed' }, { status: 500 })
     }
 
-    const result = data as { success?: boolean; error?: string }
+    // 旧実装は data が null のとき result.error 参照で TypeError → 500 を返していた。
+    // null は「OTP が見つからない / 期限切れ」のシグナル扱いに正規化。
+    const result = (data ?? null) as { success?: boolean; error?: string } | null
+    if (!result) {
+      return NextResponse.json({ error: 'invalid_otp' }, { status: 400 })
+    }
 
     if (result.error) {
       if (result.error === 'already_verified') {
         return NextResponse.json({ success: true, already: true })
       }
-      return NextResponse.json({ error: result.error }, { status: 400 })
+      // 既知のエラーコードはそのまま、それ以外はサーバーログのみ
+      const known = ['invalid_otp', 'expired_otp', 'invalid_phone']
+      const code = known.includes(result.error) ? result.error : 'verify_failed'
+      if (code === 'verify_failed') {
+        console.error('[phone/verify-otp] unknown rpc error:', result.error)
+        // unknown rpc error は silent failure になりがちなので Sentry に送る
+        try { Sentry.captureMessage(`phone/verify-otp unknown rpc error: ${result.error}`, 'error') } catch {}
+      }
+      return NextResponse.json({ error: code }, { status: 400 })
     }
 
     return NextResponse.json({ success: true })
   } catch (e: any) {
-    console.error('verify-otp error:', e)
-    return NextResponse.json({ error: e.message ?? '認証に失敗しました' }, { status: 500 })
+    // Next.js 14.2.29 では instrumentation.onRequestError が未対応のため、
+    // 明示的に Sentry に送る。capture 失敗が route を落とさないよう包む。
+    try { Sentry.captureException(e) } catch {}
+    console.error('[phone/verify-otp] error:', e)
+    return NextResponse.json({ error: 'verify_failed' }, { status: 500 })
   }
 }

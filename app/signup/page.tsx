@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import YVoiceLogo from '@/components/ui/icons/YVoiceLogo'
 
 function SignupForm() {
   const router       = useRouter()
@@ -14,11 +15,31 @@ function SignupForm() {
   const [error,    setError]    = useState('')
   const [done,     setDone]     = useState(false)
   const [agreed,   setAgreed]   = useState(false)
+  // 既ログインチェック完了まで signup form を出さない (session 復元中の flash 防止)
+  const [authChecking, setAuthChecking] = useState(true)
 
   useEffect(() => {
     const ref = searchParams.get('ref')
     if (ref) localStorage.setItem('nm_invite_ref', ref)
   }, [searchParams])
+
+  // 2026-05-08 マッキーさん指示「一度ログインしたら 90 日維持」への補完対応。
+  // 既ログイン user が /signup にアクセスしたとき signup form を見せず即
+  // /timeline へ振る。
+  useEffect(() => {
+    let cancelled = false
+    async function checkAuth() {
+      const { data: { user } } = await createClient().auth.getUser()
+      if (cancelled) return
+      if (user) {
+        router.replace('/timeline')
+        return
+      }
+      setAuthChecking(false)
+    }
+    checkAuth()
+    return () => { cancelled = true }
+  }, [router])
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
@@ -40,6 +61,18 @@ function SignupForm() {
       provider: 'google',
       options: { redirectTo: `${location.origin}/onboarding` },
     })
+  }
+
+  // 既ログインチェック中: signup form を見せず full screen loading
+  if (authChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#080812' }}>
+        <span
+          className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: 'rgba(157,92,255,0.6)', borderTopColor: 'transparent' }}
+        />
+      </div>
+    )
   }
 
   if (done) {
@@ -65,12 +98,12 @@ function SignupForm() {
       <div className="flex-1 flex flex-col justify-center px-6 max-w-sm mx-auto w-full">
         <div className="mb-8 text-center">
           <div
-            className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' }}
+            className="mx-auto mb-4 flex items-center justify-center"
+            style={{ filter: 'drop-shadow(0 0 28px rgba(157,92,255,0.45))' }}
           >
-            <span className="text-2xl">🏕️</span>
+            <YVoiceLogo variant="stacked" markSize={72} />
           </div>
-          <h1 className="text-2xl font-extrabold text-stone-900">自由村に参加する</h1>
+          <p className="text-stone-500 text-xs mt-1 tracking-wider font-bold">YOUR VOICE ONLINE</p>
           <p className="text-stone-400 text-sm mt-1">20歳以上の方のみご利用いただけます</p>
         </div>
 

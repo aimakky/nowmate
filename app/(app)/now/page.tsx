@@ -1,2 +1,3 @@
 import { redirect } from 'next/navigation'
-export default function NowPage() { redirect('/villages') }
+// /now はレガシー URL。YVOICE の主動線である /timeline へ統一。
+export default function NowPage() { redirect('/timeline') }

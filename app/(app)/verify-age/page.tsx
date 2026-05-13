@@ -4,12 +4,20 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, ShieldCheck, FileText, Loader2 } from 'lucide-react'
+import { useReauth } from '@/hooks/useReauth'
+import ReAuthModal from '@/components/auth/ReAuthModal'
 
 export default function VerifyAgePage() {
   const router = useRouter()
   const [loading,   setLoading]   = useState(true)
   const [verified,  setVerified]  = useState(false)
   const [starting,  setStarting]  = useState(false)
+  const [errMsg,    setErrMsg]    = useState<string | null>(null)
+
+  // 再認証 (reauth) フック。年齢確認のような本人確認情報の重要操作前に
+  // パスワード再確認モーダルを出す。直近 5 分以内に再認証済みなら modal を
+  // 出さず即実行 (UX 優先)。
+  const reauth = useReauth()
 
   useEffect(() => {
     async function check() {
@@ -25,12 +33,20 @@ export default function VerifyAgePage() {
 
   async function startVerification() {
     setStarting(true)
+    setErrMsg(null)
     try {
       const res = await fetch('/api/stripe/verify-age', { method: 'POST' })
+      if (!res.ok) {
+        const t = await res.text().catch(() => '')
+        throw new Error(`API ${res.status}: ${t.slice(0, 120)}`)
+      }
       const data = await res.json()
       if (data.already_verified) { setVerified(true); setStarting(false); return }
-      if (data.url) window.location.href = data.url
-    } catch {
+      if (data.url) { window.location.href = data.url; return }
+      throw new Error('レスポンスに URL が含まれていません')
+    } catch (e) {
+      console.error('[verify-age] startVerification failed', e)
+      setErrMsg(e instanceof Error ? e.message : '本人確認の開始に失敗しました。時間を置いて再度お試しください。')
       setStarting(false)
     }
   }
@@ -63,7 +79,7 @@ export default function VerifyAgePage() {
                 <ShieldCheck size={40} className="text-green-400" />
               </div>
               <h2 className="font-extrabold text-white text-xl mb-2">認証済み ✓</h2>
-              <p className="text-green-300/70 text-sm">年齢認証が完了しています。<br />sameeのすべての機能をご利用いただけます。</p>
+              <p className="text-green-300/70 text-sm">年齢認証が完了しています。<br />YVOICEのすべての機能をご利用いただけます。</p>
             </div>
             <button
               onClick={() => router.back()}
@@ -81,7 +97,7 @@ export default function VerifyAgePage() {
               <div className="text-5xl mb-3">🛡️</div>
               <h2 className="font-extrabold text-white text-xl mb-2">本人確認（年齢認証）</h2>
               <p className="text-white/60 text-xs leading-relaxed">
-                sameeは<span className="text-purple-300 font-bold">20歳以上限定</span>のコミュニティです。<br />
+                YVOICEは<span className="text-purple-300 font-bold">20歳以上限定</span>のコミュニティです。<br />
                 運転免許証・マイナンバーカード・パスポートで<br />
                 本人確認を行います。
               </p>
@@ -125,14 +141,26 @@ export default function VerifyAgePage() {
             <div className="bg-purple-50 border border-purple-100 rounded-2xl px-4 py-3">
               <p className="text-xs text-purple-700 leading-relaxed">
                 🔒 <span className="font-bold">プライバシー保護</span><br />
-                書類の情報はStripe Identity（Stripe, Inc.）が処理します。sameeのサーバーには書類の画像は保存されません。確認されるのは年齢のみです。
+                書類の情報はStripe Identity（Stripe, Inc.）が処理します。YVOICEのサーバーには書類の画像は保存されません。確認されるのは年齢のみです。
               </p>
             </div>
 
-            {/* CTA */}
+            {/* エラー表示 */}
+            {errMsg && (
+              <div className="mb-3 rounded-2xl p-3 text-xs"
+                style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#fecaca' }}>
+                {errMsg}
+              </div>
+            )}
+
+            {/* CTA — 本人確認情報の重要操作なので、開始前に reauth を要求する。
+                直近 5 分以内に再認証済みなら modal を出さず即実行 (UX 優先)。 */}
             <button
-              onClick={startVerification}
-              disabled={starting}
+              onClick={() => reauth.requestReauth(
+                startVerification,
+                '年齢認証を始めるため、本人確認のためパスワードを入力してください。'
+              )}
+              disabled={starting || reauth.loading}
               className="w-full py-4 rounded-2xl font-extrabold text-white text-base disabled:opacity-60 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               style={{
                 background: 'linear-gradient(135deg,#8b5cf6 0%,#6d28d9 100%)',
@@ -153,6 +181,18 @@ export default function VerifyAgePage() {
           </div>
         )}
       </div>
+
+      {/* 再認証モーダル: 年齢認証開始前にパスワードを再確認する。
+          直近 5 分以内に再認証済みなら open しない (helper 内で判定)。
+          OAuth ユーザー向けに「Google で再認証」ボタンも併設済み (modal 内)。 */}
+      <ReAuthModal
+        isOpen={reauth.isOpen}
+        loading={reauth.loading}
+        error={reauth.error}
+        description={reauth.description}
+        onClose={reauth.closeReauth}
+        onSubmit={reauth.verifyAndContinue}
+      />
     </div>
   )
 }

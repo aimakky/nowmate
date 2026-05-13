@@ -1,9 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+// Vercel Edge cache 対策は middleware.ts で全レスポンスに no-store を
+// 注入する方式に統一。'use client' ページでは route segment config
+// (export const revalidate = 0 等) が build error を起こすため使わない。
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import YVoiceIcon from '@/components/ui/icons/YVoiceIcon'
+import YVoiceLogo from '@/components/ui/icons/YVoiceLogo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -11,6 +17,28 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
+  // 既ログインチェック完了まで login form を出さない (session 復元中の flash 防止)
+  const [authChecking, setAuthChecking] = useState(true)
+
+  // 2026-05-08 マッキーさん指示「一度ログインしたら 90 日維持」への補完対応。
+  // 既ログイン user が /login にアクセスしたとき login form を見せず即 /timeline へ
+  // 振る。root page (app/page.tsx) の server redirect と組み合わせて、ログイン済み
+  // user が誤って login 画面に到達するルートを全部塞ぐ。
+  useEffect(() => {
+    let cancelled = false
+    async function checkAuth() {
+      const { data: { user } } = await createClient().auth.getUser()
+      if (cancelled) return
+      if (user) {
+        // 既ログイン → タイムラインへ
+        router.replace('/timeline')
+        return
+      }
+      setAuthChecking(false)
+    }
+    checkAuth()
+    return () => { cancelled = true }
+  }, [router])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -18,19 +46,59 @@ export default function LoginPage() {
     setError('')
     const { error: err } = await createClient().auth.signInWithPassword({ email, password })
     if (err) { setError('メールアドレスまたはパスワードが正しくありません'); setLoading(false); return }
-    router.push('/villages')
+    // ログイン後は YVOICE のメイン入口である /timeline へ統一。
+    // BottomNav の TL がここで active になる。
+    router.push('/timeline')
     router.refresh()
   }
 
   async function handleGoogle() {
+    // 旧: redirectTo=/onboarding 直行 → SSR cookie が書かれないリスク + 既存ユーザーも
+    // オンボに飛ばされる。
+    // → /auth/callback?next=/timeline 経由で server 側に session を確定させる。
+    //   callback 側で「プロフィール有り → /timeline、無し → /onboarding」を分岐する。
     await createClient().auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${location.origin}/onboarding` },
+      options: { redirectTo: `${location.origin}/auth/callback?next=/timeline` },
     })
+  }
+
+  // 既ログインチェック中: login form を見せず full screen loading
+  // (Cookie が 90 日生きていれば即 /timeline へ replace されるので一瞬だけ)
+  if (authChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#080812' }}>
+        <span
+          className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: 'rgba(157,92,255,0.6)', borderTopColor: 'transparent' }}
+        />
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ background: '#080812' }}>
+
+      {/* ── 認証中の全画面ローディング（旧 UI が一瞬出るのを防ぐためのカバー） ── */}
+      {loading && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center"
+          style={{ background: 'rgba(8,8,18,0.92)', backdropFilter: 'blur(8px)' }}>
+          <div className="flex flex-col items-center gap-3">
+            <div
+              className="w-14 h-14 flex items-center justify-center"
+              style={{ filter: 'drop-shadow(0 0 24px rgba(157,92,255,0.55))' }}
+            >
+              <YVoiceIcon size={56} rounded={16} />
+            </div>
+            <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(240,238,255,0.6)' }}>
+              YVOICE
+            </p>
+            <span className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
+              style={{ borderColor: 'rgba(157,92,255,0.6)', borderTopColor: 'transparent' }} />
+          </div>
+        </div>
+      )}
+
       {/* Background grid */}
       <div className="absolute inset-0 pointer-events-none"
         style={{
@@ -47,18 +115,15 @@ export default function LoginPage() {
 
       <div className="relative z-10 flex-1 flex flex-col justify-center px-6 max-w-sm mx-auto w-full">
         <div className="mb-8 text-center">
-          {/* Logo */}
+          {/* Logo (stacked: Y マーク + YVOICE 文字) */}
           <div
-            className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4"
-            style={{
-              background: 'linear-gradient(135deg, #9D5CFF 0%, #FF4D90 100%)',
-              boxShadow: '0 0 30px rgba(157,92,255,0.5), 0 0 60px rgba(157,92,255,0.2)',
-            }}
+            className="mx-auto mb-4 flex items-center justify-center"
+            style={{ filter: 'drop-shadow(0 0 30px rgba(157,92,255,0.55)) drop-shadow(0 0 60px rgba(157,92,255,0.18))' }}
           >
-            <span className="text-2xl">✦</span>
+            <YVoiceLogo variant="stacked" markSize={72} />
           </div>
           <h1 className="text-2xl font-extrabold mb-1" style={{ color: '#F0EEFF' }}>おかえりなさい</h1>
-          <p className="text-sm" style={{ color: 'rgba(240,238,255,0.45)' }}>sameeにログインする</p>
+          <p className="text-sm" style={{ color: 'rgba(240,238,255,0.45)' }}>Your Voice Online にログイン</p>
         </div>
 
         {/* Google */}

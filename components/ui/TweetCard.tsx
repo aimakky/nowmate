@@ -1,12 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getNationalityFlag, timeAgo } from '@/lib/utils'
-import { MessageCircle, Repeat2, MoreHorizontal, Pencil, Trash2, X, Flag, Ban } from 'lucide-react'
-import Avatar from '@/components/ui/Avatar'
+import { getNationalityFlag } from '@/lib/utils'
+import { Repeat2, Pencil, Trash2, X, Flag, Ban } from 'lucide-react'
+import PostActions from '@/components/ui/PostActions'
+import PostCardHeader from '@/components/ui/PostCardHeader'
 import ReportModal from '@/components/features/ReportModal'
+import { isVerifiedByExistingSchema } from '@/lib/identity-types'
+import { getUserDisplayName } from '@/lib/user-display'
+import { addSelfLike, removeSelfLike, isSelfLiked } from '@/lib/self-likes'
+import { addSelfRepost, removeSelfRepost, isSelfReposted } from '@/lib/self-reposts'
+import LikedUsersSheet from '@/components/features/LikedUsersSheet'
+import { SITE_HOST } from '@/lib/site'
 
 export const REACTIONS = [
   { key: 'heart',   emoji: '❤️', label: 'Love' },
@@ -25,9 +32,19 @@ export interface TweetData {
   reply_count: number
   repost_count: number
   repost_of: string | null
-  profiles: { display_name: string; nationality: string; avatar_url: string | null }
+  profiles: {
+    display_name: string
+    nationality: string
+    avatar_url: string | null
+    // Phase 1: 既存スキーマの age_verified を optional として受け取れるように。
+    // クエリ側で select に追加していなければ undefined → バッジ非表示。
+    age_verified?: boolean | null
+    age_verification_status?: string | null
+  }
   tweet_reactions: { user_id: string; reaction: string }[]
   tweet_replies?: { id: string }[]
+  // 投稿者の Trust Tier（任意・取得側がマージ済みなら表示する）
+  user_trust?: { tier: string } | null
   original?: {
     content: string
     user_id: string
@@ -41,12 +58,33 @@ interface Props {
   onUpdate: () => void
   showBorder?: boolean
   canInteract?: boolean
+  /**
+   * 親側で投稿者の verified 状態を持っている場合に明示的に上書きできる。
+   * 例: マイページで自分の投稿一覧を表示するとき、profile.age_verified を渡す。
+   */
+  verified?: boolean
+  /**
+   * アバターのカラー指定。default = 共有 Avatar コンポーネント (紫 brand-100)、
+   * 'green' = タイムラインで PostCard と色味を統一するための緑グラデアバター
+   * (linear-gradient(135deg,#059669,#047857) + 緑リング)。
+   * 2026-05-08: マッキーさん指示「タイムラインの紫アイコンも緑に統一して
+   * フォーマットは変えないで」を受けて追加。timeline からのみ green を渡し、
+   * mypage / profile / tweet 詳細からは default (紫) のままにする。
+   */
+  avatarVariant?: 'default' | 'green'
 }
 
-export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, canInteract = true }: Props) {
+// 2026-05-08 (8 回目): TweetCard の外側 wrapper (background / padding /
+// border / shadow) は撤去し、呼出側の PostCardShell (timeline / mypage /
+// profile/[userId]) または白背景 wrapper (/tweet/[tweetId] 詳細) に
+// 委譲する。これにより village 投稿カードと色味・浮き方・余白が完全一致し、
+// 「同じ画面で 1 投稿だけ違う」事故 (PR #13〜#17 で 4 連続発生) を構造的に
+// 防止する。showBorder prop は API 互換のため残置するが no-op。
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default function TweetCard({ tweet, myId, onUpdate, showBorder: _showBorder = true, canInteract = true, verified, avatarVariant = 'default' }: Props) {
+  // 投稿者の verified 判定: 明示 props 優先、次に tweet.profiles の既存カラム
+  const isVerified = verified ?? isVerifiedByExistingSchema(tweet.profiles)
   const router = useRouter()
-  const [showPicker,  setShowPicker]  = useState(false)
-  const [reposting,   setReposting]   = useState(false)
   const [showMenu,    setShowMenu]    = useState(false)
   const [showEdit,    setShowEdit]    = useState(false)
   const [editText,    setEditText]    = useState(tweet.content)
@@ -56,44 +94,161 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
   const [showReport,  setShowReport]  = useState(false)
   const [blockDone,   setBlockDone]   = useState(false)
   const [blocking,    setBlocking]    = useState(false)
+  // 2026-05-10: いいねしたユーザー一覧シートの表示制御
+  const [showLikedUsers, setShowLikedUsers] = useState(false)
+
+  // 2026-05-10: リポスト状態 (localStorage で永続化)。
+  // 自分が既にこの tweet をリポスト済みかどうか。
+  const selfRepostedInLs = myId ? isSelfReposted(myId, 'tweet', tweet.id) : false
+  // optimistic override: null = 切替前の DB / LS 値を使用
+  const [optimisticReposted, setOptimisticReposted] = useState<boolean | null>(null)
+  const [optimisticRepostDelta, setOptimisticRepostDelta] = useState<number>(0)
+  const dbReposted = selfRepostedInLs
+  const reposted = optimisticReposted === null ? dbReposted : optimisticReposted
+  const rawRepostCount = Math.max(0, (tweet.repost_count ?? 0) + optimisticRepostDelta)
+  // liked と同じパターン: 自分が repost している以上 count は最低 1
+  const repostCount = reposted ? Math.max(1, rawRepostCount) : rawRepostCount
 
   const isOwn = myId === tweet.user_id
+  // 投稿者プロフィール遷移先: 自分なら黒背景マイページ、他人なら他ユーザー
+  // プロフィール。自分用に白背景プロフィールへ飛ばないよう分岐する。
+  const profileHref = isOwn ? '/mypage' : `/profile/${tweet.user_id}`
   const MAX = 280
 
   // ── reactions ────────────────────────────────────────────────
-  const reactionMap = tweet.tweet_reactions.reduce((acc, r) => {
-    acc[r.reaction] = (acc[r.reaction] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
+  // 2026-05-08: B-1 方式 (Heart 1 種類リアクション) に統合。
+  // tweet_reactions テーブルは既存スキーマ維持 (heart/haha/wow/support/sad/fire 全 6 種を
+  // 引き続き保存可能) だが、UI からは Heart タップで 'heart' のみ upsert する。
+  //
+  // 2026-05-10 マッキーさん指示「自分の投稿にいいねが押せない」恒久対策:
+  // optimistic local state を導入。クリック直後に liked / count を即時切替し、
+  // 親の onUpdate() refetch 完了を待たなくても画面が反応する。
+  // これにより village 投稿側の toggleLike (mypage:1028) と挙動を完全統一。
+  // RLS 非対称挙動で refetch が stale データを返しても、UI は optimistic 値で
+  // ユーザに即時 feedback を返す。DB エラー時のみ revert + alert 表示。
+  //
+  // 2026-05-10 (追加修正): tweet_reactions RLS で my-like が SELECT から
+  // 隠れる事象により、ハート状態とカウントが画面によって不安定になるバグを
+  // localStorage 永続化で恒久対策。
+  // - 旧: isOwn 限定で localStorage を見ていた → 他人 tweet で count=0 になっていた
+  // - 新: 全 tweet で localStorage を確認 (myId が like したかどうかは投稿者と無関係)
+  const selfLikedInLs = myId ? isSelfLiked(myId, 'tweet', tweet.id) : false
+  const dbReaction = tweet.tweet_reactions.find(r => r.user_id === myId)?.reaction
+  const dbLiked = dbReaction === 'heart' || selfLikedInLs
+  // dbCount: DB から見える reactor 数 + my-like が DB に見えないなら +1 (重複防止)
+  const dbReactorSet = new Set(tweet.tweet_reactions.map(r => r.user_id))
+  if (selfLikedInLs && myId && !dbReactorSet.has(myId)) dbReactorSet.add(myId)
+  const dbCount = dbReactorSet.size
+  // optimistic override: null = optimistic state なし (DB 値を使用)
+  const [optimisticLiked, setOptimisticLiked] = useState<boolean | null>(null)
+  const [optimisticDelta, setOptimisticDelta] = useState<number>(0)
+  // 2026-05-10 真因確定: tweet_reactions の RLS 非対称挙動により、自分の
+  // 投稿に対する自分の heart 行は INSERT は成功するが SELECT で隠れる。
+  // 旧コードは「親 prop が更新されたら optimistic を即解除」していたため、
+  // refetch 結果に self-heart が含まれずグレーに戻ってしまうバグがあった。
+  //
+  // 新運用: dbLiked が optimisticLiked と一致した時だけ optimistic を解除する。
+  // 一致しない場合 (= RLS で DB 状態が隠れている) は optimistic を維持して
+  // ユーザの操作意図を尊重する。delete の場合は dbLiked=false と一致する
+  // ので 1 回の refetch で自然に解除される。
+  useEffect(() => {
+    if (optimisticLiked === null) return  // 既に解除済み
+    if (dbLiked === optimisticLiked) {
+      // DB 状態が optimistic と一致 → optimistic を解除して DB 値に委譲
+      setOptimisticLiked(null)
+      setOptimisticDelta(0)
+    }
+    // 一致しない場合は RLS hidden 状態と推定 → optimistic を維持
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tweet.tweet_reactions, dbLiked, optimisticLiked])
 
-  const myReaction    = tweet.tweet_reactions.find(r => r.user_id === myId)?.reaction
-  const activeReactions = REACTIONS.filter(r => reactionMap[r.key])
-  const hasReactions  = activeReactions.length > 0
+  // 2026-05-10 チラつき完全除去:
+  // 旧 myReaction は dbReaction (= tweet_reactions の中身のみ) を見ていたので、
+  // RLS で my-like 行が SELECT から消えた瞬間 dbReaction=undefined となり
+  // optimistic clear 直後にハートが一瞬グレーに見えるバグがあった。
+  // 新運用: liked 判定は selfLikedInLs を含む dbLiked を使う (下記 line で定義)。
+  // myReaction 自体は (絵文字ピッカー等の) 将来用に残す。
+  const myReaction = optimisticLiked === null ? dbReaction : (optimisticLiked ? 'heart' : undefined)
 
   async function toggleReaction(key: string) {
     if (!myId || !canInteract) return
     const supabase = createClient()
-    if (myReaction === key) {
-      await supabase.from('tweet_reactions').delete().eq('tweet_id', tweet.id).eq('user_id', myId)
+    // optimistic 切替: クリック直後に liked / count を切替えて即時 feedback
+    const wasLiked = (optimisticLiked === null ? dbLiked : optimisticLiked)
+    const nextLiked = !wasLiked
+    setOptimisticLiked(nextLiked)
+    setOptimisticDelta(nextLiked ? +1 : -1)
+    let error: { message: string; code?: string; details?: string; hint?: string } | null = null
+    if (wasLiked) {
+      const r = await supabase.from('tweet_reactions').delete().eq('tweet_id', tweet.id).eq('user_id', myId)
+      error = r.error as any
     } else {
-      await supabase.from('tweet_reactions').upsert(
+      const r = await supabase.from('tweet_reactions').upsert(
         { tweet_id: tweet.id, user_id: myId, reaction: key },
         { onConflict: 'tweet_id,user_id' }
       )
+      error = r.error as any
     }
-    setShowPicker(false)
+    if (error) {
+      console.error('[toggleReaction] supabase error:', error)
+      // RLS で reject された等の場合 UI を元に戻す
+      setOptimisticLiked(wasLiked)
+      setOptimisticDelta(0)
+      return
+    }
+    // 2026-05-10: my-like が RLS で SELECT から隠れる/不安定なケースがあるため、
+    // 全 tweet (own / 他人問わず) で localStorage に永続化してハート状態と
+    // カウントを画面間で一致させる。
+    if (myId) {
+      if (nextLiked) addSelfLike(myId, 'tweet', tweet.id)
+      else removeSelfLike(myId, 'tweet', tweet.id)
+    }
     onUpdate()
   }
 
-  async function handleRepost() {
-    if (!myId || reposting || !canInteract) return
+  // ── repost ──────────────────────────────────────────────────
+  // 2026-05-10 マッキーさん指示「リポスト機能を実装」:
+  // tweets テーブルに repost_of (FK) を持たせる設計で、リポスト = 自分が
+  // INSERT した新 tweet 行 (repost_of=<元 tweet id>) として表現。
+  // 解除 = 該当 row を DELETE。
+  async function toggleRepost() {
+    if (!myId || !canInteract) return
+    // リポスト元 (= 自分が以前リポストして連鎖した場合) は元 tweet を指す
+    const targetTweetId = tweet.repost_of ?? tweet.id
     const supabase = createClient()
-    const { data: existing } = await supabase.from('tweets')
-      .select('id').eq('user_id', myId).eq('repost_of', tweet.id).maybeSingle()
-    if (existing) { setReposting(false); return }
-    setReposting(true)
-    await supabase.from('tweets').insert({ user_id: myId, content: tweet.content, repost_of: tweet.id })
-    setReposting(false)
+    const wasReposted = optimisticReposted === null ? dbReposted : optimisticReposted
+    const nextReposted = !wasReposted
+    // optimistic
+    setOptimisticReposted(nextReposted)
+    setOptimisticRepostDelta(nextReposted ? +1 : -1)
+    let error: any = null
+    if (wasReposted) {
+      // 解除: 自分の repost row を DELETE
+      const r = await supabase
+        .from('tweets')
+        .delete()
+        .eq('user_id', myId)
+        .eq('repost_of', targetTweetId)
+      error = r.error
+    } else {
+      // INSERT: 元 tweet の内容をコピーして repost_of に元 id を入れる
+      const r = await supabase.from('tweets').insert({
+        user_id: myId,
+        content: tweet.content,
+        repost_of: targetTweetId,
+      })
+      error = r.error
+    }
+    if (error) {
+      console.error('[toggleRepost] supabase error:', error)
+      // revert
+      setOptimisticReposted(wasReposted)
+      setOptimisticRepostDelta(0)
+      return
+    }
+    // LS に永続化
+    if (nextReposted) addSelfRepost(myId, 'tweet', targetTweetId)
+    else removeSelfRepost(myId, 'tweet', targetTweetId)
     onUpdate()
   }
 
@@ -134,156 +289,106 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
     onUpdate()
   }
 
+  // ── share to X ───────────────────────────────────────────────
+  // 2026-05-08 マッキーさん指示: 投稿カード下部アクションを timeline PostCard と
+  // 完全統一 (Heart / Comment / Share)。Share2 タップで X 共有を起動。
+  function shareToX() {
+    const host = (typeof window !== 'undefined' ? window.location.host : '') || SITE_HOST
+    const text = `${tweet.content}\n\n— YVOICE より\n#YVOICE #ゲームコミュニティ\n${host}`
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
+  }
+
   const flag = getNationalityFlag(tweet.profiles?.nationality || '')
+  // ハート数 = ユニーク user 数 (= 実際にいいねしているユーザー数)。
+  // 2026-05-10 マッキーさん指示: ハート数が「2」と水増し表示される現象の防御。
+  // DB 制約は UNIQUE(tweet_id, user_id) なので本来 1 ユーザー 1 行のはずだが、
+  // RLS の OR ポリシーで同一 (tweet_id, user_id) 行が複数返却されるケースが
+  // あるため、`.length` ではなく Set でユニーク user 数を計算する。
+  // これにより万一 enrichment 段階で重複除去が漏れても、表示段階で
+  // 必ず正しい数 (= 実際にいいねした人数) になる。
+  // 2026-05-10 さらに optimistic update のため optimisticDelta を加算。
+  // (オプティミスティック中は max(0, dbCount + delta) で 0 未満にならないよう clamp)
+  //
+  // 2026-05-10 (チラつき対策): optimistic と DB が一致した瞬間 (= localStorage
+  // merge で揃った瞬間) に optimisticDelta を加算すると dbCount + delta で
+  // 二重カウントになりカウントが一瞬「2」と表示されるチラつきが発生する。
+  // optimisticLiked が dbLiked と一致している場合は DB が既に追いついているので
+  // delta は不要 (dbCount alone が正しい)。
+  const effectiveDelta = (optimisticLiked === null || optimisticLiked === dbLiked)
+    ? 0
+    : optimisticDelta
+  // liked 判定: optimistic 中はそれを優先、それ以外は dbLiked (= dbReaction === 'heart' || selfLikedInLs)
+  // を使う。selfLikedInLs を含むので RLS で DB 行が隠れても heart 状態が維持される。
+  const liked = (optimisticLiked === null) ? dbLiked : optimisticLiked
+  // 2026-05-10 マッキーさん指示「pink heart + count=0」最終的恒久対策:
+  // liked=true (pink heart 表示) なのに count=0 になる視覚不一致を強制的に防ぐ。
+  // 自分が反応している以上、count は最低 1 が必ず正しい。
+  // DB / RLS / LS の経路がいかなる組み合わせで失敗しても、視覚整合は維持される。
+  const rawCount = Math.max(0, dbCount + effectiveDelta)
+  const totalReactions = liked ? Math.max(1, rawCount) : rawCount
 
   return (
     <>
-      <div
-        className={`px-4 py-4 ${showBorder ? 'border-b' : ''}`}
-        style={{
-          background: 'rgba(255,255,255,0.04)',
-          borderColor: 'rgba(157,92,255,0.1)',
-          ...(showBorder ? {} : { borderBottom: 'none' }),
-        }}
-      >
-        {/* Repost header */}
-        {tweet.repost_of && (
-          <div className="flex items-center gap-1.5 text-xs font-semibold mb-2 ml-1"
-            style={{ color: 'rgba(240,238,255,0.4)' }}>
-            <Repeat2 size={12} />
-            <span>{tweet.profiles?.display_name} reposted</span>
-          </div>
-        )}
-
-        <div className="flex items-start gap-3">
-          {/* Avatar */}
-          <button onClick={() => router.push(`/profile/${tweet.user_id}`)} className="flex-shrink-0 mt-0.5">
-            <Avatar src={tweet.profiles?.avatar_url} name={tweet.profiles?.display_name} size="sm" />
-          </button>
-
-          <div className="flex-1 min-w-0">
-            {/* Name + time + menu */}
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <button onClick={() => router.push(`/profile/${tweet.user_id}`)}
-                  className="font-extrabold text-sm leading-tight"
-                  style={{ color: '#F0EEFF' }}>
-                  {tweet.profiles?.display_name}
-                </button>
-                <span className="text-base leading-none">{flag}</span>
-                <span className="text-xs" style={{ color: 'rgba(240,238,255,0.4)' }}>{timeAgo(tweet.created_at)}</span>
-              </div>
-              {myId && (
-                <button
-                  onClick={() => setShowMenu(true)}
-                  className="w-7 h-7 flex items-center justify-center rounded-full transition-colors -mr-1 flex-shrink-0 active:opacity-60"
-                  style={{ color: 'rgba(240,238,255,0.35)' }}>
-                  <MoreHorizontal size={16} />
-                </button>
-              )}
-            </div>
-
-            {/* Content */}
-            <p className="text-sm leading-relaxed mb-3 whitespace-pre-wrap" style={{ color: 'rgba(240,238,255,0.85)' }}>
-              {tweet.content}
-            </p>
-
-            {/* Reaction summary */}
-            {hasReactions && (
-              <div className="flex items-center gap-1 mb-2 flex-wrap">
-                {activeReactions.map(r => (
-                  <button key={r.key} onClick={() => toggleReaction(r.key)}
-                    className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-all active:scale-90"
-                    style={myReaction === r.key
-                      ? { background: 'rgba(57,255,136,0.15)', color: '#39FF88', border: '1px solid rgba(57,255,136,0.4)' }
-                      : { background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.55)', border: '1px solid rgba(255,255,255,0.08)' }
-                    }>
-                    <span>{r.emoji}</span>
-                    <span>{reactionMap[r.key]}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Action bar */}
-            <div className="flex items-center gap-1 relative">
-              {canInteract ? (
-                <>
-                  {/* Reaction picker */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowPicker(p => !p)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
-                      style={myReaction
-                        ? { color: '#39FF88', background: 'rgba(57,255,136,0.1)' }
-                        : { color: '#39FF88', background: 'transparent' }
-                      }>
-                      {myReaction
-                        ? <span>{REACTIONS.find(r => r.key === myReaction)?.emoji}</span>
-                        : <span>＋ React</span>
-                      }
-                    </button>
-                    {showPicker && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
-                        <div className="absolute bottom-9 left-0 z-50 rounded-2xl shadow-xl p-2 flex gap-1"
-                          style={{ background: '#080f0a', border: '1px solid rgba(57,255,136,0.25)', boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 20px rgba(57,255,136,0.1)' }}>
-                          {REACTIONS.map(r => (
-                            <button key={r.key} onClick={() => toggleReaction(r.key)} title={r.label}
-                              className="w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all hover:scale-125 active:scale-95"
-                              style={myReaction === r.key
-                                ? { background: 'rgba(57,255,136,0.2)', border: '1px solid rgba(57,255,136,0.45)' }
-                                : { background: 'rgba(255,255,255,0.06)' }
-                              }>
-                              {r.emoji}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Reply */}
-                  <button onClick={() => router.push(`/tweet/${tweet.id}`)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90"
-                    style={{ color: 'rgba(240,238,255,0.4)' }}>
-                    <MessageCircle size={13} />
-                    {(tweet.reply_count ?? tweet.tweet_replies?.length ?? 0) > 0 && (
-                      <span>{tweet.reply_count ?? tweet.tweet_replies?.length}</span>
-                    )}
-                  </button>
-
-                  {/* Repost */}
-                  {tweet.repost_of === null && (
-                    <button onClick={handleRepost} disabled={reposting}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-90 disabled:opacity-40"
-                      style={{ color: 'rgba(240,238,255,0.4)' }}>
-                      <Repeat2 size={13} />
-                      {(tweet.repost_count ?? 0) > 0 && <span>{tweet.repost_count}</span>}
-                    </button>
-                  )}
-                </>
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  {!hasReactions && (
-                    <span className="text-[11px] font-medium" style={{ color: 'rgba(240,238,255,0.25)' }}>🇯🇵 Japan only</span>
-                  )}
-                  {(tweet.reply_count ?? 0) > 0 && (
-                    <span className="flex items-center gap-1 px-2 py-1 text-xs" style={{ color: 'rgba(240,238,255,0.3)' }}>
-                      <MessageCircle size={12} />{tweet.reply_count}
-                    </span>
-                  )}
-                  {(tweet.repost_count ?? 0) > 0 && (
-                    <span className="flex items-center gap-1 px-2 py-1 text-xs" style={{ color: 'rgba(240,238,255,0.3)' }}>
-                      <Repeat2 size={12} />{tweet.repost_count}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+      {/* Repost header (リポスト時のみ) */}
+      {tweet.repost_of && (
+        <div className="flex items-center gap-1.5 text-xs font-semibold mb-2 ml-1"
+          style={{ color: 'rgba(240,238,255,0.4)' }}>
+          <Repeat2 size={12} />
+          <span>{getUserDisplayName(tweet.profiles)} reposted</span>
         </div>
-      </div>
+      )}
+
+      {/* ヘッダー = 共通 PostCardHeader コンポーネント
+          2026-05-08 (9 回目): village 投稿カードと内部レイアウトを完全統一する
+          ため、アバター + 名前 + バッジ + 国旗 + 時刻 + 三点メニューを
+          PostCardHeader (components/ui/PostCardHeader.tsx) に集約。
+          本文と PostActions はヘッダーの sibling になり、カード左端から
+          フル幅で配置される (旧: アバター右にインデント)。 */}
+      <PostCardHeader
+        profileHref={profileHref}
+        displayName={getUserDisplayName(tweet.profiles)}
+        avatarUrl={tweet.profiles?.avatar_url}
+        avatarVariant={avatarVariant}
+        isVerified={isVerified}
+        trustTier={tweet.user_trust?.tier ?? null}
+        flag={flag}
+        timestamp={tweet.created_at}
+        onMenuClick={myId ? () => setShowMenu(true) : undefined}
+        menuLabel="投稿メニュー"
+      />
+
+      {/* Content (カード左端からフル幅で配置) */}
+      <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(240,238,255,0.85)' }}>
+        {tweet.content}
+      </p>
+
+      {/* アクション = 共通 PostActions コンポーネント
+          2026-05-08 (5 回目) マッキーさん指示「ミヤを含む全マイページで統一 +
+          共通コンポーネント化」を受け、行内 JSX から共通部品 PostActions に切替。
+          これにより今後アクション行を変更する際は components/ui/PostActions.tsx
+          の 1 ファイルだけ直せば timeline / mypage / profile すべてに反映される。 */}
+      <PostActions
+        liked={liked}
+        reactionCount={totalReactions}
+        replyCount={tweet.reply_count ?? tweet.tweet_replies?.length ?? 0}
+        canInteract={canInteract}
+        onHeart={() => toggleReaction('heart')}
+        onCountClick={() => setShowLikedUsers(true)}
+        onComment={() => router.push(`/tweet/${tweet.id}`)}
+        onShare={shareToX}
+        onRepost={() => toggleRepost()}
+        reposted={reposted}
+        repostCount={repostCount}
+      />
+
+      {/* 2026-05-10: いいねしたユーザー一覧シート (ハート数タップで開く) */}
+      <LikedUsersSheet
+        open={showLikedUsers}
+        onClose={() => setShowLikedUsers(false)}
+        postId={tweet.id}
+        postType="tweet"
+        currentUserId={myId}
+      />
 
       {/* ── アクションシート ── */}
       {showMenu && (
@@ -419,7 +524,7 @@ export default function TweetCard({ tweet, myId, onUpdate, showBorder = true, ca
       {showReport && (
         <ReportModal
           reportedId={tweet.user_id}
-          reportedName={tweet.profiles?.display_name ?? 'このユーザー'}
+          reportedName={getUserDisplayName(tweet.profiles, 'このユーザー')}
           onClose={() => setShowReport(false)}
         />
       )}

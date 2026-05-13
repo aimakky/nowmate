@@ -7,7 +7,10 @@ import Avatar from '@/components/ui/Avatar'
 import TrustBadge from '@/components/ui/TrustBadge'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
-import { Edit2, MessageSquareDashed, Check, X } from 'lucide-react'
+import { Edit2, MessageSquareDashed, Check, X, MessageSquare, UserPlus } from 'lucide-react'
+import VerifiedBadge from '@/components/ui/VerifiedBadge'
+import PageHeader from '@/components/layout/PageHeader'
+import { useDelayedSkeleton } from '@/hooks/useDelayedSkeleton'
 
 interface DirectChat {
   matchId: string
@@ -17,6 +20,7 @@ interface DirectChat {
     avatar_url: string | null
     is_online: boolean
     trust_tier?: string | null
+    age_verified?: boolean | null
   }
   lastMessage: { content: string; created_at: string; sender_id: string } | null
   isRequest?: boolean
@@ -28,14 +32,27 @@ interface OnlineUser {
   avatar_url: string | null
 }
 
+// 2026-05-09 マッキーさん指示「取得済みデータがあれば skeleton に戻さず前回表示を
+// 維持しながら裏で再取得」対応 (rule 8)。
+// AppLayout の `key={pathname}` で本コンポーネントは毎回 unmount/remount されるが、
+// この module-level 変数は React tree 外なので保持される。再訪問時は cached から
+// 即時復元 → loading=false で skeleton スキップ → 裏で fetch して最新化。
+let cachedDirects: DirectChat[] | null = null
+let cachedRequests: DirectChat[] | null = null
+let cachedOnlineUsers: OnlineUser[] | null = null
+
 export default function ChatListPage() {
   const router = useRouter()
-  const [directs,   setDirects]   = useState<DirectChat[]>([])
-  const [requests,  setRequests]  = useState<DirectChat[]>([])
-  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
-  const [loading,   setLoading]   = useState(true)
+  const [directs,   setDirects]   = useState<DirectChat[]>(cachedDirects ?? [])
+  const [requests,  setRequests]  = useState<DirectChat[]>(cachedRequests ?? [])
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>(cachedOnlineUsers ?? [])
+  // 初回訪問のみ skeleton 表示。再訪問は cached を即時表示しつつ裏で再 fetch。
+  const [loading,   setLoading]   = useState(cachedDirects === null)
   const [userId,    setUserId]    = useState<string | null>(null)
   const [tab,       setTab]       = useState<'chat' | 'request'>('chat')
+  // 2026-05-09: 速い読込 (<200ms) では skeleton を表示しない。
+  // skeleton↔loaded の切替に伴うわずかなズレが見えなくなる。
+  const showSkeleton = useDelayedSkeleton(loading)
 
   useEffect(() => {
     async function load() {
@@ -54,6 +71,10 @@ export default function ChatListPage() {
 
         if (matchErr || !matchData || matchData.length === 0) {
           setLoading(false)
+          // 2026-05-09: 「マッチ 0 件」も有効な状態としてキャッシュ。再訪問時に skeleton をスキップ。
+          cachedDirects = []
+          cachedRequests = []
+          cachedOnlineUsers = []
           return
         }
 
@@ -65,7 +86,7 @@ export default function ChatListPage() {
         const [{ data: profileData }, { data: trustData }, { data: msgData }] = await Promise.all([
           supabase
             .from('profiles')
-            .select('id, display_name, avatar_url, is_online')
+            .select('id, display_name, avatar_url, is_online, age_verified, age_verification_status')
             .in('id', otherIds),
           supabase
             .from('user_trust')
@@ -117,6 +138,11 @@ export default function ChatListPage() {
           .map((p: any) => ({ id: p.id, display_name: p.display_name, avatar_url: p.avatar_url }))
         setOnlineUsers(online)
 
+        // 2026-05-09: module-level cache を更新。次回訪問時に skeleton をスキップできる。
+        cachedDirects = normalChats
+        cachedRequests = requestChats
+        cachedOnlineUsers = online
+
       } catch (e) {
         console.error('chat load error:', e)
       } finally {
@@ -144,45 +170,64 @@ export default function ChatListPage() {
   return (
     <div className="max-w-md mx-auto min-h-screen" style={{ background: '#080812' }}>
 
-      {/* ヘッダー */}
-      <div className="sticky top-0 z-10 px-4 pt-12 pb-0 backdrop-blur-md"
-        style={{ background: 'rgba(8,8,18,0.96)', borderBottom: '1px solid rgba(255,79,216,0.2)' }}>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: 'rgba(255,79,216,0.7)' }}>MESSAGES</p>
-            <h1 className="font-extrabold text-xl" style={{ color: '#F0EEFF' }}>チャット</h1>
-          </div>
-          <button className="text-sm font-semibold active:opacity-60 transition-opacity" style={{ color: '#FF4FD8' }}>
-            編集
-          </button>
-        </div>
-        {/* タブ */}
-        <div className="flex">
-          {[
-            { id: 'chat',    label: 'メッセージ', count: 0 },
-            { id: 'request', label: 'リクエスト', count: requests.length },
-          ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id as 'chat' | 'request')}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold relative transition-colors"
-              style={{ color: tab === t.id ? '#F0EEFF' : 'rgba(240,238,255,0.3)' }}
+      {/* ヘッダー (2026-05-09: 共通 PageHeader に移行)
+          - 旧: sticky top-0 / pt-12 pb-0 / 桃アクセント / タブ内蔵
+          - 新: 共通 PageHeader / pt-12 / 桃アクセント (#FF4FD8) / bottomTab でタブ
+          - title 文字サイズが旧 text-xl から PageHeader 共通の text-2xl に変更 (4 ページ統一) */}
+      <PageHeader
+        label="MESSAGES"
+        title="チャット"
+        icon={MessageSquare}
+        accentColor="#FF4FD8"
+        bgColor="rgba(8,8,18,0.96)"
+        actions={
+          <div className="flex items-center gap-2">
+            <Link
+              href="/users"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold active:scale-95 transition-all"
+              style={{
+                background:'rgba(255,79,216,0.12)',
+                color:'#FF4FD8',
+                border:'1px solid rgba(255,79,216,0.3)',
+              }}
+              title="ユーザーを探す"
             >
-              {t.label}
-              {t.count > 0 && (
-                <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-extrabold text-white"
-                  style={{ background: 'linear-gradient(135deg,#FF4FD8,#E03BC0)', boxShadow: '0 2px 8px rgba(255,79,216,0.4)' }}>
-                  {t.count}
-                </span>
-              )}
-              {tab === t.id && (
-                <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
-                  style={{ background: '#FF4FD8' }} />
-              )}
+              <UserPlus size={13} />
+              <span>探す</span>
+            </Link>
+            <button className="text-sm font-semibold active:opacity-60 transition-opacity" style={{ color: '#FF4FD8' }}>
+              編集
             </button>
-          ))}
-        </div>
-      </div>
+          </div>
+        }
+        bottomTab={
+          <div className="flex">
+            {[
+              { id: 'chat',    label: 'メッセージ', count: 0 },
+              { id: 'request', label: 'リクエスト', count: requests.length },
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id as 'chat' | 'request')}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold relative transition-colors"
+                style={{ color: tab === t.id ? '#F0EEFF' : 'rgba(240,238,255,0.3)' }}
+              >
+                {t.label}
+                {t.count > 0 && (
+                  <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-extrabold text-white"
+                    style={{ background: 'linear-gradient(135deg,#FF4FD8,#E03BC0)', boxShadow: '0 2px 8px rgba(255,79,216,0.4)' }}>
+                    {t.count}
+                  </span>
+                )}
+                {tab === t.id && (
+                  <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
+                    style={{ background: '#FF4FD8' }} />
+                )}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       <div className="pb-28">
 
@@ -212,12 +257,15 @@ export default function ChatListPage() {
                       {r.other.avatar_url
                         ? <img src={r.other.avatar_url} className="w-full h-full object-cover" />
                         : <div className="w-full h-full flex items-center justify-center">
-                            <span className="text-lg font-bold text-white">{r.other.display_name[0]}</span>
+                            <span className="text-lg font-bold text-white">{r.other.display_name?.[0] ?? '?'}</span>
                           </div>
                       }
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm" style={{ color: '#F0EEFF' }}>{r.other.display_name}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="font-bold text-sm" style={{ color: '#F0EEFF' }}>{r.other.display_name}</p>
+                        <VerifiedBadge verified={r.other.age_verified} size="sm" />
+                      </div>
                       {r.lastMessage && (
                         <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(240,238,255,0.4)' }}>{r.lastMessage.content}</p>
                       )}
@@ -274,7 +322,7 @@ export default function ChatListPage() {
                         <div className="w-full h-full flex items-center justify-center"
                           style={{ background: 'linear-gradient(135deg,#FF4FD8,#E03BC0)' }}>
                           <span className="text-xl font-bold text-white">
-                            {u.display_name.charAt(0).toUpperCase()}
+                            {u.display_name?.[0]?.toUpperCase() ?? '?'}
                           </span>
                         </div>
                       )}
@@ -304,19 +352,44 @@ export default function ChatListPage() {
 
         {/* チャットリスト */}
         <div className="pt-2">
-          {loading ? (
-            <div className="space-y-2 px-4 pt-4">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="flex items-center gap-3 p-3.5 rounded-2xl animate-pulse"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,79,216,0.08)' }}>
-                  <div className="w-12 h-12 rounded-full flex-shrink-0" style={{ background: 'rgba(255,79,216,0.1)' }} />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3.5 rounded w-1/4" style={{ background: 'rgba(255,79,216,0.1)' }} />
-                    <div className="h-3 rounded w-2/3" style={{ background: 'rgba(255,79,216,0.07)' }} />
-                  </div>
+          {loading && !showSkeleton ? (
+            // 2026-05-09: 速い読込 (<200ms) は skeleton を出さず空のまま。
+            // 多くの読込はここで終わるため、skeleton flash 自体が発生しない。
+            <div style={{ minHeight: '50vh' }} aria-busy="true" />
+          ) : loading ? (
+            // 2026-05-09 マッキーさん指示「skeleton と本表示の高さを揃える」対応。
+            // 旧 skeleton: 6 行フラット (~360px)。本表示の「オンライン中フレンド」rail
+            // (~80px) が loaded 後に上から差し込まれてコンテンツが ~80px 下にジャンプ。
+            // 新 skeleton: オンライン中 rail の placeholder を上部に確保 (~80px) + 6 行 row。
+            // loaded 後にオンラインフレンドあり → placeholder と入替 (高さ同じ、ジャンプなし)
+            // この分岐は「読込が 200ms 以上かかった場合のみ」発火する (useDelayedSkeleton)。
+            <>
+              {/* オンライン中 rail placeholder (本表示の onlineUsers section と同位置・同高さ) */}
+              <div className="px-4 pt-4 pb-3">
+                <div className="h-2.5 w-24 rounded mb-3 animate-pulse" style={{ background: 'rgba(255,79,216,0.12)' }} />
+                <div className="flex gap-4 overflow-x-hidden pb-1">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                      <div className="w-14 h-14 rounded-full animate-pulse" style={{ background: 'rgba(255,79,216,0.1)', border: '2px solid rgba(255,79,216,0.18)' }} />
+                      <div className="h-2 w-10 rounded animate-pulse" style={{ background: 'rgba(255,79,216,0.08)' }} />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+              {/* チャット行 skeleton (本表示と同じ row 構造) */}
+              <div className="space-y-2 px-4 pt-4">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3.5 rounded-2xl animate-pulse"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,79,216,0.08)' }}>
+                    <div className="w-12 h-12 rounded-full flex-shrink-0" style={{ background: 'rgba(255,79,216,0.1)' }} />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3.5 rounded w-1/4" style={{ background: 'rgba(255,79,216,0.1)' }} />
+                      <div className="h-3 rounded w-2/3" style={{ background: 'rgba(255,79,216,0.07)' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : directs.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6" style={{ minHeight: 'calc(100vh - 200px)' }}>
               {/* Chat bubble icon with sparkles */}
@@ -339,23 +412,21 @@ export default function ChatListPage() {
               <p className="font-extrabold text-xl mb-2 text-center" style={{ color: '#F0EEFF' }}>
                 まだチャットがありません
               </p>
-              <p className="text-sm text-center leading-relaxed mb-8" style={{ color: 'rgba(240,238,255,0.4)' }}>
-                ギルドで知り合った仲間とDMができます
+              <p className="text-sm text-center leading-relaxed mb-8 px-2" style={{ color: 'rgba(240,238,255,0.45)' }}>
+                ギルドやゲーム村で知り合った仲間とDMできます
               </p>
 
-              {/* Neon border CTA button */}
-              <button
-                onClick={() => router.push('/guilds')}
-                className="relative w-full max-w-xs py-4 rounded-2xl font-bold text-base active:scale-[0.98] transition-all"
-                style={{
-                  background: 'rgba(255,79,216,0.12)',
-                  border: '1px solid rgba(255,79,216,0.6)',
-                  color: '#F0EEFF',
-                  boxShadow: '0 0 20px rgba(255,79,216,0.2), inset 0 0 20px rgba(255,79,216,0.05)',
-                }}
-              >
-                ギルドを探す →
-              </button>
+              {/* マッキーさん指示で「ギルドを探す」「ゲーム村を見る」の 2
+                  ボタンを削除。ユーザー検索の控えめなテキストリンクだけ残す。 */}
+              <div className="flex flex-col items-center w-full max-w-xs">
+                <button
+                  onClick={() => router.push('/users')}
+                  className="py-2 text-xs font-bold active:opacity-60 transition-opacity"
+                  style={{ color: 'rgba(255,79,216,0.7)' }}
+                >
+                  ユーザーを名前・IDで探す →
+                </button>
+              </div>
             </div>
           ) : (
             <div className="pt-2">
@@ -382,7 +453,7 @@ export default function ChatListPage() {
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <span className="text-lg font-bold text-white">
-                                {c.other.display_name.charAt(0).toUpperCase()}
+                                {c.other.display_name?.[0]?.toUpperCase() ?? '?'}
                               </span>
                             </div>
                           )}
@@ -405,6 +476,7 @@ export default function ChatListPage() {
                             <span className="font-bold text-sm truncate" style={{ color: '#F0EEFF' }}>
                               {c.other.display_name}
                             </span>
+                            <VerifiedBadge verified={c.other.age_verified} size="sm" />
                             {c.other.trust_tier && (
                               <TrustBadge tierId={c.other.trust_tier} size="xs" showLabel={false} />
                             )}

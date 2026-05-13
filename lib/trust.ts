@@ -35,6 +35,8 @@ export async function fetchTierProgress(userId: string): Promise<TierProgress | 
 }
 
 // ─── Tier 定義 ────────────────────────────────────────────────
+// ラベルは YVOICE の村世界観に統一（旧: 見習い/住民/信頼の住民/村の柱、
+// および timeline 旧: メンバー/ギルドメンバー/常連メンバー/ギルドマスター）
 export const TRUST_TIERS = [
   {
     id: 'visitor',
@@ -47,7 +49,7 @@ export const TRUST_TIERS = [
   },
   {
     id: 'resident',
-    label: '住民',
+    label: '村人',
     icon: '🏡',
     min: 100,
     color: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -65,7 +67,7 @@ export const TRUST_TIERS = [
   },
   {
     id: 'trusted',
-    label: '信頼の住民',
+    label: '信頼の村人',
     icon: '🌳',
     min: 600,
     color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -127,6 +129,10 @@ export async function awardPoints(
     p_points: pts,
     p_source_id: sourceId ?? null,
   })
+  if (result.error) {
+    // 信頼スコア付与失敗は UX を止めない（fire-and-forget 用途）が、原因追跡のため必ずログに残す
+    console.warn('[trust] awardPoints failed', { eventType, sourceId, error: result.error.message })
+  }
   return result
 }
 

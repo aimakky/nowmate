@@ -7,6 +7,12 @@
 # testing
 /coverage
 
+# Playwright
+/playwright-report/
+/test-results/
+/playwright/.cache/
+/tests/e2e/.auth/
+
 # next.js
 /.next/
 /out/
@@ -35,3 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# Sentry (auth token / build plugin の secret 漏れ予防)
+.sentryclirc
+.env.sentry-build-plugin

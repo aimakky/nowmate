@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-// 自由村の5つの約束 — 民度設計の中核
+// YVOICE の5つの約束 — 民度設計の中核
 // 投稿前初回 + 週1リマインダーとして表示
 const RULES = [
   {
@@ -55,7 +55,7 @@ export default function CulturalCharter({ onAgree, onClose, isReminder = false }
             <span className="text-2xl">🏕️</span>
             <div>
               <p className="font-extrabold text-white text-base leading-tight">
-                {isReminder ? '自由村の約束、覚えてますか？' : '自由村へようこそ'}
+                {isReminder ? 'YVOICEの約束、覚えてますか？' : 'YVOICEへようこそ'}
               </p>
               <p className="text-white/50 text-xs mt-0.5">
                 {isReminder

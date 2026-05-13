@@ -16,12 +16,14 @@ import VerificationGate, { type GateType } from '@/components/features/Verificat
 import MoodWeather from '@/components/features/MoodWeather'
 import DriftBottle from '@/components/features/DriftBottle'
 import { getUserTrust, getTierById, awardPoints } from '@/lib/trust'
+import { isVerificationBypassEnabled } from '@/lib/test-mode'
 import { checkGenreMastery, getIndustry, INDUSTRIES } from '@/lib/guild'
 import CulturalCharter, { shouldShowCharter, markCharterShown } from '@/components/features/CulturalCharter'
 import FirstPostPrompt from '@/components/features/FirstPostPrompt'
 
 import { detectNgWords } from '@/lib/moderation'
 import { startDM } from '@/lib/dm'
+import { getUserDisplayName } from '@/lib/user-display'
 
 // ─── Slow mode: 投稿間隔制限 ─────────────────────────────────
 const SLOW_MODE_MS  = 2 * 60 * 1000  // 2分
@@ -160,7 +162,7 @@ function ResolveModal({
                 {m.profiles?.display_name?.[0] ?? '?'}
               </div>
               <span className={`text-sm font-medium flex-1 ${selectedHelper === m.user_id ? 'text-emerald-700' : 'text-stone-700'}`}>
-                {m.profiles?.display_name ?? '住民'}
+                {getUserDisplayName(m.profiles, '住民')}
               </span>
               {selectedHelper === m.user_id && (
                 <span className="text-[10px] bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">+25pt</span>
@@ -573,7 +575,7 @@ function PostCard({
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <p className="text-xs font-bold text-stone-800">{post.profiles?.display_name ?? '住民'}</p>
+                <p className="text-xs font-bold text-stone-800">{getUserDisplayName(post.profiles, '住民')}</p>
                 {post.user_trust?.tier && <TrustBadge tierId={post.user_trust.tier} size="xs" />}
               </div>
               <p className="text-[10px] text-stone-400">{timeAgo(post.created_at)}</p>
@@ -734,7 +736,7 @@ function PostCard({
                   </div>
                   <div className="flex-1 bg-white rounded-2xl px-3 py-2 shadow-sm border border-stone-100">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-[11px] font-bold text-stone-800">{c.profiles?.display_name ?? '住民'}</span>
+                      <span className="text-[11px] font-bold text-stone-800">{getUserDisplayName(c.profiles, '住民')}</span>
                       <span className="text-[9px] text-stone-400">{timeAgo(c.created_at)}</span>
                     </div>
                     <p className="text-xs text-stone-700 leading-relaxed mt-0.5">{c.content}</p>
@@ -791,12 +793,17 @@ export default function VillageDetailPage() {
   const [pollDraft,       setPollDraft]       = useState(['', ''])  // 最低2選択肢
 
   const [tab,       setTab]       = useState<'posts' | 'voice' | 'bottle' | 'members' | 'diary' | 'diplo' | 'admin' | 'more'>('posts')
+  // voice 系の村では「通話に参加する」を最優先にしたいので、初回ロード時に
+  // 自動で voice タブへ切り替える。一度ユーザーが他のタブに動いたら追従しない。
+  const [tabAutoSetDone, setTabAutoSetDone] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [postCat,   setPostCat]   = useState('全部')
   const [isMember,  setIsMember]  = useState(false)
   const [isHost,    setIsHost]    = useState(false)
   const [userId,    setUserId]    = useState<string | null>(null)
   const [loading,   setLoading]   = useState(true)
+  // 村が取れなかった原因をユーザーに見せるための state（旧実装は黙って return null していた）
+  const [villageFetchError, setVillageFetchError] = useState<string | null>(null)
   const [newPost,        setNewPost]        = useState('')
   const [newPostCat,     setNewPostCat]     = useState('雑談')
   const [newPostDeadline,setNewPostDeadline]= useState<number | null>(null) // 時間（h）
@@ -907,15 +914,59 @@ export default function VillageDetailPage() {
 
   // ── Fetchers ─────────────────────────────────────────────
   const fetchVillage = useCallback(async () => {
-    const { data } = await createClient()
-      .from('villages').select('*, profiles(display_name), job_locked, job_type').eq('id', id).single()
-    if (data) {
-      setVillage(data)
-      setRules(data.rules ?? ['', '', ''])
-      setIsAbandoned(data.is_abandoned ?? false)
+    // villages → profiles の embed は本番で
+    //  "more than one relationship was found for 'villages' and 'profiles'"
+    // という曖昧性エラーで完全に失敗していた（FK が複数あり、!host_id hint
+    // でも production では解決できなかった）。
+    // 一番堅い方法は embed を諦めて host profile を別クエリで取り、
+    // 同じ shape（village.profiles）に詰め直すこと。これなら FK 構成が
+    // どう変わっても壊れない。
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('villages')
+      .select('*')
+      .eq('id', id)
+      .single()
+    if (error) {
+      console.error('[villages/[id]] fetchVillage error:', error)
+      setVillageFetchError(error.message ?? 'unknown')
+      setLoading(false)
+      return
     }
+    if (!data) {
+      setVillageFetchError('village_not_found')
+      setLoading(false)
+      return
+    }
+
+    // host profile を別途取得して同じキーに詰め直す
+    let hostProfile: { display_name: string | null } | null = null
+    if (data.host_id) {
+      const { data: hp } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', data.host_id)
+        .maybeSingle()
+      hostProfile = hp as { display_name: string | null } | null
+    }
+
+    setVillage({ ...data, profiles: hostProfile })
+    setRules(data.rules ?? ['', '', ''])
+    setIsAbandoned(data.is_abandoned ?? false)
+    setVillageFetchError(null)
     setLoading(false)
   }, [id])
+
+  // 通話メインの村（comm_style === 'voice'）に来たら、最初に voice タブを開く。
+  // 以前はホームから始まっていたため、ユーザーが「通話ルームに来た」と直感的に
+  // 認識できなかった。ユーザーが手動でタブを動かしたあとは追従しない。
+  useEffect(() => {
+    if (!village || tabAutoSetDone) return
+    if (village.comm_style === 'voice' && tab === 'posts') {
+      setTab('voice')
+    }
+    setTabAutoSetDone(true)
+  }, [village, tabAutoSetDone, tab])
 
   // 廃村チェック（ページ読み込み時）
   const checkAbandonment = useCallback(async () => {
@@ -936,22 +987,65 @@ export default function VillageDetailPage() {
   }, [id, userId])
 
   const fetchPosts = useCallback(async () => {
-    let q = createClient()
+    // PostgREST embed (profiles / user_trust!fkey) を撤廃。
+    // embed 解決失敗で親 row が消える構造的脆弱性を排除し、
+    // profiles / user_trust を別 query 並列取得 + Map merge する。
+    // is_shadow_banned による弾きは village 単位のモデレーションとして維持。
+    const supabase = createClient()
+    let q = supabase
       .from('village_posts')
-      .select('*, profiles(display_name, avatar_url, occupation), user_trust!village_posts_user_id_fkey(tier, is_shadow_banned)')
+      .select('*')
       .eq('village_id', id).order('created_at', { ascending: false }).limit(50)
     if (postCat !== '全部') q = q.eq('category', postCat)
     const { data } = await q
-    setPosts((data || []).filter((p: any) => !p.user_trust?.is_shadow_banned))
+    const rawPosts = (data ?? []) as any[]
+    if (rawPosts.length === 0) {
+      setPosts([])
+      return
+    }
+    const userIds = Array.from(new Set(rawPosts.map((p: any) => p.user_id))).filter(
+      (uid: any): uid is string => typeof uid === 'string' && uid.length > 0
+    )
+    const [profRes, trustRes] = await Promise.all([
+      userIds.length > 0
+        ? supabase.from('profiles').select('id, display_name, avatar_url, occupation').in('id', userIds)
+        : Promise.resolve({ data: [], error: null } as any),
+      userIds.length > 0
+        ? supabase.from('user_trust').select('user_id, tier, is_shadow_banned').in('user_id', userIds)
+        : Promise.resolve({ data: [], error: null } as any),
+    ])
+    const profMap = new Map<string, any>(
+      ((profRes as any).data ?? []).map((p: any) => [p.id, p])
+    )
+    const trustMap = new Map<string, any>(
+      ((trustRes as any).data ?? []).map((t: any) => [t.user_id, t])
+    )
+    const enriched = rawPosts.map((p: any) => ({
+      ...p,
+      profiles: profMap.get(p.user_id) ?? null,
+      user_trust: trustMap.get(p.user_id) ?? null,
+    }))
+    setPosts(enriched.filter((p: any) => !p.user_trust?.is_shadow_banned))
   }, [id, postCat])
 
   const fetchPinnedPost = useCallback(async () => {
     if (!village?.pinned_post_id) { setPinnedPost(null); return }
-    const { data } = await createClient()
+    // embed 撤廃 (RLS で参照先が隠れた時に pinned post が消えないよう別 query 化)
+    const supabase = createClient()
+    const { data: post } = await supabase
       .from('village_posts')
-      .select('*, profiles(display_name), user_trust!village_posts_user_id_fkey(tier)')
-      .eq('id', village.pinned_post_id).single()
-    setPinnedPost(data ?? null)
+      .select('*')
+      .eq('id', village.pinned_post_id).maybeSingle()
+    if (!post) { setPinnedPost(null); return }
+    const [profRes, trustRes] = await Promise.all([
+      supabase.from('profiles').select('id, display_name').eq('id', (post as any).user_id).maybeSingle(),
+      supabase.from('user_trust').select('tier').eq('user_id', (post as any).user_id).maybeSingle(),
+    ])
+    setPinnedPost({
+      ...(post as any),
+      profiles: (profRes as any).data ?? null,
+      user_trust: (trustRes as any).data ?? null,
+    })
   }, [village?.pinned_post_id])
 
   const fetchTodayStats = useCallback(async () => {
@@ -1196,7 +1290,17 @@ export default function VillageDetailPage() {
     return () => clearInterval(t)
   }, [fetchFreeNow])
 
-  const tier       = userTrust ? getTierById(userTrust.tier) : getTierById('visitor')
+  const baseTier = userTrust ? getTierById(userTrust.tier) : getTierById('visitor')
+  // 2026-05-08 YVOICE5 テスト期間中バイパス: NEXT_PUBLIC_DISABLE_VERIFICATION_GATE=true
+  // のとき、Trust Tier (visitor) 由来の権限制限 (canPost / canSpeak / canCreateRoom /
+  // canCreateVillage / canConsult) をすべて true に上書きして、テストプレイ中の
+  // 通話参加・投稿動作を確認できるようにする。正式リリース時は env を未設定 or
+  // 'false' に戻すだけで baseTier がそのまま使われる従来挙動に戻る。
+  // tier.id / tier.label / tier.icon / tier.color / tier.desc / tier.min は不変
+  // (UI の tier バッジ表示は元の tier を維持)。
+  const tier = isVerificationBypassEnabled()
+    ? { ...baseTier, canPost: true, canSpeak: true, canCreateRoom: true, canCreateVillage: true, canConsult: true }
+    : baseTier
   const isPillarUser = tier.id === 'pillar'
 
   // ── Actions ───────────────────────────────────────────────
@@ -1458,11 +1562,40 @@ export default function VillageDetailPage() {
 
   // ─────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-birch">
-      <span className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#080812' }}>
+      <span className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }} />
     </div>
   )
-  if (!village) return null
+  if (!village) {
+    // 旧実装は return null で黒画面のままだった。原因を画面に出して、戻れるようにする。
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center"
+        style={{ background: '#080812' }}>
+        <p className="text-4xl mb-4">🌫️</p>
+        <p className="text-base font-extrabold mb-2" style={{ color: '#F0EEFF' }}>
+          このゲーム村は表示できません
+        </p>
+        <p className="text-xs leading-relaxed mb-6" style={{ color: 'rgba(240,238,255,0.5)' }}>
+          {villageFetchError === 'village_not_found'
+            ? '村が見つかりませんでした。削除されたか、URL が間違っている可能性があります。'
+            : villageFetchError
+              ? `読み込みに失敗しました（${villageFetchError}）`
+              : '読み込みに失敗しました。時間をおいて再度お試しください。'}
+        </p>
+        <button
+          onClick={() => router.push('/guild')}
+          className="px-6 py-2.5 rounded-2xl text-sm font-bold active:scale-95 transition-all"
+          style={{
+            background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)',
+            color: '#fff',
+            boxShadow: '0 4px 20px rgba(139,92,246,0.4)',
+          }}
+        >
+          ← ゲーム村一覧に戻る
+        </button>
+      </div>
+    )
+  }
 
   const style        = VILLAGE_TYPE_STYLES[village.type] ?? VILLAGE_TYPE_STYLES['雑談']
   const level        = getLevelInfo(village.member_count)
@@ -1646,7 +1779,9 @@ export default function VillageDetailPage() {
             </div>
           )}
         </div>
-      ) : userTrust?.tier === 'visitor' ? (
+      ) : userTrust?.tier === 'visitor' && tab !== 'voice' ? (
+        // 通話タブでは voice メインカード内に inline 認証 CTA があるので、
+        // ここのグローバルピルは重複表示を避ける目的で非表示にする。
         <div onClick={() => setShowPhoneVerify(true)}
           className="mx-4 mt-3 rounded-2xl px-4 py-3 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all"
           style={{ background: `${style.accent}15`, border: `1px solid ${style.accent}30` }}>
@@ -2173,8 +2308,124 @@ export default function VillageDetailPage() {
       )}
 
       {/* ════════ VOICE TAB ════════ */}
-      {tab === 'voice' && (
+      {tab === 'voice' && (() => {
+        // 通話ルームメインカード用の派生値
+        const liveCount = voiceRooms.reduce(
+          (sum: number, r: any) => sum + (r.voice_participants?.length ?? 0),
+          0,
+        )
+        const isPhoneVerified = !!(userTrust as any)?.phone_verified
+        // 「聞くだけで参加 / マイクON で参加」両方の動線。
+        // 既存ルームがあれば join、なければ新規 create。
+        // 実際のマイク ON/OFF は遷移先 /voice/[roomId] で扱う設計。
+        const handleJoinAsListener = () => {
+          const room = voiceRooms[0]
+          if (room) joinVoiceRoom(room.id)
+          else if (isMember) createVoiceRoom()
+        }
+        const handleJoinAsSpeaker = () => {
+          const room = voiceRooms[0]
+          if (room) joinVoiceRoom(room.id)
+          else if (isMember) createVoiceRoom()
+        }
+        return (
         <div className="px-4 pb-32 space-y-3 pt-1">
+
+          {/* ══ 通話ルームメインカード — voice タブの一等地 ══ */}
+          <div
+            className="rounded-3xl overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, #1a0f2e 0%, #2d1b4e 100%)',
+              border: `1px solid ${style.accent}55`,
+              boxShadow: `0 8px 28px rgba(0,0,0,0.45), 0 0 24px ${style.accent}22`,
+            }}
+          >
+            {/* タイトル + 参加状況 */}
+            <div className="px-5 pt-5 pb-3 text-center">
+              <div className="flex items-center justify-center gap-2 mb-1.5">
+                <span className="text-2xl">🎙️</span>
+                <p className="text-base font-extrabold" style={{ color: '#F0EEFF' }}>
+                  {village.name}の通話ルーム
+                </p>
+              </div>
+              <p className="text-xs" style={{ color: 'rgba(240,238,255,0.55)' }}>
+                {liveCount > 0
+                  ? `今は ${liveCount}人が参加中`
+                  : voiceRooms.length > 0
+                    ? `${voiceRooms.length}件の広場が開いています`
+                    : '今は誰もいません'}
+              </p>
+              {/* タグ（村の雰囲気・安心度） */}
+              <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(124,255,130,0.12)', color: '#7CFF82', border: '1px solid rgba(124,255,130,0.3)' }}
+                >
+                  🌱 静かな村
+                </span>
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(255,201,40,0.12)', color: '#FFC928', border: '1px solid rgba(255,201,40,0.3)' }}
+                >
+                  安心度 ★★★★★
+                </span>
+              </div>
+              <p className="text-[10px] mt-1.5" style={{ color: 'rgba(240,238,255,0.35)' }}>
+                落ち着いて話したい人向け · 録音禁止
+              </p>
+            </div>
+
+            {/* 認証カード（電話番号未認証時 inline） / 参加ボタン群 */}
+            {!isPhoneVerified ? (
+              <div
+                className="mx-4 mb-4 rounded-2xl p-3.5"
+                style={{ background: 'rgba(157,92,255,0.08)', border: '1px solid rgba(157,92,255,0.32)' }}
+              >
+                <p className="text-[12px] font-bold leading-relaxed" style={{ color: '#c4b5fd' }}>
+                  通話するには電話番号認証が必要です
+                </p>
+                <p className="text-[10px] leading-relaxed mt-0.5" style={{ color: 'rgba(196,181,253,0.65)' }}>
+                  安心な村づくりのため、初回のみお願いします
+                </p>
+                <button
+                  onClick={() => setShowPhoneVerify(true)}
+                  className="w-full mt-3 py-3 rounded-xl text-sm font-extrabold text-white active:scale-[0.98] transition-all"
+                  style={{
+                    background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)',
+                    boxShadow: '0 4px 14px rgba(157,92,255,0.4)',
+                  }}
+                >
+                  🔐 認証して通話に参加
+                </button>
+              </div>
+            ) : (
+              <div className="px-4 pb-4 space-y-2">
+                {/* 聞くだけで参加（メイン CTA・心理的ハードル低） */}
+                <button
+                  onClick={handleJoinAsListener}
+                  className="w-full py-4 rounded-2xl text-base font-extrabold text-white flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                  style={{
+                    background: 'linear-gradient(135deg, #9D5CFF 0%, #7B3FE4 100%)',
+                    boxShadow: '0 6px 22px rgba(157,92,255,0.5)',
+                  }}
+                >
+                  👂 聞くだけで参加する
+                </button>
+                {/* マイク ON で参加（サブ CTA） */}
+                <button
+                  onClick={handleJoinAsSpeaker}
+                  className="w-full py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(157,92,255,0.32)',
+                    color: '#c4b5fd',
+                  }}
+                >
+                  <Mic size={14} /> マイクONで参加する
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* ── 今ヒマパネル ── */}
           {isMember && (
@@ -2284,12 +2535,17 @@ export default function VillageDetailPage() {
             ))
           )}
         </div>
-      )}
+        )
+      })()}
 
       {/* ════════ MEMBERS TAB ════════ */}
       {tab === 'members' && (
         <div className="px-4 pb-32 space-y-2 pt-1">
-          <p className="text-xs text-stone-400 font-semibold mb-3">{village.member_count} 人が住んでいます</p>
+          <p className="text-xs text-stone-400 font-semibold mb-1">{village.member_count} 人が住んでいます</p>
+          {/* 用語の補足：「住民」「村長」が初見でも分かるように一行ヒント */}
+          <p className="text-[10px] mb-3" style={{ color: 'rgba(120,113,108,0.7)' }}>
+            👥 住民：この村に参加している人　/　👑 村長：この村を作った人
+          </p>
           {members.map((m: any) => {
             // オンライン判定：last_seen_at が5分以内ならオンライン
             const lastSeenMs = m.profiles?.last_seen_at
@@ -2311,7 +2567,7 @@ export default function VillageDetailPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-sm font-bold text-stone-800 truncate">{m.profiles?.display_name ?? '住民'}</p>
+                  <p className="text-sm font-bold text-stone-800 truncate">{getUserDisplayName(m.profiles, '住民')}</p>
                   {m.user_trust?.tier && <TrustBadge tierId={m.user_trust.tier} size="xs" />}
                   {isOnline && (
                     <span className="text-[9px] font-extrabold text-green-500 bg-green-50 px-1.5 py-0.5 rounded-full border border-green-100">
@@ -2822,7 +3078,7 @@ export default function VillageDetailPage() {
                     {m.profiles?.display_name?.[0] ?? '?'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-stone-800 truncate">{m.profiles?.display_name ?? '住民'}</p>
+                    <p className="text-sm font-bold text-stone-800 truncate">{getUserDisplayName(m.profiles, '住民')}</p>
                     <p className="text-[10px] text-stone-400">{timeAgo(m.joined_at)}に参加</p>
                   </div>
                   <button onClick={() => kickMember(m.user_id)} disabled={kickingUser === m.user_id}

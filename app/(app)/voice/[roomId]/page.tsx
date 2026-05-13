@@ -1,12 +1,17 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNationalityFlag } from '@/lib/utils'
-import { ArrowLeft, Mic, MicOff, Radio, LogOut, Send, ChevronUp, ChevronDown, ShieldCheck, Lock } from 'lucide-react'
+import { ArrowLeft, Mic, MicOff, Radio, LogOut, Send, ChevronUp, ChevronDown, ShieldCheck, Lock, Settings, Volume2, X } from 'lucide-react'
 import { awardPoints, getTierById } from '@/lib/trust'
 import { canSpeakInVoiceRoom, type AgeVerificationStatus } from '@/lib/permissions'
+import { isVerificationBypassEnabled } from '@/lib/test-mode'
+import { Room, RoomEvent, Track, type RemoteTrack, type RemoteTrackPublication, type RemoteParticipant, type Participant as LkParticipant } from 'livekit-client'
+import { logVoice, userTag, startTimer, endTimer } from '@/lib/voice-telemetry'
+import VerifiedBadge from '@/components/ui/VerifiedBadge'
+import { isVerifiedByExistingSchema } from '@/lib/identity-types'
 
 // ─── 定数 ────────────────────────────────────────────────────
 const CAT_EMOJI: Record<string, string> = {
@@ -24,7 +29,14 @@ interface Participant {
   join_mode:   'speaker' | 'listener' | 'silent'
   raised_hand: boolean
   role:        'host' | 'speaker' | 'listener'
-  profiles:    { display_name: string; nationality: string; avatar_url: string | null }
+  profiles:    {
+    display_name: string
+    nationality: string
+    avatar_url: string | null
+    // Phase 1: 既存スキーマの age_verified（任意。クエリで select に含めれば来る）
+    age_verified?: boolean | null
+    age_verification_status?: string | null
+  }
   user_trust?: { tier: string } | null
 }
 
@@ -49,62 +61,6 @@ interface WelcomeEvent {
   deadline: number  // Date.now() + 15000
 }
 
-// ─── ユーザーアバター ─────────────────────────────────────────
-function Avatar({
-  participant, isMe, isMuted, isHost, size = 'md',
-}: {
-  participant: Participant
-  isMe: boolean
-  isMuted?: boolean
-  isHost: boolean
-  size?: 'sm' | 'md'
-}) {
-  const sz = size === 'sm' ? 'w-11 h-11 text-xl' : 'w-16 h-16 text-2xl'
-  const flag = getNationalityFlag(participant.profiles?.nationality || '')
-  const tierId = participant.user_trust?.tier ?? 'visitor'
-  const tier = getTierById(tierId)
-
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <div
-        className={`${sz} rounded-2xl flex items-center justify-center relative transition-all`}
-        style={{
-          background: isMe && !isMuted ? 'rgba(124,255,130,0.12)' : 'rgba(255,255,255,0.08)',
-          border: isMe && !isMuted ? '2px solid rgba(124,255,130,0.6)' : '1.5px solid rgba(255,255,255,0.1)',
-          boxShadow: isMe && !isMuted ? '0 0 12px rgba(124,255,130,0.3)' : 'none',
-        }}
-      >
-        {participant.profiles?.avatar_url
-          ? <img src={participant.profiles.avatar_url} className="w-full h-full object-cover rounded-2xl" alt="" />
-          : <span className="text-2xl">{flag}</span>
-        }
-        {isMe && isMuted && (
-          <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-            <MicOff size={10} className="text-white" />
-          </span>
-        )}
-        {isHost && (
-          <span className="absolute -top-1.5 -right-1 text-sm">👑</span>
-        )}
-        {participant.is_listener && !isMe && (
-          <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
-            style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.15)' }}>
-            <Radio size={9} className="text-white" />
-          </span>
-        )}
-      </div>
-      <p className="text-[10px] font-semibold text-center truncate w-14 px-0.5"
-        style={{ color: 'rgba(240,238,255,0.7)' }}>
-        {participant.profiles?.display_name?.split(' ')[0] ?? '?'}
-      </p>
-      {/* 信頼ティアバッジ（Discourse式：発言者の質を可視化）*/}
-      <span className={`inline-flex items-center gap-0.5 text-[8px] font-bold px-1.5 py-0 rounded-full border truncate max-w-[3.5rem] ${tier.color}`}>
-        {tier.icon} {tier.label}
-      </span>
-    </div>
-  )
-}
-
 // ─── メインページ ─────────────────────────────────────────────
 export default function VoiceRoomPage() {
   const { roomId } = useParams<{ roomId: string }>()
@@ -125,6 +81,13 @@ export default function VoiceRoomPage() {
   const [myAgeVerified,     setMyAgeVerified]     = useState(false)
   const [myAgeStatus,       setMyAgeStatus]       = useState<AgeVerificationStatus>('unverified')
   const [showAgeGate,       setShowAgeGate]       = useState(false)
+  // 2026-05-08 YVOICE5 テスト期間中バイパス: 年齢確認 / Tier (visitor) による
+  // マイクON参加ブロックを一時的に無効化する。bypass = true なら下記 2 変数は
+  // 常に false (= ブロックしない)、UI ボタンを press 可能 / 説明文を通常版に。
+  // canSpeakInVoiceRoom や canJoinVoiceRoom も lib/permissions.ts 側で同じ env を
+  // 見て bypass しているので、L505 付近のチェックも整合的に通る。
+  const ageBlocked     = !myAgeVerified && !isVerificationBypassEnabled()
+  const visitorBlocked = myTier === 'visitor' && !isVerificationBypassEnabled()
   const MAX_SPEAKERS = 8  // 広場トークは最大8名まで登壇可能
 
   // ── 広場トーク: 挙手・昇格 ───────────────────────────────
@@ -148,27 +111,42 @@ export default function VoiceRoomPage() {
   const [chatUnread,  setChatUnread]  = useState(0)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // ── WebRTC ───────────────────────────────────────────────
-  const localStreamRef  = useRef<MediaStream | null>(null)
-  const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map())
-  const audioRefs       = useRef<Map<string, HTMLAudioElement>>(new Map())
-  const channelRef      = useRef<any>(null)
+  // ── 2026-05-08 YVOICE5 PR-A: 設定 / 音声設定 / 入退室トースト ──
+  // すべて UI のみ追加。LiveKit 接続 / mute / publish / Realtime / DB は不変。
+  const [showSettings,      setShowSettings]      = useState(false)
+  const [showAudioSettings, setShowAudioSettings] = useState(false)
+  // Web Speech API による通話チャット読み上げ ON/OFF (localStorage で永続化)。
+  // ブラウザが speechSynthesis をサポートしていれば動作、未対応なら trueでも no-op。
+  const [ttsEnabled, setTtsEnabled] = useState(false)
+  // 入退室トースト: participants 配列の差分で「○○が入室しました」「退出しました」を
+  // 下部に短時間表示。voice_chat_messages の DB 変更は行わない。
+  type ToastItem = { id: string; text: string; kind: 'enter' | 'leave' }
+  const [presenceToasts, setPresenceToasts] = useState<ToastItem[]>([])
+  const prevParticipantIdsRef = useRef<Set<string>>(new Set())
+  const prevParticipantNamesRef = useRef<Map<string, string>>(new Map())
 
-  const ICE_SERVERS = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    // TURN servers — モバイル・企業ネットでのNAT越え（STUNだけだと30-50%失敗）
-    { urls: 'turn:openrelay.metered.ca:80',               username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443',              username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turns:openrelay.metered.ca:443',             username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:80?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-    // カスタムTURN（本番用 — .envに設定）
-    ...(process.env.NEXT_PUBLIC_TURN_URL ? [{
-      urls:       process.env.NEXT_PUBLIC_TURN_URL,
-      username:   process.env.NEXT_PUBLIC_TURN_USERNAME ?? '',
-      credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL ?? '',
-    }] : []),
-  ]
+  // ── YouTube 同時視聴（Supabase Realtime channel 経由・DB 永続化なし） ──
+  // 誰かが URL を貼ると 'youtube' broadcast が飛び、ルーム全員の videoId state が
+  // 同期されて iframe を表示する。停止時は 'youtube_stop'。
+  // ページリロードや退室で消える ephemeral 設計（次フェーズで永続化検討）。
+  const [youtubeVideoId, setYoutubeVideoId]   = useState<string | null>(null)
+  const [showYoutubeInput, setShowYoutubeInput] = useState(false)
+  const [youtubeInput,   setYoutubeInput]     = useState('')
+  const [youtubeError,   setYoutubeError]     = useState('')
+
+  // ── LiveKit (SFU) ────────────────────────────────────────
+  // Mesh WebRTC は廃止。音声 transport は LiveKit Cloud / Server に集約。
+  // Supabase Realtime は reaction / joined ブロードキャストにのみ使用。
+  const livekitRef    = useRef<Room | null>(null)
+  const audioElsRef   = useRef<Map<string, HTMLAudioElement>>(new Map())
+  const channelRef    = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null)
+  const tokenPrefetchRef = useRef<{ token: string; url: string; fetchedAt: number } | null>(null)
+  const [connState, setConnState] = useState<'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'left'>('idle')
+  const [serviceState, setServiceState] = useState<'ok' | 'not_configured' | 'unavailable'>('ok')
+  const [activeSpeakerIds, setActiveSpeakerIds] = useState<Set<string>>(new Set())
+  const [silenceLong, setSilenceLong] = useState(false)
+  const [showFirstHint, setShowFirstHint] = useState(false)
+  const lastSpeakAtRef = useRef<number>(Date.now())
 
   // ── 初期化 ───────────────────────────────────────────────
   useEffect(() => {
@@ -206,12 +184,13 @@ export default function VoiceRoomPage() {
     if (!roomId) return
     const { data } = await createClient()
       .from('voice_participants')
-      .select('user_id, is_listener, join_mode, raised_hand, role, profiles(display_name, nationality, avatar_url), user_trust(tier)')
+      .select('user_id, is_listener, join_mode, raised_hand, role, profiles(display_name, nationality, avatar_url, age_verified, age_verification_status), user_trust(tier)')
       .eq('room_id', roomId)
     setParticipants((data || []) as unknown as Participant[])
   }, [roomId])
 
-  // ── 自分の昇格を検知してマイク取得・WebRTC開始 ───────────
+  // ── 自分の昇格を検知してマイク有効化 ─────────────────────
+  // LiveKit に既に接続済みなので、token は再取得せず mic だけ enable する
   useEffect(() => {
     if (!joined || !userId || !isListener) return
     const myParticipant = participants.find(p => p.user_id === userId)
@@ -223,17 +202,12 @@ export default function VoiceRoomPage() {
       setTimeout(() => setPromotionBanner(false), 4000)
       ;(async () => {
         try {
-          localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-          const { data: existing } = await createClient()
-            .from('voice_participants').select('user_id')
-            .eq('room_id', roomId).eq('is_listener', false).neq('user_id', userId)
-          for (const p of existing || []) {
-            const pc = createPC(p.user_id)
-            const offer = await pc.createOffer()
-            await pc.setLocalDescription(offer)
-            channelRef.current?.send({ type: 'broadcast', event: 'offer', payload: { to: p.user_id, from: userId, sdp: offer } })
-          }
-        } catch { setMicError(true) }
+          await livekitRef.current?.localParticipant.setMicrophoneEnabled(true)
+          setIsMuted(false)
+        } catch (e) {
+          console.error('[livekit] enable mic on promote failed', e)
+          setMicError(true)
+        }
       })()
     }
   }, [participants, isListener, joined, userId, roomId])
@@ -248,6 +222,77 @@ export default function VoiceRoomPage() {
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [roomId, fetchParticipants])
+
+  // ── 2026-05-08 YVOICE5 PR-A: 入退室トースト用差分検知 ──
+  // participants が更新されるたびに前回値と比較し、新規 user は「入室」、消えた
+  // user は「退出」のトーストを下部に追加する。3 秒後に自動で消える。
+  // DB 変更なし。voice_chat_messages にも書き込まない (純表示のみ)。
+  useEffect(() => {
+    if (!joined || !userId) return
+    const currentIds = new Set(participants.map(p => p.user_id))
+    const currentNames = new Map<string, string>()
+    for (const p of participants) {
+      const display = p.join_mode === 'silent'
+        ? 'こっそり参加者'
+        : (p.profiles?.display_name?.split(' ')[0] ?? 'ゲスト')
+      currentNames.set(p.user_id, display)
+    }
+    const prevIds = prevParticipantIdsRef.current
+    const prevNames = prevParticipantNamesRef.current
+
+    // 初回 (prevIds が空) は通知しない (= ロード直後の初期化扱い)
+    if (prevIds.size === 0) {
+      prevParticipantIdsRef.current = currentIds
+      prevParticipantNamesRef.current = currentNames
+      return
+    }
+
+    const newToasts: ToastItem[] = []
+    // 入室検知: 自分の入室は出さない
+    for (const id of currentIds) {
+      if (!prevIds.has(id) && id !== userId) {
+        const name = currentNames.get(id) ?? 'ゲスト'
+        newToasts.push({ id: `enter-${id}-${Date.now()}`, text: `${name}が入室しました`, kind: 'enter' })
+      }
+    }
+    // 退出検知
+    for (const id of prevIds) {
+      if (!currentIds.has(id) && id !== userId) {
+        const name = prevNames.get(id) ?? 'ゲスト'
+        newToasts.push({ id: `leave-${id}-${Date.now()}`, text: `${name}が退出しました`, kind: 'leave' })
+      }
+    }
+    if (newToasts.length > 0) {
+      setPresenceToasts(prev => [...prev, ...newToasts].slice(-3)) // 最大 3 件
+      // 3 秒後に削除
+      newToasts.forEach(t => {
+        setTimeout(() => {
+          setPresenceToasts(prev => prev.filter(x => x.id !== t.id))
+        }, 3000)
+      })
+    }
+    prevParticipantIdsRef.current = currentIds
+    prevParticipantNamesRef.current = currentNames
+  }, [participants, joined, userId])
+
+  // ── 2026-05-08 YVOICE5 PR-A: 通話チャット読み上げ (Web Speech API) ──
+  // 設定の永続化のみここで行う。実際の発話はチャット受信ハンドラ (voice_chat_messages
+  // の Realtime callback) で window.speechSynthesis を呼ぶ。
+  // ブラウザ未対応 (古い Safari / 一部 Android) の場合は trueでも no-op になる。
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('yvoice_voice_room_tts_enabled')
+      if (v === '1') setTtsEnabled(true)
+    } catch { /* noop (private mode 等) */ }
+  }, [])
+  useEffect(() => {
+    try {
+      localStorage.setItem('yvoice_voice_room_tts_enabled', ttsEnabled ? '1' : '0')
+    } catch { /* noop */ }
+  }, [ttsEnabled])
+  // ttsEnabled の最新値を Realtime ハンドラ内のクロージャから参照するため ref 化。
+  const ttsEnabledRef = useRef(ttsEnabled)
+  useEffect(() => { ttsEnabledRef.current = ttsEnabled }, [ttsEnabled])
 
   // ── チャット購読 ─────────────────────────────────────────
   useEffect(() => {
@@ -265,6 +310,21 @@ export default function VoiceRoomPage() {
         }
         setChatMsgs(prev => [...prev.slice(-49), msg])
         if (!chatOpen) setChatUnread(n => n + 1)
+        // 2026-05-08 YVOICE5 PR-A: 通話チャット読み上げ。
+        // 自分自身の投稿は読み上げず、設定 ON + ブラウザ対応時のみ発話。
+        try {
+          if (
+            ttsEnabledRef.current &&
+            row.user_id !== userId &&
+            typeof window !== 'undefined' &&
+            'speechSynthesis' in window
+          ) {
+            const u = new SpeechSynthesisUtterance(`${p?.display_name?.split(' ')[0] ?? '誰か'}: ${row.message}`)
+            u.lang = 'ja-JP'
+            u.volume = 0.7
+            window.speechSynthesis.speak(u)
+          }
+        } catch { /* noop: TTS 失敗は静かに無視 */ }
       })
       .subscribe()
     return () => { supabase.removeChannel(ch) }
@@ -276,6 +336,66 @@ export default function VoiceRoomPage() {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [chatOpen, chatMsgs])
+
+  // ── アンマウント時に LiveKit を必ず切断（タブ閉じ・前画面戻る等） ──
+  useEffect(() => {
+    return () => {
+      try { livekitRef.current?.disconnect() } catch { /* noop */ }
+      livekitRef.current = null
+      audioElsRef.current.forEach(el => { try { el.pause() } catch { /* noop */ }; el.remove() })
+      audioElsRef.current.clear()
+    }
+  }, [])
+
+  // ── 初回到達 + token プリフェッチで体感高速化 ──────────────
+  useEffect(() => {
+    if (!roomId || !userId || joined) return
+    logVoice('voice.entry.viewed', { roomId, userTag: userTag(userId) })
+    // 初回ヒント（sessionStorage で 1 度だけ）
+    try {
+      const k = `samee_voice_first_hint_${roomId}`
+      if (!sessionStorage.getItem(k)) {
+        setShowFirstHint(true)
+        sessionStorage.setItem(k, '1')
+      }
+    } catch { /* noop */ }
+    // 入室前に裏で token を取得しておく（500ms 短縮効果）
+    ;(async () => {
+      const r = await fetchLkToken({ silentForUser: true })
+      if (r.ok) {
+        tokenPrefetchRef.current = { token: r.token, url: r.url, fetchedAt: Date.now() }
+      }
+    })()
+  }, [roomId, userId, joined])
+
+  // ── アクティブ話者検知（誰がいま話しているか） ─────────────
+  useEffect(() => {
+    if (!joined || !livekitRef.current) return
+    const room = livekitRef.current
+    const onActive = (speakers: LkParticipant[]) => {
+      const ids = new Set(speakers.map(s => s.identity))
+      setActiveSpeakerIds(ids)
+      if (ids.size > 0) {
+        lastSpeakAtRef.current = Date.now()
+        if (silenceLong) setSilenceLong(false)
+      }
+    }
+    room.on(RoomEvent.ActiveSpeakersChanged, onActive)
+    return () => { room.off(RoomEvent.ActiveSpeakersChanged, onActive) }
+  }, [joined, silenceLong])
+
+  // ── 無音検知（30 秒以上誰も話してない時に控えめなヒント） ──
+  useEffect(() => {
+    if (!joined) return
+    const t = setInterval(() => {
+      const idle = Date.now() - lastSpeakAtRef.current
+      if (idle > 30_000 && !silenceLong) {
+        setSilenceLong(true)
+        logVoice('voice.silence.detected', { roomId, ms: idle })
+      }
+    }, 5000)
+    return () => clearInterval(t)
+  }, [joined, silenceLong, roomId])
 
   // ── ウェルカムタイマー ───────────────────────────────────
   useEffect(() => {
@@ -303,26 +423,89 @@ export default function VoiceRoomPage() {
     return () => { clearInterval(welcomeTimerRef.current!) }
   }, [welcomeEvent])
 
-  // ── WebRTC ───────────────────────────────────────────────
-  function createPC(remoteUserId: string): RTCPeerConnection {
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
-    peerConnections.current.set(remoteUserId, pc)
-    localStreamRef.current?.getTracks().forEach(t => pc.addTrack(t, localStreamRef.current!))
-    pc.ontrack = (e) => {
-      const audio = new Audio()
-      audio.srcObject = e.streams[0]
-      audio.autoplay = true
-      audioRefs.current.set(remoteUserId, audio)
-    }
-    pc.onicecandidate = (e) => {
-      if (e.candidate && channelRef.current) {
-        channelRef.current.send({
-          type: 'broadcast', event: 'ice',
-          payload: { to: remoteUserId, from: userId, candidate: e.candidate }
-        })
+  // ── LiveKit Room 接続 ────────────────────────────────────
+  type TokenError =
+    | 'not_configured'
+    | 'unauthenticated'
+    | 'invalid_room_id'
+    | 'room_not_found'
+    | 'room_closed'
+    | 'rate_limited'
+    | 'internal'
+    | 'network'
+
+  async function fetchLkToken(opts?: { silentForUser?: boolean }): Promise<
+    | { ok: true;  token: string; url: string }
+    | { ok: false; reason: TokenError }
+  > {
+    const t0 = Date.now()
+    if (!opts?.silentForUser) logVoice('voice.token.requested', { roomId, userTag: userTag(userId) })
+    try {
+      const res = await fetch('/api/livekit/token', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ roomId }),
+      })
+      if (res.ok) {
+        const j = await res.json() as { token?: string; url?: string }
+        if (!j.token || !j.url) {
+          if (!opts?.silentForUser) logVoice('voice.token.failed', { roomId, reason: 'internal', ms: Date.now() - t0 })
+          return { ok: false, reason: 'internal' }
+        }
+        if (!opts?.silentForUser) logVoice('voice.token.success', { roomId, ms: Date.now() - t0 })
+        return { ok: true, token: j.token, url: j.url }
       }
+      // 既知のエラーコードを抽出
+      let reason: TokenError = 'internal'
+      try {
+        const j = await res.json() as { error?: string }
+        if (j.error === 'not_configured'
+            || j.error === 'unauthenticated'
+            || j.error === 'invalid_room_id'
+            || j.error === 'room_not_found'
+            || j.error === 'room_closed'
+            || j.error === 'rate_limited') {
+          reason = j.error as TokenError
+        }
+      } catch { /* レスポンス body が JSON でない時はステータスから推測 */
+        if (res.status === 503) reason = 'not_configured'
+        else if (res.status === 401) reason = 'unauthenticated'
+        else if (res.status === 404) reason = 'room_not_found'
+        else if (res.status === 410) reason = 'room_closed'
+        else if (res.status === 429) reason = 'rate_limited'
+      }
+      if (!opts?.silentForUser) logVoice('voice.token.failed', { roomId, reason, ms: Date.now() - t0 })
+      return { ok: false, reason }
+    } catch (e) {
+      if (!opts?.silentForUser) logVoice('voice.token.failed', { roomId, reason: 'network', ms: Date.now() - t0 })
+      console.error('[livekit] token fetch failed', e)
+      return { ok: false, reason: 'network' }
     }
-    return pc
+  }
+
+  function attachLkRoomEvents(room: Room) {
+    room
+      .on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _pub: RemoteTrackPublication, participant: RemoteParticipant) => {
+        if (track.kind !== Track.Kind.Audio) return
+        const el = track.attach() as HTMLAudioElement
+        el.style.display = 'none'
+        el.setAttribute('data-lk-user', participant.identity)
+        document.body.appendChild(el)
+        audioElsRef.current.set(participant.identity, el)
+      })
+      .on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, _pub: RemoteTrackPublication, participant: RemoteParticipant) => {
+        track.detach().forEach(e => e.remove())
+        audioElsRef.current.delete(participant.identity)
+      })
+      .on(RoomEvent.Reconnecting,    () => { setConnState('reconnecting'); logVoice('voice.reconnect.started', { roomId }) })
+      .on(RoomEvent.Reconnected,     () => { setConnState('connected');    logVoice('voice.reconnect.recovered', { roomId }) })
+      .on(RoomEvent.Disconnected,    () => setConnState('disconnected'))
+      .on(RoomEvent.ConnectionStateChanged, (s) => {
+        // 'connected' | 'reconnecting' | 'disconnected' などをマップ
+        if (s === 'connected')         setConnState('connected')
+        else if (s === 'reconnecting') setConnState('reconnecting')
+        else if (s === 'disconnected') setConnState('disconnected')
+      })
   }
 
   async function joinRoom(mode: 'speaker' | 'listener' | 'silent') {
@@ -336,19 +519,88 @@ export default function VoiceRoomPage() {
       }
     }
 
+    logVoice('voice.entry.cta_clicked', { roomId, userTag: userTag(userId), mode })
+    startTimer(`session_${roomId}`)
     setJoining(true)
+    setConnState('connecting')
+    setMicError(false)
+    setServiceState('ok')
     const asListener = mode !== 'speaker'
     setIsListener(asListener)
 
+    // 1) LiveKit token: プリフェッチ済みなら使い、無ければ取りに行く（最大 60 秒キャッシュ）
+    let lkToken: string, lkUrl: string
+    const pre = tokenPrefetchRef.current
+    if (pre && Date.now() - pre.fetchedAt < 60_000) {
+      lkToken = pre.token
+      lkUrl   = pre.url
+    } else {
+      const lk = await fetchLkToken()
+      if (!lk.ok) {
+        setConnState('disconnected')
+        setJoining(false)
+        if (lk.reason === 'not_configured') {
+          setServiceState('not_configured')
+        } else if (lk.reason === 'room_closed' || lk.reason === 'room_not_found') {
+          setServiceState('unavailable')
+        } else if (lk.reason === 'unauthenticated') {
+          router.push('/login')
+          return
+        } else if (lk.reason === 'rate_limited') {
+          setServiceState('unavailable')
+        } else {
+          setServiceState('unavailable')
+        }
+        return
+      }
+      lkToken = lk.token
+      lkUrl   = lk.url
+    }
+
+    // 2) Room 作成 + 接続
+    const room = new Room({
+      adaptiveStream: true,
+      dynacast:       true,
+      // モバイル・iOS Safari 安定化のための既定値
+      publishDefaults: {
+        audioPreset: { maxBitrate: 32000 },
+        dtx:         true,
+        red:         true,
+      },
+    })
+    attachLkRoomEvents(room)
+
+    const tConnect0 = Date.now()
+    logVoice('voice.connect.started', { roomId, userTag: userTag(userId) })
+    try {
+      await room.connect(lkUrl, lkToken, { autoSubscribe: true })
+    } catch (e) {
+      console.error('[livekit] connect failed', e)
+      logVoice('voice.connect.failed', { roomId, ms: Date.now() - tConnect0, reason: e instanceof Error ? e.message : 'unknown' })
+      setServiceState('unavailable')
+      setConnState('disconnected')
+      setJoining(false)
+      return
+    }
+    livekitRef.current = room
+    setConnState('connected')
+    logVoice('voice.connect.success', { roomId, ms: Date.now() - tConnect0, size: room.numParticipants })
+
+    // 3) speaker ならマイク publish（getUserMedia は LiveKit が user gesture 文脈で実行）
     if (!asListener) {
+      logVoice('voice.mic.requested', { roomId })
       try {
-        localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-      } catch {
+        await room.localParticipant.setMicrophoneEnabled(true)
+        logVoice('voice.mic.granted', { roomId })
+      } catch (e) {
+        console.error('[livekit] enable mic failed', e)
+        logVoice('voice.mic.denied', { roomId, reason: e instanceof Error ? e.message : 'unknown' })
         setMicError(true)
         setIsListener(true)
       }
     }
 
+    // 4) Supabase 参加レコード upsert（既存 UI ロジックが参照）
     const supabase = createClient()
     await supabase.from('voice_participants').upsert({
       room_id: roomId, user_id: userId,
@@ -356,52 +608,27 @@ export default function VoiceRoomPage() {
       join_mode: mode,
     })
 
-    // ── シグナリングチャンネル設定 ─────────────────────
+    // 5) reaction / joined ブロードキャスト用の Supabase channel（音声シグナリングは含めない）
     const ch = supabase.channel(`voice:${roomId}`)
     channelRef.current = ch
-
     ch
-      .on('broadcast', { event: 'offer' }, async ({ payload }: any) => {
-        if (payload.to !== userId) return
-        const pc = createPC(payload.from)
-        await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
-        const answer = await pc.createAnswer()
-        await pc.setLocalDescription(answer)
-        ch.send({ type: 'broadcast', event: 'answer', payload: { to: payload.from, from: userId, sdp: answer } })
-      })
-      .on('broadcast', { event: 'answer' }, async ({ payload }: any) => {
-        if (payload.to !== userId) return
-        const pc = peerConnections.current.get(payload.from)
-        if (pc) await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
-      })
-      .on('broadcast', { event: 'ice' }, async ({ payload }: any) => {
-        if (payload.to !== userId) return
-        const pc = peerConnections.current.get(payload.from)
-        if (pc && payload.candidate) await pc.addIceCandidate(new RTCIceCandidate(payload.candidate))
-      })
-      .on('broadcast', { event: 'reaction' }, ({ payload }: any) => {
+      .on('broadcast', { event: 'reaction' }, ({ payload }: { payload: { emoji: string } }) => {
         spawnFloat(payload.emoji)
       })
-      .on('broadcast', { event: 'joined' }, ({ payload }: any) => {
+      .on('broadcast', { event: 'joined' }, ({ payload }: { payload: { userId: string; name: string; flag: string } }) => {
         if (payload.userId === userId) return
         setWelcomeEvent({ userId: payload.userId, name: payload.name, flag: payload.flag, deadline: Date.now() + WELCOME_TIMEOUT * 1000 })
       })
-      .subscribe(async (status) => {
+      // YouTube 同時視聴：他の参加者からの URL をピックアップ → iframe 表示
+      .on('broadcast', { event: 'youtube' }, ({ payload }: { payload: { videoId: string; from: string } }) => {
+        if (payload?.videoId) setYoutubeVideoId(payload.videoId)
+      })
+      .on('broadcast', { event: 'youtube_stop' }, () => setYoutubeVideoId(null))
+      .subscribe((status) => {
         if (status !== 'SUBSCRIBED') return
-
-        const { data: existing } = await supabase
-          .from('voice_participants').select('user_id')
-          .eq('room_id', roomId).eq('is_listener', false).neq('user_id', userId)
-        for (const p of existing || []) {
-          const pc = createPC(p.user_id)
-          const offer = await pc.createOffer()
-          await pc.setLocalDescription(offer)
-          ch.send({ type: 'broadcast', event: 'offer', payload: { to: p.user_id, from: userId, sdp: offer } })
-        }
-
         ch.send({
           type: 'broadcast', event: 'joined',
-          payload: { userId, name: myName, flag: myFlag }
+          payload: { userId, name: myName, flag: myFlag },
         })
       })
 
@@ -409,13 +636,56 @@ export default function VoiceRoomPage() {
     setJoining(false)
   }
 
+  // ── YouTube 同時視聴 ─────────────────────────────────────
+  /** youtube.com/watch?v= / youtu.be/ / youtube.com/shorts/ から 11 文字の videoId を抽出 */
+  function extractYoutubeId(url: string): string | null {
+    const trimmed = url.trim()
+    if (!trimmed) return null
+    // youtu.be/<id> / youtube.com/(watch\?v=|shorts/|embed/)<id>
+    const m = trimmed.match(
+      /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/,
+    )
+    return m?.[1] ?? null
+  }
+  function shareYoutube() {
+    const id = extractYoutubeId(youtubeInput)
+    if (!id) {
+      setYoutubeError('有効な YouTube の URL を入力してください。')
+      return
+    }
+    setYoutubeError('')
+    setYoutubeVideoId(id)
+    setShowYoutubeInput(false)
+    setYoutubeInput('')
+    // Supabase channel で全員に同期（既存の reaction / joined と同じ仕組み）
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'youtube',
+      payload: { videoId: id, from: userId },
+    })
+    logVoice('voice.youtube.shared', { roomId })
+  }
+  function stopYoutube() {
+    setYoutubeVideoId(null)
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'youtube_stop',
+      payload: { from: userId },
+    })
+    logVoice('voice.youtube.stopped', { roomId })
+  }
+
   async function leaveRoom() {
     if (!userId || !roomId) return
-    peerConnections.current.forEach(pc => pc.close())
-    peerConnections.current.clear()
-    localStreamRef.current?.getTracks().forEach(t => t.stop())
-    audioRefs.current.forEach(a => { a.pause(); a.srcObject = null })
-    audioRefs.current.clear()
+    const dur = endTimer(`session_${roomId}`)
+    if (dur !== undefined) logVoice('voice.session.duration', { roomId, ms: dur })
+    logVoice('voice.session.left', { roomId, userTag: userTag(userId) })
+    // LiveKit 切断 + 全 track の track.stop()（disconnect 内で実行）
+    try { await livekitRef.current?.disconnect() } catch { /* noop */ }
+    livekitRef.current = null
+    audioElsRef.current.forEach(el => { try { el.pause() } catch { /* noop */ }; el.remove() })
+    audioElsRef.current.clear()
+    setConnState('left')
     if (channelRef.current) createClient().removeChannel(channelRef.current)
     const supabase = createClient()
     await supabase.from('voice_participants').delete().eq('room_id', roomId).eq('user_id', userId)
@@ -446,9 +716,49 @@ export default function VoiceRoomPage() {
       .eq('room_id', roomId).eq('user_id', targetUserId)
   }
 
-  function toggleMute() {
-    localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = isMuted })
-    setIsMuted(m => !m)
+  async function toggleMute() {
+    const room = livekitRef.current
+    if (!room) return
+    const next = !isMuted
+    try {
+      await room.localParticipant.setMicrophoneEnabled(!next)
+      setIsMuted(next)
+      logVoice('voice.mic.toggled', { roomId, mode: next ? 'muted' : 'unmuted' })
+    } catch (e) {
+      console.error('[livekit] toggle mute failed', e)
+    }
+  }
+
+  /** マイク許可拒否後の再リクエスト（モバイル UX 改善） */
+  async function retryMic() {
+    const room = livekitRef.current
+    if (!room) return
+    logVoice('voice.mic.requested', { roomId, mode: 'retry' })
+    try {
+      await room.localParticipant.setMicrophoneEnabled(true)
+      setMicError(false)
+      setIsMuted(false)
+      setIsListener(false)
+      logVoice('voice.mic.granted', { roomId, mode: 'retry' })
+    } catch (e) {
+      logVoice('voice.mic.denied', { roomId, mode: 'retry', reason: e instanceof Error ? e.message : 'unknown' })
+    }
+  }
+
+  /** 接続失敗・切断後の再接続トリガ — 既存の joinRoom を呼び直す */
+  async function retryConnect() {
+    setServiceState('ok')
+    setConnState('idle')
+    setJoined(false)
+    livekitRef.current = null
+    audioElsRef.current.forEach(el => el.remove())
+    audioElsRef.current.clear()
+    if (channelRef.current) {
+      try { createClient().removeChannel(channelRef.current) } catch { /* noop */ }
+      channelRef.current = null
+    }
+    // 直前の mode を保持してないので listener 既定で再試行（speaker は別 CTA から）
+    await joinRoom('listener')
   }
 
   function sendReaction(emoji: string) {
@@ -492,8 +802,9 @@ export default function VoiceRoomPage() {
     </div>
   )
 
-  const speakers  = participants.filter(p => !p.is_listener)
-  const listeners = participants.filter(p => p.is_listener)
+  // 派生データはメモ化（participants が変わった時だけ再計算）
+  const speakers  = useMemo(() => participants.filter(p => !p.is_listener), [participants])
+  const listeners = useMemo(() => participants.filter(p => p.is_listener),  [participants])
   const isHost    = room.host_id === userId
 
   return (
@@ -568,11 +879,19 @@ export default function VoiceRoomPage() {
               {room.category} · {getNationalityFlag(room.profiles?.nationality || '')} {room.profiles?.display_name}
             </p>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-            style={{ background: 'rgba(124,255,130,0.1)', border: '1px solid rgba(124,255,130,0.25)' }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse"
-              style={{ background: '#7CFF82', boxShadow: '0 0 6px rgba(124,255,130,0.8)' }} />
-            <span className="text-xs font-extrabold tracking-wider" style={{ color: '#7CFF82' }}>LIVE</span>
+          <div className="flex items-center gap-1.5">
+            {participants.length > 0 && (
+              <span className="text-[10px] font-bold px-2 py-1 rounded-full"
+                style={{ background: 'rgba(167,139,250,0.12)', color: '#c4b5fd', border: '1px solid rgba(167,139,250,0.3)' }}>
+                {participants.length}人
+              </span>
+            )}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+              style={{ background: 'rgba(124,255,130,0.1)', border: '1px solid rgba(124,255,130,0.25)' }}>
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse"
+                style={{ background: '#7CFF82', boxShadow: '0 0 6px rgba(124,255,130,0.8)' }} />
+              <span className="text-xs font-extrabold tracking-wider" style={{ color: '#7CFF82' }}>LIVE</span>
+            </div>
           </div>
         </div>
       </div>
@@ -581,9 +900,120 @@ export default function VoiceRoomPage() {
       <div className={`flex-1 overflow-y-auto px-4 transition-all ${welcomeEvent ? 'pt-20' : 'pt-4'}`}>
 
         {micError && (
+          <div className="rounded-2xl px-4 py-3 mb-4"
+            style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
+            <p className="text-xs font-medium" style={{ color: '#FCD34D' }}>
+              マイクが使えません。今は聞き専で参加しています。
+            </p>
+            <p className="text-[11px] mt-1" style={{ color: 'rgba(252,211,77,0.65)' }}>
+              アドレスバーの 🔒 → サイトの設定 → マイクを「許可」にすると話せます。
+            </p>
+            <button
+              onClick={retryMic}
+              className="mt-2 text-[11px] font-bold px-3 py-1.5 rounded-full active:scale-95"
+              style={{ background: 'rgba(252,211,77,0.18)', color: '#FCD34D', border: '1px solid rgba(252,211,77,0.4)' }}
+            >
+              もう一度マイクを試す
+            </button>
+          </div>
+        )}
+
+        {/* LiveKit 環境変数未設定（運用者作業待ち） */}
+        {serviceState === 'not_configured' && (
+          <div className="rounded-2xl px-4 py-4 mb-4"
+            style={{ background: 'rgba(167,139,250,0.10)', border: '1px solid rgba(167,139,250,0.30)', color: '#e0d4ff' }}>
+            <p className="text-sm font-bold mb-1">通話機能を準備中です</p>
+            <p className="text-xs leading-relaxed" style={{ color: 'rgba(224,212,255,0.65)' }}>
+              通話サービスの設定中につき、現在ご利用いただけません。少し時間を置いて再度お試しください。
+            </p>
+            {process.env.NODE_ENV !== 'production' && (
+              <p className="text-[11px] mt-2 font-mono" style={{ color: 'rgba(224,212,255,0.5)' }}>
+                [admin] LIVEKIT_API_KEY / LIVEKIT_API_SECRET / NEXT_PUBLIC_LIVEKIT_URL を Vercel に設定し再デプロイしてください
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ルーム自体が利用不可（閉じた / 削除 / connect 失敗） */}
+        {serviceState === 'unavailable' && (
+          <div className="rounded-2xl px-4 py-3 mb-4"
+            style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#fecaca' }}>
+            <p className="text-sm font-bold mb-1">この通話には入れません</p>
+            <p className="text-xs">部屋が閉じられたか、接続に失敗しました。少し時間を置いて再度お試しください。</p>
+            <div className="mt-2 flex gap-2">
+              <button
+                onClick={retryConnect}
+                className="text-[11px] font-bold px-3 py-1.5 rounded-full active:scale-95"
+                style={{ background: 'rgba(239,68,68,0.18)', color: '#fecaca', border: '1px solid rgba(239,68,68,0.4)' }}
+              >
+                もう一度試す
+              </button>
+              <button
+                onClick={() => router.push('/voice')}
+                className="text-[11px] font-bold px-3 py-1.5 rounded-full active:scale-95"
+                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.7)', border: '1px solid rgba(255,255,255,0.12)' }}
+              >
+                通話一覧に戻る
+              </button>
+            </div>
+          </div>
+        )}
+
+        {connState === 'reconnecting' && (
+          <div className="rounded-2xl px-4 py-3 mb-4 text-xs font-medium flex items-center gap-2"
+            style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.3)', color: '#FCD34D' }}>
+            <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            通話に再接続中…
+          </div>
+        )}
+        {connState === 'disconnected' && joined && (
+          <div className="rounded-2xl px-4 py-3 mb-4"
+            style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)' }}>
+            <p className="text-xs font-medium" style={{ color: '#fecaca' }}>
+              通話の接続が切れました
+            </p>
+            <button
+              onClick={retryConnect}
+              className="mt-2 text-[11px] font-bold px-3 py-1.5 rounded-full active:scale-95"
+              style={{ background: 'rgba(239,68,68,0.18)', color: '#fecaca', border: '1px solid rgba(239,68,68,0.4)' }}
+            >
+              もう一度入る
+            </button>
+          </div>
+        )}
+        {connState === 'left' && (
           <div className="rounded-2xl px-4 py-3 mb-4 text-xs font-medium"
-            style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#FCD34D' }}>
-            ⚠️ マイクが使えません — リスナーとして参加中
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(240,238,255,0.55)' }}>
+            通話から退出しました
+          </div>
+        )}
+
+        {/* 初回ヒント（sessionStorage で 1 度だけ） */}
+        {showFirstHint && !joined && (
+          <div className="rounded-2xl px-4 py-3 mb-4"
+            style={{ background: 'rgba(124,58,237,0.10)', border: '1px solid rgba(167,139,250,0.30)' }}>
+            <p className="text-xs font-bold mb-1" style={{ color: '#c4b5fd' }}>はじめての通話？</p>
+            <ul className="text-[11px] space-y-0.5 leading-relaxed" style={{ color: 'rgba(196,181,253,0.85)' }}>
+              <li>・最初は「観客として参加」がおすすめ。聞くだけで OK。</li>
+              <li>・「お疲れさま」だけ言って退出する人もたくさんいます。</li>
+              <li>・気まずくなったら、何も言わずに退出ボタンで OK。</li>
+            </ul>
+            <button
+              onClick={() => setShowFirstHint(false)}
+              className="mt-2 text-[10px] font-bold underline"
+              style={{ color: 'rgba(196,181,253,0.6)' }}
+            >
+              閉じる
+            </button>
+          </div>
+        )}
+
+        {/* 無音ヒント（30 秒以上誰も話してない時） */}
+        {silenceLong && joined && connState === 'connected' && (
+          <div className="rounded-2xl px-4 py-2.5 mb-4 text-[11px] flex items-center gap-2"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(240,238,255,0.55)' }}>
+            <span>🤫</span>
+            <span>今はみんな静か。「お疲れさま」から始めてみる？</span>
           </div>
         )}
 
@@ -615,14 +1045,17 @@ export default function VoiceRoomPage() {
           ) : (
             <div className="px-4 pb-4 pt-2">
               <div className="grid grid-cols-4 gap-3">
-                {speakers.map(p => (
+                {speakers.map(p => {
+                  const sp = activeSpeakerIds.has(p.user_id)
+                  const meHi = p.user_id === userId && !isMuted
+                  return (
                   <div key={p.user_id} className="flex flex-col items-center gap-1">
                     <div
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center relative"
+                      className={`w-14 h-14 rounded-2xl flex items-center justify-center relative transition-all ${sp ? 'animate-[pulse_1.2s_ease-in-out_infinite]' : ''}`}
                       style={{
-                        background: p.user_id === userId && !isMuted ? 'rgba(124,255,130,0.12)' : 'rgba(255,255,255,0.08)',
-                        border: p.user_id === userId && !isMuted ? '2px solid rgba(124,255,130,0.6)' : '1.5px solid rgba(255,255,255,0.1)',
-                        boxShadow: p.user_id === userId && !isMuted ? '0 0 14px rgba(124,255,130,0.3)' : 'none',
+                        background: sp ? 'rgba(124,255,130,0.18)' : meHi ? 'rgba(124,255,130,0.12)' : 'rgba(255,255,255,0.08)',
+                        border:     sp ? '2px solid rgba(124,255,130,0.85)' : meHi ? '2px solid rgba(124,255,130,0.6)' : '1.5px solid rgba(255,255,255,0.1)',
+                        boxShadow:  sp ? '0 0 18px rgba(124,255,130,0.55)' : meHi ? '0 0 14px rgba(124,255,130,0.3)' : 'none',
                       }}
                     >
                       {p.profiles?.avatar_url
@@ -645,11 +1078,14 @@ export default function VoiceRoomPage() {
                       )}
                     </div>
                     <p className="text-[10px] font-semibold text-center truncate w-14 px-0.5"
-                      style={{ color: 'rgba(255,255,255,0.75)' }}>
+                      style={{ color: sp ? '#7CFF82' : 'rgba(255,255,255,0.75)' }}>
                       {p.profiles?.display_name?.split(' ')[0] ?? '?'}
                     </p>
+                    {isVerifiedByExistingSchema(p.profiles) && (
+                      <VerifiedBadge verified size="sm" />
+                    )}
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           )}
@@ -697,6 +1133,9 @@ export default function VoiceRoomPage() {
                     style={{ color: 'rgba(240,238,255,0.6)' }}>
                     {p.join_mode === 'silent' ? 'こっそり' : (p.profiles?.display_name?.split(' ')[0] ?? '?')}
                   </span>
+                  {p.join_mode !== 'silent' && isVerifiedByExistingSchema(p.profiles) && (
+                    <VerifiedBadge verified size="sm" />
+                  )}
                   {p.raised_hand && <span className="text-xs">✋</span>}
                 </div>
               ))}
@@ -715,15 +1154,15 @@ export default function VoiceRoomPage() {
             <p className="text-xs text-center mb-1" style={{ color: 'rgba(240,238,255,0.4)' }}>広場トーク</p>
             <p className="text-xs text-center mb-5" style={{ color: 'rgba(240,238,255,0.4)' }}>どのモードで入りますか？</p>
 
-            {/* 見習いはスピーカー不可 */}
-            {myTier === 'visitor' && (
+            {/* 見習いはスピーカー不可 (テスト期間中バイパス時は非表示) */}
+            {visitorBlocked && (
               <div className="rounded-2xl px-3 py-2.5 mb-4 flex items-start gap-2"
                 style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)' }}>
                 <span className="text-base flex-shrink-0">🪴</span>
                 <div>
                   <p className="text-[11px] font-bold" style={{ color: '#a5b4fc' }}>見習いは聴くだけ参加できます</p>
                   <p className="text-[10px] mt-0.5" style={{ color: 'rgba(165,180,252,0.6)' }}>
-                    電話認証 + 初投稿で「住民」に昇格すると話せるようになります
+                    電話認証 + 初投稿で「村人」に昇格すると話せるようになります
                   </p>
                 </div>
               </div>
@@ -766,47 +1205,75 @@ export default function VoiceRoomPage() {
               </div>
             )}
 
-            <div className="space-y-2.5">
-              {/* 話す */}
+            {/* 2026-05-08 YVOICE5 A-1: 接続中オーバーレイ。joinRoom 実行中は
+                既存の右端小さなスピナー (各ボタン内) に加えて、3 ボタン全体を覆う
+                オーバーレイで「いま接続している」が一目で分かるようにする。
+                既存の disabled 制御 / joinRoom 関数 / mode 引数は不変。 */}
+            <div className="relative space-y-2.5">
+              {joining && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl"
+                  style={{ background: 'rgba(8,8,18,0.7)', backdropFilter: 'blur(2px)' }}>
+                  <div className="flex flex-col items-center gap-2 px-5 py-4 rounded-2xl"
+                    style={{ background: 'rgba(157,92,255,0.12)', border: '1px solid rgba(157,92,255,0.45)' }}>
+                    <span className="w-6 h-6 border-[3px] border-t-transparent rounded-full animate-spin"
+                      style={{ borderColor: '#9D5CFF', borderTopColor: 'transparent' }} />
+                    <p className="text-xs font-extrabold" style={{ color: '#F0EEFF' }}>
+                      {connState === 'connecting' ? '通話に接続中…' : connState === 'connected' ? 'もう少しで完了…' : '準備中…'}
+                    </p>
+                    <p className="text-[10px]" style={{ color: 'rgba(240,238,255,0.55)' }}>
+                      しばらくお待ちください
+                    </p>
+                  </div>
+                </div>
+              )}
+              {/* マイクONで参加 (内部 role: speaker、内部 mode 名は不変)
+                  2026-05-08 YVOICE5 PR-A 文言整理: 表示文言のみ「登壇する」→
+                  「マイクONで参加」に変更。joinRoom('speaker') / role: 'speaker' /
+                  join_mode: 'speaker' などの内部値は不変。 */}
               <button
                 onClick={() => joinRoom('speaker')}
-                disabled={joining || speakers.length >= MAX_SPEAKERS || myTier === 'visitor'}
+                disabled={joining || speakers.length >= MAX_SPEAKERS || visitorBlocked}
                 className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.98] transition-all text-left disabled:opacity-40"
-                style={!myAgeVerified || speakers.length >= MAX_SPEAKERS || myTier === 'visitor'
+                style={ageBlocked || speakers.length >= MAX_SPEAKERS || visitorBlocked
                   ? { background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.1)' }
                   : { background: 'rgba(99,102,241,0.12)', border: '1.5px solid rgba(99,102,241,0.4)' }}>
                 <span className="text-2xl flex-shrink-0">
-                  {!myAgeVerified ? '🔒' : '🎙️'}
+                  {ageBlocked ? '🔒' : '🎙️'}
                 </span>
                 <div>
                   <p className="font-extrabold text-sm"
-                    style={{ color: !myAgeVerified || speakers.length >= MAX_SPEAKERS || myTier === 'visitor'
+                    style={{ color: ageBlocked || speakers.length >= MAX_SPEAKERS || visitorBlocked
                       ? 'rgba(240,238,255,0.35)'
                       : '#a5b4fc' }}>
-                    {!myAgeVerified
-                      ? '登壇する（年齢確認が必要）'
-                      : myTier === 'visitor'
-                        ? '登壇する（住民以上で解放）'
+                    {ageBlocked
+                      ? 'マイクONで参加（年齢確認が必要）'
+                      : visitorBlocked
+                        ? 'マイクONで参加（村人以上で解放）'
                         : speakers.length >= MAX_SPEAKERS
-                          ? `登壇する（上限${MAX_SPEAKERS}名）`
-                          : `登壇する（残り${MAX_SPEAKERS - speakers.length}枠）`}
+                          ? `マイクONで参加（上限${MAX_SPEAKERS}名）`
+                          : `マイクONで参加（残り${MAX_SPEAKERS - speakers.length}枠）`}
                   </p>
                   <p className="text-[10px]" style={{ color: 'rgba(240,238,255,0.3)' }}>
-                    {!myAgeVerified ? '年齢確認済みユーザーのみ話せます' : 'マイクをオンにしてステージへ'}
+                    {ageBlocked ? '年齢確認済みユーザーのみ話せます' : 'マイクをONにしてステージへ'}
                   </p>
                 </div>
                 {joining && <span className="ml-auto w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
                   style={{ borderColor: '#6366f1', borderTopColor: 'transparent' }} />}
               </button>
 
-              {/* 観客として参加 */}
+              {/* 聞くだけで参加 (内部 role: listener、内部 mode 名は不変)
+                  2026-05-08 YVOICE5 PR-A 文言整理: 表示文言のみ「観客として参加」→
+                  「聞くだけで参加」に変更。joinRoom('listener') / role: 'listener' /
+                  is_listener: true / join_mode: 'listener' などの内部値は不変。
+                  参加直後はマイク OFF (LiveKit publish しない既存仕様) で入室、
+                  下部のマイクボタンから後で ON に切替可能 (既存 promotion フロー)。 */}
               <button onClick={() => joinRoom('listener')} disabled={joining}
                 className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.98] transition-all text-left"
                 style={{ background: 'rgba(124,255,130,0.08)', border: '1.5px solid rgba(124,255,130,0.3)' }}>
                 <span className="text-2xl flex-shrink-0">👂</span>
                 <div>
-                  <p className="font-extrabold text-sm" style={{ color: '#7CFF82' }}>観客として参加</p>
-                  <p className="text-[10px]" style={{ color: 'rgba(124,255,130,0.55)' }}>✋ 手を挙げて登壇リクエスト可能</p>
+                  <p className="font-extrabold text-sm" style={{ color: '#7CFF82' }}>聞くだけで参加</p>
+                  <p className="text-[10px]" style={{ color: 'rgba(124,255,130,0.55)' }}>マイクOFFで入室・後で手を挙げて登壇可能</p>
                 </div>
               </button>
 
@@ -825,6 +1292,84 @@ export default function VoiceRoomPage() {
         )}
 
         {/* ── リアクションパネル（参加後）── */}
+        {/* ── YouTube 同時視聴パネル ── */}
+        {joined && (
+          <div className="mt-4 rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="flex items-center justify-between px-4 py-2.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-base">▶️</span>
+                <span className="text-xs font-bold truncate" style={{ color: 'rgba(240,238,255,0.7)' }}>
+                  {youtubeVideoId ? '同時視聴中' : 'YouTube を一緒に見る'}
+                </span>
+              </div>
+              {youtubeVideoId ? (
+                <button onClick={stopYoutube}
+                  className="text-[10px] font-bold px-2.5 py-1 rounded-full active:scale-95 transition-all"
+                  style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)' }}>
+                  停止
+                </button>
+              ) : (
+                <button onClick={() => { setShowYoutubeInput(s => !s); setYoutubeError('') }}
+                  className="text-[10px] font-bold px-2.5 py-1 rounded-full active:scale-95 transition-all"
+                  style={{ background: 'rgba(157,92,255,0.18)', color: '#c4b5fd', border: '1px solid rgba(157,92,255,0.35)' }}>
+                  {showYoutubeInput ? 'キャンセル' : '＋ URL を共有'}
+                </button>
+              )}
+            </div>
+
+            {/* URL 入力 */}
+            {showYoutubeInput && !youtubeVideoId && (
+              <div className="px-3 pb-3 space-y-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <input
+                  type="url"
+                  value={youtubeInput}
+                  onChange={e => { setYoutubeInput(e.target.value); if (youtubeError) setYoutubeError('') }}
+                  placeholder="https://youtu.be/... または https://youtube.com/watch?v=..."
+                  className="w-full px-3 py-2 rounded-xl text-xs focus:outline-none"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(157,92,255,0.25)',
+                    color: '#F0EEFF',
+                    caretColor: '#9D5CFF',
+                  }}
+                />
+                {youtubeError && (
+                  <p className="text-[10px] font-bold" style={{ color: '#fca5a5' }}>⚠️ {youtubeError}</p>
+                )}
+                <button onClick={shareYoutube} disabled={!youtubeInput.trim()}
+                  className="w-full py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40 active:scale-95 transition-all"
+                  style={{ background: 'linear-gradient(135deg,#9D5CFF,#7B3FE4)', boxShadow: '0 4px 14px rgba(157,92,255,0.35)' }}>
+                  ルームに共有する
+                </button>
+                <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                  ※ ルーム全員が同じ動画を見られます。再生位置の同期はありません（各自で操作）。
+                </p>
+              </div>
+            )}
+
+            {/* 埋め込みプレイヤー */}
+            {youtubeVideoId && (
+              <div className="px-3 pb-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="relative w-full overflow-hidden rounded-xl"
+                  style={{ paddingBottom: '56.25%', background: '#000' }}>
+                  <iframe
+                    src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=0&rel=0&modestbranding=1`}
+                    className="absolute inset-0 w-full h-full"
+                    title="YouTube 同時視聴"
+                    allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                </div>
+                <p className="text-[10px] mt-2 leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                  同じ動画をルーム全員で見られます。再生・停止・シークは各自で操作してください。
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {joined && (
           <div className="mt-4 mb-2">
             <p className="text-[10px] font-bold uppercase tracking-wider mb-2.5"
@@ -923,9 +1468,9 @@ export default function VoiceRoomPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* 登壇者: ミュートボタン */}
+              {/* 登壇者: ミュートボタン (テスト期間中バイパス時は年齢未確認でも表示) */}
               {!isListener && (
-                myAgeVerified ? (
+                !ageBlocked ? (
                   <button onClick={toggleMute}
                     className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90"
                     style={isMuted
@@ -953,6 +1498,26 @@ export default function VoiceRoomPage() {
                   <span className="text-xs">{isRaisingHand ? '手を下げる' : '登壇リクエスト'}</span>
                 </button>
               )}
+              {/* 2026-05-08 YVOICE5 PR-A: 音声設定ボタン (新規)
+                  押下で音声設定パネル (スピーカー / マイク音量 / 自動低下 / 読み上げ) を開く。
+                  ブラウザ制限項目は「未対応」と明示し、見た目だけ ON/OFF の偽装はしない。
+                  読み上げのみ Web Speech API で実機能。 */}
+              <button onClick={() => setShowAudioSettings(true)}
+                className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90"
+                style={{ background: 'rgba(99,102,241,0.12)', border: '1.5px solid rgba(99,102,241,0.35)', color: '#a5b4fc' }}
+                title="音声設定">
+                <Volume2 size={18} />
+              </button>
+              {/* 2026-05-08 YVOICE5 PR-A: 設定ボタン (新規)
+                  押下で設定パネル (退出 / ルーム情報 / 音声設定への入口) を開く。
+                  退出ボタンは setShowSettings 内に移動するのではなく既存ボタンも維持し、
+                  ユーザーが迷わないよう既存挙動と並列にする。 */}
+              <button onClick={() => setShowSettings(true)}
+                className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(255,255,255,0.12)', color: 'rgba(240,238,255,0.7)' }}
+                title="設定">
+                <Settings size={18} />
+              </button>
               <button onClick={leaveRoom}
                 className="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center active:scale-90 transition-all"
                 style={{ boxShadow: '0 4px 12px rgba(239,68,68,0.4)' }}>
@@ -972,6 +1537,176 @@ export default function VoiceRoomPage() {
         </div>
       )}
 
+      {/* ── 2026-05-08 YVOICE5 PR-A: 入退室トースト ──
+          下部コントロールの少し上に短時間表示。3秒で自動消滅。pointer-events-none
+          でクリックを妨げない。voice_chat_messages には書き込まない (純表示のみ)。 */}
+      {presenceToasts.length > 0 && joined && (
+        <div className="fixed left-0 right-0 z-30 flex flex-col items-center gap-1.5 pointer-events-none"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6.5rem)' }}>
+          {presenceToasts.map(t => (
+            <div key={t.id}
+              className="px-3.5 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-2"
+              style={t.kind === 'enter'
+                ? { background: 'rgba(124,255,130,0.18)', border: '1px solid rgba(124,255,130,0.4)', color: '#7CFF82', backdropFilter: 'blur(8px)' }
+                : { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(240,238,255,0.6)', backdropFilter: 'blur(8px)' }}>
+              <span>{t.kind === 'enter' ? '👋' : '🚪'}</span>
+              <span>{t.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── 2026-05-08 YVOICE5 PR-A: 設定パネル ──
+          下部の歯車ボタン押下で開く。退出 / ルーム情報 / 音声設定への入口。
+          既存の退出ボタン (下部赤丸) も維持しているので、ユーザーが迷わないよう
+          設定パネル内の「退出」も同じ leaveRoom 関数を呼ぶ。 */}
+      {showSettings && joined && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowSettings(false)} />
+          <div className="relative w-full max-w-md rounded-3xl p-5"
+            style={{ background: '#0d0d1f', border: '1px solid rgba(157,92,255,0.3)', boxShadow: '0 0 40px rgba(157,92,255,0.2)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-extrabold text-base" style={{ color: '#F0EEFF' }}>設定</h3>
+              <button onClick={() => setShowSettings(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all"
+                style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <X size={16} style={{ color: 'rgba(240,238,255,0.6)' }} />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {/* ルーム情報 (静的表示) */}
+              <div className="px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'rgba(240,238,255,0.4)' }}>通話ルーム情報</p>
+                <p className="text-sm font-extrabold mb-0.5" style={{ color: '#F0EEFF' }}>{room?.title ?? '-'}</p>
+                <p className="text-xs" style={{ color: 'rgba(240,238,255,0.5)' }}>カテゴリ: {room?.category ?? '-'} · {participants.length}人参加中</p>
+              </div>
+              {/* 音声設定 */}
+              <button
+                onClick={() => { setShowSettings(false); setShowAudioSettings(true) }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.99] transition-all text-left"
+                style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)' }}>
+                <Volume2 size={20} style={{ color: '#a5b4fc' }} />
+                <div className="flex-1">
+                  <p className="font-bold text-sm" style={{ color: '#a5b4fc' }}>音声設定</p>
+                  <p className="text-[10px]" style={{ color: 'rgba(165,180,252,0.6)' }}>マイク・スピーカー・読み上げ</p>
+                </div>
+              </button>
+              {/* 退出 (既存 leaveRoom を呼ぶ。下部の赤退出ボタンと同じ処理) */}
+              <button
+                onClick={() => { setShowSettings(false); leaveRoom() }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-[0.99] transition-all text-left"
+                style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)' }}>
+                <LogOut size={20} style={{ color: '#ef4444' }} />
+                <div className="flex-1">
+                  <p className="font-bold text-sm" style={{ color: '#ef4444' }}>通話ルームを退出</p>
+                  <p className="text-[10px]" style={{ color: 'rgba(239,68,68,0.6)' }}>ホストの場合はルームが閉じます</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 2026-05-08 YVOICE5 PR-A: 音声設定パネル ──
+          スピーカー / マイク音量 / ゲーム音自動低下はブラウザ / iOS Safari 制限で
+          実効制御不可のため、トグルや実値スライダーを置かず「未対応」表記のみ。
+          見た目だけ ON/OFF で実際は効かない偽装 UI を作らない方針 (CLAUDE.md 準拠)。
+          通話チャット読み上げのみ Web Speech API で実機能 (ttsEnabled state)。 */}
+      {showAudioSettings && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowAudioSettings(false)} />
+          <div className="relative w-full max-w-md rounded-3xl p-5"
+            style={{ background: '#0d0d1f', border: '1px solid rgba(157,92,255,0.3)', boxShadow: '0 0 40px rgba(157,92,255,0.2)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-extrabold text-base" style={{ color: '#F0EEFF' }}>音声設定</h3>
+              <button onClick={() => setShowAudioSettings(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all"
+                style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <X size={16} style={{ color: 'rgba(240,238,255,0.6)' }} />
+              </button>
+            </div>
+            <div className="space-y-3">
+
+              {/* スピーカー (出力先) */}
+              <div className="px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-extrabold" style={{ color: '#F0EEFF' }}>🔊 スピーカー</p>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    端末スピーカー
+                  </span>
+                </div>
+                <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                  iPhone Safariでは出力先の切替・音量調整は本体の音量ボタンで行ってください（ブラウザ制限により未対応）。
+                </p>
+              </div>
+
+              {/* マイク音量 */}
+              <div className="px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-extrabold" style={{ color: '#F0EEFF' }}>🎤 マイク音量</p>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    未対応
+                  </span>
+                </div>
+                <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                  ブラウザの制約によりマイク音量の数値制御はできません。マイクの ON/OFF は下部のマイクボタンから切替できます。
+                </p>
+              </div>
+
+              {/* ゲーム音を自動で小さくする */}
+              <div className="px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-extrabold" style={{ color: '#F0EEFF' }}>🎮 ゲーム音を自動で小さくする</p>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(240,238,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    未対応
+                  </span>
+                </div>
+                <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(240,238,255,0.4)' }}>
+                  ブラウザではゲーム音を自動で下げる機能（オーディオダッキング）は利用できません。
+                </p>
+              </div>
+
+              {/* 通話チャット読み上げ (Web Speech API で実機能) */}
+              <button
+                onClick={() => setTtsEnabled(v => !v)}
+                className="w-full px-4 py-3 rounded-2xl text-left active:scale-[0.99] transition-all"
+                style={{
+                  background: ttsEnabled ? 'rgba(124,255,130,0.10)' : 'rgba(255,255,255,0.04)',
+                  border: ttsEnabled ? '1px solid rgba(124,255,130,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 pr-3">
+                    <p className="text-xs font-extrabold" style={{ color: ttsEnabled ? '#7CFF82' : '#F0EEFF' }}>🗣️ 通話チャットを読み上げる</p>
+                    <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'rgba(240,238,255,0.45)' }}>
+                      届いた他の人のメッセージをブラウザの音声合成で読み上げます。自分の投稿は読み上げません。
+                    </p>
+                  </div>
+                  {/* トグルスイッチ風表示 */}
+                  <div className="w-11 h-6 rounded-full flex-shrink-0 flex items-center transition-colors"
+                    style={{
+                      background: ttsEnabled ? '#7CFF82' : 'rgba(255,255,255,0.18)',
+                      paddingLeft: ttsEnabled ? '22px' : '2px',
+                    }}>
+                    <span className="w-5 h-5 rounded-full bg-white" />
+                  </div>
+                </div>
+              </button>
+
+              <p className="text-[10px] leading-relaxed pt-1" style={{ color: 'rgba(240,238,255,0.3)' }}>
+                ※ 「未対応」表記の項目はブラウザ仕様の制約により、現時点では対応していません。今後のブラウザ対応や PWA / ネイティブ対応で順次拡張予定です。
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── 年齢確認ゲートモーダル ── */}
       {showAgeGate && (
         <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6">
@@ -985,7 +1720,7 @@ export default function VoiceRoomPage() {
               </div>
               <h3 className="font-extrabold text-lg mb-1.5" style={{ color: '#F0EEFF' }}>通話で話すには年齢確認が必要</h3>
               <p className="text-sm leading-relaxed" style={{ color: 'rgba(240,238,255,0.55)' }}>
-                sameeは<span className="font-bold" style={{ color: '#F0EEFF' }}>20歳以上</span>限定のコミュニティです。<br />
+                YVOICEは<span className="font-bold" style={{ color: '#F0EEFF' }}>20歳以上</span>限定のコミュニティです。<br />
                 免許証・マイナンバーカード・パスポートで確認できます。
               </p>
             </div>

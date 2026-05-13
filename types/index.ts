@@ -52,7 +52,7 @@ export interface Profile {
   updated_at: string
   is_mentor: boolean
   helper_categories: HelperCategory[]
-  VILLIA_id: string | null
+  nowjp_id: string | null
 }
 
 export interface Like {

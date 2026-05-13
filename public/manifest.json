@@ -1,16 +1,16 @@
 {
-  "name": "自由村 — 安心して話せる大人のコミュニティ",
-  "short_name": "自由村",
-  "description": "民度を重視した大人のコミュニティアプリ。通話村・チャット村で本音が話せる。",
+  "name": "YVOICE — Your Voice Online｜大人のゲーム通話コミュニティ",
+  "short_name": "YVOICE",
+  "description": "Your Voice Online。20歳以上限定で、ゲーム仲間と声でつながる大人のゲーム通話コミュニティ。",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fafaf9",
-  "theme_color": "#1a1a2e",
+  "background_color": "#080812",
+  "theme_color": "#8b5cf6",
   "orientation": "portrait",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/yvoice-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/yvoice-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
   ],
-  "categories": ["social", "lifestyle"],
+  "categories": ["social", "games"],
   "lang": "ja"
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { SITE_HOST } from '@/lib/site'
 
 type Props = {
   postCount:      number
@@ -73,11 +74,11 @@ export default function GrowthPortfolio(props: Props) {
   function buildShareText() {
     const lines = GROWTH_TYPES.map(g => `${g.icon} ${g.label} +${g.getValue(props)}`)
     return [
-      `自由村で積み上げた成長レポート 📊`,
+      `YVOICE で積み上げた成長レポート 📊`,
       lines.join('  '),
       `総合成長度 ${overallPct}%`,
       `「使うたびに、何かが増える」`,
-      `#自由村 nowmatejapan.com`,
+      `#YVOICE #ワイボ ${SITE_HOST}`,
     ].join('\n')
   }
 
@@ -153,7 +154,7 @@ export default function GrowthPortfolio(props: Props) {
           {/* カード本体（スクショ用） */}
           <div className="p-4">
             <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-2">
-              自由村 成長レポート
+              YVOICE 成長レポート
             </p>
             <div className="grid grid-cols-2 gap-2 mb-3">
               {GROWTH_TYPES.map(g => (
@@ -168,7 +169,7 @@ export default function GrowthPortfolio(props: Props) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-white/50 text-[10px]">「使うたびに、何かが増える」</p>
-                <p className="text-white/30 text-[9px]">nowmatejapan.com</p>
+                <p className="text-white/30 text-[9px]">{SITE_HOST}</p>
               </div>
               <div className="text-right">
                 <p className="text-white font-extrabold text-2xl leading-none">{overallPct}%</p>

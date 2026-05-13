@@ -3,8 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Camera, Check, Trash2, Eye, EyeOff, ShieldCheck, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, Camera, Check, Trash2, Eye, EyeOff, ShieldCheck, ShieldAlert, BookOpen, Shield, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 import { INDUSTRIES } from '@/lib/guild'
+import { useReauth } from '@/hooks/useReauth'
+import ReAuthModal from '@/components/auth/ReAuthModal'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -23,6 +26,10 @@ export default function SettingsPage() {
   const [industry,       setIndustry]       = useState('')
   const [savingIndustry, setSavingIndustry] = useState(false)
   const [ageVerified,    setAgeVerified]    = useState(false)
+
+  // 再認証 (reauth) フック。退会のような重要操作の前に本人確認モーダルを出す。
+  // 直近 5 分以内に再認証済みなら modal を出さず即実行 (UX 優先)。
+  const reauth = useReauth()
 
   useEffect(() => {
     async function load() {
@@ -150,10 +157,29 @@ export default function SettingsPage() {
           <textarea
             value={bio}
             onChange={e => setBio(e.target.value.slice(0, 200))}
-            placeholder="どんな人か教えてください（任意）"
+            placeholder="例：一緒に遊べる仲間を探しています / 気軽に話せる仲間募集中 / 今夜遊べる仲間を探しています"
             rows={4}
             className="w-full px-4 py-3 rounded-2xl border-2 border-stone-200 text-sm resize-none focus:outline-none focus:border-indigo-400 bg-white leading-relaxed"
+            style={{ background: '#ffffff', color: '#1c1917', WebkitTextFillColor: '#1c1917', caretColor: '#4f46e5' }}
           />
+          {/* 候補チップ：1 タップで定型文を挿入 */}
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {[
+              '一緒に遊べる仲間を探しています',
+              '気軽に話せる仲間募集中',
+              '今夜遊べる仲間を探しています',
+            ].map(s => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setBio(s)}
+                className="text-[10px] font-bold px-2.5 py-1 rounded-full border active:scale-95 transition-all"
+                style={{ background: 'rgba(79,70,229,0.08)', color: '#4f46e5', borderColor: 'rgba(79,70,229,0.25)' }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
           <p className="text-right text-[10px] text-stone-400 mt-1">{bio.length}/200</p>
         </div>
 
@@ -281,6 +307,42 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* ── ヘルプ・ガイド ──
+            旧: マイページの 使い方 / 安心 タブに同梱していた FeaturesTab と
+            GuideTab を /guide / /safety スタンドアロンページに分離し、
+            設定画面からのアクセスに集約。 */}
+        <div className="border-t border-stone-100 pt-4 space-y-2">
+          <p className="text-xs font-bold text-stone-400 uppercase tracking-wider px-1 mb-2">
+            ヘルプ・ガイド
+          </p>
+          <Link
+            href="/guide"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-white border border-stone-100 active:bg-stone-50 transition-colors"
+          >
+            <div className="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0">
+              <BookOpen size={16} className="text-indigo-500" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-bold text-stone-900">使い方ガイド</p>
+              <p className="text-xs text-stone-400">YVOICE の機能を順を追って確認</p>
+            </div>
+            <ChevronRight size={16} className="text-stone-300 flex-shrink-0" />
+          </Link>
+          <Link
+            href="/safety"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-white border border-stone-100 active:bg-stone-50 transition-colors"
+          >
+            <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+              <Shield size={16} className="text-emerald-500" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-bold text-stone-900">安心・安全ガイド</p>
+              <p className="text-xs text-stone-400">本人確認・通報・ブロック・コミュニティルール</p>
+            </div>
+            <ChevronRight size={16} className="text-stone-300 flex-shrink-0" />
+          </Link>
+        </div>
+
         {/* ── アカウント削除 ── */}
         <div className="border-t border-stone-100 pt-4">
           {deleteConfirm ? (
@@ -295,8 +357,11 @@ export default function SettingsPage() {
                   キャンセル
                 </button>
                 <button
-                  onClick={handleDeleteAccount}
-                  disabled={deleting}
+                  onClick={() => reauth.requestReauth(
+                    handleDeleteAccount,
+                    '退会するためには本人確認が必要です。パスワードを入力してください。'
+                  )}
+                  disabled={deleting || reauth.loading}
                   className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold disabled:opacity-40"
                 >
                   {deleting ? '削除中…' : '削除する'}
@@ -313,6 +378,18 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+
+      {/* 再認証モーダル: 退会前にパスワードを再確認する。
+          直近 5 分以内に再認証済みなら open しない (helper 内で判定)。
+          OAuth ユーザー向けに「Google で再認証」ボタンも併設済み (modal 内)。 */}
+      <ReAuthModal
+        isOpen={reauth.isOpen}
+        loading={reauth.loading}
+        error={reauth.error}
+        description={reauth.description}
+        onClose={reauth.closeReauth}
+        onSubmit={reauth.verifyAndContinue}
+      />
     </div>
   )
 }

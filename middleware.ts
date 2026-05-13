@@ -1,13 +1,53 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { SUPABASE_COOKIE_OPTIONS, applyCookieMaxAgeOverride } from '@/lib/supabase/cookie-options'
+
+// 全レスポンスに強制的に no-store ヘッダーを注入するヘルパー。
+// Vercel Edge が古い HTML を 37 分以上 HIT で配信し続ける問題への
+// 最終手段。next.config.js の headers() は build-time に固定値として
+// 焼かれてキャッシュされた応答に組み込まれるため、既存キャッシュ entry
+// を「次のリクエスト時」に上書きできない。
+// middleware で response に動的に header を inject すると、リクエスト
+// ごとに評価されてキャッシュ可否を CDN に伝えるため、Edge cache を
+// 確実にバストできる。
+function applyNoStoreHeaders(res: NextResponse): NextResponse {
+  res.headers.set('Cache-Control', 'private, no-cache, no-store, must-revalidate, max-age=0')
+  res.headers.set('CDN-Cache-Control', 'no-store')
+  res.headers.set('Vercel-CDN-Cache-Control', 'no-store')
+  res.headers.set('Pragma', 'no-cache')
+  res.headers.set('Expires', '0')
+  return res
+}
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
+  // 2026-05-10 リリース前 Critical 修正: env 未設定で全アプリ crash しないよう防御。
+  // NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY が無い場合は middleware を素通りさせる
+  // (= ログイン保護が効かなくなるが、500 連発よりはマシ)。Vercel 等で env 抜け
+  // デプロイした際の事故を防ぐ。
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('[middleware] missing Supabase env — skipping auth check')
+    return applyNoStoreHeaders(supabaseResponse)
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
+      // 2026-05-08 (YVOICE4 PR4 + ログイン維持改善): iOS Safari ITP 対策と
+      // 90 日ログイン維持のため cookieOptions を明示。
+      //
+      // ⚠ @supabase/ssr 0.4.1 の library bug 回避:
+      // setAll に渡ってくる options.maxAge は library 内部で
+      // DEFAULT_COOKIE_OPTIONS.maxAge (60*60*24*365*1000 ≒ 1000年 in 秒)
+      // に強制上書きされている。ブラウザは 400 日 (Chrome) / 7 日 (Safari ITP
+      // document.cookie 経由) でキャップするため挙動が不安定。
+      // → applyCookieMaxAgeOverride で 90 日に再上書きする hack を入れる。
+      // maxAge=0 (cookie 削除) はそのまま保持されるので signOut 動作不変。
+      cookieOptions: SUPABASE_COOKIE_OPTIONS,
       cookies: {
         getAll() { return request.cookies.getAll() },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -15,7 +55,7 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, applyCookieMaxAgeOverride(options))
           )
         },
       },
@@ -24,16 +64,22 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const protectedPaths = ['/home', '/matches', '/chat', '/mypage', '/settings', '/onboarding', '/profile']
+  const protectedPaths = [
+    '/home', '/matches', '/chat', '/mypage', '/settings', '/onboarding', '/profile',
+    '/timeline', '/guilds', '/guild', '/notifications', '/voice', '/villages',
+    '/tweet', '/explore', '/create', '/post', '/search', '/qa', '/bottle',
+    '/community', '/activity', '/now', '/likes-me', '/verify-age', '/upgrade',
+    '/users',
+  ]
   const isProtected = protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    return NextResponse.redirect(url)
+    return applyNoStoreHeaders(NextResponse.redirect(url))
   }
 
-  return supabaseResponse
+  return applyNoStoreHeaders(supabaseResponse)
 }
 
 export const config = {

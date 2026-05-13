@@ -3,9 +3,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Users, Send, Heart, MessageSquare, MoreHorizontal, Info, FileText, Hash, Crown, Mic, Shield } from 'lucide-react'
+import { ArrowLeft, Users, Send, Heart, MessageSquare, MoreHorizontal, Info, FileText, Hash, Crown, Shield, Share2, X, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 import { INDUSTRIES } from '@/lib/guild'
 import { startDM } from '@/lib/dm'
+import VerifiedBadge from '@/components/ui/VerifiedBadge'
+import { getUserDisplayName } from '@/lib/user-display'
 
 // ─── 型 ─────────────────────────────────────────────────────────
 type Guild = {
@@ -20,8 +23,17 @@ type Post = {
 }
 type Member = {
   user_id: string; role: string
-  profiles: { display_name: string; avatar_url: string | null; last_seen_at: string | null }
+  profiles: {
+    display_name: string
+    avatar_url: string | null
+    last_seen_at: string | null
+    age_verified?: boolean | null
+    age_verification_status?: string | null
+  }
 }
+// 2026-05-08 YVOICE5: ギルドをサークル型コミュニティに変更したため、
+// VoiceRoom 型はここから撤去。通話ルーム表示は /voice 画面に集約済。
+// LiveKit / voice_rooms / voice_participants の DB は完全に残置。
 
 // ─── ヘルパー ────────────────────────────────────────────────────
 function timeAgo(iso: string) {
@@ -48,7 +60,10 @@ function PostCard({
   post, currentUserId, genre,
 }: { post: Post; currentUserId: string | null; genre: typeof INDUSTRIES[0] | null }) {
   const [liked,     setLiked]     = useState(false)
-  const [likeCount, setLikeCount] = useState(Math.floor(Math.random() * 8))
+  // 旧: Math.floor(Math.random() * 8) で毎回ランダムなフェイク値。
+  // ユーザーが見るたびに「いいね数」が勝手に変わるので 0 で固定する。
+  // 実データ連動が必要になったら post.reaction_count or guild_reactions 集計に切替。
+  const [likeCount, setLikeCount] = useState(0)
   const tier  = post.profiles?.trust_tier ?? 1
   const tInfo = tierLabel(tier)
   const isOwn = post.user_id === currentUserId
@@ -72,7 +87,7 @@ function PostCard({
         {/* ネームライン */}
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <span className="text-sm font-extrabold" style={{ color: 'rgba(255,255,255,0.9)' }}>
-            {post.profiles?.display_name ?? '名無し'}
+            {getUserDisplayName(post.profiles)}
           </span>
           {/* Discordロール風ティアバッジ */}
           <span
@@ -142,13 +157,23 @@ export default function GuildDetailPage() {
   const [guild,    setGuild]    = useState<Guild | null>(null)
   const [posts,    setPosts]    = useState<Post[]>([])
   const [members,  setMembers]  = useState<Member[]>([])
-  const [tab,      setTab]      = useState<'post' | 'info'>('post')
+  // 2026-05-08 YVOICE5: ギルドをサークル型に変更し 4 タブ化
+  // (投稿 / 写真 / 動画 / 情報)。動画は DB に video カラムが無いため空状態のみ。
+  const [tab,      setTab]      = useState<'posts' | 'photos' | 'videos' | 'info'>('posts')
   const [userId,   setUserId]   = useState<string | null>(null)
   const [isMember, setIsMember] = useState(false)
   const [joining,  setJoining]  = useState(false)
   const [text,     setText]     = useState('')
   const [posting,  setPosting]  = useState(false)
   const [loading,  setLoading]  = useState(true)
+  // ギルド詳細モーダル (旧メンバータブの中身 + ギルド概要 + ホスト)
+  // ギルドアイコン押下で開く
+  const [showDetail, setShowDetail] = useState(false)
+  // 写真タブ用: village_posts のうち image_url が NOT NULL のレコード。
+  // image_url カラムが DB に無い場合は空配列で返るため自然に空状態表示になる。
+  const [imagePosts, setImagePosts] = useState<Array<{ id: string; image_url: string; content: string | null; created_at: string }>>([])
+  // 招待 (Web Share API → clipboard フォールバック) のフィードバック
+  const [inviteCopied, setInviteCopied] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const genre = guild ? (INDUSTRIES.find(g => g.id === guild.category) ?? null) : null
@@ -180,16 +205,62 @@ export default function GuildDetailPage() {
 
       const { data: mb } = await supabase
         .from('village_members')
-        .select('user_id, role, profiles(display_name, avatar_url, last_seen_at)')
+        .select('user_id, role, profiles(display_name, avatar_url, last_seen_at, age_verified, age_verification_status)')
         .eq('village_id', id)
         .order('role', { ascending: true })
         .limit(30)
       setMembers((mb ?? []) as unknown as Member[])
 
+      // 2026-05-08 YVOICE5: 通話ルーム取得は撤去 (ギルド画面では通話導線を
+      // 出さない方針。通話は /voice / /voice/[roomId] / ゲーム村に集約)。
+      // 写真タブ用に village_posts の image_url IS NOT NULL を取得。
+      // image_url カラムが DB に存在しない場合はエラーになるが catch で空配列に
+      // 倒す (将来の DB 列追加時に自動で表示が始まる fail-open 設計)。
+      try {
+        const { data: ip } = await supabase
+          .from('village_posts')
+          .select('id, image_url, content, created_at')
+          .eq('village_id', id)
+          .not('image_url', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(50)
+        setImagePosts((ip ?? []) as any[])
+      } catch {
+        setImagePosts([])
+      }
+
       setLoading(false)
     }
     load()
   }, [id])
+
+  // ── 招待 (URL 共有) ──────────────────────────────────────────
+  // Web Share API が使える環境ではネイティブ共有シートを開き、
+  // 不可なら URL を clipboard にコピーして簡易トースト表示。
+  async function handleInvite() {
+    if (!guild) return
+    const url = `${window.location.origin}/guilds/${guild.id}`
+    const shareData = {
+      title: `${guild.name} | YVOICE`,
+      text: `YVOICE のギルド「${guild.name}」に参加してね。`,
+      url,
+    }
+    try {
+      if (typeof navigator !== 'undefined' && 'share' in navigator && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData)
+        return
+      }
+    } catch (e) {
+      // ユーザーが share シートをキャンセルした場合などは無視
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setInviteCopied(true)
+      setTimeout(() => setInviteCopied(false), 2000)
+    } catch (e) {
+      console.error('[guild] invite copy failed:', e)
+    }
+  }
 
   // ── 参加 / 退会 ───────────────────────────────────────────────
   async function handleJoin() {
@@ -262,17 +333,27 @@ export default function GuildDetailPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {onlineCount > 0 && (
             <div className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-[10px] font-bold text-emerald-400">{onlineCount}</span>
             </div>
           )}
-          <div className="flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
-            <Users size={13} />
-            <span className="text-[11px] font-bold">{guild.member_count}</span>
-          </div>
+          {/* 招待ボタン (Web Share API → clipboard) */}
+          <button
+            onClick={handleInvite}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95"
+            style={{
+              background: 'rgba(255,255,255,0.07)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: 'rgba(255,255,255,0.85)',
+            }}
+            aria-label="ギルドを招待する"
+          >
+            <Share2 size={12} />
+            <span>{inviteCopied ? 'コピー済' : '招待'}</span>
+          </button>
         </div>
       </div>
 
@@ -287,18 +368,22 @@ export default function GuildDetailPage() {
         {/* 下グラデーション */}
         <div className="absolute inset-x-0 bottom-0 h-12"
           style={{ background: 'linear-gradient(to bottom, transparent, #0f0f1a)' }} />
-        {/* アイコン + バッジ */}
+        {/* アイコン + バッジ。タップでギルド詳細モーダルを開く（旧メンバータブの中身） */}
         <div className="absolute bottom-0 left-4 flex items-end gap-3 pb-2 translate-y-1/3">
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
+          <button
+            type="button"
+            onClick={() => setShowDetail(true)}
+            className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0 active:scale-95 transition-transform"
             style={{
               background: 'rgba(15,15,26,0.9)',
               border: `3px solid #0f0f1a`,
-              boxShadow: `0 0 0 1px ${genre?.color ?? '#7c3aed'}60`,
+              boxShadow: `0 0 0 1px ${genre?.color ?? '#7c3aed'}60, 0 4px 16px ${genre?.color ?? '#7c3aed'}30`,
             }}
+            aria-label="ギルドの詳細を表示"
+            title="ギルド詳細"
           >
             {guild.icon}
-          </div>
+          </button>
         </div>
         {/* 参加ボタン */}
         <div className="absolute bottom-3 right-4">
@@ -340,48 +425,54 @@ export default function GuildDetailPage() {
         </div>
       </div>
 
-      {/* ── タブバー（Discordチャンネル風） ── */}
-      <div
-        className="flex-shrink-0 flex border-b sticky z-10"
-        style={{ top: 48, background: 'rgba(15,15,26,0.95)', borderColor: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(12px)' }}
-      >
-        {[
-          { id: 'post', label: '# 投稿', icon: Hash },
-          { id: 'info', label: 'メンバー', icon: Users },
-        ].map(({ id: tid, label, icon: Icon }) => (
+      {/* 2026-05-08 YVOICE5: 旧「タイムライン一本化タブバー」は撤去し、
+          下記の 4 タブバー (投稿 / 写真 / 動画 / 情報) に置き換え。
+          ギルドをサークル型コミュニティ画面に変更。
+          通話ルーム表示は削除。通話機能は /voice / /voice/[roomId] /
+          ゲーム村 (/guild) / いますぐ村に集約。LiveKit / voice_rooms /
+          voice_participants の DB / 接続ロジックは無変更で残置。
+          タブを 投稿 / 写真 / 動画 / 情報 の 4 タブに拡張。 */}
+      <div className="flex sticky top-[57px] z-10 px-1"
+        style={{ background: '#0f0f1a', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        {([
+          { id: 'posts',  label: '投稿' },
+          { id: 'photos', label: '写真' },
+          { id: 'videos', label: '動画' },
+          { id: 'info',   label: '情報' },
+        ] as const).map(t => (
           <button
-            key={tid}
-            onClick={() => setTab(tid as 'post' | 'info')}
-            className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-bold transition-colors relative"
-            style={{ color: tab === tid ? (genre?.color ?? '#8b5cf6') : 'rgba(255,255,255,0.35)' }}
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className="flex-1 py-3 text-xs font-bold relative transition-colors"
+            style={{ color: tab === t.id ? '#F0EEFF' : 'rgba(240,238,255,0.4)' }}
           >
-            <Icon size={13} />
-            {label}
-            {tab === tid && (
-              <span
-                className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full"
-                style={{ background: genre?.color ?? '#8b5cf6' }}
-              />
+            {t.label}
+            {tab === t.id && (
+              <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full"
+                style={{ background: 'linear-gradient(90deg, #9D5CFF, #7B3FE4)', boxShadow: '0 0 8px rgba(157,92,255,0.5)' }} />
             )}
           </button>
         ))}
       </div>
 
-      {/* ══ 投稿タブ ══ */}
-      {tab === 'post' && (
+      {/* ══ 投稿タブ (旧タイムライン UI を流用) ══ */}
+      {tab === 'posts' && (
         <div className="flex-1 flex flex-col">
 
-          {/* チャンネルヘッダー（Discordの#チャンネル説明） */}
-          <div className="px-4 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+          {/* チャンネルヘッダー（サークル投稿の説明）
+              2026-05-08 YVOICE5: 「タイムライン」表記をやめ「投稿」に統一。
+              ギルドはサークル型コミュニティで、SNS タイムラインではなく
+              サークル内投稿ページとして見せる方針 (マッキーさん指示)。 */}
+          <div className="px-4 py-4 mt-1 border-t border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
             <div className="flex items-center gap-2 mb-1">
               <div className="w-8 h-8 rounded-full flex items-center justify-center"
                 style={{ background: genre ? `${genre.color}20` : 'rgba(139,92,246,0.2)', border: `1px solid ${genre?.color ?? '#8b5cf6'}40` }}>
-                <Hash size={14} style={{ color: genre?.color ?? '#8b5cf6' }} />
+                <FileText size={14} style={{ color: genre?.color ?? '#8b5cf6' }} />
               </div>
-              <span className="font-extrabold text-white text-sm">雑談チャンネルへようこそ！</span>
+              <span className="font-extrabold text-white text-sm">投稿</span>
             </div>
             <p className="text-xs leading-relaxed pl-10" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              {guild.description || 'みんな自由に話しかけてね。'}
+              {guild.description || 'サークルメンバーと投稿で交流しましょう。'}
             </p>
           </div>
 
@@ -392,7 +483,7 @@ export default function GuildDetailPage() {
                 <div className="text-4xl mb-3">{guild.icon}</div>
                 <p className="font-bold text-white mb-1">まだ投稿がありません</p>
                 <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                  {isMember ? '最初のメッセージを送ろう！' : '参加して投稿しよう'}
+                  {isMember ? 'サークルメンバーと投稿で交流しましょう' : '参加して投稿しよう'}
                 </p>
               </div>
             ) : (
@@ -457,63 +548,303 @@ export default function GuildDetailPage() {
         </div>
       )}
 
-      {/* ══ メンバータブ（Discord風オンライン/オフライン分け） ══ */}
-      {tab === 'info' && (
-        <div className="flex-1 pb-32">
-
-          {/* サーバー概要 */}
-          <div className="mx-4 mt-4 mb-2 rounded-2xl p-4"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: 'メンバー', value: guild.member_count.toLocaleString(), emoji: '👥' },
-                { label: 'オンライン', value: onlineCount, emoji: '🟢' },
-                { label: 'ジャンル', value: (guild.category ?? '').split('・')[0], emoji: genre?.emoji ?? '🎮' },
-              ].map(s => (
-                <div key={s.label} className="flex flex-col items-center gap-1 p-2 rounded-xl"
-                  style={{ background: 'rgba(255,255,255,0.04)' }}>
-                  <span className="text-lg">{s.emoji}</span>
-                  <span className="text-xs font-extrabold text-white">{s.value}</span>
-                  <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{s.label}</span>
+      {/* ══ 写真タブ (2026-05-08 YVOICE5) ══
+          village_posts.image_url IS NOT NULL のレコードを 3 列グリッドで表示。
+          image_url カラムが DB に存在しなければ空配列に倒れて自然に空状態へ。 */}
+      {tab === 'photos' && (
+        <div className="flex-1 px-4 pt-4 pb-20">
+          {imagePosts.length === 0 ? (
+            <div className="rounded-2xl p-8 text-center"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+              <p className="text-3xl mb-2">🖼️</p>
+              <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ写真投稿はありません</p>
+              <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>ゲームスクショやプレイ画像を投稿するとここに並びます</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {imagePosts.map(ip => (
+                <div key={ip.id}
+                  className="aspect-square overflow-hidden rounded-xl"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+                  <img src={ip.image_url} alt={ip.content ?? ''} className="w-full h-full object-cover" loading="lazy" />
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── オンラインメンバー ── */}
-          {onlineMembers.length > 0 && (
-            <div className="mt-4">
-              <div className="px-4 pb-1.5 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <p className="text-[10px] font-extrabold uppercase tracking-widest"
-                  style={{ color: 'rgba(74,222,128,0.7)' }}>
-                  オンライン — {onlineMembers.length}
-                </p>
-              </div>
-              {onlineMembers.map(m => (
-                <MemberRow key={m.user_id} m={m} online genre={genre} userId={userId} router={router} />
-              ))}
-            </div>
-          )}
-
-          {/* ── オフラインメンバー ── */}
-          {offlineMembers.length > 0 && (
-            <div className="mt-4">
-              <div className="px-4 pb-1.5">
-                <p className="text-[10px] font-extrabold uppercase tracking-widest"
-                  style={{ color: 'rgba(255,255,255,0.2)' }}>
-                  オフライン — {offlineMembers.length}
-                </p>
-              </div>
-              {offlineMembers.map(m => (
-                <MemberRow key={m.user_id} m={m} online={false} genre={genre} userId={userId} router={router} />
               ))}
             </div>
           )}
         </div>
       )}
+
+      {/* ══ 動画タブ (2026-05-08 YVOICE5)
+          DB に video_url 等が無いため空状態のみ。将来 video カラム追加時に拡張。 */}
+      {tab === 'videos' && (
+        <div className="flex-1 px-4 pt-4 pb-20">
+          <div className="rounded-2xl p-8 text-center"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+            <p className="text-3xl mb-2">🎬</p>
+            <p className="text-sm font-bold" style={{ color: 'rgba(240,238,255,0.55)' }}>まだ動画投稿はありません</p>
+            <p className="text-xs mt-1" style={{ color: 'rgba(240,238,255,0.35)' }}>ゲームプレイ動画やクリップを投稿するとここに並びます</p>
+          </div>
+        </div>
+      )}
+
+      {/* ══ 情報タブ (2026-05-08 YVOICE5)
+          サークル説明 (villages.description) / カテゴリ / メンバー数 / ホスト
+          を集約表示。「活動内容 / 参加ルール / 初心者歓迎 / 活動時間帯」用の
+          追加カラムは現状の DB に無いため、将来の DB 変更時に拡張する。 */}
+      {tab === 'info' && (
+        <div className="flex-1 px-4 pt-4 pb-20 space-y-3">
+          {/* サークル説明 */}
+          <div className="rounded-2xl p-4"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: '#9D5CFF' }}>
+              サークル説明
+            </p>
+            {guild.description ? (
+              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(240,238,255,0.85)' }}>
+                {guild.description}
+              </p>
+            ) : (
+              <>
+                <p className="text-sm font-bold mb-1" style={{ color: 'rgba(240,238,255,0.55)' }}>サークル説明はまだ設定されていません</p>
+                <p className="text-xs leading-relaxed" style={{ color: 'rgba(240,238,255,0.35)' }}>
+                  ギルドオーナーは編集画面から、活動内容・対象ゲーム・初心者歓迎の有無などを書き加えられます。
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* カテゴリ / ジャンル */}
+          {genre && (
+            <div className="rounded-2xl p-4"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+              <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: '#9D5CFF' }}>
+                対象ゲーム / ジャンル
+              </p>
+              <span className="inline-flex items-center gap-1.5 text-sm font-extrabold px-3 py-1.5 rounded-full"
+                style={{ background: `${genre.color}20`, color: genre.color, border: `1px solid ${genre.color}40` }}>
+                <Shield size={12} /> {genre.emoji} {guild.category}
+              </span>
+            </div>
+          )}
+
+          {/* メンバー数 / 公開設定 */}
+          <div className="rounded-2xl p-4"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: '#9D5CFF' }}>
+              サークル状況
+            </p>
+            <div className="flex items-center gap-4 text-sm" style={{ color: 'rgba(240,238,255,0.85)' }}>
+              <div className="flex items-center gap-1.5">
+                <Users size={14} style={{ color: 'rgba(240,238,255,0.5)' }} />
+                <span><span className="font-extrabold">{guild.member_count}</span> 人</span>
+              </div>
+              {guild.visibility && (
+                <div className="flex items-center gap-1.5">
+                  <Hash size={14} style={{ color: 'rgba(240,238,255,0.5)' }} />
+                  <span>{guild.visibility === 'public' ? '公開サークル' : guild.visibility}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ホスト情報 */}
+          {(() => {
+            const host = members.find(m => m.role === 'host')
+            if (!host) return null
+            return (
+              <div className="rounded-2xl p-4"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(157,92,255,0.18)' }}>
+                <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: '#9D5CFF' }}>
+                  ホスト
+                </p>
+                <Link href={`/profile/${host.user_id}`}
+                  className="flex items-center gap-3 active:opacity-80 transition-opacity">
+                  <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.18)' }}>
+                    {host.profiles?.avatar_url
+                      ? <img src={host.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                      : <Crown size={16} style={{ color: '#FCD34D' }} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-extrabold truncate" style={{ color: '#F0EEFF' }}>
+                      <Crown size={11} className="inline mr-1" style={{ color: '#FCD34D' }} />
+                      {getUserDisplayName(host.profiles)}
+                    </p>
+                  </div>
+                  <ChevronRight size={14} style={{ color: 'rgba(240,238,255,0.3)' }} />
+                </Link>
+              </div>
+            )
+          })()}
+
+          {/* 参加 / 退出 */}
+          {!isMember && (
+            <button onClick={handleJoin} disabled={joining}
+              className="w-full py-3 rounded-2xl text-sm font-extrabold text-white active:scale-95 transition-all"
+              style={{ background: genre?.color ?? '#8b5cf6', boxShadow: `0 4px 14px ${genre?.color ?? '#8b5cf6'}50` }}>
+              {joining ? '参加中…' : 'このサークルに参加する'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ══ ギルド詳細モーダル (旧メンバータブの内容 + 概要 + 説明文) ══
+          ギルドアイコン押下で開く。背景タップ or × で閉じる。 */}
+      {showDetail && (
+        <div className="fixed inset-0 z-[60] flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/55 backdrop-blur-sm"
+            onClick={() => setShowDetail(false)} />
+          <div
+            className="relative w-full max-w-md mx-auto rounded-t-3xl overflow-hidden flex flex-col"
+            style={{
+              background: '#0f0f1a',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderBottom: 'none',
+              maxHeight: '88vh',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* ドラッグハンドル */}
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.18)' }} />
+            </div>
+            {/* ヘッダー: 閉じる + タイトル */}
+            <div className="flex items-center gap-2 px-4 py-2 flex-shrink-0">
+              <button
+                onClick={() => setShowDetail(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center active:opacity-60"
+                style={{ background: 'rgba(255,255,255,0.06)' }}
+                aria-label="閉じる"
+              >
+                <X size={16} style={{ color: 'rgba(255,255,255,0.6)' }} />
+              </button>
+              <p className="text-sm font-extrabold flex-1" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                ギルド詳細
+              </p>
+            </div>
+
+            {/* 中身（スクロール可能） */}
+            <div className="flex-1 overflow-y-auto pb-6">
+              {/* ギルドの顔 */}
+              <div className="flex flex-col items-center px-6 pt-4 pb-5">
+                <div
+                  className="w-20 h-20 rounded-3xl flex items-center justify-center text-5xl mb-3"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: `2px solid ${genre?.color ?? '#7c3aed'}50`,
+                    boxShadow: `0 6px 24px ${genre?.color ?? '#7c3aed'}40`,
+                  }}
+                >
+                  {guild.icon}
+                </div>
+                <h2 className="font-extrabold text-white text-lg text-center leading-tight">{guild.name}</h2>
+                {genre && (
+                  <span
+                    className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: `${genre.color}20`, color: genre.color, border: `1px solid ${genre.color}40` }}
+                  >
+                    <Shield size={9} /> {genre.emoji} {guild.category}
+                  </span>
+                )}
+              </div>
+
+              {/* 説明文 */}
+              {guild.description && (
+                <div className="mx-4 mb-4 rounded-2xl p-4"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest mb-1.5"
+                    style={{ color: 'rgba(255,255,255,0.4)' }}>
+                    説明
+                  </p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap"
+                    style={{ color: 'rgba(255,255,255,0.78)' }}>
+                    {guild.description}
+                  </p>
+                </div>
+              )}
+
+              {/* ステータス概要 (旧メンバータブの 3 連カード) */}
+              <div className="mx-4 mb-4 rounded-2xl p-4"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: 'メンバー', value: guild.member_count.toLocaleString(), emoji: '👥' },
+                    { label: 'オンライン', value: String(onlineCount), emoji: '🟢' },
+                    { label: '公開設定', value: visibilityLabel(guild.visibility), emoji: visibilityEmoji(guild.visibility) },
+                  ].map(s => (
+                    <div key={s.label} className="flex flex-col items-center gap-1 p-2 rounded-xl"
+                      style={{ background: 'rgba(255,255,255,0.04)' }}>
+                      <span className="text-lg">{s.emoji}</span>
+                      <span className="text-xs font-extrabold text-white">{s.value}</span>
+                      <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{s.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* メンバー一覧 (旧メンバータブの中身そのまま) */}
+              {onlineMembers.length > 0 && (
+                <div className="mt-4">
+                  <div className="px-4 pb-1.5 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest"
+                      style={{ color: 'rgba(74,222,128,0.7)' }}>
+                      オンライン — {onlineMembers.length}
+                    </p>
+                  </div>
+                  {onlineMembers.map(m => (
+                    <MemberRow key={m.user_id} m={m} online genre={genre} userId={userId} router={router} />
+                  ))}
+                </div>
+              )}
+
+              {offlineMembers.length > 0 && (
+                <div className="mt-4">
+                  <div className="px-4 pb-1.5">
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest"
+                      style={{ color: 'rgba(255,255,255,0.2)' }}>
+                      オフライン — {offlineMembers.length}
+                    </p>
+                  </div>
+                  {offlineMembers.map(m => (
+                    <MemberRow key={m.user_id} m={m} online={false} genre={genre} userId={userId} router={router} />
+                  ))}
+                </div>
+              )}
+
+              {/* 招待ボタン (モーダル下部にも配置) */}
+              <div className="px-4 mt-5">
+                <button
+                  onClick={handleInvite}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-extrabold transition-all active:scale-[0.98]"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.14)',
+                    color: '#fff',
+                  }}
+                >
+                  <Share2 size={14} />
+                  {inviteCopied ? 'リンクをコピーしました' : 'ギルドを招待する'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
+}
+
+// ── ギルド公開設定の表示用ヘルパー ─────────────────────────────
+function visibilityLabel(v: string | undefined | null): string {
+  if (v === 'approval') return '承認制'
+  if (v === 'invite')   return '招待制'
+  return '公開'
+}
+function visibilityEmoji(v: string | undefined | null): string {
+  if (v === 'approval') return '🛡️'
+  if (v === 'invite')   return '✉️'
+  return '🌐'
 }
 
 // ─── MemberRow ────────────────────────────────────────────────────
@@ -562,8 +893,9 @@ function MemberRow({
             <Crown size={10} style={{ color: genre?.color ?? '#8b5cf6', flexShrink: 0 }} />
           )}
           <p className="text-sm font-bold truncate" style={{ color: online ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)' }}>
-            {m.profiles?.display_name ?? '名無し'}
+            {getUserDisplayName(m.profiles)}
           </p>
+          <VerifiedBadge verified={m.profiles?.age_verified} size="sm" />
           {isOwn && (
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none flex-shrink-0"
               style={{ color: '#818cf8', background: 'rgba(129,140,248,0.12)', border: '1px solid rgba(129,140,248,0.2)' }}>

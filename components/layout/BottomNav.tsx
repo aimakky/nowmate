@@ -1,18 +1,30 @@
 'use client'
-
+// v4
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Layers, Bell, Gamepad2, Shield, MessageSquare } from 'lucide-react'
+import { Layers, Bell, Gamepad2, MessageSquare, Users2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+// 旧: ギルドが独立タブだったが、ゲーム村ページ内の上部タブ (いますぐ村 / ギルド)
+// に統合したため、ナビ枠は「フレンド」(/users) に転用していた。
+// 仕様変更: フレンド一覧は AppLayout 上部の FriendAvatarRail に移動したため、
+// ナビ枠を「グループ」(/group) に転用。/users は互換維持で残し、FriendRail
+// 右端の「もっと見る」から到達できる。
+// カラー方針:
+//   TL = 緑 (#39FF88)
+//   グループ = 青 (#3B82F6)  ← 旧: 紫 #9D5CFF。視認性とアプリ全体の役割分け
+//                           (TL=情報共有 / グループ=通話/会話) を明確化
+//   ゲーム村 = 紫 (#8B5CF6)
+//   通知 = 黄 (#FFC928)      ← 配置は 4 番目に移動 (旧 5 番目)
+//   チャット = ピンク (#FF4FD8) ← 配置は 5 番目に移動 (旧 4 番目)
 const NAV_ITEMS = [
-  { href: '/timeline',      label: 'TL',      icon: Layers,        live: false, activeColor: '#39FF88' },
-  { href: '/guilds',        label: 'ギルド',   icon: Shield,        live: false, activeColor: '#27DFFF' },
+  { href: '/timeline',      label: 'TL',       icon: Layers,        live: false, activeColor: '#39FF88' },
+  { href: '/group',         label: 'グループ', icon: Users2,        live: false, activeColor: '#3B82F6' },
   { href: '/guild',         label: 'ゲーム村', icon: Gamepad2,      live: true,  activeColor: '#8B5CF6' },
+  { href: '/notifications', label: '通知',     icon: Bell,          live: false, activeColor: '#FFC928' },
   { href: '/chat',          label: 'チャット', icon: MessageSquare, live: false, activeColor: '#FF4FD8' },
-  { href: '/notifications', label: '通知',    icon: Bell,          live: false, activeColor: '#FFC928' },
 ]
 
 export default function BottomNav() {
@@ -20,6 +32,8 @@ export default function BottomNav() {
   const [notifCount, setNotifCount] = useState(0)
 
   useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null
+
     async function fetchBadges() {
       try {
         const supabase = createClient()
@@ -33,9 +47,29 @@ export default function BottomNav() {
         setNotifCount(nc ?? 0)
       } catch { /* silent */ }
     }
-    fetchBadges()
-    const interval = setInterval(fetchBadges, 30_000)
-    return () => clearInterval(interval)
+
+    function startPolling() {
+      if (interval) return
+      fetchBadges()
+      interval = setInterval(fetchBadges, 30_000)
+    }
+    function stopPolling() {
+      if (interval) { clearInterval(interval); interval = null }
+    }
+
+    // タブが見えている時だけポーリング。バックグラウンドでは止めて、
+    // 100 ユーザー × 常時ポーリングという固定負荷を避ける。
+    function onVisibility() {
+      if (document.visibilityState === 'visible') startPolling()
+      else stopPolling()
+    }
+
+    onVisibility()  // 初回起動
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      stopPolling()
+    }
   }, [])
 
   useEffect(() => {
@@ -62,10 +96,13 @@ export default function BottomNav() {
           const badge  = badges[href] ?? 0
 
           if (live) {
+            // Active のときだけ LIVE バッジを強調。非 active 時は他のタブと同じ
+            // 「色 59% 透明度 + 細めのストローク」に揃え、ゲーム村だけが過剰に
+            // 主張しないようにする。
             return (
               <Link key={href} href={href}
-                className="flex-1 flex flex-col items-center justify-center py-1 gap-0 relative">
-                {/* Active glow bg */}
+                className="flex-1 flex flex-col items-center justify-center py-1.5 gap-0 relative transition-colors">
+                {/* Active glow bg — active 時のみ */}
                 {active && (
                   <div className="absolute inset-x-2 inset-y-1 rounded-2xl"
                     style={{ background: `${activeColor}1F`, border: `1px solid ${activeColor}33` }} />
@@ -74,20 +111,26 @@ export default function BottomNav() {
                   <Gamepad2
                     size={20}
                     strokeWidth={active ? 2.5 : 1.8}
-                    style={{ color: active ? activeColor : `${activeColor}80` }}
+                    style={{ color: active ? activeColor : `${activeColor}59` }}
                   />
-                  {/* LIVE badge */}
+                  {/* LIVE バッジ：active 時は脈打ち + 鮮やかなグラデ、
+                      非 active 時は彩度を落として補助マーカーに留める */}
                   <span className="absolute -top-2 -right-4 flex items-center">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-40"
-                      style={{ background: activeColor }} />
-                    <span className="relative text-[7px] font-extrabold tracking-widest px-1 py-px rounded-full leading-none"
-                      style={{ background: 'linear-gradient(135deg,#8B5CF6,#FF4D90)', color: '#fff' }}>
+                    {active && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-40"
+                        style={{ background: activeColor }} />
+                    )}
+                    <span
+                      className="relative text-[7px] font-extrabold tracking-widest px-1 py-px rounded-full leading-none"
+                      style={active
+                        ? { background: 'linear-gradient(135deg,#8B5CF6,#FF4D90)', color: '#fff' }
+                        : { background: `${activeColor}26`, color: `${activeColor}B3`, border: `1px solid ${activeColor}33` }}>
                       LIVE
                     </span>
                   </span>
                 </div>
                 <span className="text-[9px] font-extrabold tracking-wide mt-0.5 z-10"
-                  style={{ color: active ? activeColor : `${activeColor}80` }}>
+                  style={{ color: active ? activeColor : `${activeColor}59` }}>
                   {label}
                 </span>
                 {active && (
