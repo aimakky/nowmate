@@ -53,6 +53,7 @@ const SUB_FILTERS = [
   { id: 'popular', label: 'にぎやか', emoji: '🔥' },
   { id: 'new',     label: '新着',     emoji: '✨' },
   { id: 'member',  label: '参加中',   emoji: '🛡️' },
+  { id: 'listen',  label: '聞くだけOK', emoji: '📡' },
 ]
 
 // ジャンルタブ: すべて + INDUSTRIES の 10 ジャンル (FPS・TPS / RPG / アクション
@@ -63,48 +64,116 @@ const GENRE_TABS = [
   ...INDUSTRIES.map(i => ({ id: i.id, emoji: i.emoji, label: i.id })),
 ]
 
-// ── シンプル一覧カード (アイコン + 名前(N) + 参加状態) ──
-function SimpleVillageCard({
-  village, isMember, onJoin, onClick,
+// ── 通話ルーム入室カード (参考イラスト準拠 2026-05-13 PR #voice-entry-redesign) ──
+// アイコン + 村名 + 人数 + 「聞くだけ参加OK」ラベル + 補足文 + タグ (静か/にぎやか + 安心度) + CTA ボタン。
+// featured=true (一覧先頭) は紫グロー強調 + ボタン文言「入る」、それ以外は通常 + 「参加する」。
+// クリック領域: カード全体 + ボタンで /villages/[id] へ遷移 (入室前確認 = 村詳細ページ既存導線)。
+function VoiceRoomEntryCard({
+  village, featured, onClick,
 }: {
-  village: Village; isMember: boolean; onJoin: () => void; onClick: () => void
+  village: Village
+  featured: boolean
+  onClick: () => void
 }) {
+  // にぎやか / 静かな村 の判定: 参加者数 + 7日投稿数の合算で機械的に分岐。
+  const isBusy = (village.member_count ?? 0) >= 3 || (village.post_count_7d ?? 0) >= 5
+  const moodEmoji = isBusy ? '🔥' : '🌿'
+  const moodLabel = isBusy ? 'にぎやか' : '静かな村'
+  const safetyStars = isBusy ? '★★★★☆' : '★★★★★'
+  // サブ説明: 0 人なら参考イラストどおり「今は誰もいません」、それ以外は village.description。
+  const subText = (village.member_count ?? 0) === 0
+    ? '今は誰もいません'
+    : (village.description || 'まったり話そう〜')
+
   return (
     <div
       onClick={onClick}
-      className="rounded-2xl overflow-hidden active:scale-[0.99] transition-all cursor-pointer flex items-center gap-3 px-4 py-3.5"
-      style={{
+      className="rounded-2xl overflow-hidden active:scale-[0.99] transition-all cursor-pointer"
+      style={featured ? {
+        background: 'linear-gradient(135deg, rgba(157,92,255,0.16), rgba(124,58,237,0.08))',
+        border: '1.5px solid rgba(157,92,255,0.6)',
+        boxShadow: '0 0 28px rgba(157,92,255,0.4), 0 4px 18px rgba(0,0,0,0.4)',
+      } : {
         background: 'rgba(255,255,255,0.04)',
         border: '1px solid rgba(157,92,255,0.18)',
       }}
     >
-      <div
-        className="flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
-        style={{
-          background: 'linear-gradient(135deg, rgba(157,92,255,0.22), rgba(124,58,237,0.16))',
-          border: '1px solid rgba(157,92,255,0.25)',
-        }}
-      >
-        {village.icon}
+      <div className="flex items-center gap-3 px-4 py-3.5">
+        {/* 左: 紫グラデ円アイコン */}
+        <div
+          className="flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center text-3xl"
+          style={{
+            background: 'linear-gradient(135deg, rgba(157,92,255,0.28), rgba(124,58,237,0.18))',
+            border: '1px solid rgba(157,92,255,0.32)',
+          }}
+        >
+          {village.icon}
+        </div>
+
+        {/* 中: 情報 */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-extrabold truncate" style={{ color: SIMPLE_COLORS.textPrimary }}>
+            {village.name}
+          </p>
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            <span className="text-[11px] font-bold inline-flex items-center gap-0.5" style={{ color: SIMPLE_COLORS.textSecondary }}>
+              👤 {village.member_count ?? 0}人
+            </span>
+            <span
+              className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md inline-flex items-center gap-0.5"
+              style={{
+                background: 'rgba(99,102,241,0.18)',
+                color: '#a5b4fc',
+                border: '1px solid rgba(99,102,241,0.35)',
+              }}
+            >
+              📡 聞くだけ参加OK
+            </span>
+          </div>
+          <p className="text-[11px] mt-1 truncate" style={{ color: SIMPLE_COLORS.textTertiary }}>
+            {subText}
+          </p>
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                color: SIMPLE_COLORS.textSecondary,
+                border: '1px solid rgba(157,92,255,0.18)',
+              }}
+            >
+              {moodEmoji} {moodLabel}
+            </span>
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded-md inline-flex items-center gap-0.5"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(157,92,255,0.18)',
+              }}
+            >
+              <span style={{ color: SIMPLE_COLORS.textSecondary }}>安心度</span>
+              <span style={{ color: '#fcd34d' }}>{safetyStars}</span>
+            </span>
+          </div>
+        </div>
+
+        {/* 右: CTA ボタン */}
+        <button
+          onClick={e => { e.stopPropagation(); onClick() }}
+          className="flex-shrink-0 px-4 py-2.5 rounded-2xl text-xs font-extrabold active:scale-90 transition-all"
+          style={featured ? {
+            background: 'linear-gradient(135deg, #9D5CFF, #7C3AED)',
+            color: '#ffffff',
+            boxShadow: '0 4px 18px rgba(157,92,255,0.55)',
+          } : {
+            background: SIMPLE_COLORS.accent,
+            color: '#ffffff',
+            boxShadow: '0 2px 8px rgba(157,92,255,0.4)',
+          }}
+        >
+          {featured ? '入る' : '参加する'}
+        </button>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-extrabold truncate" style={{ color: SIMPLE_COLORS.textPrimary }}>
-          {village.name}
-          <span className="ml-1.5 font-bold" style={{ color: SIMPLE_COLORS.textSecondary }}>
-            ({village.member_count})
-          </span>
-        </p>
-      </div>
-      <button
-        onClick={e => { e.stopPropagation(); onJoin() }}
-        className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-extrabold active:scale-90 transition-all"
-        style={isMember
-          ? { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(157,92,255,0.25)', color: SIMPLE_COLORS.textSecondary }
-          : { background: SIMPLE_COLORS.accent, color: '#ffffff', boxShadow: '0 2px 6px rgba(157,92,255,0.4)' }
-        }
-      >
-        {isMember ? '参加中' : '参加'}
-      </button>
     </div>
   )
 }
@@ -386,12 +455,11 @@ export default function GuildPage() {
               </div>
             ) : (
               <div className="space-y-2.5">
-                {displayed.map(v => (
-                  <SimpleVillageCard
+                {displayed.map((v, i) => (
+                  <VoiceRoomEntryCard
                     key={v.id}
                     village={v}
-                    isMember={memberIds.has(v.id)}
-                    onJoin={() => handleJoin(v.id)}
+                    featured={i === 0}
                     onClick={() => router.push(`/villages/${v.id}`)}
                   />
                 ))}
